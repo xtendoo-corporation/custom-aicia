@@ -1,0 +1,55 @@
+<?xml version="1.0" encoding="utf-8"?>
+<odoo>
+    <data>
+
+        <!-- Mostrar el contacto relaccionado con el empleado -->
+        <record id="view_employee_form_inherit" model="ir.ui.view">
+            <field name="name">hr.employee.form.inherit</field>
+            <field name="model">hr.employee</field>
+            <field name="inherit_id" ref="hr.view_employee_form"/>
+            <field name="arch" type="xml">
+                <xpath expr="//field[@name='work_email']" position="after">
+                    <field name="partner_id" options="{'no_create': True}"/>
+                </xpath>
+            </field>
+        </record>
+
+
+        <!-- Vista personalizada de búsqueda -->
+        <record id="hr_employee_search_custom" model="ir.ui.view">
+            <field name="name">hr.employee.search.custom</field>
+            <field name="model">hr.employee</field>
+            <field name="inherit_id" ref="hr.view_employee_filter"/>
+            <field name="arch" type="xml">
+                <xpath expr="//field[@name='coach_id']" position="after">
+                    <field name="other_field"/>
+                </xpath>
+            </field>
+        </record>
+
+        <!-- Vista personalizada de formulario -->
+        <record id="hr_employee_form_custom" model="ir.ui.view">
+            <field name="name">hr.employee.form.custom</field>
+            <field name="model">hr.employee</field>
+            <field name="inherit_id" ref="hr.view_employee_form"/>
+            <field name="arch" type="xml">
+                <xpath expr="//field[@name='coach_id']" position="after">
+                    <field name="other_field" widget="many2many_tags"/>
+                </xpath>
+            </field>
+        </record>
+
+        <!-- Vista personalizada de árbol -->
+        <record id="hr_employee_tree_custom" model="ir.ui.view">
+            <field name="name">hr.employee.tree.custom</field>
+            <field name="model">hr.employee</field>
+            <field name="inherit_id" ref="hr.view_employee_tree"/>
+            <field name="arch" type="xml">
+                <xpath expr="//field[@name='coach_id']" position="after">
+                    <field name="other_field" optional="show"/>
+                </xpath>
+            </field>
+        </record>
+
+    </data>
+</odoo>
