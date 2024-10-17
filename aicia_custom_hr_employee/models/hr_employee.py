@@ -11,8 +11,8 @@ class HrEmployee(models.Model):
 
     def _compute_partner_id(self):
         for record in self:
-            record.partner_id = self.env['res.partner'].search([('work_contact_id', '=', record.id)], limit=1)
+            record.partner_id = self.env['res.partner'].search([('id', '=', record.work_contact_id.id)], limit=1)
 
     def _compute_partner_id_2(self):
         for record in self:
-            record.partner_id = self.env['res.partner'].search([('id', '=', record.work_contact_id.id)], limit=1)
+            record.partner_id = self.env['res.partner'].search([('work_contact_id', '=', record.id)], limit=1)
