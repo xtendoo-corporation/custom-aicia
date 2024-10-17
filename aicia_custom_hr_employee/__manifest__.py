@@ -6,10 +6,11 @@
     "company": "Xtendoo",
     "website": "http://www.xtendoo.es",
     "category": "Human Resources/Employees",
-    "depends": ["hr"],
+    "depends": ["hr", "contacts"],
     "license": "AGPL-3",
     "data": [
         "wizards/bank_account_import_wizard.xml",
+        "wizards/import_contacts_wizard_view.xml",
         "views/hr_employee_views.xml",
         "views/menu.xml",
         "security/ir.model.access.csv",

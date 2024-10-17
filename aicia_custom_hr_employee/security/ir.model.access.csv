@@ -1,4 +1,4 @@
 id,name,model_id:id,group_id:id,perm_read,perm_write,perm_create,perm_unlink
 access_employee_attribute_user,access_employee_attribute_user,model_employee_attribute,base.group_user,1,1,1,1
 aicia_custom_hr_employee.access_import_employee_bank_account_wizard,access_import_employee_bank_account_wizard,aicia_custom_hr_employee.model_import_employee_bank_account_wizard,base.group_user,1,1,1,1
-
+aicia_custom_hr_employee.access_import_contacts_wizard,access_import_contacts_wizard,aicia_custom_hr_employee.model_import_contacts_wizard,base.group_user,1,1,1,1

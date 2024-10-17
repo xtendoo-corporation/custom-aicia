@@ -7,6 +7,22 @@
         <field name="view_mode">form</field>
         <field name="target">new</field>
     </record>
-    <menuitem id="menu_import_employee_bank_account_wizard" name="Importar Cuentas Bancarias" parent="hr.menu_hr_root"
+
+    <record id="action_import_contacts_wizard" model="ir.actions.act_window">
+        <field name="name">Importar Contactos</field>
+        <field name="res_model">import.contacts.wizard</field>
+        <field name="view_mode">form</field>
+        <field name="target">new</field>
+    </record>
+
+    <menuitem id="menu_import_employee_bank_account_wizard"
+              name="Importar Cuentas Bancarias"
+              parent="hr.menu_hr_root"
               action="action_import_employee_bank_account_wizard"/>
+
+    <menuitem id="menu_import_contacts"
+              name="Importar Contactos"
+              parent="contacts.menu_contacts"
+              action="action_import_contacts_wizard"
+              sequence="30"/>
 </odoo>
