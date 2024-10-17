@@ -2,7 +2,7 @@
 <odoo>
     <data>
 
-        <!-- Mostrar el contacto relaccionado con el empleado -->
+        <!--Mostrar el contacto relaccionado con el empleado -->
         <record id="view_employee_form_inherit" model="ir.ui.view">
             <field name="name">hr.employee.form.inherit</field>
             <field name="model">hr.employee</field>
