@@ -41,8 +41,6 @@ class ImportContactsWizard(models.TransientModel):
                     'email': row_values[12],
                     'is_company': True
                 }
-                print("*" * 50)
-                print(contact_data)
                 self.create_contact(contact_data)
 
         # Limpiar la sesión de base de datos
