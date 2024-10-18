@@ -1,0 +1,44 @@
+<odoo>
+    <template id="portal_invoice_request_template">
+        <t t-call="website.layout">
+            <div class="container">
+                <h1>Invoice Request</h1>
+                <form action="/portal/invoice_request/submit" method="POST">
+                    <input type="hidden" name="csrf_token" t-att-value="request.csrf_token()"/>
+                    <div class="form-group">
+                        <label for="company_id">Company</label>
+                        <select id="company_id" name="company_id" class="form-control" >
+                            <t t-foreach="companies" t-as="company">
+                                <option t-att-value="company.id"><t t-esc="company.name"/></option>
+                            </t>
+                        </select>
+                    </div>
+                    <div class="form-group">
+                        <label for="partner_id">Client</label>
+                        <select id="partner_id" name="partner_id" class="form-control" >
+                            <t t-foreach="partners" t-as="partner">
+                                <option t-att-value="partner.id"><t t-esc="partner.name"/></option>
+                            </t>
+                        </select>
+                    </div>
+                    <div class="form-group">
+                        <label for="amount">Amount</label>
+                        <input type="number" id="amount" name="amount" class="form-control" />
+                    </div>
+                    <div class="form-group">
+                        <label for="notes">Concept</label>
+                        <textarea id="notes" name="notes" class="form-control" rows="4"/>
+                    </div>
+                    <button type="submit" class="btn btn-primary">Submit</button>
+                </form>
+            </div>
+        </t>
+    </template>
+
+     <record id="portal_invoice_menu" model="website.menu">
+        <field name="name">Invoice Request</field>
+        <field name="url">/portal/invoice_request</field>
+        <field name="parent_id" ref="website.main_menu"/>
+        <field name="sequence" type="int">100</field>
+    </record>
+</odoo>
