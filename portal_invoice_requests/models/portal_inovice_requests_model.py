@@ -1,4 +1,4 @@
-from odoo import models, fields
+from odoo import models, fields, api
 
 class PortalInvoiceRequest(models.Model):
     _name = 'portal.invoice.request'
@@ -8,3 +8,5 @@ class PortalInvoiceRequest(models.Model):
     partner_id = fields.Many2one('res.partner', string='Client', required=True)
     amount = fields.Float(string='Amount', required=True)
     notes = fields.Text(string='Invoice Concept')
+
+

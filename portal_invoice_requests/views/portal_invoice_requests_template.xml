@@ -7,23 +7,27 @@
                     <input type="hidden" name="csrf_token" t-att-value="request.csrf_token()"/>
                     <div class="form-group">
                         <label for="company_id">Company</label>
-                        <select id="company_id" name="company_id" class="form-control" >
+                        <select id="company_id" name="company_id" class="form-control" onchange="fetchPartnersByCompany()">
                             <t t-foreach="companies" t-as="company">
-                                <option t-att-value="company.id"><t t-esc="company.name"/></option>
+                                <option t-att-value="company.id">
+                                    <t t-esc="company.name"/>
+                                </option>
                             </t>
                         </select>
                     </div>
                     <div class="form-group">
                         <label for="partner_id">Client</label>
-                        <select id="partner_id" name="partner_id" class="form-control" >
+                        <select id="partner_id" name="partner_id" class="form-control">
                             <t t-foreach="partners" t-as="partner">
-                                <option t-att-value="partner.id"><t t-esc="partner.name"/></option>
+                                <option t-att-value="partner.id">
+                                    <t t-esc="partner.name"/>
+                                </option>
                             </t>
                         </select>
                     </div>
                     <div class="form-group">
                         <label for="amount">Amount</label>
-                        <input type="number" id="amount" name="amount" class="form-control" />
+                        <input type="number" id="amount" name="amount" class="form-control"/>
                     </div>
                     <div class="form-group">
                         <label for="notes">Concept</label>
@@ -31,11 +35,39 @@
                     </div>
                     <button type="submit" class="btn btn-primary">Submit</button>
                 </form>
+                <script type="text/javascript">
+                    function fetchPartnersByCompany() {
+                    var companyId = document.getElementById("company_id").value;
+
+                    // Hacer una llamada AJAX a Odoo
+                    $.ajax({
+                    url: '/get_partners_by_company', // URL del controlador en Odoo
+                    type: 'GET',
+                    data: { company_id: companyId }, // Pasar el company_id como parámetro de URL
+                    success: function(response) {
+                    // Limpiar el campo de selección de clientes
+                    var partnerSelect = document.getElementById("partner_id");
+                    partnerSelect.innerHTML = '';
+
+                    // Rellenar el campo con los clientes filtrados
+                    response.partners.forEach(function(partner) {
+                    var option = document.createElement('option');
+                    option.value = partner.id;
+                    option.text = partner.name;
+                    partnerSelect.appendChild(option);
+                    });
+                    },
+                    error: function(error) {
+                    console.log("Error fetching partners: ", error);
+                    }
+                    });
+                    }
+                </script>
             </div>
         </t>
     </template>
 
-     <record id="portal_invoice_menu" model="website.menu">
+    <record id="portal_invoice_menu" model="website.menu">
         <field name="name">Invoice Request</field>
         <field name="url">/portal/invoice_request</field>
         <field name="parent_id" ref="website.main_menu"/>
