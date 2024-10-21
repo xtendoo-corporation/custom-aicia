@@ -8,10 +8,8 @@ class PortalInvoiceController(Controller):
     @route('/portal/invoice_request', auth='user', website=True)
     def invoice_request_form(self, **kwargs):
         companies = request.env['res.company'].search([])
-        partners = request.env['res.partner'].search([])
         return request.render('portal_invoice_requests.portal_invoice_request_template', {
             'companies': companies,
-            'partners': partners,
         })
 
     @route('/portal/invoice_request/submit', type='http', auth='user', website=True, methods=['POST'])
@@ -38,13 +36,10 @@ class PortalInvoiceController(Controller):
     @http.route('/get_partners_by_company', type='http', auth="user")
     def get_partners_by_company(self, company_id):
         try:
-            # Buscar partners relacionados con la compañía seleccionada
-            partners = request.env['res.partner'].search([('company_id', '=', int(company_id))])
+            partners = request.env['res.partner'].search([('company_ids', 'in', int(company_id))])
 
-            # Crear la respuesta JSON con los datos de los partners
             partners_data = [{'id': partner.id, 'name': partner.name} for partner in partners]
 
-            # Retornar los datos en formato JSON
             return request.make_response(
                 json.dumps({'partners': partners_data}),
                 headers={'Content-Type': 'application/json'}
