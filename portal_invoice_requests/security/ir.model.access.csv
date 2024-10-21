@@ -1,2 +1,4 @@
 id,name,model_id:id,group_id:id,perm_read,perm_write,perm_create,perm_unlink
 access_portal_invoice_request_user,access_portal_invoice_request_user,model_portal_invoice_request,base.group_user,1,1,1,1
+portal_invoice_requests.access_portal_project_request,access_portal_project_request,portal_invoice_requests.model_portal_project_request,base.group_user,1,1,1,1
+portal_invoice_requests.access_portal_purchase_order_request,access_portal_purchase_order_request,portal_invoice_requests.model_portal_purchase_order_request,base.group_user,1,1,1,1

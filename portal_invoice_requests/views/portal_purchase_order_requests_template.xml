@@ -1,9 +1,9 @@
 <odoo>
-    <template id="portal_invoice_request_template">
+    <template id="portal_purchase_order_requests_template">
         <t t-call="website.layout">
             <div class="container">
-                <h1>Invoice Request</h1>
-                <form action="/portal/invoice_request/submit" method="POST">
+                <h1>Purchase Order Request</h1>
+                <form action="/portal/purchase_order_request/submit" method="POST">
                     <input type="hidden" name="csrf_token" t-att-value="request.csrf_token()"/>
                     <div class="form-group">
                         <label for="company_id">Company</label>
@@ -22,15 +22,9 @@
                     </div>
 
                     <div class="form-group">
-                        <label for="amount">Amount</label>
-                        <input type="number" id="amount" name="amount" class="form-control"/>
-                    </div>
-
-                    <div class="form-group">
-                        <label for="notes">Concept</label>
+                        <label for="concept">Concept</label>
                         <textarea id="notes" name="notes" class="form-control" rows="4"></textarea>
                     </div>
-
                     <button type="submit" class="btn btn-primary">Submit</button>
                 </form>
 
@@ -67,9 +61,9 @@
         </t>
     </template>
 
-    <record id="portal_invoice_menu" model="website.menu">
-        <field name="name">Invoice Request</field>
-        <field name="url">/portal/invoice_request</field>
+    <record id="portal_purchase_order_requests" model="website.menu">
+        <field name="name">Purchase Order Request</field>
+        <field name="url">/portal/purchase_order_request</field>
         <field name="parent_id" ref="website.main_menu"/>
         <field name="sequence" type="int">100</field>
     </record>
