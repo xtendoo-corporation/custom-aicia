@@ -5,16 +5,19 @@ from datetime import datetime
 import json
 import base64
 
-
 class PortalInvoiceController(Controller):
 
     @route('/portal/project_request', auth='user', website=True)
     def project_request_form(self, **kwargs):
-        return request.render('portal_invoice_requests.portal_project_request_template', {})
+        companies = request.env['res.company'].search([])
+        return request.render('portal_invoice_requests.portal_project_request_template', {
+            'companies': companies,
+        })
 
     @route('/portal/project_request/submit', type='http', auth='user', website=True, methods=['POST'])
     def project_request_submit(self, **post):
         # Procesar los campos de texto
+        company_id = post.get('company_id')
         date_start = post.get('date_start')
         date_end = post.get('date_end')
         project_name = post.get('project_name')
@@ -33,6 +36,7 @@ class PortalInvoiceController(Controller):
 
         # Crear el registro del proyecto en Odoo
         project = request.env['portal.project.request'].sudo().create({
+            'company_id': int(company_id),
             'date_start': datetime.strptime(date_start, '%Y-%m-%d'),
             'date_end': datetime.strptime(date_end, '%Y-%m-%d'),
             'project_name': project_name,
@@ -52,6 +56,7 @@ class PortalInvoiceController(Controller):
     def send_project_email(self, project, signed_contract_data, signed_contract_filename, budget_file_data,
                            budget_file_filename):
         # Recibir los datos del formulario
+        company_id = project.company_id
         project_name = project.project_name
         date_start = project.date_start.strftime('%d-%m-%Y')
         date_end = project.date_end.strftime('%d-%m-%Y')
@@ -61,6 +66,7 @@ class PortalInvoiceController(Controller):
             <p>Hello,</p>
             <p>A new project has been created with the following details:</p>
             <ul>
+                <li><strong>Company:</strong> {company_id.name}</li>
                 <li><strong>Project Name:</strong> {project_name}</li>
                 <li><strong>Start Date:</strong> {date_start}</li>
                 <li><strong>End Date:</strong> {date_end}</li>
@@ -68,12 +74,12 @@ class PortalInvoiceController(Controller):
             <p>Best regards,<br/>Your Portal</p>
         """
 
-        # salvador.gon.jim @ gmail.com
+        #  theabraham9@ gmail.com
         # Crear el correo
         mail_values = {
             'subject': f'New Project: {project_name}',
             'email_from': request.env.user.email,
-            'email_to': 'theabraham9@gmail.com',
+            'email_to': 'salvador.gon.jim@gmail.com',
             'body_html': body_html,
         }
 
@@ -114,4 +120,5 @@ class PortalInvoiceController(Controller):
         print(f"Mail sent to: {mail_values['email_to']}")
 
         return request.render("portal.email_sent_confirmation")
+
 
