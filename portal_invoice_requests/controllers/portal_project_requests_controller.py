@@ -36,6 +36,7 @@ class PortalInvoiceController(Controller):
 
         # Crear el registro del proyecto en Odoo
         project = request.env['portal.project.request'].sudo().create({
+            'user_id': request.env.user.id,
             'company_id': int(company_id),
             'date_start': datetime.strptime(date_start, '%Y-%m-%d'),
             'date_end': datetime.strptime(date_end, '%Y-%m-%d'),
@@ -50,12 +51,13 @@ class PortalInvoiceController(Controller):
         self.send_project_email(project, signed_contract_data, signed_contract_filename, budget_file_data,
                                 budget_file_filename)
 
-        return request.redirect('/thanks-project-send')
+        return request.redirect('/contactus-thank-you')
 
     # Método para enviar el correo electrónico
     def send_project_email(self, project, signed_contract_data, signed_contract_filename, budget_file_data,
                            budget_file_filename):
         # Recibir los datos del formulario
+        user_id = project.user_id
         company_id = project.company_id
         project_name = project.project_name
         date_start = project.date_start.strftime('%d-%m-%Y')
@@ -66,6 +68,7 @@ class PortalInvoiceController(Controller):
             <p>Hello,</p>
             <p>A new project has been created with the following details:</p>
             <ul>
+                <li><strong>User:</strong> {user_id.name}</li>
                 <li><strong>Company:</strong> {company_id.name}</li>
                 <li><strong>Project Name:</strong> {project_name}</li>
                 <li><strong>Start Date:</strong> {date_start}</li>
@@ -74,18 +77,28 @@ class PortalInvoiceController(Controller):
             <p>Best regards,<br/>Your Portal</p>
         """
 
-        #  theabraham9@ gmail.com
-        # Crear el correo
+        # Obtener los usuarios del grupo de administradores de ajustes (base.group_system)
+        admin_users = request.env['res.users'].search([('groups_id', 'in', request.env.ref('base.group_system').id)])
+
+        # Filtrar usuarios que tienen un correo electrónico válido
+        email_list = admin_users.mapped('email')
+        email_list = [email for email in email_list if email]  # Solo correos no vacíos
+
+        # Crear los valores para el correo
         mail_values = {
-            'subject': f'New Project: {project_name}',
+            'subject': f'Project request: {project_name}',
             'email_from': request.env.user.email,
-            'email_to': 'salvador.gon.jim@gmail.com',
+            'email_to': ','.join(email_list),
             'body_html': body_html,
         }
 
+        # Crear el correo en el sistema
         mail = request.env['mail.mail'].create(mail_values)
-
+        print("*"*80)
+        print(f"Email list: {email_list}")
         print(f"Mail created with subject: {mail_values['subject']}")
+
+        # *****************************************************************************
 
         attachments = []
         if signed_contract_data:
@@ -117,8 +130,4 @@ class PortalInvoiceController(Controller):
         # Enviar el correo
         mail.send()
 
-        print(f"Mail sent to: {mail_values['email_to']}")
-
         return request.render("portal.email_sent_confirmation")
-
-

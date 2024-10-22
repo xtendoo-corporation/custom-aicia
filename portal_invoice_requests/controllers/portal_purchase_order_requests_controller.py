@@ -31,6 +31,8 @@ class PortalPurchaseOrderController(Controller):
             })],
         })
 
+        return request.redirect('/contactus-thank-you')
+
     @http.route('/get_partners_by_company', type='http', auth="user")
     def get_partners_by_company(self, company_id):
         try:

@@ -4,6 +4,7 @@ class PortalProjectRequest(models.Model):
     _name = 'portal.project.request'
     _description = 'Portal Project Request'
 
+    user_id = fields.Many2one('res.users', string='User', required=True)
     company_id = fields.Many2one('res.company', string='Company', required=True)
     date_start = fields.Date(string='Start Date')
     date_end = fields.Date(string='End Date')
