@@ -23,10 +23,12 @@
                                     Please fill out the form below to send a project request email.
                                 </p>
                                 <div class="container">
+
                                     <form action="/portal/project_request/submit" method="POST"
                                           enctype="multipart/form-data">
                                         <input type="hidden" name="csrf_token"
                                                t-att-value="request.csrf_token()"/>
+
                                         <div class="s_website_form_rows row s_col_no_bgcolor">
                                             <!--COMPANY REQUIRED-->
                                             <div

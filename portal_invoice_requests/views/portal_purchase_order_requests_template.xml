@@ -37,9 +37,9 @@
 
                         // Hacer una llamada AJAX a Odoo
                         $.ajax({
-                            url: '/partners_by_company',
+                            url: '/get_partners_by_company',  // URL del controlador en Odoo
                             type: 'GET',
-                            data: { company_id: companyId }, // Pasar el company_id como parámetro
+                            data: { company_id: companyId },  // Pasar el company_id como parámetro
                             success: function(response) {
                                 var partnerSelect = document.getElementById("partner_id");
                                 partnerSelect.innerHTML = '';
