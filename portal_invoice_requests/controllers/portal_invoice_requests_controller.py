@@ -1,15 +1,14 @@
 from odoo.http import request, Controller, route
 from odoo import fields
-from odoo import http
-import json
-
 
 class PortalInvoiceController(Controller):
     @route('/portal/invoice_request', auth='user', website=True)
     def invoice_request_form(self, **kwargs):
         companies = request.env['res.company'].search([])
+        options = request.env['account.move']._fields['l10n_es_edi_facturae_reason_code']._description_selection(request.env)
         return request.render('portal_invoice_requests.portal_invoice_request_template', {
             'companies': companies,
+            'options': options,
         })
 
     @route('/portal/invoice_request/submit', type='http', auth='user', website=True, methods=['POST'])
@@ -18,6 +17,9 @@ class PortalInvoiceController(Controller):
         partner_id = int(post.get('partner_id'))
         amount = float(post.get('amount'))
         notes = post.get('notes')
+        move_type = post.get('move_type')
+        date = post.get('date')
+        l10n_es_edi_facturae_reason_code = post.get('l10n_es_edi_facturae_reason_code')
 
         invoice = request.env['account.move'].sudo().create({
             'move_type': 'out_invoice',
@@ -33,20 +35,6 @@ class PortalInvoiceController(Controller):
 
         return request.redirect('/contactus-thank-you')
 
-    @http.route('/get_partners_by_company', type='http', auth="user")
-    def get_partners_by_company(self, company_id):
-        try:
-            partners = request.env['res.partner'].search([('company_ids', 'in', int(company_id))])
 
-            partners_data = [{'id': partner.id, 'name': partner.name} for partner in partners]
 
-            return request.make_response(
-                json.dumps({'partners': partners_data}),
-                headers={'Content-Type': 'application/json'}
-            )
-        except Exception as e:
-            return request.make_response(
-                json.dumps({'error': str(e)}),
-                headers={'Content-Type': 'application/json'},
-                status=400
-            )
+

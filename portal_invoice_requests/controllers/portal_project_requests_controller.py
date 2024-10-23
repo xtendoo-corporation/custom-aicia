@@ -1,8 +1,5 @@
 from odoo.http import request, Controller, route
-from odoo import fields
-from odoo import http
 from datetime import datetime
-import json
 import base64
 
 class PortalInvoiceController(Controller):
@@ -97,8 +94,6 @@ class PortalInvoiceController(Controller):
         print("*"*80)
         print(f"Email list: {email_list}")
         print(f"Mail created with subject: {mail_values['subject']}")
-
-        # *****************************************************************************
 
         attachments = []
         if signed_contract_data:
