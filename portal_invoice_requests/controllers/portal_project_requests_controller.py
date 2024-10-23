@@ -1,4 +1,5 @@
 from odoo.http import request, Controller, route
+from odoo import fields
 from datetime import datetime
 import base64
 
