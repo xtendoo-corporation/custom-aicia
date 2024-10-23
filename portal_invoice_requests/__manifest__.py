@@ -14,6 +14,11 @@
         'views/portal_project_requests_template.xml',
         'views/portal_purchase_order_requests_template.xml',
     ],
+    'assets': {
+        'web.assets_frontend': [
+            'portal_invoice_requests/static/src/js/reason_codes.js',
+        ],
+    },
     "installable": True,
     'application': False,
 }

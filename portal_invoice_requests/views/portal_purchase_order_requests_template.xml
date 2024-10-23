@@ -1,6 +1,7 @@
 <odoo>
     <template id="portal_purchase_order_requests_template">
         <t t-call="website.layout">
+
             <div class="container">
                 <h1>Purchase Order Request</h1>
                 <form action="/portal/purchase_order_request/submit" method="POST">
@@ -36,9 +37,9 @@
 
                         // Hacer una llamada AJAX a Odoo
                         $.ajax({
-                            url: '/get_partners_by_company',  // URL del controlador en Odoo
+                            url: '/partners_by_company',
                             type: 'GET',
-                            data: { company_id: companyId },  // Pasar el company_id como parámetro
+                            data: { company_id: companyId }, // Pasar el company_id como parámetro
                             success: function(response) {
                                 var partnerSelect = document.getElementById("partner_id");
                                 partnerSelect.innerHTML = '';
