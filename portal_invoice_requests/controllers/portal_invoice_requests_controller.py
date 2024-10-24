@@ -64,20 +64,33 @@ class PortalInvoiceController(Controller):
     # Enviar correo electrónico con los detalles de la factura
     def send_invoice_email(self, invoice, invoice_url):
         # Obtener el creador de la factura
-        user_name = invoice.user_id
+        user_id = invoice.user_id
         company_name = invoice.company_id.name
 
         # Crear el cuerpo del mensaje de correo
-        body_html = f"""
-                       <p>Hello,</p>
-                       <p>A new invoice has been created with the following details:</p>
-                       <ul>
-                           <li><strong>User:</strong> {user_name}</li>
-                           <li><strong>Company:</strong> {company_name}</li>
-                           <li><strong>Link:</strong> <a href="{invoice_url}">Invoice</a></li>
-                       <ul>
-                       <p>Best regards,<br/>Your Portal</p>
-           """
+        if invoice.move_type == 'out_invoice':
+            body_html = f"""
+                           <p>Hello,</p>
+                           <p>The user {user_id.name} has requested an invoice for the project {company_name}.</p>
+                           <ul>
+                               <li><strong>User:</strong> {user_id.name}</li>
+                               <li><strong>Project:</strong> {company_name}</li>
+                               <li><strong>Link:</strong> <a href="{invoice_url}">Invoice</a></li>
+                           <ul>
+                           <p>Best regards,<br/>Odoo</p>
+               """
+        elif invoice.move_type == 'out_refund':
+            body_html = f"""
+                           <p>Hello,</p>
+                           <p>The user {user_id.name} has requested an invoice for the project {company_name}.</p>
+                           <ul>
+                               <li><strong>User:</strong> {user_id.name}</li>
+                               <li><strong>Project:</strong> {company_name}</li>
+                               <li><strong>Link:</strong> <a href="{invoice_url}">Invoice</a></li>
+                               <li><strong>Reason:</strong> {invoice.ref}</li>
+                           <ul>
+                           <p>Best regards,<br/>Odoo</p>
+               """
 
         # Obtener los usuarios del grupo de administradores de ajustes (base.group_system)
         admin_users = request.env['res.users'].search([('groups_id', 'in', request.env.ref('base.group_system').id)])

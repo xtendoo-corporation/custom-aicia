@@ -6,7 +6,7 @@
     "company": "Xtendoo",
     "website": "http://www.xtendoo.es",
     "category": "Website",
-    "depends": ["website", "portal", "account", "mail", "partner_multi_company", "l10n_es_edi_facturae"],
+    "depends": ["website", "portal", "account", "mail", "l10n_es_edi_facturae"],
     "license": "AGPL-3",
     "data": [
         'security/ir.model.access.csv',
