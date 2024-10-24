@@ -63,16 +63,18 @@ class PortalInvoiceController(Controller):
 
         # Crear el cuerpo del mensaje de correo
         body_html = f"""
-            <p>Hello,</p>
-            <p>A new project has been created with the following details:</p>
+            <p>Estimado/a Administrador/a,</p>
+            <p>El usuario {user_id.name} ha creado una solicitud de proyecto para el grupo {company_id.name}.</p>
+            <p>A continuación, se detallan los datos de la solicitud:
             <ul>
-                <li><strong>User:</strong> {user_id.name}</li>
-                <li><strong>Company:</strong> {company_id.name}</li>
-                <li><strong>Project Name:</strong> {project_name}</li>
-                <li><strong>Start Date:</strong> {date_start}</li>
-                <li><strong>End Date:</strong> {date_end}</li>
-            </ul>
-            <p>Best regards,<br/>Your Portal</p>
+                <li><strong>Usuario:</strong> {user_id.name}</li>
+                <li><strong>Grupo:</strong> {company_id.name}</li>
+                <li><strong>Nombre del proyecto:</strong> {project_name}</li>
+                <li><strong>Fecha de inicio:</strong> {date_start}</li>
+                <li><strong>Fecha de fin:</strong> {date_end}</li>
+            <ul>
+            </p>
+            <p>Saludos cordiales, Odoo</p>
         """
 
         # Obtener los usuarios del grupo de administradores de ajustes (base.group_system)

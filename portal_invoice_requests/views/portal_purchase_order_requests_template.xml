@@ -81,7 +81,7 @@
                                                     <span class="s_website_form_mark">*</span>
                                                 </label>
                                                 <div class="col-sm">
-                                                    <textarea id="notes" name="notes"
+                                                    <textarea id="concept" name="concept"
                                                               class="form-control s_website_form_input"
                                                               rows="4"/>
                                                 </div>

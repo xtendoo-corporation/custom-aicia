@@ -56,13 +56,13 @@ class PortalInvoiceController(Controller):
 
         invoice_url = f"/web#id={invoice.id}&model=account.move&view_type=form&menu_id=132&action=256"
 
-        self.send_invoice_email(invoice, invoice_url)
+        self.send_invoice_email(invoice, invoice_url, notes)
 
 
         return request.redirect('/contactus-thank-you')
 
     # Enviar correo electrónico con los detalles de la factura
-    def send_invoice_email(self, invoice, invoice_url):
+    def send_invoice_email(self, invoice, invoice_url, notes):
         # Obtener el creador de la factura
         user_id = invoice.user_id
         company_name = invoice.company_id.name
@@ -70,27 +70,37 @@ class PortalInvoiceController(Controller):
         # Crear el cuerpo del mensaje de correo
         if invoice.move_type == 'out_invoice':
             body_html = f"""
-                           <p>Hello,</p>
-                           <p>The user {user_id.name} has requested an invoice for the project {company_name}.</p>
-                           <ul>
-                               <li><strong>User:</strong> {user_id.name}</li>
-                               <li><strong>Project:</strong> {company_name}</li>
-                               <li><strong>Link:</strong> <a href="{invoice_url}">Invoice</a></li>
-                           <ul>
-                           <p>Best regards,<br/>Odoo</p>
-               """
+            <p>Estimado/a Administrador/a,</p>
+            <p>El usuario {user_id.name} ha creado una solicitud de factura para el proyecto {company_name}.</p>
+            <p>A continuación, se detallan los datos de la solicitud:
+            <ul>
+                <li><strong>Usuario:</strong> {user_id.name}</li>
+                <li><strong>Proyecto:</strong> {company_name}</li>
+                <li><strong>Proveedor:</strong> {invoice.partner_id.name}</li>
+                <li><strong>REF:</strong> {invoice.name}</li>
+                <li><strong>Concepto:</strong> {notes}</li>
+            <ul>
+            </p>
+            <p>Para ver la factura, haga clic en el siguiente enlace: <a href="{invoice_url}">{invoice.name}</a></p>
+            <p>Saludos cordiales, Odoo</p>
+        """
         elif invoice.move_type == 'out_refund':
             body_html = f"""
-                           <p>Hello,</p>
-                           <p>The user {user_id.name} has requested an invoice for the project {company_name}.</p>
-                           <ul>
-                               <li><strong>User:</strong> {user_id.name}</li>
-                               <li><strong>Project:</strong> {company_name}</li>
-                               <li><strong>Link:</strong> <a href="{invoice_url}">Invoice</a></li>
-                               <li><strong>Reason:</strong> {invoice.ref}</li>
-                           <ul>
-                           <p>Best regards,<br/>Odoo</p>
-               """
+            <p>Estimado/a Administrador/a,</p>
+            <p>El usuario {user_id.name} ha creado una solicitud de factura rectificativa para el proyecto {company_name}.</p>
+            <p>A continuación, se detallan los datos de la solicitud:
+            <ul>
+                <li><strong>Usuario:</strong> {user_id.name}</li>
+                <li><strong>Proyecto:</strong> {company_name}</li>
+                <li><strong>Proveedor:</strong> {invoice.partner_id.name}</li>
+                <li><strong>REF:</strong> {invoice.name}</li>
+                <li><strong>Tipo de rectificación:</strong> {invoice.ref}</li>
+                <li><strong>Concepto:</strong> {notes}</li>
+            <ul>
+            </p>
+            <p>Para ver la factura, haga clic en el siguiente enlace: <a href="{invoice_url}">{invoice.name}</a></p>
+            <p>Saludos cordiales, Odoo</p>
+        """
 
         # Obtener los usuarios del grupo de administradores de ajustes (base.group_system)
         admin_users = request.env['res.users'].search([('groups_id', 'in', request.env.ref('base.group_system').id)])
