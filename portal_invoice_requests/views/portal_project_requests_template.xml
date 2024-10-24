@@ -23,12 +23,10 @@
                                     Please fill out the form below to send a project request email.
                                 </p>
                                 <div class="container">
-
                                     <form action="/portal/project_request/submit" method="POST"
                                           enctype="multipart/form-data">
                                         <input type="hidden" name="csrf_token"
                                                t-att-value="request.csrf_token()"/>
-
                                         <div class="s_website_form_rows row s_col_no_bgcolor">
                                             <!--COMPANY REQUIRED-->
                                             <div
@@ -38,7 +36,7 @@
                                                     <label
                                                         class="col-form-label col-sm-auto s_website_form_label"
                                                         style="width: 200px" for="contact">
-                                                        <span class="s_website_form_label_content">Company
+                                                        <span class="s_website_form_label_content">Work group
                                                         </span>
                                                         <span class="s_website_form_mark">*</span>
                                                     </label>
@@ -62,7 +60,7 @@
                                                     <label
                                                         class="col-form-label col-sm-auto s_website_form_label"
                                                         style="width: 200px" for="contact">
-                                                        <span class="s_website_form_label_content">Project Name
+                                                        <span class="s_website_form_label_content">Project
                                                         </span>
                                                         <span class="s_website_form_mark">*</span>
                                                     </label>

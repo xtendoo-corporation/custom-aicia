@@ -48,3 +48,5 @@ class PortalUtils(Controller):
                 headers={'Content-Type': 'application/json'},
                 status=400
             )
+
+

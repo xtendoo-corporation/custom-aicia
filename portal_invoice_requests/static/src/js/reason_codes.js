@@ -4,7 +4,7 @@ function fetchReasonCodes() {
         url: '/l10n_es_edi_facturae/reason_codes',
         type: 'GET',
         success: function(response) {
-            var reasonCodeSelect = document.getElementById("l10n_es_edi_facturae_reason_code");
+            var reasonCodeSelect = document.getElementById("get_reason_codes");
             reasonCodeSelect.innerHTML = '';
 
             // Rellenar el campo con los códigos obtenidos

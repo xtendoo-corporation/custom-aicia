@@ -17,6 +17,7 @@
     'assets': {
         'web.assets_frontend': [
             'portal_invoice_requests/static/src/js/reason_codes.js',
+            'portal_invoice_requests/static/src/js/hide_field.js',
         ],
     },
     "installable": True,
