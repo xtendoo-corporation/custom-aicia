@@ -34,7 +34,7 @@ class PortalPurchaseOrderController(Controller):
             ],
         })
 
-        purchase_order_url = f"/web#id={purchase_order.id}&model=purchase.order&view_type=form&menu_id=452&action=116"
+        purchase_order_url = f"/web#menu_id=286&action=467&model=purchase.order&view_type=form&id={purchase_order.id}"
 
         self.send_purchase_order_email(purchase_order, purchase_order_url, concept)
 
