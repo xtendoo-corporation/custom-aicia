@@ -6,8 +6,8 @@ msgid ""
 msgstr ""
 "Project-Id-Version: Odoo Server 17.0\n"
 "Report-Msgid-Bugs-To: \n"
-"POT-Creation-Date: 2024-10-24 11:01+0000\n"
-"PO-Revision-Date: 2024-10-24 11:01+0000\n"
+"POT-Creation-Date: 2024-10-25 10:03+0000\n"
+"PO-Revision-Date: 2024-10-25 10:03+0000\n"
 "Last-Translator: \n"
 "Language-Team: \n"
 "MIME-Version: 1.0\n"
@@ -96,6 +96,17 @@ msgstr ""
 "                                                    <span class=\"s_website_form_mark\">*</span>"
 
 #. module: portal_invoice_requests
+#: model_terms:ir.ui.view,arch_db:portal_invoice_requests.portal_hr_request_template
+msgid ""
+"<span class=\"s_website_form_label_content\">Condition\n"
+"                                                        </span>\n"
+"                                                        <span class=\"s_website_form_mark\">*</span>"
+msgstr ""
+"<span class=\"s_website_form_label_content\">Condiciones\n"
+"                                                        </span>\n"
+"                                                        <span class=\"s_website_form_mark\">*</span>"
+
+#. module: portal_invoice_requests
 #: model_terms:ir.ui.view,arch_db:portal_invoice_requests.portal_invoice_request_template
 msgid ""
 "<span class=\"s_website_form_label_content\">Date\n"
@@ -118,6 +129,7 @@ msgstr ""
 "                                                        <span class=\"s_website_form_mark\">*</span>"
 
 #. module: portal_invoice_requests
+#: model_terms:ir.ui.view,arch_db:portal_invoice_requests.portal_hr_request_template
 #: model_terms:ir.ui.view,arch_db:portal_invoice_requests.portal_invoice_request_template
 #: model_terms:ir.ui.view,arch_db:portal_invoice_requests.portal_project_request_template
 msgid ""
@@ -214,6 +226,7 @@ msgid "Client"
 msgstr "Cliente"
 
 #. module: portal_invoice_requests
+#: model:ir.model.fields,field_description:portal_invoice_requests.field_portal_hr_request__company_id
 #: model:ir.model.fields,field_description:portal_invoice_requests.field_portal_invoice_request__company_id
 #: model:ir.model.fields,field_description:portal_invoice_requests.field_portal_project_request__company_id
 #: model:ir.model.fields,field_description:portal_invoice_requests.field_portal_purchase_order_request__company_id
@@ -221,6 +234,12 @@ msgid "Company"
 msgstr "Empresa"
 
 #. module: portal_invoice_requests
+#: model:ir.model.fields,field_description:portal_invoice_requests.field_portal_hr_request__condition
+msgid "Condition"
+msgstr "Condiciones"
+
+#. module: portal_invoice_requests
+#: model:ir.model.fields,field_description:portal_invoice_requests.field_portal_hr_request__create_uid
 #: model:ir.model.fields,field_description:portal_invoice_requests.field_portal_invoice_request__create_uid
 #: model:ir.model.fields,field_description:portal_invoice_requests.field_portal_project_request__create_uid
 #: model:ir.model.fields,field_description:portal_invoice_requests.field_portal_purchase_order_request__create_uid
@@ -228,6 +247,7 @@ msgid "Created by"
 msgstr "Creado por"
 
 #. module: portal_invoice_requests
+#: model:ir.model.fields,field_description:portal_invoice_requests.field_portal_hr_request__create_date
 #: model:ir.model.fields,field_description:portal_invoice_requests.field_portal_invoice_request__create_date
 #: model:ir.model.fields,field_description:portal_invoice_requests.field_portal_project_request__create_date
 #: model:ir.model.fields,field_description:portal_invoice_requests.field_portal_purchase_order_request__create_date
@@ -250,6 +270,7 @@ msgid "Date"
 msgstr "Fecha"
 
 #. module: portal_invoice_requests
+#: model:ir.model.fields,field_description:portal_invoice_requests.field_portal_hr_request__display_name
 #: model:ir.model.fields,field_description:portal_invoice_requests.field_portal_invoice_request__display_name
 #: model:ir.model.fields,field_description:portal_invoice_requests.field_portal_project_request__display_name
 #: model:ir.model.fields,field_description:portal_invoice_requests.field_portal_purchase_order_request__display_name
@@ -257,9 +278,20 @@ msgid "Display Name"
 msgstr "Nombre a Mostrar"
 
 #. module: portal_invoice_requests
+#: model:website.menu,name:portal_invoice_requests.portal_hr_menu
+#: model_terms:ir.ui.view,arch_db:portal_invoice_requests.portal_hr_request_template
+msgid "Employee Requests"
+msgstr "Solicitud de contratación"
+
+#. module: portal_invoice_requests
 #: model:ir.model.fields,field_description:portal_invoice_requests.field_portal_project_request__date_end
 msgid "End Date"
 msgstr "Fecha de Finalización"
+
+#. module: portal_invoice_requests
+#: model_terms:ir.ui.view,arch_db:portal_invoice_requests.portal_hr_request_template
+msgid "Fill in the form below to request an employee request."
+msgstr "Complete el formulario a continuación para solicitar una solicitud de empleado."
 
 #. module: portal_invoice_requests
 #: model_terms:ir.ui.view,arch_db:portal_invoice_requests.portal_invoice_request_template
@@ -269,11 +301,12 @@ msgstr ""
 "factura rectificativa."
 
 #. module: portal_invoice_requests
+#: model:ir.model.fields,field_description:portal_invoice_requests.field_portal_hr_request__id
 #: model:ir.model.fields,field_description:portal_invoice_requests.field_portal_invoice_request__id
 #: model:ir.model.fields,field_description:portal_invoice_requests.field_portal_project_request__id
 #: model:ir.model.fields,field_description:portal_invoice_requests.field_portal_purchase_order_request__id
 msgid "ID"
-msgstr ""
+msgstr "ID"
 
 #. module: portal_invoice_requests
 #: model:ir.model.fields,field_description:portal_invoice_requests.field_portal_invoice_request__notes
@@ -287,6 +320,7 @@ msgid "Invoice Request"
 msgstr "Solicitud de Factura"
 
 #. module: portal_invoice_requests
+#: model:ir.model.fields,field_description:portal_invoice_requests.field_portal_hr_request__write_uid
 #: model:ir.model.fields,field_description:portal_invoice_requests.field_portal_invoice_request__write_uid
 #: model:ir.model.fields,field_description:portal_invoice_requests.field_portal_project_request__write_uid
 #: model:ir.model.fields,field_description:portal_invoice_requests.field_portal_purchase_order_request__write_uid
@@ -294,6 +328,7 @@ msgid "Last Updated by"
 msgstr "Última Actualización por"
 
 #. module: portal_invoice_requests
+#: model:ir.model.fields,field_description:portal_invoice_requests.field_portal_hr_request__write_date
 #: model:ir.model.fields,field_description:portal_invoice_requests.field_portal_invoice_request__write_date
 #: model:ir.model.fields,field_description:portal_invoice_requests.field_portal_project_request__write_date
 #: model:ir.model.fields,field_description:portal_invoice_requests.field_portal_purchase_order_request__write_date
@@ -313,6 +348,11 @@ msgid "Please fill out the form below to send a project request email."
 msgstr ""
 "Por favor, complete el formulario a continuación para enviar un correo "
 "electrónico de solicitud de proyecto."
+
+#. module: portal_invoice_requests
+#: model:ir.model,name:portal_invoice_requests.model_portal_hr_request
+msgid "Portal HR Request"
+msgstr "Solicitud de Contratación en el Portal"
 
 #. module: portal_invoice_requests
 #: model:ir.model,name:portal_invoice_requests.model_portal_invoice_request
@@ -376,6 +416,7 @@ msgid "Start Date"
 msgstr "Fecha de Inicio"
 
 #. module: portal_invoice_requests
+#: model_terms:ir.ui.view,arch_db:portal_invoice_requests.portal_hr_request_template
 #: model_terms:ir.ui.view,arch_db:portal_invoice_requests.portal_invoice_request_template
 #: model_terms:ir.ui.view,arch_db:portal_invoice_requests.portal_project_request_template
 #: model_terms:ir.ui.view,arch_db:portal_invoice_requests.portal_purchase_order_requests_template
@@ -393,6 +434,7 @@ msgid "Type"
 msgstr "Tipo"
 
 #. module: portal_invoice_requests
+#: model:ir.model.fields,field_description:portal_invoice_requests.field_portal_hr_request__user_id
 #: model:ir.model.fields,field_description:portal_invoice_requests.field_portal_invoice_request__user_id
 #: model:ir.model.fields,field_description:portal_invoice_requests.field_portal_project_request__user_id
 msgid "User"

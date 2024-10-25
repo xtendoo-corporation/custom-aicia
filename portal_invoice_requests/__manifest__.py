@@ -13,6 +13,8 @@
         'views/portal_invoice_requests_template.xml',
         'views/portal_project_requests_template.xml',
         'views/portal_purchase_order_requests_template.xml',
+        'views/portal_hr_requests_template.xml',
+        'views/portal_request_menu.xml',
     ],
     'assets': {
         'web.assets_frontend': [

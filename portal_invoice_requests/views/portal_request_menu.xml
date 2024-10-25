@@ -1,0 +1,37 @@
+<odoo>
+    <data>
+        <record id="menu_requests" model="website.menu">
+            <field name="name">Requests</field>
+            <field name="parent_id" ref="website.main_menu"/>
+            <field name="sequence" type="int">100</field>
+        </record>
+
+        <record id="portal_purchase_order_requests" model="website.menu">
+            <field name="name">Purchase Order Request</field>
+            <field name="url">/portal/purchase_order_request</field>
+            <field name="parent_id" ref="menu_requests"/>
+            <field name="sequence" type="int">10</field>
+        </record>
+
+        <record id="portal_project_send_menu" model="website.menu">
+            <field name="name">Project Request</field>
+            <field name="url">/portal/project_request</field>
+            <field name="parent_id" ref="menu_requests"/>
+            <field name="sequence" type="int">20</field>
+        </record>
+
+        <record id="portal_invoice_menu" model="website.menu">
+            <field name="name">Invoice Request</field>
+            <field name="url">/portal/invoice_request</field>
+            <field name="parent_id" ref="menu_requests"/>
+            <field name="sequence" type="int">30</field>
+        </record>
+
+        <record id="portal_hr_menu" model="website.menu">
+            <field name="name">Employee Requests</field>
+            <field name="url">/portal/hr_request</field>
+            <field name="parent_id" ref="menu_requests"/>
+            <field name="sequence" type="int">40</field>
+        </record>
+    </data>
+</odoo>
