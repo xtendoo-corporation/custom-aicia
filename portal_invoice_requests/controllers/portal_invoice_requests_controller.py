@@ -21,9 +21,10 @@ class PortalInvoiceController(Controller):
         move_type = post.get('move_type')
         date = post.get('date')
         l10n_es_edi_facturae_reason_code = post.get('l10n_es_edi_facturae_reason_code')
-        options = request.env['account.move']._fields['l10n_es_edi_facturae_reason_code']._description_selection(
-            request.env)
-        reason_description = dict(options).get(l10n_es_edi_facturae_reason_code)
+        # Obtener la descripción asociada al código seleccionado
+        reason_description = dict(
+            request.env['account.move']._fields['l10n_es_edi_facturae_reason_code'].selection).get(
+            l10n_es_edi_facturae_reason_code)
 
         if move_type == 'out_invoice':
             invoice = request.env['account.move'].sudo().create({
@@ -38,10 +39,6 @@ class PortalInvoiceController(Controller):
                 })]
             })
         elif move_type == 'out_refund':
-            print("*"*80)
-            print(l10n_es_edi_facturae_reason_code)
-            print(reason_description)
-            print("*" * 80)
             invoice = request.env['account.move'].sudo().create({
                 'move_type': 'out_refund',
                 'partner_id': partner_id,
@@ -101,7 +98,7 @@ class PortalInvoiceController(Controller):
                 <li><strong>Concepto:</strong> {notes}</li>
             <ul>
             </p>
-            <p>Para ver la factura, haga clic en el siguiente enlace: <a href="{invoice_url}">Factura</a></p>
+            <p>Para ver la factura, haga clic en el siguiente enlace: <a href="{invoice_url}">{invoice.name}</a></p>
             <p>Saludos cordiales, Odoo</p>
         """
 
@@ -114,7 +111,7 @@ class PortalInvoiceController(Controller):
 
         # Crear los valores para el correo
         mail_values = {
-            'subject': f'Solicitud de factura: {invoice.name}',
+            'subject': f'Invoice request: {invoice.name}',
             'email_from': request.env.user.email,
             'email_to': ','.join(email_list),
             'body_html': body_html,

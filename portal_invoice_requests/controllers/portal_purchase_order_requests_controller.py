@@ -71,7 +71,7 @@ class PortalPurchaseOrderController(Controller):
 
         # Crear los valores para el correo
         mail_values = {
-            'subject': f'Solicitud de compra: {purchase_order.name}',
+            'subject': f'Invoice request: {purchase_order.name}',
             'email_from': request.env.user.email,
             'email_to': ','.join(email_list),
             'body_html': body_html,

@@ -40,6 +40,9 @@ class PortalUtils(Controller):
                 headers={'Content-Type': 'application/json'}
             )
         except Exception as e:
+            print("*"*100)
+            print(e)
+            print("*"*100)
             return request.make_response(
                 json.dumps({'error': str(e)}),
                 headers={'Content-Type': 'application/json'},
