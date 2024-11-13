@@ -40,8 +40,7 @@
                                                     </label>
                                                     <div class="col-sm">
                                                         <select id="company_id" name="company_id"
-                                                                class="form-control s_website_form_input"
-                                                                onchange="fetchPartnersByCompany()">
+                                                                class="form-control s_website_form_input">
                                                             <t t-foreach="companies" t-as="company">
                                                                 <option t-att-value="company.id">
                                                                     <t t-esc="company.name"/>

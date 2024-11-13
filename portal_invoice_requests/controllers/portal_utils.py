@@ -6,6 +6,8 @@ class PortalUtils(Controller):
 
     @http.route('/get_partners_by_company', type='http', auth="user")
     def get_partners_by_company(self, company_id):
+        print("*" * 100)
+        print("Metodo get_partners_by_company")
         try:
             # Buscar partners relacionados con la compañía seleccionada
             partners = request.env['res.partner'].search([('company_id', '=', int(company_id))])
@@ -27,6 +29,8 @@ class PortalUtils(Controller):
 
     @http.route('/get_reason_codes', type='http', auth="user")
     def get_reason_codes(self):
+        print("*" * 100)
+        print("Metodo get_reason_codes")
         try:
             # Obtener los códigos de razón de la factura electrónica
             reason_codes = request.env['account.move']._fields['l10n_es_edi_facturae_reason_code']._description_selection(request.env)
@@ -48,29 +52,3 @@ class PortalUtils(Controller):
                 headers={'Content-Type': 'application/json'},
                 status=400
             )
-
-    @http.route('/get_company_allowed_by_log_user', type='http', auth="user")
-    def get_company_allowed_by_log_user(self):
-        try:
-            # Obtener el usuario actual
-            user = request.env.user
-
-            # Obtener las compañías permitidas para el usuario logueado
-            allowed_companies = user.company_ids
-
-            # Crear la respuesta JSON con los datos de las compañías
-            companies_data = [{'id': company.id, 'name': company.name} for company in allowed_companies]
-
-            # Retornar los datos en formato JSON
-            return request.make_response(
-                json.dumps({'companies': companies_data}),
-                headers={'Content-Type': 'application/json'}
-            )
-        except Exception as e:
-            return request.make_response(
-                json.dumps({'error': str(e)}),
-                headers={'Content-Type': 'application/json'},
-                status=400
-            )
-
-
