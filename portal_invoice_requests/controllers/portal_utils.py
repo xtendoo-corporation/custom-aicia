@@ -49,4 +49,28 @@ class PortalUtils(Controller):
                 status=400
             )
 
+    @http.route('/get_company_allowed_by_log_user', type='http', auth="user")
+    def get_company_allowed_by_log_user(self):
+        try:
+            # Obtener el usuario actual
+            user = request.env.user
+
+            # Obtener las compañías permitidas para el usuario logueado
+            allowed_companies = user.company_ids
+
+            # Crear la respuesta JSON con los datos de las compañías
+            companies_data = [{'id': company.id, 'name': company.name} for company in allowed_companies]
+
+            # Retornar los datos en formato JSON
+            return request.make_response(
+                json.dumps({'companies': companies_data}),
+                headers={'Content-Type': 'application/json'}
+            )
+        except Exception as e:
+            return request.make_response(
+                json.dumps({'error': str(e)}),
+                headers={'Content-Type': 'application/json'},
+                status=400
+            )
+
 
