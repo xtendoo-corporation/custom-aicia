@@ -7,9 +7,13 @@ class PortalInvoiceController(Controller):
 
     @route('/portal/project_request', auth='user', website=True)
     def project_request_form(self, **kwargs):
-        companies = request.env['res.company'].search([])
+        # Obtener el usuario actual
+        user = request.env.user
+        # Obtener las compañías permitidas para el usuario logueado
+        allowed_companies = user.company_ids
+        # Pasar las compañías permitidas al contexto para que se usen en el formulario
         return request.render('portal_invoice_requests.portal_project_request_template', {
-            'companies': companies,
+            'companies': allowed_companies,
         })
 
     @route('/portal/project_request/submit', type='http', auth='user', website=True, methods=['POST'])

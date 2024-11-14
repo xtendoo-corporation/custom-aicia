@@ -1,5 +1,6 @@
 from odoo import models, fields, api
 
+
 class PortalPurchaseOrderController(models.Model):
     _name = 'portal.purchase.order.request'
     _description = 'Portal Purchase Order Request'

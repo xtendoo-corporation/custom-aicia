@@ -6,9 +6,13 @@ class PortalPurchaseOrderController(Controller):
 
     @route('/portal/purchase_order_request', auth='user', website=True)
     def purchase_order_request_form(self, **kwargs):
-        companies = request.env['res.company'].search([])
+        # Obtener el usuario actual
+        user = request.env.user
+        # Obtener las compañías permitidas para el usuario logueado
+        allowed_companies = user.company_ids
+        # Pasar las compañías permitidas al contexto para que se usen en el formulario
         return request.render('portal_invoice_requests.portal_purchase_order_requests_template', {
-            'companies': companies,
+            'companies': allowed_companies,
         })
 
     @route('/portal/purchase_order_request/submit', type='http', auth='user', website=True, methods=['POST'])
@@ -73,7 +77,7 @@ class PortalPurchaseOrderController(Controller):
         mail_values = {
             'subject': f'Invoice request: {purchase_order.name}',
             'email_from': request.env.user.email,
-            'email_to': ','.join(email_list),
+            'email_to': email_list,
             'body_html': body_html,
         }
 

@@ -7,13 +7,16 @@ class PortalHrEmployeeRequestController(Controller):
         jobs = request.env['hr.job'].search([])
         calendars = request.env['resource.calendar'].search([])
         banks = request.env['res.partner.bank'].search([])
-        companies = request.env['res.company'].search([])
+        # Obtener el usuario actual
+        user = request.env.user
+        # Obtener las compañías permitidas para el usuario logueado
+        allowed_companies = user.company_ids
         return request.render('portal_invoice_requests.portal_hr_employee_request_template', {
             'employee_types': employee_types,
             'jobs': jobs,
             'calendars': calendars,
             'banks': banks,
-            'companies': companies,
+            'companies': allowed_companies,
         })
 
     @route('/portal/hr_employee_request/submit', type='http', auth='user', website=True, methods=['POST'])

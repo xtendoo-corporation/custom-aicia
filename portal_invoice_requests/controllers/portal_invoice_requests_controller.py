@@ -3,11 +3,14 @@ from odoo.http import request, Controller, route
 class PortalInvoiceController(Controller):
     @route('/portal/invoice_request', auth='user', website=True)
     def invoice_request_form(self, **kwargs):
-        companies = request.env['res.company'].search([])
+        # Obtener el usuario actual
+        user = request.env.user
+        # Obtener las compañías permitidas para el usuario logueado
+        allowed_companies = user.company_ids
         options = request.env['account.move']._fields['l10n_es_edi_facturae_reason_code']._description_selection(
             request.env)
         return request.render('portal_invoice_requests.portal_invoice_request_template', {
-            'companies': companies,
+            'companies': allowed_companies,
             'options': options,
         })
 
