@@ -60,6 +60,36 @@
                                             </div>
                                         </div>
                                     </form>
+                                    <!-- JavaScript para cerrar modales abiertos -->
+                                    <script type="text/javascript">
+                                        function fetchPartnersByCompany() {
+                                        var companyId = document.getElementById("company_id").value;
+
+                                        // Hacer una llamada AJAX a Odoo
+                                        $.ajax({
+                                        url: '/get_partners_by_company', // URL del controlador en Odoo
+                                        type: 'GET',
+                                        data: { company_id: companyId }, // Pasar el company_id como parámetro
+                                        success: function(response) {
+                                        var partnerSelect = document.getElementById("partner_id");
+                                        partnerSelect.innerHTML = '';
+
+                                        // Rellenar el campo con los partners filtrados
+                                        response.partners.forEach(function(partner) {
+                                        var option = document.createElement('option');
+                                        option.value = partner.id;
+                                        option.text = partner.name;
+                                        partnerSelect.appendChild(option);
+                                        });
+                                        },
+                                        error: function(error) {
+                                        console.log("Error fetching partners: ", error);
+                                        }
+                                        });
+                                        }
+                                    </script>
+                                    <script type="text/javascript" src="/custom-aicia/static/src/js/reason_codes.js"/>
+                                    <script type="text/javascript" src="/custom-aicia/static/src/js/hide_field.js"/>
                                 </div>
                             </div>
                         </div>
@@ -70,7 +100,7 @@
     </template>
 
     <record id="portal_hr_expensive_menu" model="website.menu">
-        <field name="name">Expense Request</field>
+        <field name="name">Expense Requests</field>
         <field name="url">/portal/hr_expensive_request</field>
         <field name="parent_id" ref="website.main_menu"/>
         <field name="sequence" type="int">100</field>
