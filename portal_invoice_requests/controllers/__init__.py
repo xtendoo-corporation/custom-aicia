@@ -1,3 +1,4 @@
+from . import portal_approval_request_controller
 from . import portal_hr_employee_request_controller
 from . import portal_hr_expensive_request_controller
 from . import portal_invoice_requests_controller

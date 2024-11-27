@@ -1,0 +1,155 @@
+<odoo>
+    <template id="portal_approval_request_template">
+        <t t-call="website.layout">
+            <!--CABECERA DE LA PÁGINA-->
+            <div id="wrap" class="oe_structure oe_empty">
+                <section class="s_title parallax s_parallax_is_fixed bg-black-50 pt24 pb24" data-vcss="001"
+                         data-snippet="s_title" data-scroll-background-ratio="1" data-name="Título">
+                    <span class="s_parallax_bg oe_img_bg"
+                          style="background-image: url('/web/image/website.s_parallax_default_image'); background-position: 50% 0;"/>
+                    <div class="o_we_bg_filter bg-black-50"/>
+                    <div class="container">
+                        <!--TÍTULO DE LA PÁGINA-->
+                        <h1>Approval Request</h1>
+                    </div>
+                </section>
+                <!--FORMULARIO-->
+                <section class="s_text_block pt40 pb40 o_colored_level" data-snippet="s_text_block" data-name="Texto"
+                         style="background-image: none;">
+                    <div class="s_allow_columns container">
+                        <div class="row">
+                            <div class="col-lg-8 mt-4 mt-lg-0">
+                                <p>
+                                    Fill out the form below to request an approval.
+                                </p>
+                                <div class="container">
+                                    <form action="/portal/approval_request/submit" method="POST" enctype="multipart/form-data">
+                                        <input type="hidden" name="csrf_token" t-att-value="request.csrf_token()"/>
+                                        <div class="s_website_form_rows row s_col_no_bgcolor">
+
+                                            <!-- TYPE REQUIRED -->
+                                            <div
+                                                class="mb-0 py-2 col-12 s_website_form_field s_website_form_required s_website_form_model_required"
+                                                data-type="char" data-name="Field">
+                                                <div class="row s_col_no_resize s_col_no_bgcolor">
+                                                    <label class="col-form-label col-sm-auto s_website_form_label"
+                                                           style="width: 200px" for="contact">
+                                                        <span class="s_website_form_label_content">Type</span>
+                                                        <span class="s_website_form_mark">*</span>
+                                                    </label>
+                                                    <div class="col-sm">
+                                                        <select id="approval_type" name="approval_type"
+                                                                class="form-control s_website_form_input">
+                                                            <option value="">Seleccione...</option>
+                                                            <option value="sign_nda">Solicitud firma NDA</option>
+                                                            <option value="business_contract">Solicitud firma contrato
+                                                                con empresa
+                                                            </option>
+                                                            <option value="collaboration_pas">Solicitud colaboración
+                                                                PAS
+                                                            </option>
+                                                            <option value="exit_authorization">Solicitud autorización
+                                                                salida a empresas
+                                                            </option>
+                                                            <option value="travel_request">Solicitud de salida de
+                                                                viaje
+                                                            </option>
+                                                        </select>
+                                                    </div>
+                                                </div>
+                                            </div>
+
+                                            <!--APPROVER REQUIRED-->
+                                            <div
+                                                class="mb-0 py-2 col-12 s_website_form_field s_website_form_required s_website_form_model_required"
+                                                data-type="char" data-name="Field">
+                                                <div class="row s_col_no_resize s_col_no_bgcolor">
+                                                    <label
+                                                        class="col-form-label col-sm-auto s_website_form_label"
+                                                        style="width: 200px" for="contact">
+                                                        <span class="s_website_form_label_content">Approver
+                                                        </span>
+                                                        <span class="s_website_form_mark">*</span>
+                                                    </label>
+                                                    <div class="col-sm">
+                                                        <select id="approver_id" name="approver_id"
+                                                                class="form-control s_website_form_input">
+                                                            <t t-foreach="approver_id" t-as="approver">
+                                                                <option t-att-value="approver.id">
+                                                                    <t t-esc="approver.name"/>
+                                                                </option>
+                                                            </t>
+                                                        </select>
+                                                    </div>
+                                                </div>
+                                            </div>
+
+                                            <!--FILE REQUIRED-->
+                                            <div
+                                                class="mb-0 py-2 col-12 s_website_form_field s_website_form_required s_website_form_model_required"
+                                                data-type="binary" data-name="Field">
+                                                <div class="row s_col_no_resize s_col_no_bgcolor">
+                                                    <label
+                                                        class="col-form-label col-sm-auto s_website_form_label"
+                                                        style="width: 200px" for="contact">
+                                                        <span class="s_website_form_label_content">File
+                                                        </span>
+                                                        <span class="s_website_form_mark">*</span>
+                                                    </label>
+                                                    <div class="col-sm">
+                                                        <input type="file" class="form-control" name="file" accept=".pdf,.doc,.docx"/>
+                                                    </div>
+                                                </div>
+                                            </div>
+
+                                            <!--DESCRIPTION REQUIRED-->
+                                            <div
+                                                class="mb-0 py-2 col-12 s_website_form_field s_website_form_required s_website_form_model_required"
+                                                data-type="char" data-name="Field">
+                                                <div class="row s_col_no_resize s_col_no_bgcolor">
+                                                    <label
+                                                        class="col-form-label col-sm-auto s_website_form_label"
+                                                        style="width: 200px" for="contact">
+                                                        <span class="s_website_form_label_content">Description
+                                                        </span>
+                                                        <span class="s_website_form_mark">*</span>
+                                                    </label>
+                                                    <div class="col-sm">
+                                                        <textarea id="description" name="description"
+                                                                  class="form-control s_website_form_input"
+                                                                  rows="4"/>
+                                                    </div>
+                                                </div>
+                                            </div>
+
+                                            <!--SEND BUTTON-->
+                                            <div class="mb-0 py-2 col-12 s_website_form_submit"
+                                                 data-name="Submit Button">
+                                                <div class="row s_col_no_resize s_col_no_bgcolor align-items-center">
+                                                    <div class="col-sm-auto" style="width: 200px;"/>
+                                                    <div class="col-sm">
+                                                        <button type="submit"
+                                                                class="btn btn-primary s_website_form_send">Submit
+                                                        </button>
+                                                    </div>
+                                                </div>
+                                                <span id="s_website_form_result"/>
+                                            </div>
+                                        </div>
+                                    </form>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </section>
+            </div>
+        </t>
+    </template>
+
+    <record id="portal_hr_expensive_menu" model="website.menu">
+        <field name="name">Approval Request</field>
+        <field name="url">/portal/approval_request</field>
+        <field name="parent_id" ref="website.main_menu"/>
+        <field name="sequence" type="int">100</field>
+    </record>
+</odoo>
