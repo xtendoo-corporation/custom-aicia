@@ -1,0 +1,44 @@
+<?xml version="1.0" encoding="utf-8"?>
+<odoo>
+    <data noupdate="1">
+        <!-- NDA Signature Category -->
+        <record id="category_sign_nda" model="document.page">
+            <field name="name">Solcitud firma NDA</field>
+            <field name="type">category</field>
+            <field name="approval_required">True</field>
+            <field name="approver_gid" ref="portal_invoice_requests.group_director_investigation_and_development"/>
+        </record>
+
+        <!-- Business Contract Category -->
+        <record id="category_business_contract" model="document.page">
+            <field name="name">Solicitud firma contrato con empresa</field>
+            <field name="type">category</field>
+            <field name="approval_required">True</field>
+            <field name="approver_gid" ref="portal_invoice_requests.group_director_investigation_and_development"/>
+        </record>
+
+        <!-- Collaboration PAS Category -->
+        <record id="category_collaboration_pas" model="document.page">
+            <field name="name">Solicitud colaboración PAS</field>
+            <field name="type">category</field>
+            <field name="approval_required">True</field>
+            <field name="approver_gid" ref="portal_invoice_requests.group_director_investigation_and_development"/>
+        </record>
+
+        <!-- Exit Authorization Category -->
+        <record id="category_exit_authorization" model="document.page">
+            <field name="name">Solicitud autorización salida a empresas</field>
+            <field name="type">category</field>
+            <field name="approval_required">True</field>
+            <field name="approver_gid" ref="portal_invoice_requests.group_director_investigation_and_development"/>
+        </record>
+
+        <!-- Travel Request Category -->
+        <record id="category_travel_request" model="document.page">
+            <field name="name">Solicitud de salida de viaje</field>
+            <field name="type">category</field>
+            <field name="approval_required">True</field>
+            <field name="approver_gid" ref="portal_invoice_requests.group_director_investigation_and_development"/>
+        </record>
+    </data>
+</odoo>
