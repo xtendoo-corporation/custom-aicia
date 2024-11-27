@@ -1,7 +1,5 @@
 from odoo.http import request, Controller, route
 
-from odoo.custom.src.odoo.odoo.tools.safe_eval import datetime
-
 
 class PortalApprovalRequestController(Controller):
     @route('/portal/approval_request', auth='user', website=True)
@@ -17,7 +15,6 @@ class PortalApprovalRequestController(Controller):
         approval_type = post.get('approval_type')
         description = post.get('description')
         #obtener fecha actual
-        fecha_actual = datetime.now()
 
         # Buscar la categoría correspondiente en `document.page`
         category = request.env['document.page'].search([('name', '=', approval_type), ('type', '=', 'category')], limit=1)
@@ -32,13 +29,5 @@ class PortalApprovalRequestController(Controller):
             'draft_summary': description,  # Asignar descripción si corresponde
             'draft_name': description,  # Asignar descripción si corresponde
         })
-
-        # # (Opcional) Crear un registro en `portal.approval.request` relacionado con el documento
-        # approval_request = request.env['portal.approval.request'].create({
-        #     'user_id': user_id,
-        #     'approval_type': approval_type,
-        #     'description': description,
-        #     'category_id': category.id,  # Relacionar con la categoría
-        # })
 
         return request.redirect('/contactus-thank-you')
