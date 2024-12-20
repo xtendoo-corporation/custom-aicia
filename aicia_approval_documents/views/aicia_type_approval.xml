@@ -2,9 +2,12 @@
 
     <record id="action_unapproved_approval" model="ir.actions.act_window">
         <field name="name">Unapproved Type Approvals</field>
-        <field name="res_model">type.approval</field>
+        <field name="res_model">document.approval</field>
         <field name="view_mode">tree,form</field>
-        <field name="domain">[('count_unapproved', '>', 0)]</field>
+        <field name="context">{'current_user_groups': env.user.groups_id.ids}</field>
+        <field name="domain">[('type_id', '=', active_id), ('approved', '=', False), ('group_approval_id', 'in',
+            current_user_groups)]
+        </field>
     </record>
 
     <record id="view_type_approval_kanban" model="ir.ui.view">

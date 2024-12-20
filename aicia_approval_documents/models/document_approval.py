@@ -9,9 +9,3 @@ class DocumentApproval(models.Model):
     description = fields.Text(string='Description')
     approved = fields.Boolean(string='Approved', default=False)
     group_approval_id = fields.Many2one('res.groups', string='Group Approval')
-    # count_unapproved = fields.Integer(string='Count Unapproved', compute='_compute_count_unapproved')
-    #
-    # def _compute_count_unapproved(self):
-    #     for record in self:
-    #         record.count_unapproved = self.search_count([('type_id', '=', record.type_id.id), ('approved', '=', False)])
-
