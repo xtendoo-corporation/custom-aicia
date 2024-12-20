@@ -1,0 +1,25 @@
+<?xml version='1.0' encoding='utf-8'?>
+<odoo>
+    <data noupdate="1">
+        <record id="type_approval_nda" model="type.approval">
+            <field name="name">Solicitud de firma NDA</field>
+            <field name="image" type="base64" file="approvals/static/src/img/Folder.png"/>
+        </record>
+        <record id="type_approval_contract" model="type.approval">
+            <field name="name">Solicitud firma contrato con empresa</field>
+            <field name="image" type="base64" file="approvals/static/src/img/Folder.png"/>
+        </record>
+        <record id="type_approval_pas" model="type.approval">
+            <field name="name">Solicitud colaboración PAS</field>
+            <field name="image" type="base64" file="approvals/static/src/img/Folder.png"/>
+        </record>
+        <record id="type_approval_company_exit" model="type.approval">
+            <field name="name">Solicitud autorización salida a empresas</field>
+            <field name="image" type="base64" file="approvals/static/src/img/Folder.png"/>
+        </record>
+        <record id="type_approval_travel" model="type.approval">
+            <field name="name">Solicitud de salida de viaje</field>
+            <field name="image" type="base64" file="approvals/static/src/img/Folder.png"/>
+        </record>
+    </data>
+</odoo>

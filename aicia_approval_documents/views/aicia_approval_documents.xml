@@ -1,0 +1,102 @@
+<odoo>
+<!--    <record id="action_unapproved_approval" model="ir.actions.act_window">-->
+<!--        <field name="name">Unapproved Document Approvals</field>-->
+<!--        <field name="res_model">document.approval</field>-->
+<!--        <field name="view_mode">tree,form</field>-->
+<!--        <field name="domain">[('approved', '=', False)]</field>-->
+<!--    </record>-->
+
+    <record id="view_document_approval_tree" model="ir.ui.view">
+        <field name="name">document.approval.tree</field>
+        <field name="model">document.approval</field>
+        <field name="arch" type="xml">
+            <tree>
+                <field name="type_id"/>
+                <field name="description"/>
+                <field name="approved"/>
+                <field name="group_approval_id"/>
+            </tree>
+        </field>
+    </record>
+
+    <record id="view_document_approval_form" model="ir.ui.view">
+        <field name="name">document.approval.form</field>
+        <field name="model">document.approval</field>
+        <field name="arch" type="xml">
+            <form>
+                <sheet>
+                    <group>
+                        <field name="type_id"/>
+                        <field name="description"/>
+                        <field name="approved" widget="toggle_button"/>
+                        <field name="group_approval_id"/>
+                    </group>
+                </sheet>
+                <div class="oe_chatter">
+                    <field name="message_follower_ids"/>
+                    <field name="activity_ids"/>
+                    <field name="message_ids"/>
+                </div>
+            </form>
+        </field>
+    </record>
+
+<!--    <record id="view_document_approval_kanban" model="ir.ui.view">-->
+<!--        <field name="name">document.approval.kanban</field>-->
+<!--        <field name="model">document.approval</field>-->
+<!--        <field name="arch" type="xml">-->
+<!--            <kanban class="o_modules_kanban" default_group_by="type_id">-->
+<!--                <field name="type_id"/>-->
+<!--                <field name="description"/>-->
+<!--                <field name="approved"/>-->
+<!--                <field name="group_approval_id"/>-->
+<!--                <templates>-->
+<!--                    <t t-name="kanban-box">-->
+<!--                        <div class="oe_module_vignette">-->
+<!--                            <div class="oe_module_desc">-->
+<!--                                <strong>-->
+<!--                                    <strong>-->
+<!--                                        <field name="type_id" readonly="1"/>-->
+<!--                                    </strong>-->
+<!--                                </strong>-->
+<!--                                <div>-->
+<!--                                    <field name="description" readonly="1"/>-->
+<!--                                </div>-->
+<!--                                <div>-->
+<!--                                    <field name="group_approval_id" readonly="1"/>-->
+<!--                                </div>-->
+<!--                                <t t-if="not approved">-->
+<!--                                    <div class="oe_module_action">-->
+<!--                                        <button type="action" name="%(action_unapproved_approval)d"-->
+<!--                                                class="btn btn-sm btn-secondary float-end"-->
+<!--                                        >To Review:-->
+<!--                                        </button>-->
+<!--                                    </div>-->
+<!--                                </t>-->
+<!--                                <t t-else="">-->
+<!--                                    <field name="approved" readonly="1"/>-->
+<!--                                </t>-->
+<!--                            </div>-->
+<!--                        </div>-->
+<!--                    </t>-->
+<!--                </templates>-->
+<!--            </kanban>-->
+<!--        </field>-->
+<!--    </record>-->
+
+
+    <record id="action_document_approval" model="ir.actions.act_window">
+        <field name="name">Document Approvals</field>
+        <field name="res_model">document.approval</field>
+        <field name="view_mode">tree,form</field>
+    </record>
+
+
+<!--    <menuitem id="menu_document_approval_root" name="Document Approvals" sequence="10"/>-->
+<!--    <menuitem id="menu_document_approval" name="Document Approvals" parent="menu_document_approval_root"-->
+<!--              action="action_document_approval" sequence="10"/>-->
+</odoo>
+
+
+
+
