@@ -11,7 +11,6 @@
     "data": [
         'security/ir.model.access.csv',
         'data/res_group_data.xml',
-        'data/document_page_approval_data.xml',
         'views/portal_approval_request_template.xml',
         'views/portal_hr_employee_requests_template.xml',
         'views/portal_hr_expensive_requests_template.xml',
