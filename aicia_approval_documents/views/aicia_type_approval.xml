@@ -48,6 +48,17 @@
     <menuitem id="menu_type_approval_root" name="Type Approvals" sequence="10"/>
     <menuitem id="menu_type_approval" name="Type Approvals" parent="menu_type_approval_root"
               action="action_type_approval" sequence="10"/>
+
+     <record id="action_approved_approval" model="ir.actions.act_window">
+        <field name="name">Approved Type Approvals</field>
+        <field name="res_model">document.approval</field>
+        <field name="view_mode">tree,form</field>
+        <field name="domain">[('approved', '=', True)]</field>
+        <field name="context">{'group_by': 'type_id'}</field>
+    </record>
+
+    <menuitem id="menu_approved_approval" name="Approved Type Approvals" parent="menu_type_approval_root"
+              action="action_approved_approval" sequence="20"/>
 </odoo>
 
 

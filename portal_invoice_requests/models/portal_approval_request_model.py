@@ -13,9 +13,11 @@ class PortalApprovalRequest(models.Model):
         ('travel_request', 'Solicitud de salida de viaje'),
     ], string='Approval Type', required=True)
     description = fields.Text(string='Description')
-    # category_id = fields.Many2one('document.page', string="Document Category")  # Relación con document.page
+
     user_id = fields.Many2one('res.users', string='User', required=True)  # Este campo debe existir.
 
+
+    # category_id = fields.Many2one('document.page', string="Document Category")  # Relación con document.page
     # @api.depends('approval_type')
     # def _compute_name(self):
     #     for record in self:

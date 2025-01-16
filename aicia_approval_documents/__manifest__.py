@@ -8,6 +8,7 @@
     "category": "",
     "depends": ["mail"],
     "license": "AGPL-3",
+    "icon": "/aicia_approval_documents/static/description/Folder.png",
     "data": [
         "data/type_approval.xml",
         "views/aicia_approval_documents.xml",
