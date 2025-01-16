@@ -56,7 +56,5 @@ class PortalApprovalRequestController(Controller):
             }
             request.env['ir.attachment'].create(attachment_data)
 
-        print("*"*50)
-        print(new_document_approval)
 
         return request.redirect('/contactus-thank-you')
