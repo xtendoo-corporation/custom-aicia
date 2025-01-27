@@ -1,0 +1,316 @@
+<odoo>
+    <template id="portal_invoice_request_template">
+        <t t-call="website.layout">
+            <!--CABECERA DE LA PÁGINA-->
+            <div id="wrap" class="oe_structure oe_empty">
+                <section class="s_title parallax s_parallax_is_fixed bg-black-50 pt24 pb24" data-vcss="001"
+                         data-snippet="s_title" data-scroll-background-ratio="1" data-name="Título">
+                    <span class="s_parallax_bg oe_img_bg"
+                          style="background-image: url('/web/image/website.s_parallax_default_image'); background-position: 50% 0;"/>
+                    <div class="o_we_bg_filter bg-black-50"/>
+                    <div class="container">
+                        <!--TÍTULO DE LA PÁGINA-->
+                        <h1>Invoice Request</h1>
+                    </div>
+                </section>
+                <!--FORMULARIO-->
+                <section class="s_text_block pt40 pb40 o_colored_level" data-snippet="s_text_block" data-name="Texto"
+                         style="background-image: none;">
+                    <div class="s_allow_columns container">
+                        <div class="row">
+                            <div class="col-lg-8 mt-4 mt-lg-0">
+                                <p>
+                                    Fill out the form below to request an invoice or refund.
+                                </p>
+                                <div class="container">
+                                    <form action="/portal/invoice_request/submit" method="POST">
+                                        <input type="hidden" name="csrf_token" t-att-value="request.csrf_token()"/>
+                                        <div class="s_website_form_rows row s_col_no_bgcolor">
+                                            <!--COMPANY REQUIRED-->
+                                            <div
+                                                class="mb-0 py-2 col-12 s_website_form_field s_website_form_required s_website_form_model_required"
+                                                data-type="char" data-name="Field">
+                                                <div class="row s_col_no_resize s_col_no_bgcolor">
+                                                    <label
+                                                        class="col-form-label col-sm-auto s_website_form_label"
+                                                        style="width: 200px" for="contact">
+                                                        <span class="s_website_form_label_content">Project
+                                                        </span>
+                                                        <span class="s_website_form_mark">*</span>
+                                                    </label>
+                                                    <div class="col-sm">
+                                                        <select id="company_id" name="company_id"
+                                                                class="form-control s_website_form_input">
+                                                            <option value="0">Select a project</option>
+                                                            <t t-foreach="companies" t-as="company">
+                                                                <option t-att-value="company.id">
+                                                                    <t t-esc="company.name"/>
+                                                                </option>
+                                                            </t>
+                                                        </select>
+                                                    </div>
+                                                </div>
+                                            </div>
+                                            <!--CLIENT REQUIRED-->
+                                            <div
+                                                class="mb-0 py-2 col-12 s_website_form_field s_website_form_required s_website_form_model_required"
+                                                data-type="date" data-name="Field">
+                                                <div class="row s_col_no_resize s_col_no_bgcolor">
+                                                    <label
+                                                        class="col-form-label col-sm-auto s_website_form_label"
+                                                        style="width: 200px" for="contact">
+                                                        <span class="s_website_form_label_content">Client
+                                                        </span>
+                                                        <span class="s_website_form_mark">*</span>
+                                                    </label>
+                                                    <div class="col-sm">
+                                                        <select id="partner_id" name="partner_id"
+                                                                class="form-control s_website_form_input">
+
+                                                        </select>
+                                                    </div>
+                                                </div>
+                                            </div>
+                                            <!-- TYPE REQUIRED -->
+                                            <div
+                                                class="mb-0 py-2 col-12 s_website_form_field s_website_form_required s_website_form_model_required"
+                                                data-type="char" data-name="Field">
+                                                <div class="row s_col_no_resize s_col_no_bgcolor">
+                                                    <label class="col-form-label col-sm-auto s_website_form_label"
+                                                           style="width: 200px" for="contact">
+                                                        <span class="s_website_form_label_content">Type</span>
+                                                        <span class="s_website_form_mark">*</span>
+                                                    </label>
+                                                    <div class="col-sm">
+                                                        <select id="move_type" name="move_type"
+                                                                class="form-control s_website_form_input">
+                                                            <option value="out_invoice">Invoice</option>
+                                                            <option value="out_refund">Refund</option>
+                                                        </select>
+                                                    </div>
+                                                </div>
+                                            </div>
+                                             <!-- invoice REQUIRED -->
+                                            <div id="invoice_to_refund"
+                                                class="mb-0 py-2 col-12 s_website_form_field s_website_form_required s_website_form_model_required"
+                                                data-type="char" data-name="Field"
+                                            style="display: none;">
+                                                <div class="row s_col_no_resize s_col_no_bgcolor">
+                                                    <label class="col-form-label col-sm-auto s_website_form_label"
+                                                           style="width: 200px" for="contact">
+                                                        <span class="s_website_form_label_content">Factura</span>
+                                                        <span class="s_website_form_mark">*</span>
+                                                    </label>
+                                                    <div class="col-sm">
+                                                        <select id="invoice_id" name="invoice_id"
+                                                                class="form-control s_website_form_input">
+
+                                                        </select>
+                                                    </div>
+                                                </div>
+                                            </div>
+                                            <!--DATE REQUIRED-->
+                                            <div
+                                                class="mb-0 py-2 col-12 s_website_form_field s_website_form_required s_website_form_model_required"
+                                                data-type="date" data-name="Field">
+                                                <div class="row s_col_no_resize s_col_no_bgcolor">
+                                                    <label
+                                                        class="col-form-label col-sm-auto s_website_form_label"
+                                                        style="width: 200px" for="contact">
+                                                        <span class="s_website_form_label_content">Date
+                                                        </span>
+                                                        <span class="s_website_form_mark">*</span>
+                                                    </label>
+                                                    <div class="col-sm">
+                                                        <input type="date" class="form-control" name="date"
+                                                               required="required"/>
+                                                    </div>
+                                                </div>
+                                            </div>
+                                            <!-- REASON REQUIRED -->
+                                            <div id="reason_field"
+                                                 class="mb-0 py-2 col-12 s_website_form_field s_website_form_required s_website_form_model_required"
+                                                 data-type="char" data-name="Field"
+                                                 style="display: none;"> <!-- Oculto por defecto con style="display: none" -->
+                                                <div class="row s_col_no_resize s_col_no_bgcolor">
+                                                    <label class="col-form-label col-sm-auto s_website_form_label"
+                                                           style="width: 200px" for="contact">
+                                                        <span class="s_website_form_label_content">Reason</span>
+                                                        <span class="s_website_form_mark">*</span>
+                                                    </label>
+                                                    <div class="col-sm">
+                                                        <select id="l10n_es_edi_facturae_reason_code"
+                                                                name="l10n_es_edi_facturae_reason_code"
+                                                                class="form-control s_website_form_input">
+                                                            <!-- Rellenar dinámicamente el select con las claves y descripciones -->
+                                                            <t t-foreach="options" t-as="option">
+                                                                <option t-att-value="option[0]">
+                                                                    <t t-esc="option[1]"/>
+                                                                </option>
+                                                            </t>
+                                                        </select>
+                                                    </div>
+                                                </div>
+                                            </div>
+                                            <!--AMOUNT REQUIRED-->
+                                            <div
+                                                class="mb-0 py-2 col-12 s_website_form_field s_website_form_required s_website_form_model_required"
+                                                data-type="char" data-name="Field">
+                                                <div class="row s_col_no_resize s_col_no_bgcolor">
+                                                    <label
+                                                        class="col-form-label col-sm-auto s_website_form_label"
+                                                        style="width: 200px" for="contact">
+                                                        <span class="s_website_form_label_content">Amount
+                                                        </span>
+                                                        <span class="s_website_form_mark">*</span>
+                                                    </label>
+                                                    <div class="col-sm">
+                                                        <input type="number" id="amount" name="amount"
+                                                               class="form-control s_website_form_input"/>
+                                                    </div>
+                                                </div>
+                                            </div>
+                                            <!--CONCEPT REQUIRED-->
+                                            <div
+                                                class="mb-0 py-2 col-12 s_website_form_field s_website_form_required s_website_form_model_required"
+                                                data-type="char" data-name="Field">
+                                                <div class="row s_col_no_resize s_col_no_bgcolor">
+                                                    <label
+                                                        class="col-form-label col-sm-auto s_website_form_label"
+                                                        style="width: 200px" for="contact">
+                                                        <span class="s_website_form_label_content">Concept
+                                                        </span>
+                                                        <span class="s_website_form_mark">*</span>
+                                                    </label>
+                                                    <div class="col-sm">
+                                                        <textarea id="notes" name="notes"
+                                                                  class="form-control s_website_form_input"
+                                                                  rows="4"/>
+                                                    </div>
+                                                </div>
+                                            </div>
+                                            <!--SEND BUTTON-->
+                                            <div class="mb-0 py-2 col-12 s_website_form_submit"
+                                                 data-name="Submit Button">
+                                                <div class="row s_col_no_resize s_col_no_bgcolor align-items-center">
+                                                    <div class="col-sm-auto" style="width: 200px;"/>
+                                                    <div class="col-sm">
+                                                        <button type="submit"
+                                                                class="btn btn-primary s_website_form_send">Submit
+                                                        </button>
+                                                    </div>
+                                                </div>
+                                                <span id="s_website_form_result"/>
+                                            </div>
+                                        </div>
+                                    </form>
+                                    <script>
+                                        //PARTE DE RELLENAR FACTURAS CON AJAX
+                                        document.addEventListener('DOMContentLoaded', function () {
+                                            const companySelect = document.getElementById('company_id');
+                                            const clientSelect = document.getElementById('partner_id');
+                                            const invoiceSelect = document.getElementById('invoice_id');
+
+                                            clientSelect.addEventListener('change', function () {
+                                                const clientId = clientSelect.value;
+                                                const companyId = companySelect.value;
+                                                invoiceSelect.innerHTML = '<option value="">Loading...</option>';
+                                                $.ajax({
+                                                    url: '/get_invoice_by_clients',
+                                                    type: 'GET',
+                                                    data: {
+                                                            company_id: companyId,
+                                                            client_id: clientId
+                                                    },
+                                                    success: function(response) {
+                                                        var invoiceSelect = document.getElementById("invoice_id");
+                                                        invoiceSelect.innerHTML = '';
+                                                        let invoices = response.invoices.invoices;
+                                                        if (invoices.length === 0) {
+                                                            const option = document.createElement('option');
+                                                            option.value = '0';
+                                                            option.textContent = 'Invoices not found';
+                                                            invoiceSelect.appendChild(option);
+                                                        } else {
+                                                            invoices.forEach(function(invoice) {
+                                                                const option = document.createElement('option');
+                                                                option.value = invoice.id;
+                                                                option.textContent = invoice.name;
+                                                                invoiceSelect.appendChild(option);
+                                                            });
+                                                        }
+                                                    },
+                                                    error: function(error) {
+                                                        console.log("Error fetching partners: ", error);
+                                                    }
+                                                });
+                                            });
+                                        });
+                                        //PARTE DE RELLENAR CLIENTES CON AJAX
+                                        document.addEventListener('DOMContentLoaded', function () {
+                                            const companySelect = document.getElementById('company_id');
+                                            const clientSelect = document.getElementById('partner_id');
+
+                                            companySelect.addEventListener('change', function () {
+                                                const companyId = companySelect.value;
+                                                clientSelect.innerHTML = '<option value="">Loading...</option>';
+                                                $.ajax({
+                                                    url: '/get_clients_by_company',
+                                                    type: 'GET',
+                                                    data: { company_id: companyId }, // Pasar el company_id como parámetro
+                                                    success: function(response) {
+                                                        var partnerSelect = document.getElementById("partner_id");
+                                                        partnerSelect.innerHTML = '';
+                                                        let clients = response.partners.clients;
+                                                        if (clients.length === 0) {
+                                                            const option = document.createElement('option');
+                                                            option.value = '0';
+                                                            option.textContent = 'Client not found';
+                                                            clientSelect.appendChild(option);
+                                                        } else {
+                                                            clients.forEach(function(client) {
+                                                                const option = document.createElement('option');
+                                                                option.value = client.id;
+                                                                option.textContent = client.name;
+                                                                clientSelect.appendChild(option);
+                                                            });
+                                                        }
+                                                    },
+                                                    error: function(error) {
+                                                        console.log("Error fetching partners: ", error);
+                                                    }
+                                                });
+                                            });
+                                        });
+
+                                        //PARTE DE MOSTRAR EL CAMPO DE REASON Y FACTURA CUANDO SE SELECCIONA UNA TIPO FACTURA
+                                        document.getElementById("move_type").addEventListener("change", function() {
+                                        var moveType = document.getElementById("move_type").value;
+                                        var reasonField = document.getElementById("reason_field");
+                                        var invoice_refund = document.getElementById("invoice_to_refund");
+
+                                        if (moveType === "out_invoice") {
+                                            reasonField.style.display = "none";
+                                            invoice_refund.style.display = "none";
+                                        } else {
+                                            reasonField.style.display = "block";
+                                            invoice_refund.style.display = "block";
+                                        }
+                                    });
+                                    </script>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </section>
+            </div>
+        </t>
+    </template>
+
+    <record id="portal_invoice_menu" model="website.menu">
+        <field name="name">Invoice Request</field>
+        <field name="url">/portal/invoice_request</field>
+        <field name="parent_id" ref="website.main_menu"/>
+        <field name="sequence" type="int">100</field>
+    </record>
+</odoo>

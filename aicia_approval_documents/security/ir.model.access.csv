@@ -1,3 +1,3 @@
 id,name,model_id:id,group_id:id,perm_read,perm_write,perm_create,perm_unlink
-aicia_approval_documents.access_document_approval,access_document_approval,aicia_approval_documents.model_document_approval,base.group_user,1,1,1,1
-aicia_approval_documents.access_type_approval,access_type_approval,aicia_approval_documents.model_type_approval,base.group_user,1,1,1,1
+portal_resquests.access_document_approval,access_document_approval,portal_resquests.model_document_approval,base.group_user,1,1,1,1
+portal_resquests.access_type_approval,access_type_approval,portal_resquests.model_type_approval,base.group_user,1,1,1,1

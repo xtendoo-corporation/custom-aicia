@@ -1,0 +1,56 @@
+<odoo>
+    <data>
+        <!-- Tree View -->
+        <record id="view_portal_hr_employee_request_tree" model="ir.ui.view">
+            <field name="name">portal.hr.employee.request.tree</field>
+            <field name="model">portal.hr.employee.request</field>
+            <field name="arch" type="xml">
+                <tree>
+                    <field name="name"/>
+                    <field name="identification_id"/>
+                    <field name="mobile_phone"/>
+                    <field name="ssnid"/>
+                    <field name="work_email"/>
+                    <field name="salary"/>
+                    <field name="number_of_pays"/>
+                    <field name="resource_calendar_id"/>
+                    <field name="company_id"/>
+                </tree>
+            </field>
+        </record>
+
+        <!-- Form View -->
+        <record id="view_portal_hr_employee_request_form" model="ir.ui.view">
+            <field name="name">portal.hr.employee.request.form</field>
+            <field name="model">portal.hr.employee.request</field>
+            <field name="arch" type="xml">
+                <form>
+                    <sheet>
+                        <group>
+                            <group>
+                                <field name="name"/>
+                                <field name="identification_id"/>
+                                <field name="mobile_phone"/>
+                                <field name="ssnid"/>
+                                <field name="work_email"/>
+                            </group>
+                            <group>
+                                <field name="salary"/>
+                                <field name="number_of_pays"/>
+                                <field name="resource_calendar_id"/>
+                                <field name="company_id"/>
+                            </group>
+                        </group>
+                        <group>
+                            <field name="confidential_compromise"/>
+                            <field name="working_life_report" filename="working_life_report_filename"/>
+                            <field name="cv" filename="cv_filename"/>
+                            <field name="prl_annex" filename="prl_annex_filename"/>
+                            <field name="bank_account"/>
+                        </group>
+                    </sheet>
+                </form>
+            </field>
+        </record>
+    </data>
+</odoo>

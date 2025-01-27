@@ -1,0 +1,33 @@
+<?xml version="1.0" encoding="utf-8"?>
+<odoo>
+    <data noupdate="0">
+        <record id="dashboard_documents" model="portal.request.dashboard">
+            <field name="name">Documentos</field>
+            <field name="image" type="base64" file="portal_requests/static/description/document.png"/>
+            <field name="model">document.approval</field>
+        </record>
+        <record id="dashboard_projects" model="portal.request.dashboard">
+            <field name="name">Proyectos</field>
+            <field name="image" type="base64" file="portal_requests/static/description/project.png"/>
+            <field name="model">portal.project.request</field>
+        </record>
+        <record id="dashboard_out_invoice" model="portal.request.dashboard">
+            <field name="name">Facturas</field>
+            <field name="image" type="base64" file="portal_requests/static/description/invoicing.png"/>
+            <field name="model">portal.invoice.request</field>
+            <field name="type">out_invoice</field>
+        </record>
+        <record id="dashboard_out_refund" model="portal.request.dashboard">
+            <field name="name">Facturas rectificativas</field>
+            <field name="image" type="base64" file="portal_requests/static/description/invoicing.png"/>
+            <field name="model">portal.invoice.request</field>
+            <field name="type">out_refund</field>
+        </record>
+<!--        <record id="dashboard_out_refund" model="portal.request.dashboard">-->
+<!--            <field name="name">Contrataciones</field>-->
+<!--            <field name="image" type="base64" file="portal_requests/static/description/employee.png"/>-->
+<!--            <field name="model">portal.employee.request</field>-->
+<!--        </record>-->
+    </data>
+</odoo>
+
