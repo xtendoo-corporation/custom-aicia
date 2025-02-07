@@ -33,8 +33,10 @@ class PortalRequestDashboard(models.Model):
                 return self.open_to_revise_invoice()
             else:
                 return self.open_to_revise_invoice_refund()
-        # elif self.model == 'portal.hr.employee.request':
-        #     return self.open_to_revise_employee()
+        elif self.model == 'portal.hr.employee.request':
+            return self.open_to_revise_employee()
+        elif self.model == 'portal.hr.employee.intern.request':
+            return self.open_to_revise_intern()
 
     def open_to_revise_document(self):
         return {
@@ -73,15 +75,25 @@ class PortalRequestDashboard(models.Model):
             'context': {'group_by': 'company_id'},
         }
 
-    # def open_to_revise_employee(self):
-    #     return {
-    #         'name': _('Contratos para revisar'),
-    #         'type': 'ir.actions.act_window',
-    #         'res_model': 'portal.hr.employee.request',
-    #         'view_mode': 'tree,form',
-    #         'domain': [('is_revised', '=', False)],
-    #         'context': {'group_by': 'company_id'},
-    #     }
+    def open_to_revise_employee(self):
+        return {
+            'name': _('Empleados para revisar'),
+            'type': 'ir.actions.act_window',
+            'res_model': 'portal.hr.employee.request',
+            'view_mode': 'tree,form',
+            'domain': [('is_revised', '=', False)],
+            'context': {'group_by': 'company_id'},
+        }
+
+    def open_to_revise_intern(self):
+        return {
+            'name': _('Becarios para revisar'),
+            'type': 'ir.actions.act_window',
+            'res_model': 'portal.hr.employee.intern.request',
+            'view_mode': 'tree,form',
+            'domain': [('is_revised', '=', False)],
+            'context': {'group_by': 'company_id'},
+        }
 
     #Approved
     def open_new_action_approve(self):
@@ -95,8 +107,10 @@ class PortalRequestDashboard(models.Model):
                 return self.open_approved_invoice()
             else:
                 return self.open_approved_invoice_refund()
-        # elif self.model == 'portal.hr.employee.request':
-        #     return self.open_approved_employee()
+        elif self.model == 'portal.hr.employee.request':
+            return self.open_approved_employee()
+        elif self.model == 'portal.hr.employee.intern.request':
+            return self.open_approved_intern()
 
     def open_approved_document(self):
         return {
@@ -135,15 +149,25 @@ class PortalRequestDashboard(models.Model):
             'context': {'group_by': 'company_id'},
         }
 
-    # def open_approved_employee(self):
-    #     return {
-    #         'name': _('Contratos Aprobados'),
-    #         'type': 'ir.actions.act_window',
-    #         'res_model': 'portal.hr.employee.request',
-    #         'view_mode': 'tree,form',
-    #         'domain': [('approved', '=', True), ('is_revised', '=', True)],
-    #         'context': {'group_by': 'company_id'},
-    #     }
+    def open_approved_employee(self):
+        return {
+            'name': _('Contratos Aprobados'),
+            'type': 'ir.actions.act_window',
+            'res_model': 'portal.hr.employee.request',
+            'view_mode': 'tree,form',
+            'domain': [('approved', '=', True), ('is_revised', '=', True)],
+            'context': {'group_by': 'company_id'},
+        }
+
+    def open_approved_intern(self):
+        return {
+            'name': _('Becarios Aprobados'),
+            'type': 'ir.actions.act_window',
+            'res_model': 'portal.hr.employee.intern.request',
+            'view_mode': 'tree,form',
+            'domain': [('approved', '=', True), ('is_revised', '=', True)],
+            'context': {'group_by': 'company_id'},
+        }
 
     #Rejected
     def open_new_action_rejected(self):
@@ -157,8 +181,10 @@ class PortalRequestDashboard(models.Model):
                 return self.open_rejected_invoice()
             else:
                 return self.open_rejected_invoice_refund()
-        # elif self.model == 'portal.hr.employee.request':
-        #     return self.open_rejected_employee()
+        elif self.model == 'portal.hr.employee.request':
+            return self.open_rejected_employee()
+        elif self.model == 'portal.hr.employee.intern.request':
+            return self.open_rejected_intern()
 
     def open_rejected_document(self):
         return {
@@ -197,15 +223,26 @@ class PortalRequestDashboard(models.Model):
             'context': {'group_by': 'company_id'},
         }
 
-    # def open_rejected_employee(self):
-    #     return {
-    #         'name': _('Contratos Rechazados'),
-    #         'type': 'ir.actions.act_window',
-    #         'res_model': 'portal.hr.employee.request',
-    #         'view_mode': 'tree,form',
-    #         'domain': [('approved', '=', False), ('is_revised', '=', True)],
-    #         'context': {'group_by': 'company_id'},
-    #     }
+    def open_rejected_employee(self):
+        return {
+            'name': _('Contratos Rechazados'),
+            'type': 'ir.actions.act_window',
+            'res_model': 'portal.hr.employee.request',
+            'view_mode': 'tree,form',
+            'domain': [('approved', '=', False), ('is_revised', '=', True)],
+            'context': {'group_by': 'company_id'},
+        }
+
+    def open_rejected_intern(self):
+        return {
+            'name': _('Becarios Rechazados'),
+            'type': 'ir.actions.act_window',
+            'res_model': 'portal.hr.employee.intern.request',
+            'view_mode': 'tree,form',
+            'domain': [('approved', '=', False), ('is_revised', '=', True)],
+            'context': {'group_by': 'company_id'},
+        }
+
 
     def _compute_to_revise_text(self):
         for record in self:
@@ -228,9 +265,12 @@ class PortalRequestDashboard(models.Model):
             elif record.model == 'document.approval':
                 record.count_to_revise = self.env['document.approval'].search_count(
                     [('is_revised', '=', False)])
-            # elif record.model == 'portal.hr.employee.request':
-            #     record.count_to_revise = self.env['portal.hr.employee.request'].search_count(
-            #         [('is_revised', '=', False)])
+            elif record.model == 'portal.hr.employee.request':
+                record.count_to_revise = self.env['portal.hr.employee.request'].search_count(
+                    [('is_revised', '=', False)])
+            elif record.model == 'portal.hr.employee.intern.request':
+                record.count_to_revise = self.env['portal.hr.employee.intern.request'].search_count(
+                    [('is_revised', '=', False)])
 
     def _compute_approved_text(self):
         for record in self:
@@ -242,8 +282,10 @@ class PortalRequestDashboard(models.Model):
                 record.approved_text = _('Aprobadas: %s', number)
             elif record.model == 'document.approval':
                 record.approved_text = _('Aprobados: %s', number)
-            # elif record.model == 'portal.hr.employee.request':
-            #     record.approved_text = _('Aprobados: %s', number)
+            elif record.model == 'portal.hr.employee.request':
+                record.approved_text = _('Aprobados: %s', number)
+            elif record.model == 'portal.hr.employee.intern.request':
+                record.approved_text = _('Aprobados: %s', number)
 
     def _compute_count_approved(self):
         for record in self:
@@ -260,9 +302,12 @@ class PortalRequestDashboard(models.Model):
             elif record.model == 'document.approval':
                 record.count_approved = self.env['document.approval'].search_count(
                     [('approved', '=', True), ('is_revised', '=', True)])
-            # elif record.model == 'portal.hr.employee.request':
-            #     record.count_approved = self.env['portal.hr.employee.request'].search_count(
-            #         [('approved', '=', True), ('is_revised', '=', True)])
+            elif record.model == 'portal.hr.employee.request':
+                record.count_approved = self.env['portal.hr.employee.request'].search_count(
+                    [('approved', '=', True), ('is_revised', '=', True)])
+            elif record.model == 'portal.hr.employee.intern.request':
+                record.count_approved = self.env['portal.hr.employee.intern.request'].search_count(
+                    [('approved', '=', True), ('is_revised', '=', True)])
 
 
     def _compute_unapproved_text(self):
@@ -275,8 +320,10 @@ class PortalRequestDashboard(models.Model):
                 record.unaproved_text = _('Rechazadas: %s', number)
             elif record.model == 'document.approval':
                 record.unaproved_text = _('Rechazados: %s', number)
-            # elif record.model == 'portal.hr.employee.request':
-            #     record.unaproved_text = _('Rechazados: %s', number)
+            elif record.model == 'portal.hr.employee.request':
+                record.unaproved_text = _('Rechazados: %s', number)
+            elif record.model == 'portal.hr.employee.intern.request':
+                record.unaproved_text = _('Rechazados: %s', number)
 
 
     def _compute_count_unapproved(self):
@@ -294,8 +341,11 @@ class PortalRequestDashboard(models.Model):
             elif record.model == 'document.approval':
                 record.count_unapproved = self.env['document.approval'].search_count(
                     [('approved', '=', False), ('is_revised', '=', True)])
-            # elif record.model == 'portal.hr.employee.request':
-            #     record.count_unapproved = self.env['portal.hr.employee.request'].search_count(
-            #         [('approved', '=', False), ('is_revised', '=', True)])
+            elif record.model == 'portal.hr.employee.request':
+                record.count_unapproved = self.env['portal.hr.employee.request'].search_count(
+                    [('approved', '=', False), ('is_revised', '=', True)])
+            elif record.model == 'portal.hr.employee.intern.request':
+                record.count_unapproved = self.env['portal.hr.employee.intern.request'].search_count(
+                    [('approved', '=', False), ('is_revised', '=', True)])
 
 

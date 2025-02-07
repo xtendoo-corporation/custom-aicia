@@ -1,5 +1,6 @@
 from . import portal_approval_request_model
 from . import portal_hr_employee_request_model
+from . import portal_hr_employee_intern_request_model
 from . import portal_hr_expensive_request_model
 from . import portal_inovice_requests_model
 from . import portal_project_end_request_model

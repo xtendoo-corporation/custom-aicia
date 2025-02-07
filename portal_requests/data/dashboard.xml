@@ -23,11 +23,18 @@
             <field name="model">portal.invoice.request</field>
             <field name="type">out_refund</field>
         </record>
-<!--        <record id="dashboard_out_refund" model="portal.request.dashboard">-->
-<!--            <field name="name">Contrataciones</field>-->
-<!--            <field name="image" type="base64" file="portal_requests/static/description/employee.png"/>-->
-<!--            <field name="model">portal.employee.request</field>-->
-<!--        </record>-->
+        <record id="dashboard_employee" model="portal.request.dashboard">
+            <field name="name">Empleados</field>
+            <field name="image" type="base64" file="portal_requests/static/description/employee.png"/>
+            <field name="model">portal.hr.employee.request</field>
+            <field name="type">employee</field>
+        </record>
+        <record id="dashboard_intern" model="portal.request.dashboard">
+            <field name="name">Becarios</field>
+            <field name="image" type="base64" file="portal_requests/static/description/employee.png"/>
+            <field name="model">portal.hr.employee.intern.request</field>
+            <field name="type">intern</field>
+        </record>
     </data>
 </odoo>
 

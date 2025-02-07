@@ -112,10 +112,10 @@
         </t>
     </template>
 
-    <record id="portal_project_end_menu" model="website.menu">
-        <field name="name">Project End Request</field>
-        <field name="url">/portal/project_end_request</field>
-        <field name="parent_id" ref="website.main_menu"/>
-        <field name="sequence" type="int">100</field>
-    </record>
+<!--    <record id="portal_project_end_menu" model="website.menu">-->
+<!--        <field name="name">Project End Request</field>-->
+<!--        <field name="url">/portal/project_end_request</field>-->
+<!--        <field name="parent_id" ref="website.main_menu"/>-->
+<!--        <field name="sequence" type="int">100</field>-->
+<!--    </record>-->
 </odoo>

@@ -1,9 +1,10 @@
 from odoo import models, fields, api, _
+import base64
 #configurar como correo entrante compras.aicia@xtendoo.es
 
 
-class PortalHrEmployeeRequest(models.Model):
-    _name = 'portal.hr.employee.request'
+class PortalHrEmployeeInternRequest(models.Model):
+    _name = 'portal.hr.employee.intern.request'
     _description = 'Portal HR Employee Request'
     _inherit = ['mail.thread', 'mail.activity.mixin']
 
@@ -62,27 +63,28 @@ class PortalHrEmployeeRequest(models.Model):
         for record in self:
             notification_text = ""
             if record.type == 'new':
-                record.employee_created = record.action_create_employee()
-                notification_text = _("El empleado %s ha sido creado correctamente.") % record.employee_id.name
+                record.employee_created = record.action_create_intern()
+                notification_text = _("El becario %s ha sido creado correctamente.") % record.employee_id.name
             elif record.type == 'alta':
                 print("alta")
                 record.employee_id.active = True
                 record.employee_created = record.employee_id
-                notification_text = _("El empleado %s ha sido dado de alta correctamente.") % record.employee_id.name
+                notification_text = _("El becario %s ha sido dado de alta correctamente.") % record.employee_id.name
             elif record.type == 'baja':
                 print("baja")
-                record.action_baja_employee()
+                record.action_baja_intern()
                 record.employee_created = record.employee_id
-                notification_text = _("El empleado %s ha sido dado de baja correctamente.") % record.employee_id.name
+                notification_text = _("El becario %s ha sido dado de baja correctamente.") % record.employee_id.name
             record.approved = True
             record.is_revised = True
         return self.show_notificacion("¡Solicitud aprobada!", notification_text, "success")
 
 
-    def action_create_employee(self):
+    def action_create_intern(self):
         print("*" * 100)
-        print("action_create_employee")
-        employee = self.env['hr.employee'].create({
+        print("action_create_intern")
+        self.ensure_one()
+        employee = self.env['hr.employee'].sudo().create({
             'name': self.name,
             'identification_id': self.identification_id,
             'mobile_phone': self.mobile_phone,
@@ -91,29 +93,38 @@ class PortalHrEmployeeRequest(models.Model):
             'work_email': self.work_email,
             'company_id': self.company_id.id,
             'resource_calendar_id': self.resource_calendar_id.id,
-            # 'active': False,
-            'employee_type': 'employee',
+            #'active': False,
+            'employee_type': 'student',
             # 'bank_account': self.bank_account,
             # 'salary': self.salary,
             # 'number_of_pays': self.number_of_pays,
         })
         request_attachment = self.env['ir.attachment'].search([
-            ('res_model', '=', 'portal.hr.employee.request'),
+            ('res_model', '=', 'portal.hr.employee.intern.request'),
             ('res_id', '=', self.id),
         ])
         print("request_attachment", request_attachment)
+        attachments = []
         for attachment in request_attachment:
-            self.env['ir.attachment'].create({
+            attachments.append(self.env['ir.attachment'].sudo().create({
                 'name': attachment.name,
+                'type': 'binary',
+                'datas': attachment.datas,
                 'res_model': 'hr.employee',
                 'res_id': employee.id,
-                'datas': attachment.datas,
-                'type': attachment.type,
-            })
+                'mimetype': 'application/pdf',
+            }))
+            # self.env['ir.attachment'].create({
+            #     'name': attachment.name,
+            #     'res_model': 'hr.employee',
+            #     'res_id': employee.id,
+            #     'datas': attachment.datas,
+            #     'type': attachment.type,
+            # })
 
         return employee
 
-    def action_baja_employee(self):
+    def action_baja_intern(self):
         request_wizard = self.env['hr.departure.wizard'].create({
             'employee_id': self.employee_id.id,
             'departure_reason_id': self.baja_reason_id.id,
@@ -122,7 +133,7 @@ class PortalHrEmployeeRequest(models.Model):
         })
         self.employee_id.active=False
 
-    # def action_alta_employee(self):
+    # def action_alta_intern(self):
 
     def action_reject(self):
         for record in self:
@@ -150,7 +161,7 @@ class PortalHrEmployeeRequest(models.Model):
         else:
             action.update(
                 {
-                    "name": "Empleados",
+                    "name": "Becarios",
                     "domain": [("id", "in", employee)],
                     "view_mode": "tree,form",
                 }

@@ -10,7 +10,7 @@
                     <div class="o_we_bg_filter bg-black-50"/>
                     <div class="container">
                         <!--TÍTULO DE LA PÁGINA-->
-                        <h1>Expense Request</h1>
+                        <h1>Solicitudes de Gastos</h1>
                     </div>
                 </section>
                 <!--FORMULARIO-->
@@ -20,7 +20,7 @@
                         <div class="row">
                             <div class="col-lg-8 mt-4 mt-lg-0">
                                 <p>
-                                    Fill out the form below to record an expense.
+                                    Por favor, complete el siguiente formulario para enviar una solicitud de gasto.
                                 </p>
                                 <div class="container">
                                     <form action="/portal/hr_expensive_request/submit" method="POST">
@@ -127,6 +127,6 @@
         <field name="name">Expense Requests</field>
         <field name="url">/portal/hr_expensive_request</field>
         <field name="parent_id" ref="website.main_menu"/>
-        <field name="sequence" type="int">100</field>
+        <field name="sequence" type="int">160</field>
     </record>
 </odoo>

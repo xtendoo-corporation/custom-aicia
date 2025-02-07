@@ -10,7 +10,7 @@
                     <div class="o_we_bg_filter bg-black-50"/>
                     <div class="container">
                         <!--TÍTULO DE LA PÁGINA-->
-                        <h1>Invoice Request</h1>
+                        <h1>Solicitudes de Facturas</h1>
                     </div>
                 </section>
                 <!--FORMULARIO-->
@@ -20,7 +20,7 @@
                         <div class="row">
                             <div class="col-lg-8 mt-4 mt-lg-0">
                                 <p>
-                                    Fill out the form below to request an invoice or refund.
+                                    Por favor, complete el siguiente formulario para enviar una solicitud de factura.
                                 </p>
                                 <div class="container">
                                     <form action="/portal/invoice_request/submit" method="POST">
@@ -311,6 +311,6 @@
         <field name="name">Invoice Request</field>
         <field name="url">/portal/invoice_request</field>
         <field name="parent_id" ref="website.main_menu"/>
-        <field name="sequence" type="int">100</field>
+        <field name="sequence" type="int">120</field>
     </record>
 </odoo>

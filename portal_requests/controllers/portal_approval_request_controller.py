@@ -14,6 +14,7 @@ class PortalApprovalRequestController(Controller):
         # Obtener los datos del formulario
         approval_type = post.get('approval_type')
         description = post.get('description')
+        user_id = request.env.user.id
 
         if approval_type == "sign_nda":
             approval_type = "Solicitud de firma NDA"
@@ -55,6 +56,49 @@ class PortalApprovalRequestController(Controller):
                 'type': 'binary',
             }
             request.env['ir.attachment'].create(attachment_data)
+        self.send_request_email(approval_type, new_document_approval)
 
 
         return request.redirect('/contactus-thank-you')
+
+
+    def send_request_email(self, move_text,document_id):
+        admin_users = request.env['res.users'].search(
+            [('groups_id', 'in', request.env.ref('portal_requests.group_director_investigation_and_development').id)])
+        document_request_link = f"/web#id={document_id.id}&cids=1-24-28-29-32-25-30-31&menu_id=899&active_id=1&model=document.approval&view_type=form"
+        user_id = request.env.user.id
+        user= request.env['res.users'].search([('id', '=', user_id)], limit=1)
+        print("*"*100)
+        print("admin_users",admin_users)
+        for admin_user in admin_users:
+            print("admin_user",admin_user)
+            admin_name = admin_user.name
+            body_html = f"""
+                                <p>Estimado/a {admin_name},</p>
+                                <p>El usuario {user.name} ha creado una solicitud de nuevo documento.</p>
+                                <p>A continuación, se detallan los datos de la solicitud:
+                                <ul>
+                                    <li><strong>Usuario:</strong> {user.name}</li>
+                                    <li><strong>Tipo:</strong> {move_text}</li>
+                                    <li><strong>Enlace:</strong><a href="{document_request_link}">Solicitud</a></li>
+                                <ul>
+                                </p>
+                                <p>Saludos cordiales, Odoo</p>
+                            """
+            # Filtrar usuarios que tienen un correo electrónico válido
+            email = admin_user.email
+            print("email",email)
+            #email_list = [email for email in email_list if email]  # Solo correos no vacíos
+            # Validar que haya destinatarios
+            # if not email_list:
+            #     raise ValueError("No hay destinatarios con correo válido en el grupo especificado.")
+            mail_values = {
+                'subject': f'Solicitud de documento',
+                'email_from': request.env.user.email or 'no-reply@example.com',
+                'email_to': email,
+                'body_html': body_html,
+            }
+            mail = request.env['mail.mail'].create(mail_values)
+            mail.send()
+
+        return request.render("portal.email_sent_confirmation")

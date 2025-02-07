@@ -1,5 +1,5 @@
 <odoo>
-    <template id="portal_hr_employee_request_template">
+    <template id="portal_hr_employee_intern_request_template">
         <t t-call="website.layout">
             <!--CABECERA DE LA PÁGINA-->
             <div id="wrap" class="oe_structure oe_empty">
@@ -10,7 +10,7 @@
                     <div class="o_we_bg_filter bg-black-50"/>
                     <div class="container">
                         <!--TÍTULO DE LA PÁGINA-->
-                        <h1>Solicitudes de Empleados</h1>
+                        <h1>Solicitudes de Becarios</h1>
                     </div>
                 </section>
                 <!--FORMULARIO-->
@@ -20,10 +20,10 @@
                         <div class="row">
                             <div class="col-lg-8 mt-4 mt-lg-0">
                                 <p>
-                                    Rellene el formulario a continuación para solicitar un nuevo empleado.
+                                    Rellene el formulario a continuación para solicitar un nuevo becario.
                                 </p>
                                 <div class="container">
-                                    <form action="/portal/hr_employee_request/submit" method="POST" enctype="multipart/form-data">
+                                    <form action="/portal/hr_employee_intern_request/submit" method="POST" enctype="multipart/form-data">
                                         <input type="hidden" name="csrf_token" t-att-value="request.csrf_token()"/>
                                         <div
                                             class="mb-0 py-2 col-12 s_website_form_field s_website_form_required s_website_form_model_required"
@@ -451,7 +451,7 @@
                                                     <div class="col-sm-auto" style="width: 200px;"/>
                                                     <div class="col-sm">
                                                         <button type="submit"
-                                                                class="btn btn-primary s_website_form_send">Enviar
+                                                                class="btn btn-primary s_website_form_send">Submit
                                                         </button>
                                                     </div>
                                                 </div>
@@ -631,7 +631,7 @@
                                                     type: 'GET',
                                                     data: {
                                                         company_id: companyId,
-                                                        employee_type: "employee",
+                                                        employee_type: "student",
                                                         active: 0
                                                     }, // Pasar el company_id como parámetro
                                                     success: function(response) {
@@ -661,7 +661,7 @@
                                                     type: 'GET',
                                                     data: {
                                                         company_id: companyId,
-                                                        employee_type: "employee",
+                                                        employee_type: "student",
                                                         active: 1
                                                     }, // Pasar el company_id como parámetro
                                                     success: function(response) {
@@ -701,10 +701,10 @@
         </t>
     </template>
 
-    <record id="portal_hr_employee_menu" model="website.menu">
-        <field name="name">Solicitud de Empleados</field>
-        <field name="url">/portal/hr_employee_request</field>
+    <record id="portal_hr_employee_intern_menu" model="website.menu">
+        <field name="name">Solicitud de Becarios</field>
+        <field name="url">/portal/hr_employee_intern_request</field>
         <field name="parent_id" ref="website.main_menu"/>
-        <field name="sequence" type="int">130</field>
+        <field name="sequence" type="int">140</field>
     </record>
 </odoo>

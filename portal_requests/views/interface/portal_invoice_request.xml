@@ -72,6 +72,11 @@
                             <field name="l10n_es_edi_facturae_reason_code" invisible="move_type == 'out_invoice'"/>
                         </group>
                     </sheet>
+                     <div class="oe_chatter">
+                        <field name="message_follower_ids"/>
+                        <field name="activity_ids"/>
+                        <field name="message_ids"/>
+                    </div>
                 </form>
             </field>
         </record>
@@ -113,6 +118,7 @@
                 </search>
             </field>
         </record>
+
 
          <record id="action_portal_invoice_request_all_invoice" model="ir.actions.act_window">
             <field name="name">Facturas</field>

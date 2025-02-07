@@ -15,6 +15,7 @@
         "l10n_es_edi_facturae",
         "hr",
         "hr_expense",
+        "web",
     ],
     "license": "AGPL-3",
     "data": [
@@ -24,6 +25,7 @@
         'data/dashboard.xml',
         'views/portal_approval_request_template.xml',
         'views/portal_hr_employee_requests_template.xml',
+        'views/portal_hr_employee_intern_requests_template.xml',
         'views/portal_hr_expensive_requests_template.xml',
         'views/portal_invoice_requests_template.xml',
         'views/portal_project_end_request_template.xml',
@@ -35,14 +37,8 @@
         'views/interface/aicia_type_approval.xml',
         'views/interface/portal_invoice_request.xml',
         'views/interface/portal_employee_request.xml',
+        'views/interface/portal_employee_intern_request.xml',
     ],
-    'assets': {
-        'web.assets_frontend': [
-            # 'portal_requests/static/src/js/reason_codes.js',
-            # 'portal_requests/static/src/js/hide_field.js',
-            #'portal_requests/static/src/js/partners_by_company.js',
-        ],
-    },
     "installable": True,
     'application': False,
 }

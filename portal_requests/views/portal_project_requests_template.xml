@@ -10,7 +10,7 @@
                     <div class="o_we_bg_filter bg-black-50"/>
                     <div class="container">
                         <!--TÍTULO DE LA PÁGINA-->
-                        <h1>Send Project Email</h1>
+                        <h1>Solicitudes de Proyectos</h1>
                     </div>
                 </section>
                 <!--FORMULARIO-->
@@ -20,130 +20,219 @@
                         <div class="row">
                             <div class="col-lg-8 mt-4 mt-lg-0">
                                 <p>
-                                    Please fill out the form below to send a project request email.
+                                    Por favor, complete el siguiente formulario para enviar una solicitud de proyecto.
                                 </p>
                                 <div class="container">
                                     <form action="/portal/project_request/submit" method="POST"
-                                          enctype="multipart/form-data">
+                                          enctype="multipart/form-data" name="new_project_form">
                                         <input type="hidden" name="csrf_token"
                                                t-att-value="request.csrf_token()"/>
+                                        <div
+                                            class="mb-0 py-2 col-12 s_website_form_field s_website_form_required s_website_form_model_required"
+                                            data-type="char" data-name="Field">
+                                            <div class="row s_col_no_resize s_col_no_bgcolor">
+                                                <label
+                                                    class="col-form-label col-sm-auto s_website_form_label"
+                                                    style="width: 200px" for="contact">
+                                                    <span class="s_website_form_label_content">Tipo de solicitud
+                                                    </span>
+                                                    <span class="s_website_form_mark">*</span>
+                                                </label>
+                                                <div class="col-sm">
+                                                    <select id="type_id" name="type_id"
+                                                            class="form-control s_website_form_input">
+                                                        <option value="new">Nuevo</option>
+                                                        <option value="end">Finalizar</option>
+                                                    </select>
+                                                </div>
+                                            </div>
+                                        </div>
                                         <div class="s_website_form_rows row s_col_no_bgcolor">
-                                            <!--COMPANY REQUIRED-->
-                                            <div
-                                                class="mb-0 py-2 col-12 s_website_form_field s_website_form_required s_website_form_model_required"
-                                                data-type="char" data-name="Field">
-                                                <div class="row s_col_no_resize s_col_no_bgcolor">
-                                                    <label
-                                                        class="col-form-label col-sm-auto s_website_form_label"
-                                                        style="width: 200px" for="contact">
-                                                        <span class="s_website_form_label_content">Work group
-                                                        </span>
-                                                        <span class="s_website_form_mark">*</span>
-                                                    </label>
-                                                    <div class="col-sm">
-                                                        <select id="company_id" name="company_id"
-                                                                class="form-control s_website_form_input">
-                                                            <t t-foreach="companies" t-as="company">
-                                                                <option t-att-value="company.id">
-                                                                    <t t-esc="company.name"/>
-                                                                </option>
-                                                            </t>
-                                                        </select>
+                                            <!-- Parte de nuevo -->
+                                            <div id="new_data">
+                                                <!--COMPANY REQUIRED-->
+                                                <div
+                                                    class="mb-0 py-2 col-12 s_website_form_field s_website_form_required s_website_form_model_required"
+                                                    data-type="char" data-name="Field">
+                                                    <div class="row s_col_no_resize s_col_no_bgcolor">
+                                                        <label
+                                                            class="col-form-label col-sm-auto s_website_form_label"
+                                                            style="width: 200px" for="contact">
+                                                            <span class="s_website_form_label_content">Grupo de trabajo
+                                                            </span>
+                                                            <span class="s_website_form_mark">*</span>
+                                                        </label>
+                                                        <div class="col-sm">
+                                                            <select id="company_id" name="company_id"
+                                                                    class="form-control s_website_form_input">
+                                                                <t t-foreach="companies" t-as="company">
+                                                                    <option t-att-value="company.id">
+                                                                        <t t-esc="company.name"/>
+                                                                    </option>
+                                                                </t>
+                                                            </select>
+                                                        </div>
+                                                    </div>
+                                                </div>
+                                                <!--PROJECT NAME REQUIRED-->
+                                                <div
+                                                    class="mb-0 py-2 col-12 s_website_form_field s_website_form_required s_website_form_model_required"
+                                                    data-type="date" data-name="Field">
+                                                    <div class="row s_col_no_resize s_col_no_bgcolor">
+                                                        <label
+                                                            class="col-form-label col-sm-auto s_website_form_label"
+                                                            style="width: 200px" for="contact">
+                                                            <span class="s_website_form_label_content">Proyecto
+                                                            </span>
+                                                            <span class="s_website_form_mark">*</span>
+                                                        </label>
+                                                        <div class="col-sm">
+                                                            <input type="text" class="form-control"
+                                                                   name="project_name"
+                                                                   id="project_name"
+                                                                   required="required"/>
+                                                        </div>
+                                                    </div>
+                                                </div>
+                                                <!--START DATE REQUIRED-->
+                                                <div
+                                                    class="mb-0 py-2 col-12 s_website_form_field s_website_form_required s_website_form_model_required"
+                                                    data-type="date" data-name="Field">
+                                                    <div class="row s_col_no_resize s_col_no_bgcolor">
+                                                        <label
+                                                            class="col-form-label col-sm-auto s_website_form_label"
+                                                            style="width: 200px" for="contact">
+                                                            <span class="s_website_form_label_content">Fecha de inicio
+                                                            </span>
+                                                            <span class="s_website_form_mark">*</span>
+                                                        </label>
+                                                        <div class="col-sm">
+                                                            <input type="date" class="form-control" name="date_start" id="start_date"
+                                                                   required="required"/>
+                                                        </div>
+                                                    </div>
+                                                </div>
+                                                <!--END DATE REQUIRED-->
+                                                <div
+                                                    class="mb-0 py-2 col-12 s_website_form_field s_website_form_required s_website_form_model_required"
+                                                    data-type="date" data-name="Field">
+                                                    <div class="row s_col_no_resize s_col_no_bgcolor">
+                                                        <label
+                                                            class="col-form-label col-sm-auto s_website_form_label"
+                                                            style="width: 200px" for="contact">
+                                                            <span class="s_website_form_label_content">Fecha de fin
+                                                            </span>
+                                                            <span class="s_website_form_mark">*</span>
+                                                        </label>
+                                                        <div class="col-sm">
+                                                            <input type="date" class="form-control" name="date_end" id="end_date"
+                                                                   required="required"/>
+                                                        </div>
+                                                    </div>
+                                                </div>
+                                                <!--SIGNED CONTRACT REQUIRED-->
+                                                <div
+                                                    class="mb-0 py-2 col-12 s_website_form_field s_website_form_required s_website_form_model_required"
+                                                    data-type="binary" data-name="Field">
+                                                    <div class="row s_col_no_resize s_col_no_bgcolor">
+                                                        <label
+                                                            class="col-form-label col-sm-auto s_website_form_label"
+                                                            style="width: 200px" for="contact">
+                                                            <span class="s_website_form_label_content">Contrato firmado
+                                                            </span>
+                                                            <span class="s_website_form_mark">*</span>
+                                                        </label>
+                                                        <div class="col-sm">
+                                                            <input type="file" class="form-control"
+                                                                   name="signed_contract"
+                                                                   accept=".pdf,.doc,.docx"
+                                                                   id="signed_contract"
+                                                            />
+                                                        </div>
+                                                    </div>
+                                                </div>
+                                                <!--BUDGET FILE REQUIRED-->
+                                                <div
+                                                    class="mb-0 py-2 col-12 s_website_form_field s_website_form_required s_website_form_model_required"
+                                                    data-type="binary" data-name="Field">
+                                                    <div class="row s_col_no_resize s_col_no_bgcolor">
+                                                        <label
+                                                            class="col-form-label col-sm-auto s_website_form_label"
+                                                            style="width: 200px" for="contact">
+                                                            <span class="s_website_form_label_content">Budget
+                                                                File
+                                                            </span>
+                                                            <span class="s_website_form_mark">*</span>
+                                                        </label>
+                                                        <div class="col-sm">
+                                                            <input type="file" class="form-control"
+                                                                   id="budget_file"
+                                                                   name="budget_file"
+                                                                   accept=".pdf,.doc,.docx"/>
+                                                        </div>
                                                     </div>
                                                 </div>
                                             </div>
-                                            <!--PROJECT NAME REQUIRED-->
-                                            <div
-                                                class="mb-0 py-2 col-12 s_website_form_field s_website_form_required s_website_form_model_required"
-                                                data-type="date" data-name="Field">
-                                                <div class="row s_col_no_resize s_col_no_bgcolor">
-                                                    <label
-                                                        class="col-form-label col-sm-auto s_website_form_label"
-                                                        style="width: 200px" for="contact">
-                                                        <span class="s_website_form_label_content">Project
-                                                        </span>
-                                                        <span class="s_website_form_mark">*</span>
-                                                    </label>
-                                                    <div class="col-sm">
-                                                        <input type="text" class="form-control"
-                                                               name="project_name"
-                                                               required="required"/>
+                                            <!-- Parte de fin de proyecto -->
+                                            <div id="end_data" style="display:none;">
+                                                <!--COMPANY REQUIRED-->
+                                                <div
+                                                    class="mb-0 py-2 col-12 s_website_form_field s_website_form_required s_website_form_model_required"
+                                                    data-type="char" data-name="Field">
+                                                    <div class="row s_col_no_resize s_col_no_bgcolor">
+                                                        <label
+                                                            class="col-form-label col-sm-auto s_website_form_label"
+                                                            style="width: 200px" for="contact">
+                                                            <span class="s_website_form_label_content">Proyecto
+                                                            </span>
+                                                            <span class="s_website_form_mark">*</span>
+                                                        </label>
+                                                        <div class="col-sm">
+                                                            <select id="company_id_end"
+                                                                    class="form-control s_website_form_input">
+                                                                <t t-foreach="companies" t-as="company">
+                                                                    <option t-att-value="company.id">
+                                                                        <t t-esc="company.name"/>
+                                                                    </option>
+                                                                </t>
+                                                            </select>
+                                                        </div>
                                                     </div>
                                                 </div>
-                                            </div>
-                                            <!--START DATE REQUIRED-->
-                                            <div
-                                                class="mb-0 py-2 col-12 s_website_form_field s_website_form_required s_website_form_model_required"
-                                                data-type="date" data-name="Field">
-                                                <div class="row s_col_no_resize s_col_no_bgcolor">
-                                                    <label
-                                                        class="col-form-label col-sm-auto s_website_form_label"
-                                                        style="width: 200px" for="contact">
-                                                        <span class="s_website_form_label_content">Start Date
-                                                        </span>
-                                                        <span class="s_website_form_mark">*</span>
-                                                    </label>
-                                                    <div class="col-sm">
-                                                        <input type="date" class="form-control" name="date_start"
-                                                               required="required"/>
+                                                <!--DATE REQUIRED-->
+                                                <div
+                                                    class="mb-0 py-2 col-12 s_website_form_field s_website_form_required s_website_form_model_required"
+                                                    data-type="date" data-name="Field">
+                                                    <div class="row s_col_no_resize s_col_no_bgcolor">
+                                                        <label
+                                                            class="col-form-label col-sm-auto s_website_form_label"
+                                                            style="width: 200px" for="contact">
+                                                            <span class="s_website_form_label_content">Fecha de fin
+                                                            </span>
+                                                            <span class="s_website_form_mark">*</span>
+                                                        </label>
+                                                        <div class="col-sm">
+                                                            <input id="project_end_date_end" type="date" class="form-control"/>
+                                                        </div>
                                                     </div>
                                                 </div>
-                                            </div>
-                                            <!--END DATE REQUIRED-->
-                                            <div
-                                                class="mb-0 py-2 col-12 s_website_form_field s_website_form_required s_website_form_model_required"
-                                                data-type="date" data-name="Field">
-                                                <div class="row s_col_no_resize s_col_no_bgcolor">
-                                                    <label
-                                                        class="col-form-label col-sm-auto s_website_form_label"
-                                                        style="width: 200px" for="contact">
-                                                        <span class="s_website_form_label_content">End Date
-                                                        </span>
-                                                        <span class="s_website_form_mark">*</span>
-                                                    </label>
-                                                    <div class="col-sm">
-                                                        <input type="date" class="form-control" name="date_end"
-                                                               required="required"/>
-                                                    </div>
-                                                </div>
-                                            </div>
-                                            <!--SIGNED CONTRACT REQUIRED-->
-                                            <div
-                                                class="mb-0 py-2 col-12 s_website_form_field s_website_form_required s_website_form_model_required"
-                                                data-type="binary" data-name="Field">
-                                                <div class="row s_col_no_resize s_col_no_bgcolor">
-                                                    <label
-                                                        class="col-form-label col-sm-auto s_website_form_label"
-                                                        style="width: 200px" for="contact">
-                                                        <span class="s_website_form_label_content">Signed
-                                                            Contract
-                                                        </span>
-                                                        <span class="s_website_form_mark">*</span>
-                                                    </label>
-                                                    <div class="col-sm">
-                                                        <input type="file" class="form-control"
-                                                               name="signed_contract"
-                                                               accept=".pdf,.doc,.docx"/>
-                                                    </div>
-                                                </div>
-                                            </div>
-                                            <!--BUDGET FILE REQUIRED-->
-                                            <div
-                                                class="mb-0 py-2 col-12 s_website_form_field s_website_form_required s_website_form_model_required"
-                                                data-type="binary" data-name="Field">
-                                                <div class="row s_col_no_resize s_col_no_bgcolor">
-                                                    <label
-                                                        class="col-form-label col-sm-auto s_website_form_label"
-                                                        style="width: 200px" for="contact">
-                                                        <span class="s_website_form_label_content">Budget
-                                                            File
-                                                        </span>
-                                                        <span class="s_website_form_mark">*</span>
-                                                    </label>
-                                                    <div class="col-sm">
-                                                        <input type="file" class="form-control"
-                                                               name="budget_file"
-                                                               accept=".pdf,.doc,.docx"/>
+                                                <!--CONCEPT REQUIRED-->
+                                                <div
+                                                    class="mb-0 py-2 col-12 s_website_form_field s_website_form_required s_website_form_model_required"
+                                                    data-type="char" data-name="Field">
+                                                    <div class="row s_col_no_resize s_col_no_bgcolor">
+                                                        <label
+                                                            class="col-form-label col-sm-auto s_website_form_label"
+                                                            style="width: 200px" for="contact">
+                                                            <span class="s_website_form_label_content">Concepto
+                                                            </span>
+                                                            <span class="s_website_form_mark">*</span>
+                                                        </label>
+                                                        <div class="col-sm">
+                                                            <textarea id="concept"
+                                                                      class="form-control s_website_form_input"
+                                                                      rows="4"/>
+                                                        </div>
                                                     </div>
                                                 </div>
                                             </div>
@@ -162,6 +251,71 @@
                                             </div>
                                         </div>
                                     </form>
+                                    <script>
+                                        const typeId = document.getElementById('type_id');
+                                        const div_new = document.getElementById('new_data');
+                                        const div_end = document.getElementById('end_data');
+                                        //Campos new
+                                        const company_id = document.getElementById('company_id');
+                                        const project_name = document.getElementById('project_name');
+                                        const start_date = document.getElementById('start_date');
+                                        const date_end = document.getElementById('end_date');
+                                        const signed_contract = document.getElementById('signed_contract');
+                                        const budget_file = document.getElementById('budget_file');
+                                        //Campos end
+                                        const company_id_end = document.getElementById('company_id_end');
+                                        const project_end_date_end = document.getElementById('project_end_date_end');
+                                        const concept = document.getElementById('concept');
+
+                                        typeId.addEventListener('change', function () {
+                                            if (typeId.value === 'new') {
+                                                div_new.style.display = 'block';
+                                                company_id.setAttribute('name', 'company_id') ;
+                                                company_id.setAttribute('required', '');
+                                                project_name.setAttribute('name', 'project_name') ;
+                                                project_name.setAttribute('required', ''); ;
+                                                start_date.setAttribute('name', 'date_start') ;
+                                                start_date.setAttribute('required', '');
+                                                date_end.setAttribute('name', 'date_end') ;
+                                                date_end.setAttribute('required', '');
+                                                signed_contract.setAttribute('name', 'signed_contract') ;
+                                                budget_file.setAttribute('name', 'budget_file')  ;
+
+                                                div_end.style.display = 'none';
+                                                company_id_end.removeAttribute('name') ;
+                                                company_id_end.removeAttribute('required') ;
+                                                project_end_date_end.removeAttribute('name') ;
+                                                project_end_date_end.removeAttribute('required') ;
+                                                concept.removeAttribute('name') ;
+                                                concept.removeAttribute('required') ;
+
+                                            } else {
+                                                div_new.style.display = 'none';
+                                                company_id.removeAttribute('name') ;
+                                                company_id.removeAttribute('required') ;
+                                                project_name.removeAttribute('name') ;
+                                                project_name.removeAttribute('required') ;
+                                                start_date.removeAttribute('name') ;
+                                                start_date.removeAttribute('required') ;
+                                                date_end.removeAttribute('name') ;
+                                                date_end.removeAttribute('required') ;
+                                                signed_contract.removeAttribute('name') ;
+                                                budget_file.removeAttribute('name') ;
+
+                                                div_end.style.display = 'block';
+                                                company_id_end.setAttribute('name', 'company_id_end') ;
+                                                company_id_end.setAttribute('required', '');
+                                                project_end_date_end.setAttribute('name', 'project_end_date') ;
+                                                project_end_date_end.setAttribute('required', '');
+                                                concept.setAttribute('name', 'concept') ;
+                                                concept.setAttribute('required', ''); ;
+
+                                            }
+                                        });
+
+
+
+                                    </script>
                                 </div>
                             </div>
                         </div>
@@ -176,6 +330,6 @@
         <field name="name">Project Request</field>
         <field name="url">/portal/project_request</field>
         <field name="parent_id" ref="website.main_menu"/>
-        <field name="sequence" type="int">100</field>
+        <field name="sequence" type="int">110</field>
     </record>
 </odoo>

@@ -9,7 +9,7 @@
                     <div class="o_we_bg_filter bg-black-50"/>
                     <div class="container">
                         <!--TÍTULO DE LA PÁGINA-->
-                        <h1>Purchase Order Request</h1>
+                        <h1>Solicitudes de Compras</h1>
                     </div>
                 </section>
                 <!--FORMULARIO-->
@@ -19,7 +19,7 @@
                         <div class="row">
                             <div class="col-lg-8 mt-4 mt-lg-0">
                                 <p>
-                                    Please fill out the form below to request a purchase order.
+                                    Por favor, complete el siguiente formulario para enviar una solicitud de compra.
                                 </p>
                                 <div class="container">
                                     <form action="/portal/purchase_order_request/submit" method="POST">
@@ -141,6 +141,6 @@
         <field name="name">Purchase Order Request</field>
         <field name="url">/portal/purchase_order_request</field>
         <field name="parent_id" ref="website.main_menu"/>
-        <field name="sequence" type="int">100</field>
+        <field name="sequence" type="int">150</field>
     </record>
 </odoo>

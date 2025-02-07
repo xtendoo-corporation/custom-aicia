@@ -10,6 +10,8 @@
                     <field name="company_id"/>
                     <field name="date_start"/>
                     <field name="date_end"/>
+                    <field name="type"/>
+                    <field name="concept"/>
                     <field name="approved"/>
                     <field name="is_revised"/>
                 </tree>
@@ -37,27 +39,38 @@
                                 type="object"
                                 class="btn-secondary"
                                 invisible="not is_revised or approved"/>
-
                     </header>
                     <sheet>
+                        <div class="oe_button_box" name="button_box">
+                            <button name="action_view_company" type="object" class="oe_stat_button" icon="fa-sharp fa-thin fa-building" invisible="not created_company_id">
+                                <field name="company_count" widget="statinfo" string="Proyecto"/>
+                            </button>
+                        </div>
                         <group>
                             <group>
                                 <field name="project_name"/>
                                 <field name="user_id"/>
                                 <field name="company_id"/>
+                                <field name="created_company_id" invisible="1"/>
                                 <field name="approved" invisible="1"/>
                                 <field name="is_revised" invisible="1"/>
                             </group>
                             <group>
                                 <field name="date_start"/>
                                 <field name="date_end"/>
+                                <field name="type" invisible="1"/>
                             </group>
                         </group>
-                        <group string="Attachments">
-                            <field name="signed_contract" filename="signed_contract_filename"/>
-                            <field name="budget_file" filename="budget_file_filename"/>
-                        </group>
+<!--                        <group string="Attachments" invisible="type == 'end'">-->
+<!--                            <field name="signed_contract" filename="signed_contract_filename"/>-->
+<!--                            <field name="budget_file" filename="budget_file_filename"/>-->
+<!--                        </group>-->
                     </sheet>
+                    <div class="oe_chatter">
+                        <field name="message_follower_ids"/>
+                        <field name="activity_ids"/>
+                        <field name="message_ids"/>
+                    </div>
                 </form>
             </field>
         </record>
@@ -81,16 +94,21 @@
             <field name="name">portal.project.request.search</field>
             <field name="model">portal.project.request</field>
             <field name="arch" type="xml">
-                <search string="Facturas">
+                <search string="Proyectos">
                     <field name="is_revised"/>
                     <filter string="Para revisar" name="approved_filter" domain="[('is_revised', '=', False)]"/>
                     <field name="approved"/>
                     <filter string="Aprobados" name="approved_filter" domain="[('approved', '=', True)]"/>
                     <field name="approved"/>
                     <filter string="Rechazados" name="rejected_filter" domain="[('approved', '=', False), ('is_revised', '=', True)]"/>
+                    <field name="type"/>
+                    <filter string="Nuevos Proyectos" name="new_filter" domain="[('type', '=', 'new')]"/>
+                    <field name="type"/>
+                    <filter string="Finalizar Proyectos" name="end_filter" domain="[('type', '=', 'end')]"/>
                 </search>
             </field>
         </record>
+
 
         <record id="action_portal_project_request_notapproved" model="ir.actions.act_window">
             <field name="name">Not approved</field>

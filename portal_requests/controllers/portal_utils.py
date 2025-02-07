@@ -4,6 +4,27 @@ import json
 
 class PortalUtils(http.Controller):
 
+    @route('/get_employee_by_company', type='http', auth='public', methods=['GET'], csrf=False)
+    def get_employee_by_company(self, **kwargs):
+        company_id = int(kwargs.get('company_id'))
+        employee_type = str(kwargs.get('employee_type'))
+        active = bool(int(kwargs.get('active')))
+        employees = request.env['hr.employee'].search([
+            ('active', '=', active),
+            ('employee_type', '=', employee_type),
+            ('company_id', '=', company_id),
+        ])
+        employees_json = {'employees': [{'id': employee.id, 'name': employee.name} for employee in employees]}
+        print("*"*100)
+        print("company_id", company_id)
+        print("employee_type", employee_type)
+        print("active", active)
+        print("employees", employees)
+        print("employees_json", employees_json)
+        print("*"*100)
+        return request.make_response(json.dumps({'partners': employees_json}),
+                                     headers={'Content-Type': 'application/json'})
+
     @route('/get_clients_by_company', type='http', auth='public', methods=['GET'], csrf=False)
     def get_clients_by_company(self, **kwargs):
         company_id = kwargs.get('company_id')
@@ -20,9 +41,6 @@ class PortalUtils(http.Controller):
             ('partner_id', '=', int(client_id)),
             ('state', '=', 'posted'),
         ])
-        print("*"*100)
-        print("invoices", invoices)
-        print("*"*100)
         invoices_json = {'invoices': [{'id': invoice.id, 'name': invoice.name} for invoice in invoices]}
         return request.make_response(json.dumps({'invoices': invoices_json}),
                                      headers={'Content-Type': 'application/json'})

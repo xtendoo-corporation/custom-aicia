@@ -1,9 +1,9 @@
 <odoo>
     <data>
         <!-- Tree View -->
-        <record id="view_portal_hr_employee_request_tree" model="ir.ui.view">
-            <field name="name">portal.hr.employee.request.tree</field>
-            <field name="model">portal.hr.employee.request</field>
+        <record id="view_portal_hr_employee_internrequest_tree" model="ir.ui.view">
+            <field name="name">portal.hr.employee.intern.request.tree</field>
+            <field name="model">portal.hr.employee.intern.request</field>
             <field name="arch" type="xml">
                 <tree>
                     <field name="name" string="Nombre"/>
@@ -21,9 +21,9 @@
         </record>
 
         <!-- Form View -->
-        <record id="view_portal_hr_employee_request_form" model="ir.ui.view">
-            <field name="name">portal.hr.employee.request.form</field>
-            <field name="model">portal.hr.employee.request</field>
+        <record id="view_portal_hr_employee_internrequest_form" model="ir.ui.view">
+            <field name="name">portal.hr.employee.intern.request.form</field>
+            <field name="model">portal.hr.employee.intern.request</field>
             <field name="arch" type="xml">
                 <form>
                     <header>
@@ -46,7 +46,7 @@
                     <sheet>
                         <div class="oe_button_box" name="button_box">
                             <button name="action_view_employee" type="object" class="oe_stat_button" icon="fa-solid fa-user" invisible="not employee_created">
-                                <field name="employee_count" widget="statinfo" string="Empleado"/>
+                                <field name="employee_count" widget="statinfo" string="Becario"/>
                             </button>
                         </div>
                         <group>
@@ -55,28 +55,28 @@
                                 <field name="company_id" string="Grupo de trabajo" readonly="1"/>
                                 <field name="employee_created" invisible="1"/>
 <!--                                <div invisible="type != 'new'">-->
-                                <!--Nuevo empleado -->
+                                <!--Nuevo becario -->
                                     <field name="identification_id" string="Identificación" invisible="type != 'new'"/>
                                     <field name="mobile_phone" String="Móvil" invisible="type != 'new'"/>
                                     <field name="ssnid" invisible="type != 'new'"/>
                                     <field name="work_email" string="Email de trabajo" invisible="type != 'new'"/>
-                                <!--Fin nuevo empleado -->
-                                <!-- Alta empleado -->
+                                <!--Fin nuevo becario -->
+                                <!-- Alta Becario -->
                                 <field name="alta_date" invisible="type != 'alta'"/>
-                                <!-- Fin alta empleado -->
+                                <!-- Fin alta becario -->
 
-                                <!-- Baja empleado -->
+                                <!-- Baja Becario -->
                                 <field name="baja_date" invisible="type != 'baja'"/>
                                 <field name="baja_reason_id" string="Motivo" invisible="type != 'baja'"/>
 
-                                <!-- Fin baja empleado -->
+                                <!-- Fin baja becario -->
 
                             </group>
                             <group>
                                 <field name="type" string="Tipo de solicitud" readonly="1"/>
                                 <field name="baja_description" invisible="type != 'baja'"/>
-                                <field name="is_revised" invisible="1"/>
-                                <field name="approved" invisible="1"/>
+                                <field name="is_revised" invisible="0"/>
+                                <field name="approved" invisible="0"/>
                                 <field name="salary" string="Salario" invisible="type != 'new'"/>
                                 <field name="number_of_pays" string="Número de pagos" invisible="type != 'new'"/>
                                 <field name="resource_calendar_id" invisible="type != 'new'"/>
@@ -115,9 +115,9 @@
             </field>
         </record>
 
-         <record id="view_portal_employee_request_search" model="ir.ui.view">
-            <field name="name">portal.employee.request.search</field>
-            <field name="model">portal.hr.employee.request</field>
+         <record id="view_portal_employee_internrequest_search" model="ir.ui.view">
+            <field name="name">portal.employee.intern.request.search</field>
+            <field name="model">portal.hr.employee.intern.request</field>
             <field name="arch" type="xml">
                 <search string="Empleados">
                     <field name="is_revised"/>
@@ -130,18 +130,18 @@
             </field>
         </record>
 
-         <record id="action_portal_employee_request_all" model="ir.actions.act_window">
-            <field name="name">Empleados</field>
-            <field name="res_model">portal.hr.employee.request</field>
+         <record id="action_portal_employee_internrequest_all" model="ir.actions.act_window">
+            <field name="name">Becarios</field>
+            <field name="res_model">portal.hr.employee.intern.request</field>
             <field name="view_mode">tree,form</field>
             <field name="context">{'group_by': 'company_id'}</field>
         </record>
 
-         <menuitem id="menu_portal_employee_request_all"
-                  name="Empleados"
+         <menuitem id="menu_portal_employee_internrequest_all"
+                  name="Becarios"
                   parent="portal_requests.portal_requests_menu"
                   action="action_portal_employee_request_all"
-                  sequence="50"/>
+                  sequence="60"/>
 
     </data>
 </odoo>

@@ -3,6 +3,7 @@ from odoo import models, fields, api, _
 class PortalInvoiceRequest(models.Model):
     _name = 'portal.invoice.request'
     _description = 'Portal Invoice Request'
+    _inherit = ['mail.thread', 'mail.activity.mixin']
 
     user_id = fields.Many2one('res.users', string='User', required=True)
     company_id = fields.Many2one('res.company', string='Company', required=True)
@@ -27,11 +28,25 @@ class PortalInvoiceRequest(models.Model):
 
     invoice_count = fields.Integer(default=1, string='Invoice Count')
 
+    def show_notificacion(self, title_char, text, type_char):
+        return {
+            'type': 'ir.actions.client',
+            'tag': 'display_notification',
+            'params': {
+                'type': type_char,
+                'message': text,
+                'title': title_char,
+                'next': {'type': 'ir.actions.client', 'tag': 'soft_reload'},
+            }
+        }
+
     def action_approve(self):
         for record in self:
             record.approved = True
             record.is_revised = True
             record.create_invoice()
+        return self.show_notificacion("¡Solicitud aprobada!", "La factura ha sido creada correctamente.", "success")
+
 
     def action_reject(self):
         for record in self:
@@ -105,7 +120,7 @@ class PortalInvoiceRequest(models.Model):
         else:
             action.update(
                 {
-                    "name": "Fctura",
+                    "name": "Factura",
                     "domain": [("id", "in", invoice_ids)],
                     "view_mode": "tree,form",
                 }
