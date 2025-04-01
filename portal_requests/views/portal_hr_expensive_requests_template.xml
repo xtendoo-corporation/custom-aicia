@@ -86,6 +86,7 @@
                                     </form>
                                     <!-- JavaScript para cerrar modales abiertos -->
                                     <script type="text/javascript">
+
                                         function fetchPartnersByCompany() {
                                         var companyId = document.getElementById("company_id").value;
 

@@ -38,6 +38,7 @@
         'views/interface/portal_invoice_request.xml',
         'views/interface/portal_employee_request.xml',
         'views/interface/portal_employee_intern_request.xml',
+        'security/dashboard_permision.xml',
     ],
     "installable": True,
     'application': False,

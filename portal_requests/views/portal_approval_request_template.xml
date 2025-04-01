@@ -25,6 +25,8 @@
                                 <div class="container">
                                     <form action="/portal/approval_request/submit" method="POST" enctype="multipart/form-data">
                                         <input type="hidden" name="csrf_token" t-att-value="request.csrf_token()"/>
+                                         <input type="hidden" name="company_id" t-att-value="request.env.user.company_id.id"/>
+                                         <input type="hidden" name="user_id" t-att-value="request.env.user.id"/>
                                         <div class="s_website_form_rows row s_col_no_bgcolor">
 
                                             <!-- TYPE REQUIRED -->
@@ -120,6 +122,12 @@
             </div>
         </t>
     </template>
+
+    <record id="portal_approval_menu" model="website.menu">
+        <field name="name">Solicitudes</field>
+        <field name="parent_id" ref="website.main_menu"/>
+        <field name="sequence" type="int">90</field>
+    </record>
 
     <record id="portal_hr_expensive_menu" model="website.menu">
         <field name="name">Approval Request</field>

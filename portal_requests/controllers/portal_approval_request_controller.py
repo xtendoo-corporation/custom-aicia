@@ -38,14 +38,14 @@ class PortalApprovalRequestController(Controller):
 
         # Crear un nuevo registro en `document.approval`
         new_document_approval = request.env['document.approval'].create({
-            'type_id': approval_type_record.id,  # Asignar el tipo de aprobación
-            'description': description,  # Asignar descripción
-            'approved': False,  # Inicialmente no aprobado
-            'group_approval_id': request.env.user.groups_id[0].id if request.env.user.groups_id else False,
-            # Asignar el grupo de aprobación si existe
+            'type_id': approval_type_record.id,
+            'description': description,
+            'company_id': request.env.user.company_id.id,
+            'user_id': request.env.user.id,
+
         })
 
-        # Procesar archivos adjuntos
+
         attachments = request.httprequest.files.getlist('file')
         for attachment in attachments:
             attachment_data = {

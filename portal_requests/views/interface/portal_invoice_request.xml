@@ -140,11 +140,13 @@
                   name="Facturas"
                   parent="portal_requests.portal_requests_menu"
                   action="action_portal_invoice_request_all_invoice"
+                  groups="portal_requests.group_partner_responsible"
                   sequence="30"/>
         <menuitem id="menu_portal_invoice_request_all_refundd"
                   name="Facturas rectificativas"
                   parent="portal_requests.portal_requests_menu"
                   action="action_portal_invoice_request_all_refund"
+                  groups="portal_requests.group_partner_responsible"
                   sequence="40"/>
 
 <!--        <menuitem id="menu_portal_invoice_request_toreview"-->

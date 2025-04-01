@@ -49,7 +49,7 @@
         <field name="name">Approved document</field>
         <field name="res_model">document.approval</field>
         <field name="view_mode">tree,form,kanban</field>
-        <field name="domain">[('approved', '=', True)]</field>
+        <field name="domain">[('approved', '=', True), ('company_id', '=', user.company_id.id)]</field>
         <field name="context">{'group_by': 'type_id'}</field>
     </record>
     <record id="action_to_approve" model="ir.actions.act_window">
@@ -68,10 +68,29 @@
     </record>
 
 <!--    <menuitem id="menu_type_approval_root" name="Type Approvals" sequence="10"/>-->
-    <menuitem id="menu_portal_document_request_all"
+    <menuitem id="menu_portal_document_request_all_manager"
                   name="Documentos"
                   parent="portal_requests.portal_requests_menu"
                   action="action_document_approval_all"
+                  groups="portal_requests.group_director_manager"
+                  sequence="10"/>
+        <menuitem id="menu_portal_document_request_all"
+                  name="Documentos"
+                  parent="portal_requests.portal_requests_menu"
+                  action="action_document_approval_all"
+                  groups="portal_requests.group_director_investigation_and_development"
+                  sequence="10"/>
+        <menuitem id="menu_portal_document_request_all_project_boss"
+                  name="Documentos"
+                  parent="portal_requests.portal_requests_menu"
+                  action="action_document_approval_all"
+                  groups="portal_requests.group_project_boss"
+                  sequence="10"/>
+        <menuitem id="menu_portal_document_request_all_financial_manager"
+                  name="Documentos"
+                  parent="portal_requests.portal_requests_menu"
+                  action="action_document_approval_all"
+                  groups="portal_requests.group_financial_director"
                   sequence="10"/>
 
 <!--    <menuitem id="menu_kanban_documents" name="Documents" parent="portal_requests.menu_portal_document_request"-->

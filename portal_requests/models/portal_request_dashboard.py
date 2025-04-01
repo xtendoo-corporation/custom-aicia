@@ -21,6 +21,12 @@ class PortalRequestDashboard(models.Model):
 
     # document_approval_ids = fields.One2many('document.approval', 'type_id', string='Document Approvals')
     image = fields.Binary(string='Image')
+
+    allowed_group_ids = fields.Many2many(
+        'res.groups',
+        string='Allowed Groups',
+        help="Only users in these groups can see this record."
+    )
     # To revise
     def open_new_action_to_revise(self):
         self.ensure_one()
@@ -39,14 +45,43 @@ class PortalRequestDashboard(models.Model):
             return self.open_to_revise_intern()
 
     def open_to_revise_document(self):
-        return {
-            'name': _('Documentos para revisar'),
-            'type': 'ir.actions.act_window',
-            'res_model': 'document.approval',
-            'view_mode': 'tree,form',
-            'domain': [('is_revised', '=', False)],
-            'context': {'group_by': 'type_id'},
-        }
+        if self.user_has_groups('portal_requests.group_director_investigation_and_development'):
+            return {
+                'name': _('Documentos para revisar'),
+                'type': 'ir.actions.act_window',
+                'res_model': 'document.approval',
+                'view_mode': 'tree,form',
+                'domain': [('status', '=', 'approved_by_director_i_d')],
+                'context': {'group_by': 'type_id'},
+            }
+        if self.user_has_groups('portal_requests.group_financial_director'):
+            return {
+                'name': _('Documentos para revisar'),
+                'type': 'ir.actions.act_window',
+                'res_model': 'document.approval',
+                'view_mode': 'tree,form',
+                'domain': [('status', '=', 'sign_director_accounting')],
+                'context': {'group_by': 'type_id'},
+            }
+        if self.user_has_groups('portal_requests.group_director_manager'):
+            return {
+                'name': _('Documentos para revisar'),
+                'type': 'ir.actions.act_window',
+                'res_model': 'document.approval',
+                'view_mode': 'tree,form',
+                'domain': [('status', '=','sign_company')],
+                'context': {'group_by': 'type_id'},
+            }
+        if self.user_has_groups('portal_requests.group_project_boss'):
+            return {
+                'name': _('Documentos para revisar'),
+                'type': 'ir.actions.act_window',
+                'res_model': 'document.approval',
+                'view_mode': 'tree,form',
+                'domain': [('status', 'not in',('approve', 'rejected')), ('company_id', '=', self.env.user.company_id.id)],
+                'context': {'group_by': 'type_id'},
+            }
+
     def open_to_revise_project(self):
         return {
             'name': _('Proyectos para revisar'),
@@ -118,7 +153,7 @@ class PortalRequestDashboard(models.Model):
             'type': 'ir.actions.act_window',
             'res_model': 'document.approval',
             'view_mode': 'tree,form',
-            'domain': [('approved', '=', True)],
+            'domain': [('status', '=', 'approve')],
             'context': {'group_by': 'type_id'},
         }
     def open_approved_project(self):
@@ -192,7 +227,7 @@ class PortalRequestDashboard(models.Model):
             'type': 'ir.actions.act_window',
             'res_model': 'document.approval',
             'view_mode': 'tree,form',
-            'domain': [('approved', '=', False), ('is_revised', '=', True)],
+            'domain': [('status', '=', 'rejected')],
             'context': {'group_by': 'type_id'},
         }
     def open_rejected_project(self):
@@ -263,14 +298,23 @@ class PortalRequestDashboard(models.Model):
                     record.count_to_revise = self.env['portal.invoice.request'].search_count(
                         [('is_revised', '=', False), ('move_type', '=', 'out_refund')])
             elif record.model == 'document.approval':
-                record.count_to_revise = self.env['document.approval'].search_count(
-                    [('is_revised', '=', False)])
+                record.count_to_revise =self._compute_count_to_revise_document()
             elif record.model == 'portal.hr.employee.request':
                 record.count_to_revise = self.env['portal.hr.employee.request'].search_count(
                     [('is_revised', '=', False)])
             elif record.model == 'portal.hr.employee.intern.request':
                 record.count_to_revise = self.env['portal.hr.employee.intern.request'].search_count(
                     [('is_revised', '=', False)])
+
+    def _compute_count_to_revise_document(self):
+        if self.user_has_groups('portal_requests.group_director_investigation_and_development'):
+            return self.env['document.approval'].search_count([('status', '=', 'approved_by_director_i_d')])
+        if self.user_has_groups('portal_requests.group_financial_director'):
+            return self.env['document.approval'].search_count([('status', '=', 'sign_director_accounting')])
+        if self.user_has_groups('portal_requests.group_director_manager'):
+            return self.env['document.approval'].search_count([('status', '=','sign_company')])
+        if self.user_has_groups('portal_requests.group_project_boss'):
+            return self.env['document.approval'].search_count([('status', 'not in',('approve', 'rejected'))])
 
     def _compute_approved_text(self):
         for record in self:
@@ -301,7 +345,7 @@ class PortalRequestDashboard(models.Model):
                         [('approved', '=', True), ('is_revised', '=', True), ('move_type', '=', 'out_refund')])
             elif record.model == 'document.approval':
                 record.count_approved = self.env['document.approval'].search_count(
-                    [('approved', '=', True), ('is_revised', '=', True)])
+                    [('status', '=', 'approve')])
             elif record.model == 'portal.hr.employee.request':
                 record.count_approved = self.env['portal.hr.employee.request'].search_count(
                     [('approved', '=', True), ('is_revised', '=', True)])
@@ -340,7 +384,7 @@ class PortalRequestDashboard(models.Model):
                         [('approved', '=', False), ('is_revised', '=', True), ('move_type', '=', 'out_refund')])
             elif record.model == 'document.approval':
                 record.count_unapproved = self.env['document.approval'].search_count(
-                    [('approved', '=', False), ('is_revised', '=', True)])
+                    [('status', '=', 'rejected')])
             elif record.model == 'portal.hr.employee.request':
                 record.count_unapproved = self.env['portal.hr.employee.request'].search_count(
                     [('approved', '=', False), ('is_revised', '=', True)])

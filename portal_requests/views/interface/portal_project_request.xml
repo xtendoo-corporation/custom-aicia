@@ -122,6 +122,7 @@
                   name="Proyectos"
                   parent="portal_requests.portal_requests_menu"
                   action="action_portal_project_request_all"
+                  groups="portal_requests.group_director_investigation_and_development"
                   sequence="20"/>
 
 <!--        <menuitem id="menu_portal_project_request_toreview"-->

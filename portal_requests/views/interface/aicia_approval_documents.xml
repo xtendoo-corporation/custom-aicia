@@ -7,9 +7,10 @@
             <tree>
                 <field name="type_id"/>
                 <field name="description"/>
-                <field name="approved"/>
-                <field name="group_approval_id" readonly="1"/>
-                <field name="is_revised"/>
+                <field name="status" />
+                <field name="company_id" invisible="0"/>
+                <field name="user_id" invisible="0"/>
+
 
             </tree>
         </field>
@@ -21,30 +22,76 @@
         <field name="arch" type="xml">
             <form>
                 <header>
+                    <field name="status" widget="statusbar"/>
+                    <!-- Botonera del I+D -->
                          <button name="action_approve"
-                                string="Approve"
+                                string="Aprobar"
                                 type="object"
                                 class="btn-primary"
-                                invisible="is_revised == True"/>
+                                 groups="portal_requests.group_director_investigation_and_development"
+                                 invisible="status not in ('approved_by_director_i_d')"
+                                />
                         <button name="action_reject"
-                                string="Reject"
+                                string="Rechazar"
                                 type="object"
                                 class="btn-secondary"
-                                invisible="is_revised == True"/>
-                        <button name="action_to_revise"
-                                string="Para Revisar"
+                                groups="portal_requests.group_director_investigation_and_development"
+                                invisible="status not in ('approved_by_director_i_d')"
+                                />
+                    <!-- Fin Botonera del I+D -->
+                    <!-- Botonera director financiero -->
+                    <button name="action_approve"
+                                string="Aprobar"
+                                type="object"
+                                class="btn-primary"
+                                 groups="portal_requests.group_financial_director"
+                                 invisible="status not in ('sign_director_accounting')"
+                                />
+                        <button name="action_reject"
+                                string="Rechazar"
                                 type="object"
                                 class="btn-secondary"
-                                invisible="not is_revised or approved"/>
+                                groups="portal_requests.group_financial_director"
+                                invisible="status not in ('sign_director_accounting')"
+                                />
+                    <!-- Fin Botonera director financiero -->
+                     <!-- Botonera del Director Gerente -->
+<!--                                <button name="request_partner_sign"-->
+<!--                                    string="Solicitar firma empresa"-->
+<!--                                    type="object"-->
+<!--                                    class="btn-primary"-->
+<!--                                     groups="portal_requests.group_director_manager"-->
+<!--                                        invisible="status not in ('sign_company')"-->
+<!--                                    />-->
+                                 <button name="action_approve"
+                                        string="Aprobar"
+                                        type="object"
+                                        class="btn-primary"
+                                         groups="portal_requests.group_director_manager"
+                                         invisible="status not in ('sign_company')"
+                                        />
+                                <button name="action_reject"
+                                        string="Rechazar"
+                                        type="object"
+                                        class="btn-secondary"
+                                        groups="portal_requests.group_director_manager"
+                                        invisible="status not in ('sign_company')"
+                                        />
+                                <button name="action_to_revise"
+                                        string="Para Revisar"
+                                        type="object"
+                                        class="btn-secondary"
+                                        groups="portal_requests.group_director_manager"
+                                        invisible="status not in ('rejected','approve')"
+                                        />
+                    <!-- Fin Botonera del Director Gerente -->
 
                     </header>
                 <sheet>
                     <group>
                         <field name="type_id"/>
                         <field name="description"/>
-                        <field name="approved" invisible="1"/>
-                        <field name="group_approval_id" readonly="1"/>
-                        <field name="is_revised" invisible="1"/>
+                        <field name="company_id" invisible="0"/>
                     </group>
                 </sheet>
                 <div class="oe_chatter">
@@ -61,12 +108,12 @@
             <field name="model">document.approval</field>
             <field name="arch" type="xml">
                 <search string="Facturas">
-                    <field name="is_revised"/>
-                    <filter string="Para revisar" name="approved_filter" domain="[('is_revised', '=', False)]"/>
-                    <field name="approved"/>
-                    <filter string="Aprobadas" name="approved_filter" domain="[('approved', '=', True)]"/>
-                    <field name="approved"/>
-                    <filter string="Rechazadas" name="rejected_filter" domain="[('approved', '=', False), ('is_revised', '=', True)]"/>
+                    <field name="status"/>
+                    <filter string="Aprobación Director I+D" name="approved_filter" domain="[('status', '=', 'approved_by_director_i_d')]"/>
+                    <filter string="Firma de director Financiero" name="approved_filter" domain="[('status', '=', 'sign_director_accounting')]"/>
+                    <filter string="Esperando firma de la empresa" name="approved_filter" domain="[('status', '=', 'sign_company')]"/>
+                    <filter string="Aprobadas" name="approved_filter" domain="[('status', '=', 'approve')]"/>
+                    <filter string="Rechazadas" name="rejected_filter" domain="[('status', '=', 'rejected')]"/>
                 </search>
             </field>
         </record>

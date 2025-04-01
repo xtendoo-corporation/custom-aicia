@@ -141,6 +141,7 @@
                   name="Empleados"
                   parent="portal_requests.portal_requests_menu"
                   action="action_portal_employee_request_all"
+                   groups="portal_requests.group_personnel_responsible"
                   sequence="50"/>
 
     </data>
