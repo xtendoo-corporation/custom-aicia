@@ -93,6 +93,12 @@
                         <field name="description"/>
                         <field name="company_id" invisible="0"/>
                     </group>
+                    <group>
+                        <group>
+                            <field name="financial_signature" widget="signature" readonly="1" groups="!portal_requests.group_financial_director"/>
+                            <field name="financial_signature" widget="signature" readonly="0" groups="portal_requests.group_financial_director"/>
+                        </group>
+                    </group>
                 </sheet>
                 <div class="oe_chatter">
                     <field name="message_follower_ids"/>

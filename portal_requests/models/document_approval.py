@@ -1,4 +1,9 @@
-from odoo import models, fields
+import base64
+import io
+from PyPDF2 import PdfReader, PdfWriter
+from reportlab.pdfgen import canvas
+from reportlab.lib.pagesizes import letter
+from odoo import models, fields, api
 from odoo.exceptions import UserError
 
 class DocumentApproval(models.Model):
@@ -17,15 +22,29 @@ class DocumentApproval(models.Model):
     company_id = fields.Many2one('res.company', string='Grupo de trabajo',tracking=True)
     user_id = fields.Many2one('res.users', string='Solicitante', tracking=True)
     status = fields.Selection([('approved_by_director_i_d', 'Aprobación del DIrector I+D'), ('sign_director_accounting', 'Firma del Director Financiero'), ('sign_company', 'Esperando firma de empresa'), ("approve", 'Aprobada'), ("rejected", 'Rechazada')], 'Estado', default='approved_by_director_i_d' ,tracking=True)
+    financial_signature = fields.Binary(string="Firma Director Financiero")
+
+
+    def write(self, vals):
+        res = super(DocumentApproval, self).write(vals)
+        if 'financial_signature' in vals:
+            for record in self:
+                record.message_post(
+                    body="La firma del director financiero ha sido actualizada.",
+                    message_type="comment",
+                    subtype_xmlid=False
+                )
+            return res
+        return super(DocumentApproval, self).write(vals)
 
     def _compute_name(self):
         for record in self:
             record.computed_name = f"{record.type_id.name} - {record.description}"
 
-    def request_partner_sign(self):
-        print("*"*100)
-        print("solicitar firmar cliente")
-        print("*"*100)
+    # def request_partner_sign(self):
+    #     print("*"*100)
+    #     print("solicitar firmar cliente")
+    #     print("*"*100)
 
     def action_approve(self):
         self.ensure_one()
@@ -37,6 +56,8 @@ class DocumentApproval(models.Model):
             ])
             self.send_request_email(self.type_id.name,user_to_send, "approved_by_director_i_d")
         if self.status == 'sign_director_accounting' and self.env.user.has_group("portal_requests.group_financial_director"):
+            if not self.financial_signature:
+                raise UserError("Por favor, suba la firma del director financiero.")
             print("Financiero aprueba")
             self.status = 'sign_company'
             user_to_send = self.env['res.users'].search([

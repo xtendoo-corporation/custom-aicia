@@ -6,11 +6,11 @@
             <field name="image" type="base64" file="portal_requests/static/description/document.png"/>
             <field name="model">document.approval</field>
              <field name="allowed_group_ids" eval="[
-        (4, ref('portal_requests.group_director_investigation_and_development')),
-        (4, ref('portal_requests.group_director_manager')),
-        (4, ref('portal_requests.group_project_boss')),
-        (4, ref('portal_requests.group_financial_director')),
-    ]"/>
+                (4, ref('portal_requests.group_director_investigation_and_development')),
+                (4, ref('portal_requests.group_director_manager')),
+                (4, ref('portal_requests.group_project_boss')),
+                (4, ref('portal_requests.group_financial_director')),
+            ]"/>
         </record>
         <record id="dashboard_projects" model="portal.request.dashboard">
             <field name="name">Proyectos</field>
