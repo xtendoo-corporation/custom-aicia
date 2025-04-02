@@ -28,104 +28,91 @@ class DocumentApproval(models.Model):
     status = fields.Selection([('approved_by_director_i_d', 'Aprobación del DIrector I+D'), ('sign_director_accounting', 'Firma del Director Financiero'), ('sign_company', 'Esperando firma de empresa'), ("approve", 'Aprobada'), ("rejected", 'Rechazada')], 'Estado', default='approved_by_director_i_d' ,tracking=True)
     financial_signature = fields.Binary(string="Firma Director Financiero")
 
-    import io
-    import base64
-    import os
-    from PyPDF2 import PdfFileReader, PdfFileWriter
-    from reportlab.pdfgen import canvas
-    from reportlab.lib.pagesizes import letter
-    from PIL import Image
-
     def add_signature_to_pdf(self):
         """ Abre el PDF, añade la firma y guarda el nuevo PDF en Odoo """
 
-        # Buscar los archivos adjuntos del documento actual
         attachment_ids = self.env['ir.attachment'].search([
             ('res_model', '=', 'document.approval'),
             ('res_id', '=', self.id)
-        ], limit=1)  # Solo tomamos el primer adjunto
+        ], limit=1)
 
         if not attachment_ids or not self.financial_signature:
             raise ValueError("Falta el PDF adjunto o la firma")
 
-        # Obtener el contenido del PDF adjunto
-        pdf_data = base64.b64decode(attachment_ids.datas)  # Decodificar de base64
-
-        # Usar pdfplumber para abrir el PDF y extraer el texto
+        pdf_data = base64.b64decode(attachment_ids.datas)
         with pdfplumber.open(io.BytesIO(pdf_data)) as pdf:
             text_content = ""
             for page in pdf.pages:
-                text_content += page.extract_text()  # Extraemos el texto de la página
+                text_content += page.extract_text()
 
-        # Estimamos la última línea del texto. Esto puede ser mejorado con una lógica más precisa si es necesario.
+
         lines = text_content.split("\n")
-        last_y_position = len(lines) * 12  # Aproximación del final del texto (ajustar según sea necesario)
+        last_y_position = len(lines) * 12
 
-        # Crear un lienzo para la firma
+
         packet = io.BytesIO()
         can = canvas.Canvas(packet, pagesize=letter)
 
-        # Decodificar la firma
+
         signature_data = base64.b64decode(self.financial_signature)
         signature_path = "/tmp/temp_signature.png"
 
-        # Guardar la firma como imagen temporal
+
         with open(signature_path, "wb") as f:
             f.write(signature_data)
 
-        # Usamos Pillow para crear una imagen con fondo blanco
+
         signature_image = Image.open(signature_path)
 
-        # Crear una nueva imagen con fondo blanco y tamaño igual al de la firma
-        width, height = signature_image.size
-        new_image = Image.new('RGBA', (width, height), (255, 255, 255, 255))  # Fondo blanco (RGBA)
-        new_image.paste(signature_image, (0, 0),
-                        signature_image.convert("RGBA").split()[3])  # Mantener transparencia si la firma tiene
 
-        # Guardar la nueva imagen con fondo blanco
+        width, height = signature_image.size
+        new_image = Image.new('RGBA', (width, height), (255, 255, 255, 255))
+        new_image.paste(signature_image, (0, 0),
+                        signature_image.convert("RGBA").split()[3])
+
+
         signature_with_background_path = "/tmp/temp_signature_with_background.png"
         new_image.save(signature_with_background_path)
 
-        # Insertar la firma en el PDF justo después del texto
-        can.drawImage(signature_with_background_path, 100, last_y_position + 10, width=200,
-                      height=100)  # Ajusta posición y tamaño
-        can.save()
 
-        # Fusionar la firma con el PDF original
+        can.drawImage(signature_with_background_path, 100, last_y_position + 10, width=200,
+                      height=100)
+
+
+        can.setFont("Helvetica", 12)
+        can.drawString(100, last_y_position - 5,
+                       "FDO.: Director Financiero")
+
+        can.save()
         packet.seek(0)
         signature_pdf = PdfFileReader(packet)
         pdf_reader = PdfFileReader(io.BytesIO(pdf_data))
         pdf_writer = PdfFileWriter()
 
-        # Copiar las páginas del PDF original
         for i in range(pdf_reader.getNumPages()):
             page = pdf_reader.getPage(i)
-            if i == 0:  # Solo añadimos la firma en la primera página
-                page.mergePage(signature_pdf.getPage(0))  # Fusionamos la firma en la página actual
+            if i == 0:
+                page.mergePage(signature_pdf.getPage(0))
             pdf_writer.addPage(page)
 
-        # Guardar el nuevo PDF con la firma
         output_pdf = io.BytesIO()
         pdf_writer.write(output_pdf)
         output_pdf.seek(0)
 
-        # Guardar en Odoo como un nuevo adjunto
         new_pdf_data = base64.b64encode(output_pdf.read()).decode('utf-8')  # Convertir a string para Odoo
         attachment_data = {
-            'name': f"firmado_{attachment_ids.name}",
+            'name': f"firmado_director_financiero_{attachment_ids.name}",
             'res_model': 'document.approval',
             'res_id': self.id,
-            'datas': new_pdf_data,  # No es necesario volver a codificar en base64
+            'datas': new_pdf_data,
             'type': 'binary',
         }
 
         signed_attachment = self.env['ir.attachment'].create(attachment_data)
-
-        # Eliminar archivo temporal de la firma
         os.remove(signature_path)
         os.remove(signature_with_background_path)
 
-        return signed_attachment  # Retornamos el nuevo adjunto creado
+        return signed_attachment
 
     def _compute_name(self):
         for record in self:
@@ -149,12 +136,12 @@ class DocumentApproval(models.Model):
             if not self.financial_signature:
                 raise UserError("Por favor, suba la firma del director financiero.")
             print("Financiero aprueba")
-            # self.status = 'sign_company'
+            self.status = 'sign_company'
             user_to_send = self.env['res.users'].search([
                 ('groups_id', 'in', self.env.ref('portal_requests.group_director_manager').id)
             ])
             self.add_signature_to_pdf()
-            # self.send_request_email(self.type_id.name,user_to_send, "sign_director_accounting")
+            self.send_request_email(self.type_id.name,user_to_send, "sign_director_accounting")
         if self.status == 'sign_company' and self.env.user.has_group("portal_requests.group_director_manager"):
             print("Director Gerente aprueba")
             self.status = 'approve'

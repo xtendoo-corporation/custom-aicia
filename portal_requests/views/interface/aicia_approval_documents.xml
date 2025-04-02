@@ -29,14 +29,14 @@
                                 type="object"
                                 class="btn-primary"
                                  groups="portal_requests.group_director_investigation_and_development"
-                                 invisible="status not in ('approved_by_director_i_d')"
+                                 invisible="status in ('sign_director_accounting','sign_company','approve', 'rejected')"
                                 />
                         <button name="action_reject"
                                 string="Rechazar"
                                 type="object"
                                 class="btn-secondary"
                                 groups="portal_requests.group_director_investigation_and_development"
-                                invisible="status not in ('approved_by_director_i_d')"
+                                invisible="status in ('sign_director_accounting','sign_company','approve', 'rejected')"
                                 />
                     <!-- Fin Botonera del I+D -->
                     <!-- Botonera director financiero -->
