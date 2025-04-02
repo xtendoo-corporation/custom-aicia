@@ -1,6 +1,7 @@
 import base64
 import io
 import os
+import pdfplumber
 
 from PyPDF2 import PdfFileReader, PdfFileWriter
 from reportlab.pdfgen import canvas
@@ -27,6 +28,14 @@ class DocumentApproval(models.Model):
     status = fields.Selection([('approved_by_director_i_d', 'Aprobación del DIrector I+D'), ('sign_director_accounting', 'Firma del Director Financiero'), ('sign_company', 'Esperando firma de empresa'), ("approve", 'Aprobada'), ("rejected", 'Rechazada')], 'Estado', default='approved_by_director_i_d' ,tracking=True)
     financial_signature = fields.Binary(string="Firma Director Financiero")
 
+    import io
+    import base64
+    import os
+    from PyPDF2 import PdfFileReader, PdfFileWriter
+    from reportlab.pdfgen import canvas
+    from reportlab.lib.pagesizes import letter
+    from PIL import Image
+
     def add_signature_to_pdf(self):
         """ Abre el PDF, añade la firma y guarda el nuevo PDF en Odoo """
 
@@ -41,16 +50,20 @@ class DocumentApproval(models.Model):
 
         # Obtener el contenido del PDF adjunto
         pdf_data = base64.b64decode(attachment_ids.datas)  # Decodificar de base64
-        pdf_reader = PdfFileReader(io.BytesIO(pdf_data))
-        pdf_writer = PdfFileWriter()
+
+        # Usar pdfplumber para abrir el PDF y extraer el texto
+        with pdfplumber.open(io.BytesIO(pdf_data)) as pdf:
+            text_content = ""
+            for page in pdf.pages:
+                text_content += page.extract_text()  # Extraemos el texto de la página
+
+        # Estimamos la última línea del texto. Esto puede ser mejorado con una lógica más precisa si es necesario.
+        lines = text_content.split("\n")
+        last_y_position = len(lines) * 12  # Aproximación del final del texto (ajustar según sea necesario)
 
         # Crear un lienzo para la firma
         packet = io.BytesIO()
-
-        # Inicializar el lienzo con un fondo blanco
         can = canvas.Canvas(packet, pagesize=letter)
-        can.setFillColorRGB(1, 1, 1)  # Fondo blanco
-        can.rect(0, 0, letter[0], letter[1], fill=1)  # Rellenar fondo con blanco
 
         # Decodificar la firma
         signature_data = base64.b64decode(self.financial_signature)
@@ -60,41 +73,38 @@ class DocumentApproval(models.Model):
         with open(signature_path, "wb") as f:
             f.write(signature_data)
 
-        # Cargar la imagen con la firma
+        # Usamos Pillow para crear una imagen con fondo blanco
         signature_image = Image.open(signature_path)
 
         # Crear una nueva imagen con fondo blanco y tamaño igual al de la firma
         width, height = signature_image.size
-        new_image = Image.new('RGB', (width, height), color=(255, 255, 255))  # Fondo blanco
-        new_image.paste(signature_image, (0, 0), signature_image)  # Insertar firma con fondo blanco
+        new_image = Image.new('RGBA', (width, height), (255, 255, 255, 255))  # Fondo blanco (RGBA)
+        new_image.paste(signature_image, (0, 0),
+                        signature_image.convert("RGBA").split()[3])  # Mantener transparencia si la firma tiene
 
         # Guardar la nueva imagen con fondo blanco
         signature_with_background_path = "/tmp/temp_signature_with_background.png"
         new_image.save(signature_with_background_path)
 
-        # Insertar la firma en el PDF (posición en coordenadas X, Y)
-        # Calculamos el espacio disponible en la página para colocar la firma justo al final
-        last_page = pdf_reader.getPage(pdf_reader.getNumPages() - 1)  # Última página del PDF
-        last_page_height = last_page.mediaBox.getHeight()
-
-        # Calculamos la posición Y de la firma en la página
-        signature_y_position = last_page_height - 150  # Ajusta la posición de la firma en Y (el valor 150 puede variar)
-
-        can.drawImage(signature_with_background_path, 100, signature_y_position, width=200,
+        # Insertar la firma en el PDF justo después del texto
+        can.drawImage(signature_with_background_path, 100, last_y_position + 10, width=200,
                       height=100)  # Ajusta posición y tamaño
         can.save()
 
         # Fusionar la firma con el PDF original
         packet.seek(0)
         signature_pdf = PdfFileReader(packet)
+        pdf_reader = PdfFileReader(io.BytesIO(pdf_data))
+        pdf_writer = PdfFileWriter()
 
+        # Copiar las páginas del PDF original
         for i in range(pdf_reader.getNumPages()):
             page = pdf_reader.getPage(i)
-            if i == pdf_reader.getNumPages() - 1:  # Solo firmamos la última página
-                page.mergePage(signature_pdf.getPage(0))
+            if i == 0:  # Solo añadimos la firma en la primera página
+                page.mergePage(signature_pdf.getPage(0))  # Fusionamos la firma en la página actual
             pdf_writer.addPage(page)
 
-        # Guardar el nuevo PDF
+        # Guardar el nuevo PDF con la firma
         output_pdf = io.BytesIO()
         pdf_writer.write(output_pdf)
         output_pdf.seek(0)
@@ -111,24 +121,11 @@ class DocumentApproval(models.Model):
 
         signed_attachment = self.env['ir.attachment'].create(attachment_data)
 
-        # Eliminar archivos temporales de la firma
+        # Eliminar archivo temporal de la firma
         os.remove(signature_path)
         os.remove(signature_with_background_path)
 
         return signed_attachment  # Retornamos el nuevo adjunto creado
-
-
-    def write(self, vals):
-        res = super(DocumentApproval, self).write(vals)
-        if 'financial_signature' in vals:
-            for record in self:
-                record.message_post(
-                    body="La firma del director financiero ha sido actualizada.",
-                    message_type="comment",
-                    subtype_xmlid=False
-                )
-            return res
-        return super(DocumentApproval, self).write(vals)
 
     def _compute_name(self):
         for record in self:
