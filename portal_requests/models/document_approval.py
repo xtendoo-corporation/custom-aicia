@@ -1,10 +1,13 @@
 import base64
 import io
-from PyPDF2 import PdfReader, PdfWriter
+import os
+
+from PyPDF2 import PdfFileReader, PdfFileWriter
 from reportlab.pdfgen import canvas
 from reportlab.lib.pagesizes import letter
 from odoo import models, fields, api
 from odoo.exceptions import UserError
+from PIL import Image
 
 class DocumentApproval(models.Model):
     _name = 'document.approval'
@@ -26,38 +29,70 @@ class DocumentApproval(models.Model):
 
     def add_signature_to_pdf(self):
         """ Abre el PDF, añade la firma y guarda el nuevo PDF en Odoo """
-        if not self.pdf_attachment_id or not self.signature:
+
+        # Buscar los archivos adjuntos del documento actual
+        attachment_ids = self.env['ir.attachment'].search([
+            ('res_model', '=', 'document.approval'),
+            ('res_id', '=', self.id)
+        ], limit=1)  # Solo tomamos el primer adjunto
+
+        if not attachment_ids or not self.financial_signature:
             raise ValueError("Falta el PDF adjunto o la firma")
 
-        # Obtener el PDF adjunto
-        pdf_data = base64.b64decode(self.pdf_attachment_id.datas)
-        pdf_reader = PdfReader(io.BytesIO(pdf_data))
-        pdf_writer = PdfWriter()
+        # Obtener el contenido del PDF adjunto
+        pdf_data = base64.b64decode(attachment_ids.datas)  # Decodificar de base64
+        pdf_reader = PdfFileReader(io.BytesIO(pdf_data))
+        pdf_writer = PdfFileWriter()
 
         # Crear un lienzo para la firma
         packet = io.BytesIO()
+
+        # Inicializar el lienzo con un fondo blanco
         can = canvas.Canvas(packet, pagesize=letter)
+        can.setFillColorRGB(1, 1, 1)  # Fondo blanco
+        can.rect(0, 0, letter[0], letter[1], fill=1)  # Rellenar fondo con blanco
 
         # Decodificar la firma
-        signature_data = base64.b64decode(self.signature)
+        signature_data = base64.b64decode(self.financial_signature)
         signature_path = "/tmp/temp_signature.png"
 
         # Guardar la firma como imagen temporal
         with open(signature_path, "wb") as f:
             f.write(signature_data)
 
+        # Cargar la imagen con la firma
+        signature_image = Image.open(signature_path)
+
+        # Crear una nueva imagen con fondo blanco y tamaño igual al de la firma
+        width, height = signature_image.size
+        new_image = Image.new('RGB', (width, height), color=(255, 255, 255))  # Fondo blanco
+        new_image.paste(signature_image, (0, 0), signature_image)  # Insertar firma con fondo blanco
+
+        # Guardar la nueva imagen con fondo blanco
+        signature_with_background_path = "/tmp/temp_signature_with_background.png"
+        new_image.save(signature_with_background_path)
+
         # Insertar la firma en el PDF (posición en coordenadas X, Y)
-        can.drawImage(signature_path, 100, 100, width=200, height=100)  # Ajusta posición y tamaño
+        # Calculamos el espacio disponible en la página para colocar la firma justo al final
+        last_page = pdf_reader.getPage(pdf_reader.getNumPages() - 1)  # Última página del PDF
+        last_page_height = last_page.mediaBox.getHeight()
+
+        # Calculamos la posición Y de la firma en la página
+        signature_y_position = last_page_height - 150  # Ajusta la posición de la firma en Y (el valor 150 puede variar)
+
+        can.drawImage(signature_with_background_path, 100, signature_y_position, width=200,
+                      height=100)  # Ajusta posición y tamaño
         can.save()
 
         # Fusionar la firma con el PDF original
         packet.seek(0)
-        signature_pdf = PdfReader(packet)
-        for i in range(len(pdf_reader.pages)):
-            page = pdf_reader.pages[i]
-            if i == 0:  # Solo firmamos la primera página
-                page.merge_page(signature_pdf.pages[0])
-            pdf_writer.add_page(page)
+        signature_pdf = PdfFileReader(packet)
+
+        for i in range(pdf_reader.getNumPages()):
+            page = pdf_reader.getPage(i)
+            if i == pdf_reader.getNumPages() - 1:  # Solo firmamos la última página
+                page.mergePage(signature_pdf.getPage(0))
+            pdf_writer.addPage(page)
 
         # Guardar el nuevo PDF
         output_pdf = io.BytesIO()
@@ -65,9 +100,22 @@ class DocumentApproval(models.Model):
         output_pdf.seek(0)
 
         # Guardar en Odoo como un nuevo adjunto
-        new_pdf_data = base64.b64encode(output_pdf.read())
-        self.signed_pdf = new_pdf_data
-        self.signed_pdf_filename = f"firmado_{self.pdf_attachment_id.name}"
+        new_pdf_data = base64.b64encode(output_pdf.read()).decode('utf-8')  # Convertir a string para Odoo
+        attachment_data = {
+            'name': f"firmado_{attachment_ids.name}",
+            'res_model': 'document.approval',
+            'res_id': self.id,
+            'datas': new_pdf_data,  # No es necesario volver a codificar en base64
+            'type': 'binary',
+        }
+
+        signed_attachment = self.env['ir.attachment'].create(attachment_data)
+
+        # Eliminar archivos temporales de la firma
+        os.remove(signature_path)
+        os.remove(signature_with_background_path)
+
+        return signed_attachment  # Retornamos el nuevo adjunto creado
 
 
     def write(self, vals):
@@ -104,12 +152,12 @@ class DocumentApproval(models.Model):
             if not self.financial_signature:
                 raise UserError("Por favor, suba la firma del director financiero.")
             print("Financiero aprueba")
-            self.status = 'sign_company'
+            # self.status = 'sign_company'
             user_to_send = self.env['res.users'].search([
                 ('groups_id', 'in', self.env.ref('portal_requests.group_director_manager').id)
             ])
             self.add_signature_to_pdf()
-            self.send_request_email(self.type_id.name,user_to_send, "sign_director_accounting")
+            # self.send_request_email(self.type_id.name,user_to_send, "sign_director_accounting")
         if self.status == 'sign_company' and self.env.user.has_group("portal_requests.group_director_manager"):
             print("Director Gerente aprueba")
             self.status = 'approve'
