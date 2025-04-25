@@ -9,7 +9,7 @@
                 (4, ref('portal_requests.group_director_investigation_and_development')),
                 (4, ref('portal_requests.group_director_manager')),
                 (4, ref('portal_requests.group_project_boss')),
-                (4, ref('portal_requests.group_financial_director')),
+                (4, ref('portal_requests.group_equip_boss')),
             ]"/>
         </record>
         <record id="dashboard_projects" model="portal.request.dashboard">

@@ -51,28 +51,28 @@ class PortalRequestDashboard(models.Model):
                 'type': 'ir.actions.act_window',
                 'res_model': 'document.approval',
                 'view_mode': 'tree,form',
-                'domain': [('status', '=', 'approved_by_director_i_d')],
+                'domain': [('status', 'in', ('approved_by_director_i_d','final_revision','sign_company'))],
                 'context': {'group_by': 'type_id'},
             }
-        if self.user_has_groups('portal_requests.group_financial_director'):
-            return {
-                'name': _('Documentos para revisar'),
-                'type': 'ir.actions.act_window',
-                'res_model': 'document.approval',
-                'view_mode': 'tree,form',
-                'domain': [('status', '=', 'sign_director_accounting')],
-                'context': {'group_by': 'type_id'},
-            }
+        # if self.user_has_groups('portal_requests.group_financial_director'):
+        #     return {
+        #         'name': _('Documentos para revisar'),
+        #         'type': 'ir.actions.act_window',
+        #         'res_model': 'document.approval',
+        #         'view_mode': 'tree,form',
+        #         'domain': [('status', '=', 'sign_director_accounting')],
+        #         'context': {'group_by': 'type_id'},
+        #     }
         if self.user_has_groups('portal_requests.group_director_manager'):
             return {
                 'name': _('Documentos para revisar'),
                 'type': 'ir.actions.act_window',
                 'res_model': 'document.approval',
                 'view_mode': 'tree,form',
-                'domain': [('status', '=','sign_company')],
+                'domain': [('status', '=','approved_by_director_gerente')],
                 'context': {'group_by': 'type_id'},
             }
-        if self.user_has_groups('portal_requests.group_project_boss'):
+        if self.user_has_groups('portal_requests.group_project_boss') or self.user_has_groups('portal_requests.group_equip_boss'):
             return {
                 'name': _('Documentos para revisar'),
                 'type': 'ir.actions.act_window',
@@ -308,12 +308,12 @@ class PortalRequestDashboard(models.Model):
 
     def _compute_count_to_revise_document(self):
         if self.user_has_groups('portal_requests.group_director_investigation_and_development'):
-            return self.env['document.approval'].search_count([('status', '=', 'approved_by_director_i_d')])
-        if self.user_has_groups('portal_requests.group_financial_director'):
-            return self.env['document.approval'].search_count([('status', '=', 'sign_director_accounting')])
+            return self.env['document.approval'].search_count([('status', 'in', ('approved_by_director_i_d','final_revision','sign_company'))])
+        # if self.user_has_groups('portal_requests.group_financial_director'):
+        #     return self.env['document.approval'].search_count([('status', '=', 'sign_director_accounting')])
         if self.user_has_groups('portal_requests.group_director_manager'):
-            return self.env['document.approval'].search_count([('status', '=','sign_company')])
-        if self.user_has_groups('portal_requests.group_project_boss'):
+            return self.env['document.approval'].search_count([('status', '=','approved_by_director_gerente')])
+        if self.user_has_groups('portal_requests.group_project_boss') or self.user_has_groups('portal_requests.group_equip_boss'):
             return self.env['document.approval'].search_count([('status', 'not in',('approve', 'rejected'))])
 
     def _compute_approved_text(self):

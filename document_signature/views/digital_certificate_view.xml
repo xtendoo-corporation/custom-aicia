@@ -1,0 +1,81 @@
+<?xml version="1.0" encoding="utf-8"?>
+<odoo>
+    <data>
+        <!-- Vista de formulario para certificados digitales -->
+        <record id="view_digital_certificate_form" model="ir.ui.view">
+            <field name="name">digital.certificate.form</field>
+            <field name="model">digital.certificate</field>
+            <field name="arch" type="xml">
+                <form string="Certificado Digital">
+                    <sheet>
+                        <group>
+                            <group>
+                                <field name="name"/>
+                                <field name="certificate_file" filename="certificate_filename"/>
+                                <field name="certificate_filename" invisible="1"/>
+                                <field name="password" password="true"/>
+                                <field name="user_id"/>
+                                <field name="active"/>
+                            </group>
+                            <group>
+                                <field name="subject"/>
+                                <field name="issuer"/>
+                                <field name="expiration_date"/>
+                            </group>
+                        </group>
+                    </sheet>
+                </form>
+            </field>
+        </record>
+
+        <!-- Vista de árbol para certificados digitales -->
+        <record id="view_digital_certificate_tree" model="ir.ui.view">
+            <field name="name">digital.certificate.tree</field>
+            <field name="model">digital.certificate</field>
+            <field name="arch" type="xml">
+                <tree string="Certificados Digitales">
+                    <field name="name"/>
+                    <field name="user_id"/>
+                    <field name="subject"/>
+                    <field name="expiration_date"/>
+                    <field name="active"/>
+                </tree>
+            </field>
+        </record>
+
+        <!-- Vista de búsqueda para certificados digitales -->
+        <record id="view_digital_certificate_search" model="ir.ui.view">
+            <field name="name">digital.certificate.search</field>
+            <field name="model">digital.certificate</field>
+            <field name="arch" type="xml">
+                <search string="Buscar Certificados">
+                    <field name="name"/>
+                    <field name="user_id"/>
+                    <field name="subject"/>
+                    <filter string="Mis Certificados" name="my_certificates" domain="[('user_id', '=', uid)]"/>
+                    <filter string="Activos" name="active" domain="[('active', '=', True)]"/>
+                    <filter string="Inactivos" name="inactive" domain="[('active', '=', False)]"/>
+                    <group expand="0" string="Agrupar Por">
+                        <filter name="group_by_user" string="Usuario" context="{'group_by': 'user_id'}"/>
+                    </group>
+                </search>
+            </field>
+        </record>
+
+        <!-- Acción de menú para certificados digitales -->
+        <record id="action_digital_certificate" model="ir.actions.act_window">
+            <field name="name">Certificados Digitales</field>
+            <field name="res_model">digital.certificate</field>
+            <field name="view_mode">tree,form</field>
+            <field name="search_view_id" ref="view_digital_certificate_search"/>
+            <field name="context">{'search_default_active': 1}</field>
+        </record>
+
+        <!-- Elemento de Menú para Certificados Digitales -->
+        <menuitem id="menu_digital_certificate"
+                  name="Certificados Digitales"
+                  action="action_digital_certificate"
+                  parent="menu_document_signature_root"
+                  sequence="20"/>
+    </data>
+</odoo>

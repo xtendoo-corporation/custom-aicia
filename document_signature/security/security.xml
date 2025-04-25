@@ -1,0 +1,50 @@
+<?xml version="1.0" encoding="utf-8"?>
+<odoo>
+    <data noupdate="0">
+        <!-- Categoría para los grupos de seguridad -->
+        <record id="module_category_document_signature" model="ir.module.category">
+            <field name="name">Firma Electrónica</field>
+            <field name="description">Categoría para el módulo de firma electrónica</field>
+            <field name="sequence">20</field>
+        </record>
+
+        <!-- Grupo para usuarios que pueden firmar documentos -->
+        <record id="group_document_signature_user" model="res.groups">
+            <field name="name">Usuario</field>
+            <field name="category_id" ref="module_category_document_signature"/>
+            <field name="implied_ids" eval="[(4, ref('base.group_user'))]"/>
+        </record>
+
+        <!-- Grupo para administradores que pueden configurar el módulo -->
+        <record id="group_document_signature_manager" model="res.groups">
+            <field name="name">Administrador</field>
+            <field name="category_id" ref="module_category_document_signature"/>
+            <field name="implied_ids" eval="[(4, ref('group_document_signature_user'))]"/>
+            <field name="users" eval="[(4, ref('base.user_admin'))]"/>
+        </record>
+
+        <!-- Regla de registro: los certificados son visibles solo para su propietario o administradores -->
+        <record id="rule_certificate_personal" model="ir.rule">
+            <field name="name">Certificados personales</field>
+            <field name="model_id" ref="model_digital_certificate"/>
+            <field name="domain_force">[('user_id','=',user.id)]</field>
+            <field name="groups" eval="[(4, ref('group_document_signature_user'))]"/>
+            <field name="perm_read" eval="True"/>
+            <field name="perm_write" eval="True"/>
+            <field name="perm_create" eval="True"/>
+            <field name="perm_unlink" eval="True"/>
+        </record>
+
+        <!-- Regla de registro: los administradores pueden ver todos los certificados -->
+        <record id="rule_certificate_manager" model="ir.rule">
+            <field name="name">Certificados - administrador</field>
+            <field name="model_id" ref="model_digital_certificate"/>
+            <field name="domain_force">[(1,'=',1)]</field>
+            <field name="groups" eval="[(4, ref('group_document_signature_manager'))]"/>
+            <field name="perm_read" eval="True"/>
+            <field name="perm_write" eval="True"/>
+            <field name="perm_create" eval="True"/>
+            <field name="perm_unlink" eval="True"/>
+        </record>
+    </data>
+</odoo>

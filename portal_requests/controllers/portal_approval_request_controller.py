@@ -14,6 +14,7 @@ class PortalApprovalRequestController(Controller):
         # Obtener los datos del formulario
         approval_type = post.get('approval_type')
         description = post.get('description')
+        is_company_signed = post.get('company_signed')
         user_id = request.env.user.id
 
         if approval_type == "sign_nda":
@@ -42,6 +43,7 @@ class PortalApprovalRequestController(Controller):
             'description': description,
             'company_id': request.env.user.company_id.id,
             'user_id': request.env.user.id,
+            'is_company_signed': is_company_signed,
 
         })
 

@@ -25,8 +25,9 @@ class DocumentApproval(models.Model):
     # is_revised = fields.Boolean(string='Está revisado', default=False, store=True, tracking=True)
     company_id = fields.Many2one('res.company', string='Grupo de trabajo',tracking=True)
     user_id = fields.Many2one('res.users', string='Solicitante', tracking=True)
-    status = fields.Selection([('approved_by_director_i_d', 'Aprobación del DIrector I+D'), ('sign_director_accounting', 'Firma del Director Financiero'), ('sign_company', 'Esperando firma de empresa'), ("approve", 'Aprobada'), ("rejected", 'Rechazada')], 'Estado', default='approved_by_director_i_d' ,tracking=True)
-    financial_signature = fields.Binary(string="Firma Director Financiero")
+    status = fields.Selection([('approved_by_director_i_d', 'Aprobación del DIrector I+D'), ('approved_by_director_gerente', 'Aprobación del DIrector Gerente'), ('sign_company', 'Esperando firma de empresa'),('final_revision','Revisión final'), ("approve", 'Aprobada'), ("rejected", 'Rechazada')], 'Estado', default='approved_by_director_i_d' ,tracking=True)
+    financial_signature = fields.Binary(string="Firma Director Gerente")
+    is_company_signed = fields.Boolean(string='Firmado por la empresa', default=False, tracking=True)
 
     def add_signature_to_pdf(self):
         """ Abre el PDF, añade la firma y guarda el nuevo PDF en Odoo """
@@ -81,7 +82,7 @@ class DocumentApproval(models.Model):
 
         can.setFont("Helvetica", 12)
         can.drawString(100, last_y_position - 5,
-                       "FDO.: Director Financiero")
+                       "FDO.: Director Gerente")
 
         can.save()
         packet.seek(0)
@@ -123,29 +124,52 @@ class DocumentApproval(models.Model):
     #     print("solicitar firmar cliente")
     #     print("*"*100)
 
+
+    def action_solicite_final_revision(self):
+        self.ensure_one()
+        if self.status == 'sign_company' and self.env.user.has_group("portal_requests.group_equip_boss"):
+            print("Solicitante solicita revisión final")
+            self.status = 'final_revision'
+            self.is_company_signed = True
+            user_to_send = self.env['res.users'].search([
+                ('groups_id', 'in', self.env.ref('portal_requests.group_director_investigation_and_development').id)
+            ])
+            self.send_request_email(self.type_id.name,user_to_send, "final_revision")
+
     def action_approve(self):
         self.ensure_one()
         if self.status == 'approved_by_director_i_d' and self.env.user.has_group("portal_requests.group_director_investigation_and_development"):
             print("Director I+D aprueba")
-            self.status = 'sign_director_accounting'
-            user_to_send = self.env['res.users'].search([
-                ('groups_id', 'in', self.env.ref('portal_requests.group_financial_director').id)
-            ])
-            self.send_request_email(self.type_id.name,user_to_send, "approved_by_director_i_d")
-        if self.status == 'sign_director_accounting' and self.env.user.has_group("portal_requests.group_financial_director"):
-            if not self.financial_signature:
-                raise UserError("Por favor, suba la firma del director financiero.")
-            print("Financiero aprueba")
-            self.status = 'sign_company'
+            self.status = 'approved_by_director_gerente'
             user_to_send = self.env['res.users'].search([
                 ('groups_id', 'in', self.env.ref('portal_requests.group_director_manager').id)
             ])
+            self.send_request_email(self.type_id.name,user_to_send, "approved_by_director_i_d")
+        if self.status == 'approved_by_director_gerente' and self.env.user.has_group("portal_requests.group_director_manager"):
+            if not self.financial_signature:
+                raise UserError("Por favor, añada la firma del director gerente.")
+            print("Gerente aprueba")
+
             self.add_signature_to_pdf()
-            self.send_request_email(self.type_id.name,user_to_send, "sign_director_accounting")
-        if self.status == 'sign_company' and self.env.user.has_group("portal_requests.group_director_manager"):
-            print("Director Gerente aprueba")
-            self.status = 'approve'
-            self.send_request_email(self.type_id.name,self.user_id, "sign_company")
+            if self.is_company_signed:
+                user_to_send = self.env['res.users'].search([
+                    ('groups_id', 'in', self.env.ref('portal_requests.group_director_investigation_and_development').id)
+                ])
+                print("esta ya firmado por la empresa")
+                self.status = 'final_revision'
+                self.send_request_email(self.type_id.name, user_to_send, "final_revision")
+
+            else:
+                print("no esta firmado")
+                user_to_send = self.user_id
+                self.status = 'sign_company'
+                # self.add_signature_to_pdf()
+                self.send_request_email(self.type_id.name, user_to_send, "sign_director_manager")
+            # self.send_request_email(self.type_id.name,user_to_send, "sign_director_accounting")
+        # if self.status == 'sign_company' and self.env.user.has_group("portal_requests.group_director_manager"):
+        #     print("Director Gerente aprueba")
+        #     self.status = 'approve'
+        #     self.send_request_email(self.type_id.name,self.user_id, "sign_company")
 
     def action_reject(self):
         for record in self:
@@ -185,12 +209,13 @@ class DocumentApproval(models.Model):
                        </ul>
                        <p>Saludos cordiales, Odoo</p>
                    """
-            elif type=="sign_director_accounting":
-                print("sign_director_accounting")
+            elif type=="sign_director_manager":
+                print("sign_director_manager")
                 admin_name = admin_user.name
                 body_html = f"""
                                       <p>Estimado/a {admin_name},</p>
-                                      <p>El Director Financiero,{user_for_send}, ya ha firmado la siguiente solicitud:</p>
+                                      <p>El Director Gerente,{user_for_send}, ya ha firmado la siguiente solicitud:</p>
+                                      <p>Es necesario que la empresa firme el documento para continuar con el proceso.</p>
                                       <ul>
                                           <li><strong>Solicitante:</strong> {user.name}</li>
                                           <li><strong>Tipo:</strong> {move_text}</li>
@@ -203,7 +228,7 @@ class DocumentApproval(models.Model):
                 admin_name = admin_user.name
                 body_html = f"""
                                       <p>Estimado/a {admin_name},</p>
-                                      <p>El Director Gerente,{user_for_send}, ha aprobado su solicitud:</p>
+                                      <p>El jefe de equipo,{user_for_send}, ha añadido la firma de la empresa a la solicitud:</p>
                                       <ul>
                                           <li><strong>Solicitante:</strong> {user.name}</li>
                                           <li><strong>Tipo:</strong> {move_text}</li>

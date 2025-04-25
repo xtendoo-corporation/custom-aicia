@@ -9,6 +9,7 @@
                 <field name="description"/>
                 <field name="status" />
                 <field name="company_id" invisible="0"/>
+                <field name="is_company_signed"/>
                 <field name="user_id" invisible="0"/>
 
 
@@ -29,31 +30,40 @@
                                 type="object"
                                 class="btn-primary"
                                  groups="portal_requests.group_director_investigation_and_development"
-                                 invisible="status in ('sign_director_accounting','sign_company','approve', 'rejected')"
+                                 invisible="status in ('approved_by_director_gerente','sign_company','approve', 'rejected')"
                                 />
                         <button name="action_reject"
                                 string="Rechazar"
                                 type="object"
                                 class="btn-secondary"
                                 groups="portal_requests.group_director_investigation_and_development"
-                                invisible="status in ('sign_director_accounting','sign_company','approve', 'rejected')"
+                                invisible="status in ('approved_by_director_gerente','sign_company','approve', 'rejected')"
                                 />
                     <!-- Fin Botonera del I+D -->
-                    <!-- Botonera director financiero -->
-                    <button name="action_approve"
-                                string="Aprobar"
-                                type="object"
-                                class="btn-primary"
-                                 groups="portal_requests.group_financial_director"
-                                 invisible="status not in ('sign_director_accounting')"
-                                />
-                        <button name="action_reject"
-                                string="Rechazar"
+                    <!-- Botonera De solicitante -->
+                    <button name="action_solicite_final_revision"
+                                string="Solicitar revision final"
                                 type="object"
                                 class="btn-secondary"
-                                groups="portal_requests.group_financial_director"
-                                invisible="status not in ('sign_director_accounting')"
+                                groups="portal_requests.group_equip_boss"
+                                invisible="status in ('sign_company')"
                                 />
+                    <!-- Fin botonera de solicitante -->
+                    <!-- Botonera director financiero -->
+<!--                    <button name="action_approve"-->
+<!--                                string="Aprobar"-->
+<!--                                type="object"-->
+<!--                                class="btn-primary"-->
+<!--                                 groups="portal_requests.group_financial_director"-->
+<!--                                 invisible="status not in ('sign_director_accounting')"-->
+<!--                                />-->
+<!--                        <button name="action_reject"-->
+<!--                                string="Rechazar"-->
+<!--                                type="object"-->
+<!--                                class="btn-secondary"-->
+<!--                                groups="portal_requests.group_financial_director"-->
+<!--                                invisible="status not in ('sign_director_accounting')"-->
+<!--                                />-->
                     <!-- Fin Botonera director financiero -->
                      <!-- Botonera del Director Gerente -->
 <!--                                <button name="request_partner_sign"-->
@@ -68,14 +78,14 @@
                                         type="object"
                                         class="btn-primary"
                                          groups="portal_requests.group_director_manager"
-                                         invisible="status not in ('sign_company')"
+                                         invisible="status not in ('approved_by_director_gerente')"
                                         />
                                 <button name="action_reject"
                                         string="Rechazar"
                                         type="object"
                                         class="btn-secondary"
                                         groups="portal_requests.group_director_manager"
-                                        invisible="status not in ('sign_company')"
+                                        invisible="status not in ('approved_by_director_gerente')"
                                         />
                                 <button name="action_to_revise"
                                         string="Para Revisar"
@@ -89,14 +99,15 @@
                     </header>
                 <sheet>
                     <group>
-                        <field name="type_id"/>
-                        <field name="description"/>
-                        <field name="company_id" invisible="0"/>
+                        <field name="type_id" readonly="1"/>
+                        <field name="description" readonly="1"/>
+                        <field name="company_id" invisible="0" />
+                        <field name="is_company_signed" readonly="1"/>
                     </group>
                     <group>
                         <group>
-                            <field name="financial_signature" widget="signature" readonly="1" groups="!portal_requests.group_financial_director"/>
-                            <field name="financial_signature" widget="signature" readonly="0" groups="portal_requests.group_financial_director"/>
+                            <field name="financial_signature" widget="signature" readonly="1" groups="!portal_requests.group_director_manager"/>
+                            <field name="financial_signature" widget="signature" readonly="0" groups="portal_requests.group_director_manager"/>
                         </group>
                     </group>
                 </sheet>

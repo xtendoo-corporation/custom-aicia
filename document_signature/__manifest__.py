@@ -1,0 +1,25 @@
+{
+    'name': 'Firma Electrónica de Documentos',
+    'version': '1.0',
+    'category': 'Document Management',
+    'summary': 'Firma electrónica de documentos con certificados digitales',
+    'author': 'Tu Empresa',
+    'website': 'https://www.tuempresa.com',
+    'depends': ['base', 'mail'],
+    'data': [
+        'security/security.xml',
+        'security/ir.model.access.csv',
+        'views/menu.xml',
+        'views/digital_certificate_view.xml',
+        'views/document_signature_view.xml',
+        'wizards/sign_document_wizard_view.xml',
+    ],
+    'external_dependencies': {
+        'python': ['endesive', 'cryptography', 'pyOpenSSL'],
+    },
+    'installable': True,
+    'application': True,
+    'auto_install': False,
+    'images': ['static/description/banner.png'],
+    'license': 'LGPL-3',
+}
