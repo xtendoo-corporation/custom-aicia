@@ -94,6 +94,11 @@
                                         groups="portal_requests.group_director_manager"
                                         invisible="status not in ('rejected','approve')"
                                         />
+                        <button string="Firmar PDF adjunto"
+                    name="action_sign_attached_pdf"
+                    type="object"
+                    class="oe_highlight"
+                    />
                     <!-- Fin Botonera del Director Gerente -->
 
                     </header>

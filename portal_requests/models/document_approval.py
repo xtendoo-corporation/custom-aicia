@@ -6,9 +6,14 @@ import pdfplumber
 from PyPDF2 import PdfFileReader, PdfFileWriter
 from reportlab.pdfgen import canvas
 from reportlab.lib.pagesizes import letter
-from odoo import models, fields, api
+from odoo import models, fields, api, _
 from odoo.exceptions import UserError
 from PIL import Image
+import tempfile
+from contextlib import closing
+import logging
+
+_logger = logging.getLogger(__name__)
 
 class DocumentApproval(models.Model):
     _name = 'document.approval'
@@ -28,6 +33,79 @@ class DocumentApproval(models.Model):
     status = fields.Selection([('approved_by_director_i_d', 'Aprobación del DIrector I+D'), ('approved_by_director_gerente', 'Aprobación del DIrector Gerente'), ('sign_company', 'Esperando firma de empresa'),('final_revision','Revisión final'), ("approve", 'Aprobada'), ("rejected", 'Rechazada')], 'Estado', default='approved_by_director_i_d' ,tracking=True)
     financial_signature = fields.Binary(string="Firma Director Gerente")
     is_company_signed = fields.Boolean(string='Firmado por la empresa', default=False, tracking=True)
+
+    def action_sign_attached_pdf(self):
+        """Firmar PDF adjunto al documento de aprobación"""
+        self.ensure_one()
+
+        # Buscar adjuntos de tipo PDF para este documento
+        attachment = self.env['ir.attachment'].search([
+            ('res_model', '=', self._name),
+            ('res_id', '=', self.id),
+            ('mimetype', '=', 'application/pdf')
+        ], limit=1)
+
+        if not attachment:
+            raise UserError(_("No hay documentos PDF adjuntos para firmar."))
+
+        # Buscar un certificado adecuado
+        report_obj = self.env['ir.actions.report']
+        certificate = self.env['report.certificate'].search([
+            ('company_id', '=', self.env.company.id),
+            ('model_id.model', '=', self._name),
+        ], limit=1)
+
+        if not certificate:
+            raise UserError(_("No se encontró un certificado válido para este tipo de documento."))
+
+        # Obtener el contenido del PDF
+        pdf_content = base64.b64decode(attachment.datas)
+
+        # Crear PDF temporal
+        pdf_fd, pdf_path = tempfile.mkstemp(suffix=".pdf", prefix="approval.tmp.")
+        with closing(os.fdopen(pdf_fd, "wb")) as pf:
+            pf.write(pdf_content)
+
+        # Firmar el PDF usando el método existente
+        signed_path = report_obj.pdf_sign(pdf_path, certificate)
+
+        # Leer el PDF firmado
+        signed_content = False
+        if os.path.exists(signed_path):
+            with open(signed_path, "rb") as pf:
+                signed_content = pf.read()
+
+        # Limpiar archivos temporales
+        for fname in (pdf_path, signed_path):
+            try:
+                os.unlink(fname)
+            except OSError:
+                _logger.error("Error al eliminar archivo temporal %s", fname)
+
+        if signed_content:
+            # Crear nombre para el archivo firmado
+            signed_name = f"{attachment.name.rsplit('.', 1)[0]}_firmado.pdf"
+
+            # Crear nuevo adjunto con el PDF firmado
+            self.env['ir.attachment'].create({
+                'name': signed_name,
+                'datas': base64.b64encode(signed_content),
+                'res_model': self._name,
+                'res_id': self.id,
+                'mimetype': 'application/pdf',
+                'description': f"Versión firmada de {attachment.name}"
+            })
+
+            return {
+                'type': 'ir.actions.client',
+                'tag': 'display_notification',
+                'params': {
+                    'title': _("Éxito"),
+                    'message': _("Documento firmado correctamente"),
+                    'sticky': False,
+                    'type': 'success',
+                }
+            }
 
     def add_signature_to_pdf(self):
         """ Abre el PDF, añade la firma y guarda el nuevo PDF en Odoo """
