@@ -46,7 +46,7 @@
                                 type="object"
                                 class="btn-secondary"
                                 groups="portal_requests.group_equip_boss"
-                                invisible="status in ('sign_company')"
+                                invisible="status not in ('sign_company')"
                                 />
                     <!-- Fin botonera de solicitante -->
                     <!-- Botonera director financiero -->
@@ -94,10 +94,12 @@
                                         groups="portal_requests.group_director_manager"
                                         invisible="status not in ('rejected','approve')"
                                         />
-                        <button name="pdf_signer"
-        string="Firmar PDF"
-        type="object"
-        class="oe_highlight"/>
+                                <button name="pdf_signer"
+                                        string="Firma digital"
+                                        type="object"
+                                        class="oe_highlight"
+                                        groups="portal_requests.group_director_manager"
+                                        invisible="status != 'approved_by_director_gerente' or is_digital_signed == True"/>
                     <!-- Fin Botonera del Director Gerente -->
 
                     </header>
@@ -107,6 +109,8 @@
                         <field name="description" readonly="1"/>
                         <field name="company_id" invisible="0" />
                         <field name="is_company_signed" readonly="1"/>
+                        <field name="is_digital_signed" invisble="1"/>
+                        <field name="attachment_check" invisible="1"/>
                     </group>
                     <group>
                         <group>

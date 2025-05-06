@@ -12,6 +12,8 @@ from PIL import Image
 import tempfile
 from contextlib import closing
 import logging
+import os
+os.environ['_JAVA_OPTIONS'] = '-Xmx256m -Xms128m'
 
 _logger = logging.getLogger(__name__)
 
@@ -33,6 +35,58 @@ class DocumentApproval(models.Model):
     status = fields.Selection([('approved_by_director_i_d', 'Aprobación del DIrector I+D'), ('approved_by_director_gerente', 'Aprobación del DIrector Gerente'), ('sign_company', 'Esperando firma de empresa'),('final_revision','Revisión final'), ("approve", 'Aprobada'), ("rejected", 'Rechazada')], 'Estado', default='approved_by_director_i_d' ,tracking=True)
     financial_signature = fields.Binary(string="Firma Director Gerente")
     is_company_signed = fields.Boolean(string='Firmado por la empresa', default=False, tracking=True)
+    attachment_check = fields.Integer(
+        compute='_compute_attachment_check',
+        store=False
+    )
+
+    @api.depends()
+    def _compute_attachment_check(self):
+        for record in self:
+            attachments = self.env['ir.attachment'].search_count([
+                ('res_model', '=', 'document.approval'),
+                ('res_id', '=', record.id),
+                ('name', 'ilike', '%_firmado%')
+            ])
+            record.attachment_check = attachments
+
+    # Modifica el campo is_digital_signed para que dependa del campo auxiliar
+    is_digital_signed = fields.Boolean(
+        string='Firmado digitalmente',
+        compute='_compute_is_digital_signed',
+        tracking=True,
+        store=False
+    )
+
+    @api.depends('attachment_check')
+    def _compute_is_digital_signed(self):
+        for record in self:
+            if record.attachment_check > 0:
+                record.is_digital_signed = True
+            else:
+                record.is_digital_signed = False
+                if not record.financial_signature  and not record.is_company_signed:
+                    # Verificar si ya existe un mensaje similar en el historial
+                    mensaje_existe = False
+                    for mensaje in record.message_ids:
+                        if "El documento firmado digitalmente ha sido eliminado por" in mensaje.body:
+                            mensaje_existe = True
+                            break
+
+                    # Solo enviar el mensaje si no existe uno similar
+                    if not mensaje_existe:
+                        record.sudo().message_post(
+                            body=_(
+                                "El documento firmado digitalmente ha sido eliminado por %s") % self.env.user.name,
+                            subtype_id=record.env.ref('mail.mt_note').id
+                        )
+
+
+                    # self.sudo().message_post(
+                    #     body=_("El documento firmado ha sido eliminado por %s") % self.env.user.name,
+                    #     subtype_id=self.env.ref('mail.mt_note').id,
+                    # )
+
 
     def pdf_signer(self):
         #buscamos el adjunto para firmar
@@ -45,20 +99,14 @@ class DocumentApproval(models.Model):
         certificate = self.env['report.certificate'].search([
             ('company_id', '=', user.company_id.id),
             ('model_id.model', '=', 'document.approval'),
+            ('user_ids', 'in', user.id),
         ], limit=1)
         if not certificate:
             raise UserError("No se encontró un certificado para firmar el documento.")
         #verificamos que el adjunto existe
         if not attachment_ids:
             raise UserError("Falta el PDF adjunto o la firma")
-        print("*"*100)
-        print("attachment_ids", attachment_ids)
-        print("certificate", certificate)
-        #pdf_signed = self.env['ir.actions.report'].pdf_sign(attachment_ids, certificate)
-        #print("pdf_signed", pdf_signed)
         pdf_fd, pdf_path = tempfile.mkstemp(suffix=".pdf", prefix="document.tmp.")
-        print("pdf",pdf_fd)
-        print("path",pdf_path)
         pdf_signed_path= ""
         try:
             # Obtenemos el contenido del PDF del attachment y lo escribimos en el archivo temporal
@@ -73,13 +121,21 @@ class DocumentApproval(models.Model):
                 signed_content = signed_file.read()
 
             # Creamos un nuevo adjunto con el PDF firmado
-            self.env['ir.attachment'].create({
-                'name': f"firmado_{attachment_ids.name}",
+            attachment_create = self.env['ir.attachment'].create({
+                'name': f"{attachment_ids.name}_firmado",
                 'res_model': 'document.approval',
                 'res_id': self.id,
                 'datas': base64.b64encode(signed_content),
                 'type': 'binary',
             })
+            # Actualizamos el estado del documento
+            self.is_digital_signed = True
+            # Registramos en el chatter que el documento ha sido firmado digitalmente
+            self.sudo().message_post(
+                body=_("El documento ha sido firmado digitalmente por %s") % self.env.user.name,
+                subtype_id=self.env.ref('mail.mt_note').id,  # Usar subtipo 'nota' que no envía correos
+                attachment_ids=[attachment_create.id]
+            )
 
         finally:
             # Limpieza de archivos temporales
@@ -94,11 +150,24 @@ class DocumentApproval(models.Model):
 
     def add_signature_to_pdf(self):
         """ Abre el PDF, añade la firma y guarda el nuevo PDF en Odoo """
+        if not self.financial_signature:
+            return False
 
         attachment_ids = self.env['ir.attachment'].search([
             ('res_model', '=', 'document.approval'),
-            ('res_id', '=', self.id)
+            ('res_id', '=', self.id),
+            ('name', 'ilike', '%_firmado%')
         ], limit=1)
+        attachment_count = self.env['ir.attachment'].search_count([
+            ('res_model', '=', 'document.approval'),
+            ('res_id', '=', self.id),
+            ('name', 'ilike', '%_firmado%')
+        ], limit=1)
+        if attachment_count == 0:
+            attachment_ids = self.env['ir.attachment'].search([
+                ('res_model', '=', 'document.approval'),
+                ('res_id', '=', self.id)
+            ], limit=1)
 
         if not attachment_ids:
             raise ValueError("Falta el PDF adjunto o la firma")
@@ -165,7 +234,7 @@ class DocumentApproval(models.Model):
 
         new_pdf_data = base64.b64encode(output_pdf.read()).decode('utf-8')  # Convertir a string para Odoo
         attachment_data = {
-            'name': f"firmado_director_financiero_{attachment_ids.name}",
+            'name': f"firmado_director_gerente_{attachment_ids.name}",
             'res_model': 'document.approval',
             'res_id': self.id,
             'datas': new_pdf_data,
@@ -209,11 +278,11 @@ class DocumentApproval(models.Model):
             ])
             self.send_request_email(self.type_id.name,user_to_send, "approved_by_director_i_d")
         if self.status == 'approved_by_director_gerente' and self.env.user.has_group("portal_requests.group_director_manager"):
-            if not self.financial_signature:
-                raise UserError("Por favor, añada la firma del director gerente.")
+            if not self.financial_signature and self.is_digital_signed == False:
+                raise UserError("Por favor, añada la firma del director gerente o firme mediante el certificado digital.")
             print("Gerente aprueba")
-
-            self.add_signature_to_pdf()
+            if self.financial_signature:
+                self.add_signature_to_pdf()
             if self.is_company_signed:
                 user_to_send = self.env['res.users'].search([
                     ('groups_id', 'in', self.env.ref('portal_requests.group_director_investigation_and_development').id)
@@ -233,6 +302,13 @@ class DocumentApproval(models.Model):
         #     print("Director Gerente aprueba")
         #     self.status = 'approve'
         #     self.send_request_email(self.type_id.name,self.user_id, "sign_company")
+        if self.status == 'final_revision' and self.env.user.has_group("portal_requests.group_director_investigation_and_development"):
+            print("Jefe de equipo aprueba")
+            self.status = 'approve'
+            user_to_send = self.env['res.users'].search([
+                ('groups_id', 'in', self.env.ref('portal_requests.group_equip_boss').id)
+            ])
+            self.send_request_email(self.type_id.name,user_to_send, "final_revision")
 
     def action_reject(self):
         for record in self:
