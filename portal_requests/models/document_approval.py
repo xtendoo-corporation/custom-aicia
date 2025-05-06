@@ -34,166 +34,63 @@ class DocumentApproval(models.Model):
     financial_signature = fields.Binary(string="Firma Director Gerente")
     is_company_signed = fields.Boolean(string='Firmado por la empresa', default=False, tracking=True)
 
-    def action_sign_attached_pdf(self):
-        """Firmar PDF adjunto al documento de aprobación usando Java directamente"""
-        self.ensure_one()
-
-        # Importar subprocess
-        import subprocess
-
-        # 1. Buscar adjuntos de tipo PDF para este documento
-        attachment = self.env['ir.attachment'].search([
-            ('res_model', '=', self._name),
-            ('res_id', '=', self.id),
-            ('mimetype', '=', 'application/pdf')
+    def pdf_signer(self):
+        #buscamos el adjunto para firmar
+        attachment_ids = self.env['ir.attachment'].search([
+            ('res_model', '=', 'document.approval'),
+            ('res_id', '=', self.id)
         ], limit=1)
-
-        if not attachment:
-            raise UserError(_("No hay documentos PDF adjuntos para firmar."))
-
-        # 2. Buscar un certificado adecuado
+        #buscamos el certificado usando el usario logueado
+        user = self.env.user
         certificate = self.env['report.certificate'].search([
-            ('company_id', '=', self.env.company.id),
-            ('model_id.model', '=', self._name),
+            ('company_id', '=', user.company_id.id),
+            ('model_id.model', '=', 'document.approval'),
         ], limit=1)
-
         if not certificate:
-            certificate = self.env['report.certificate'].search([
-                ('company_id', '=', self.env.company.id),
-            ], limit=1)
-
-        if not certificate:
-            raise UserError(_("No se encontró un certificado válido para este tipo de documento."))
-
-        # 3. Obtener contenido PDF y crear archivos temporales
-        pdf_content = base64.b64decode(attachment.datas)
-        pdf_fd, pdf_path = tempfile.mkstemp(suffix=".pdf", prefix="approval.tmp.")
-
-        # Crear nombre para archivo firmado
-        fd, signed_path = tempfile.mkstemp(suffix=".pdf", prefix="approval.signed.")
-        os.close(fd)
-
+            raise UserError("No se encontró un certificado para firmar el documento.")
+        #verificamos que el adjunto existe
+        if not attachment_ids:
+            raise UserError("Falta el PDF adjunto o la firma")
+        print("*"*100)
+        print("attachment_ids", attachment_ids)
+        print("certificate", certificate)
+        #pdf_signed = self.env['ir.actions.report'].pdf_sign(attachment_ids, certificate)
+        #print("pdf_signed", pdf_signed)
+        pdf_fd, pdf_path = tempfile.mkstemp(suffix=".pdf", prefix="document.tmp.")
+        print("pdf",pdf_fd)
+        print("path",pdf_path)
+        pdf_signed_path= ""
         try:
-            with closing(os.fdopen(pdf_fd, "wb")) as pf:
-                pf.write(pdf_content)
+            # Obtenemos el contenido del PDF del attachment y lo escribimos en el archivo temporal
+            with closing(os.fdopen(pdf_fd, "wb")) as pdf_file:
+                pdf_file.write(base64.b64decode(attachment_ids.datas))
 
-            # 4. Firma directamente con Java (sin modificar métodos)
-            report_obj = self.env['ir.actions.report']
+            # Firmamos el PDF
+            pdf_signed_path = self.env['ir.actions.report'].pdf_sign(pdf_path, certificate)
 
-            # Buscar ubicación de Java
-            java_path = None
-            java_paths = ["java", "/usr/bin/java", "/usr/lib/jvm/default-java/bin/java", "/etc/alternatives/java"]
+            # Leemos el PDF firmado
+            with open(pdf_signed_path, "rb") as signed_file:
+                signed_content = signed_file.read()
 
-            for path in java_paths:
-                try:
-                    if "/" in path:
-                        if os.path.exists(path) and os.access(path, os.X_OK):
-                            java_path = path
-                            _logger.info(f"Usando Java en: {java_path}")
-                            break
-                    else:
-                        result = subprocess.call(["which", path], stdout=subprocess.PIPE, stderr=subprocess.PIPE)
-                        if result == 0:
-                            java_path = path
-                            _logger.info(f"Usando Java en PATH: {java_path}")
-                            break
-                except Exception as e:
-                    _logger.debug(f"Error al verificar {path}: {e}")
-
-            if not java_path:
-                raise UserError(_("No se pudo encontrar Java en el sistema. Compruebe su instalación."))
-
-            # Obtener ruta del JAR
-            if not hasattr(report_obj, '_get_jar_path'):
-                raise UserError(_("El módulo de firma PDF no está correctamente instalado."))
-
-            jar_path = report_obj._get_jar_path()
-
-            # Construir comando para firma
-            command = [
-                java_path,
-                "-jar", jar_path,
-                "--keystore-file", certificate.certificate,
-                "--keystore-password", certificate.password,
-                "--keystore-type", "pkcs12",
-                "-o", signed_path
-            ]
-
-            # Añadir parámetros adicionales según la configuración
-            if hasattr(certificate, 'java_params') and certificate.java_params:
-                for param in certificate.java_params.split():
-                    command += param.split('=')
-
-            command += [pdf_path]
-
-            _logger.info("Ejecutando comando: %s", ' '.join(command))
-
-            env = os.environ.copy()
-            env["LC_ALL"] = "C.UTF-8"
-            env["LANG"] = "C.UTF-8"
-
-            process = subprocess.Popen(
-                command, stdout=subprocess.PIPE, stderr=subprocess.PIPE, env=env
-            )
-            stdout, stderr = process.communicate()
-
-            if process.returncode != 0:
-                _logger.error("Error en jPdfSign (código: %s). Mensaje: %s. Salida: %s",
-                              process.returncode, stderr, stdout)
-                raise UserError(
-                    _("Informe de firma (PDF): jPdfSign falló (código: %s). "
-                      "Mensaje: %s. Salida: %s")
-                    % (process.returncode, stderr, stdout)
-                )
-
-            # 5. Verificar y procesar el documento firmado
-            if not os.path.exists(signed_path):
-                raise UserError(_("No se pudo generar el PDF firmado."))
-
-            with open(signed_path, "rb") as pf:
-                signed_content = pf.read()
-
-            # 6. Crear nuevo adjunto firmado
-            signed_name = f"{attachment.name.rsplit('.', 1)[0]}_firmado.pdf"
+            # Creamos un nuevo adjunto con el PDF firmado
             self.env['ir.attachment'].create({
-                'name': signed_name,
-                'datas': base64.b64encode(signed_content),
-                'res_model': self._name,
+                'name': f"firmado_{attachment_ids.name}",
+                'res_model': 'document.approval',
                 'res_id': self.id,
-                'mimetype': 'application/pdf',
-                'description': f"Versión firmada de {attachment.name}"
+                'datas': base64.b64encode(signed_content),
+                'type': 'binary',
             })
 
-            # 7. Marcar como firmado
-            self.is_company_signed = True
-
-            return {
-                'type': 'ir.actions.client',
-                'tag': 'display_notification',
-                'params': {
-                    'title': _("Éxito"),
-                    'message': _("Documento firmado correctamente"),
-                    'type': 'success',
-                }
-            }
-
-        except Exception as e:
-            _logger.exception("Error durante la firma del PDF")
-            raise UserError(_("Error al firmar el documento: %s") % str(e))
-
         finally:
-            # Limpiar archivos temporales
-            if os.path.exists(pdf_path):
+            # Limpieza de archivos temporales
+            for fname in [pdf_path, pdf_signed_path]:
                 try:
-                    os.unlink(pdf_path)
-                except Exception as e:
-                    _logger.warning(f"No se pudo eliminar el archivo temporal {pdf_path}: {e}")
+                    if os.path.exists(fname):
+                        os.unlink(fname)
+                except OSError:
+                    _logger.error("Error al intentar eliminar el archivo %s", fname)
 
-            if signed_path and os.path.exists(signed_path):
-                try:
-                    os.unlink(signed_path)
-                except Exception as e:
-                    _logger.warning(f"No se pudo eliminar el archivo firmado temporal {signed_path}: {e}")
+        return True
 
     def add_signature_to_pdf(self):
         """ Abre el PDF, añade la firma y guarda el nuevo PDF en Odoo """
@@ -203,7 +100,7 @@ class DocumentApproval(models.Model):
             ('res_id', '=', self.id)
         ], limit=1)
 
-        if not attachment_ids or not self.financial_signature:
+        if not attachment_ids:
             raise ValueError("Falta el PDF adjunto o la firma")
 
         pdf_data = base64.b64decode(attachment_ids.datas)

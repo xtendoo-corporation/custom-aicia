@@ -9,3 +9,5 @@ from . import portal_purchase_order_requests_model
 from . import type_approval
 from . import document_approval
 from . import portal_request_dashboard
+from . import res_users
+from . import report_certificate
