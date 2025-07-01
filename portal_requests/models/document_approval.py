@@ -65,21 +65,27 @@ class DocumentApproval(models.Model):
                 record.is_digital_signed = True
             else:
                 record.is_digital_signed = False
-                if not record.financial_signature  and not record.is_company_signed:
-                    # Verificar si ya existe un mensaje similar en el historial
-                    mensaje_existe = False
-                    for mensaje in record.message_ids:
-                        if "El documento firmado digitalmente ha sido eliminado por" in mensaje.body:
-                            mensaje_existe = True
-                            break
-
-                    # Solo enviar el mensaje si no existe uno similar
-                    if not mensaje_existe:
-                        record.sudo().message_post(
-                            body=_(
-                                "El documento firmado digitalmente ha sido eliminado por %s") % self.env.user.name,
-                            subtype_id=record.env.ref('mail.mt_note').id
+                if not record.financial_signature and not record.is_company_signed:
+                    # Verificar si el valor de attachment_check era mayor a 0 antes de ser 0
+                    previous_attachment_count = self.env['ir.attachment'].search_count([
+                        ('res_model', '=', 'document.approval'),
+                        ('res_id', '=', record.id),
+                        ('name', 'ilike', '%_firmado%')
+                    ])
+                    if previous_attachment_count > 0:
+                        # Verificar si ya existe un mensaje similar en el historial
+                        mensaje_existe = any(
+                            "El documento firmado digitalmente ha sido eliminado por" in mensaje.body
+                            for mensaje in record.message_ids
                         )
+
+                        # Solo enviar el mensaje si no existe uno similar
+                        if not mensaje_existe:
+                            record.sudo().message_post(
+                                body=_(
+                                    "El documento firmado digitalmente ha sido eliminado por %s") % self.env.user.name,
+                                subtype_id=record.env.ref('mail.mt_note').id
+                            )
 
 
                     # self.sudo().message_post(
@@ -149,90 +155,66 @@ class DocumentApproval(models.Model):
         return True
 
     def add_signature_to_pdf(self):
-        """ Abre el PDF, añade la firma y guarda el nuevo PDF en Odoo """
+        """ Añade la firma con fondo blanco solo en la última página del PDF y guarda el nuevo PDF en Odoo """
         if not self.financial_signature:
             return False
 
+        # Buscar el adjunto
         attachment_ids = self.env['ir.attachment'].search([
             ('res_model', '=', 'document.approval'),
-            ('res_id', '=', self.id),
-            ('name', 'ilike', '%_firmado%')
+            ('res_id', '=', self.id)
         ], limit=1)
-        attachment_count = self.env['ir.attachment'].search_count([
-            ('res_model', '=', 'document.approval'),
-            ('res_id', '=', self.id),
-            ('name', 'ilike', '%_firmado%')
-        ], limit=1)
-        if attachment_count == 0:
-            attachment_ids = self.env['ir.attachment'].search([
-                ('res_model', '=', 'document.approval'),
-                ('res_id', '=', self.id)
-            ], limit=1)
 
         if not attachment_ids:
             raise ValueError("Falta el PDF adjunto o la firma")
 
+        # Decodificar el PDF
         pdf_data = base64.b64decode(attachment_ids.datas)
-        with pdfplumber.open(io.BytesIO(pdf_data)) as pdf:
-            text_content = ""
-            for page in pdf.pages:
-                text_content += page.extract_text()
-
-
-        lines = text_content.split("\n")
-        last_y_position = len(lines) * 12
-
-
-        packet = io.BytesIO()
-        can = canvas.Canvas(packet, pagesize=letter)
-
-
-        signature_data = base64.b64decode(self.financial_signature)
-        signature_path = "/tmp/temp_signature.png"
-
-
-        with open(signature_path, "wb") as f:
-            f.write(signature_data)
-
-
-        signature_image = Image.open(signature_path)
-
-
-        width, height = signature_image.size
-        new_image = Image.new('RGBA', (width, height), (255, 255, 255, 255))
-        new_image.paste(signature_image, (0, 0),
-                        signature_image.convert("RGBA").split()[3])
-
-
-        signature_with_background_path = "/tmp/temp_signature_with_background.png"
-        new_image.save(signature_with_background_path)
-
-
-        can.drawImage(signature_with_background_path, 100, last_y_position + 10, width=200,
-                      height=100)
-
-
-        can.setFont("Helvetica", 12)
-        can.drawString(100, last_y_position - 5,
-                       "FDO.: Director Gerente")
-
-        can.save()
-        packet.seek(0)
-        signature_pdf = PdfFileReader(packet)
         pdf_reader = PdfFileReader(io.BytesIO(pdf_data))
         pdf_writer = PdfFileWriter()
 
+        # Procesar la firma para añadir fondo blanco
+        signature_data = base64.b64decode(self.financial_signature)
+        signature_path = "/tmp/temp_signature.png"
+        with open(signature_path, "wb") as f:
+            f.write(signature_data)
+
+        signature_image = Image.open(signature_path)
+        width, height = signature_image.size
+        new_image = Image.new('RGBA', (width, height), (255, 255, 255, 255))  # Fondo blanco
+        new_image.paste(signature_image, (0, 0), signature_image.convert("RGBA").split()[3])
+        signature_with_background_path = "/tmp/temp_signature_with_background.png"
+        new_image.save(signature_with_background_path)
+
+        # Añadir la firma solo en la última página
+        last_page_index = pdf_reader.getNumPages() - 1
         for i in range(pdf_reader.getNumPages()):
             page = pdf_reader.getPage(i)
-            if i == 0:
+
+            if i == last_page_index:
+                # Crear un lienzo para la última página
+                packet = io.BytesIO()
+                can = canvas.Canvas(packet, pagesize=letter)
+
+                # Dibujar la firma en una posición fija (ajustar según sea necesario)
+                can.drawImage(signature_with_background_path, 100, 100, width=200, height=100)
+                can.setFont("Helvetica", 12)
+                can.drawString(100, 90, "FDO.: Director Gerente")
+                can.save()
+
+                # Combinar la firma con la última página
+                packet.seek(0)
+                signature_pdf = PdfFileReader(packet)
                 page.mergePage(signature_pdf.getPage(0))
+
             pdf_writer.addPage(page)
 
+        # Guardar el PDF firmado
         output_pdf = io.BytesIO()
         pdf_writer.write(output_pdf)
         output_pdf.seek(0)
 
-        new_pdf_data = base64.b64encode(output_pdf.read()).decode('utf-8')  # Convertir a string para Odoo
+        new_pdf_data = base64.b64encode(output_pdf.read()).decode('utf-8')
         attachment_data = {
             'name': f"firmado_director_gerente_{attachment_ids.name}",
             'res_model': 'document.approval',
@@ -242,10 +224,13 @@ class DocumentApproval(models.Model):
         }
 
         signed_attachment = self.env['ir.attachment'].create(attachment_data)
+
+        # Eliminar archivos temporales
         os.remove(signature_path)
         os.remove(signature_with_background_path)
 
         return signed_attachment
+
 
     def _compute_name(self):
         for record in self:
