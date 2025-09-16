@@ -29,6 +29,10 @@ class DocumentSignature(models.Model):
     ], string='Estado', default='draft', tracking=True)
     signature_location = fields.Char('Ubicación', default='Madrid')
     signature_reason = fields.Char('Razón de la firma', default='Documento aprobado')
+    signature_pages = fields.Selection([
+        ('last', 'Solo en la última página'),
+        ('all', 'En todas las páginas')
+    ], string='Firmar en', default='last', required=True, help='Elija si la firma debe aplicarse solo en la última página o en todas las páginas del PDF.')
 
     @api.depends('document_filename', 'state')
     def _compute_name(self):
@@ -47,21 +51,21 @@ class DocumentSignature(models.Model):
             raise UserError("Se requiere un certificado digital para firmar")
 
         try:
-            # Obtener certificado y clave privada
             cert_data = base64.b64decode(self.certificate_id.certificate_file)
             password = self.certificate_id.password
-
-            # Guardar documento temporal
             pdf_data = base64.b64decode(self.document_to_sign)
             fd, temp_pdf_path = tempfile.mkstemp(suffix='.pdf')
             os.write(fd, pdf_data)
             os.close(fd)
 
-            # Preparar información de firma
+            from PyPDF2 import PdfFileReader, PdfFileWriter
+            pdf_reader = PdfFileReader(open(temp_pdf_path, 'rb'))
+            num_pages = pdf_reader.getNumPages()
+            signed_pdf_writer = PdfFileWriter()
+
             date = datetime.utcnow()
-            dct = {
+            dct_base = {
                 'sigflags': 3,
-                'sigpage': 0,
                 'sigbutton': True,
                 'contact': self.user_id.email or '',
                 'location': self.signature_location,
@@ -69,16 +73,42 @@ class DocumentSignature(models.Model):
                 'signingdate': date.strftime("%Y%m%d%H%M%S+00'00'"),
             }
 
-            # Firmar el PDF
-            datau = open(temp_pdf_path, 'rb').read()
-            datas = endesive.pdf.cms.sign(
-                datau, dct,
-                cert_data, password,
-                'sha256'
-            )
+            # Firmar según la selección del usuario
+            if self.signature_pages == 'all':
+                # Firmar todas las páginas
+                temp_signed_path = temp_pdf_path
+                for i in range(num_pages):
+                    dct = dct_base.copy()
+                    dct['sigpage'] = i
+                    datau = open(temp_signed_path, 'rb').read()
+                    datas = endesive.pdf.cms.sign(
+                        datau, dct,
+                        cert_data, password,
+                        'sha256'
+                    )
+                    # Guardar el PDF firmado temporalmente para la siguiente iteración
+                    temp_signed_path2 = tempfile.mktemp(suffix='.pdf')
+                    with open(temp_signed_path2, 'wb') as f:
+                        f.write(datas)
+                    if temp_signed_path != temp_pdf_path:
+                        os.unlink(temp_signed_path)
+                    temp_signed_path = temp_signed_path2
+                with open(temp_signed_path, 'rb') as f:
+                    final_signed_data = f.read()
+                if temp_signed_path != temp_pdf_path:
+                    os.unlink(temp_signed_path)
+            else:
+                # Solo la última página
+                dct = dct_base.copy()
+                dct['sigpage'] = num_pages - 1
+                datau = open(temp_pdf_path, 'rb').read()
+                final_signed_data = endesive.pdf.cms.sign(
+                    datau, dct,
+                    cert_data, password,
+                    'sha256'
+                )
 
-            # Guardar el documento firmado
-            signed_data = base64.b64encode(datas)
+            signed_data = base64.b64encode(final_signed_data)
             signed_filename = f"signed_{self.document_filename or 'document.pdf'}"
 
             self.write({
@@ -88,7 +118,6 @@ class DocumentSignature(models.Model):
                 'state': 'signed',
             })
 
-            # Limpiar archivo temporal
             try:
                 os.unlink(temp_pdf_path)
             except Exception:
