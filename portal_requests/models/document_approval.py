@@ -171,6 +171,14 @@ class DocumentApproval(models.Model):
         # Decodificar el PDF
         pdf_data = base64.b64decode(attachment_ids.datas)
         pdf_reader = PdfFileReader(io.BytesIO(pdf_data))
+
+        page = pdf_reader.getPage(0)  # o el índice de la página que quieras
+        media_box = page.mediaBox
+        ancho = float(media_box.getUpperRight_x()) - float(media_box.getLowerLeft_x())
+        alto = float(media_box.getUpperRight_y()) - float(media_box.getLowerLeft_y())
+        print("Ancho de la página:", ancho)
+        print("Alto de la página:", alto)
+
         pdf_writer = PdfFileWriter()
 
         # Procesar la firma para añadir fondo blanco
@@ -197,9 +205,26 @@ class DocumentApproval(models.Model):
                 can = canvas.Canvas(packet, pagesize=letter)
 
                 # Dibujar la firma en una posición fija (ajustar según sea necesario)
-                can.drawImage(signature_with_background_path, 100, 100, width=200, height=100)
+                # can.drawImage(signature_with_background_path, 100, 100, width=200, height=100)
+                # can.setFont("Helvetica", 12)
+                # can.drawString(100, 90, "FDO.: Director Gerente")
+                # can.save()
+
+                # Obtener la posición de la firma según la configuración
+                if self.signature_position == 'bottom_left':
+                    x_position = 10
+                    y_position = 10
+                elif self.signature_position == 'bottom_center':
+                    x_position = (ancho - width) / 2
+                    y_position = 10
+                elif self.signature_position == 'bottom_right':
+                    x_position = ancho - width - 10
+                    y_position = 10
+
+                # Dibujar la firma en la posición correspondiente
+                can.drawImage(signature_with_background_path, x_position, y_position, width=200, height=100)
                 can.setFont("Helvetica", 12)
-                can.drawString(100, 90, "FDO.: Director Gerente")
+                can.drawString(x_position, y_position - 10, "FDO.: Director Gerente")
                 can.save()
 
                 # Combinar la firma con la última página
