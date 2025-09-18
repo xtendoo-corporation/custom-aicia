@@ -44,6 +44,8 @@ class PortalApprovalRequestController(Controller):
             'company_id': request.env.user.company_id.id,
             'user_id': request.env.user.id,
             'is_company_signed': is_company_signed,
+            'signature_page': 'last',
+            'signature_position': 'bottom_left',
 
         })
 

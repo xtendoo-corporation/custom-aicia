@@ -39,6 +39,15 @@ class DocumentApproval(models.Model):
         compute='_compute_attachment_check',
         store=False
     )
+    signature_position = fields.Selection([
+        ('bottom_left', 'Abajo Izquierda'),
+        ('bottom_center', 'Abajo Centro'),
+        ('bottom_right', 'Abajo Derecha'),
+    ], string="Posición de Firma", default='bottom_right', tracking=True)
+    signature_page = fields.Selection([
+        ('last', 'Última Página'),
+        ('all', 'Todas las paginas'),
+    ], string="Firmar en", default='last', tracking=True)
 
     @api.depends()
     def _compute_attachment_check(self):
@@ -155,107 +164,112 @@ class DocumentApproval(models.Model):
         return True
 
     def add_signature_to_pdf(self):
-        """ Añade la firma con fondo blanco solo en la última página del PDF y guarda el nuevo PDF en Odoo """
+        """Añade la firma al PDF según la configuración del documento y guarda el nuevo PDF en Odoo"""
         if not self.financial_signature:
             return False
 
-        # Buscar el adjunto
-        attachment_ids = self.env['ir.attachment'].search([
+        # Buscar el adjunto del PDF
+        attachment = self.env['ir.attachment'].search([
             ('res_model', '=', 'document.approval'),
             ('res_id', '=', self.id)
         ], limit=1)
 
-        if not attachment_ids:
+        if not attachment:
             raise ValueError("Falta el PDF adjunto o la firma")
 
-        # Decodificar el PDF
-        pdf_data = base64.b64decode(attachment_ids.datas)
+        # Decodificar PDF
+        pdf_data = base64.b64decode(attachment.datas)
         pdf_reader = PdfFileReader(io.BytesIO(pdf_data))
+        num_pages = pdf_reader.getNumPages()
 
-        page = pdf_reader.getPage(0)  # o el índice de la página que quieras
-        media_box = page.mediaBox
+        # Medidas de la primera página para referencia
+        page0 = pdf_reader.getPage(0)
+        media_box = page0.mediaBox
         ancho = float(media_box.getUpperRight_x()) - float(media_box.getLowerLeft_x())
         alto = float(media_box.getUpperRight_y()) - float(media_box.getLowerLeft_y())
-        print("Ancho de la página:", ancho)
-        print("Alto de la página:", alto)
 
         pdf_writer = PdfFileWriter()
 
-        # Procesar la firma para añadir fondo blanco
+        # Procesar la firma: mantener transparencia
         signature_data = base64.b64decode(self.financial_signature)
         signature_path = "/tmp/temp_signature.png"
         with open(signature_path, "wb") as f:
             f.write(signature_data)
 
-        signature_image = Image.open(signature_path)
+        signature_image = Image.open(signature_path).convert("RGBA")
         width, height = signature_image.size
-        new_image = Image.new('RGBA', (width, height), (255, 255, 255, 255))  # Fondo blanco
-        new_image.paste(signature_image, (0, 0), signature_image.convert("RGBA").split()[3])
+
+        # Crear imagen transparente
+        new_image = Image.new('RGBA', (width, height), (0, 0, 0, 0))
+        new_image.paste(signature_image, (0, 0), signature_image)
         signature_with_background_path = "/tmp/temp_signature_with_background.png"
         new_image.save(signature_with_background_path)
 
-        # Añadir la firma solo en la última página
-        last_page_index = pdf_reader.getNumPages() - 1
-        for i in range(pdf_reader.getNumPages()):
+        # Configuración tamaño máximo de la firma en PDF
+        max_width = 200
+        max_height = 100
+        ratio = min(max_width / width, max_height / height)
+        draw_width = width * ratio
+        draw_height = height * ratio
+
+        # Iterar páginas y añadir firma según configuración
+        last_page_index = num_pages - 1
+        for i in range(num_pages):
             page = pdf_reader.getPage(i)
 
-            if i == last_page_index:
-                # Crear un lienzo para la última página
+            if self.signature_page == 'all' or (self.signature_page == 'last' and i == last_page_index):
                 packet = io.BytesIO()
-                can = canvas.Canvas(packet, pagesize=letter)
+                can = canvas.Canvas(packet, pagesize=(ancho, alto))
 
-                # Dibujar la firma en una posición fija (ajustar según sea necesario)
-                # can.drawImage(signature_with_background_path, 100, 100, width=200, height=100)
-                # can.setFont("Helvetica", 12)
-                # can.drawString(100, 90, "FDO.: Director Gerente")
-                # can.save()
-
-                # Obtener la posición de la firma según la configuración
+                # Posición según configuración
                 if self.signature_position == 'bottom_left':
-                    x_position = 10
-                    y_position = 10
+                    x_position = 20
                 elif self.signature_position == 'bottom_center':
-                    x_position = (ancho - width) / 2
-                    y_position = 10
+                    x_position = (ancho - draw_width) / 2
                 elif self.signature_position == 'bottom_right':
-                    x_position = ancho - width - 10
-                    y_position = 10
+                    x_position = ancho - draw_width - 20
+                else:
+                    x_position = 20  # Default left
 
-                # Dibujar la firma en la posición correspondiente
-                can.drawImage(signature_with_background_path, x_position, y_position, width=200, height=100)
+                y_position = 20  # Margen inferior
+
+                # Dibujar la firma escalada
+                can.drawImage(signature_with_background_path, x_position, y_position,
+                              width=draw_width, height=draw_height, mask='auto')
+
+                # Dibujar texto debajo
+                text_y_position = y_position - 12
                 can.setFont("Helvetica", 12)
-                can.drawString(x_position, y_position - 10, "FDO.: Director Gerente")
-                can.save()
+                can.drawString(x_position, text_y_position, "FDO.: Director Gerente")
 
-                # Combinar la firma con la última página
+                can.save()
                 packet.seek(0)
                 signature_pdf = PdfFileReader(packet)
                 page.mergePage(signature_pdf.getPage(0))
 
             pdf_writer.addPage(page)
 
-        # Guardar el PDF firmado
+        # Guardar PDF firmado
         output_pdf = io.BytesIO()
         pdf_writer.write(output_pdf)
         output_pdf.seek(0)
 
         new_pdf_data = base64.b64encode(output_pdf.read()).decode('utf-8')
-        attachment_data = {
-            'name': f"firmado_director_gerente_{attachment_ids.name}",
+        signed_attachment_data = {
+            'name': f"firmado_director_gerente_{attachment.name}",
             'res_model': 'document.approval',
             'res_id': self.id,
             'datas': new_pdf_data,
             'type': 'binary',
         }
 
-        signed_attachment = self.env['ir.attachment'].create(attachment_data)
+        signed_attachment = self.env['ir.attachment'].create(signed_attachment_data)
 
-        # Eliminar archivos temporales
+        # Limpiar archivos temporales
         os.remove(signature_path)
         os.remove(signature_with_background_path)
 
         return signed_attachment
-
 
     def _compute_name(self):
         for record in self:

@@ -111,6 +111,7 @@
                         <field name="is_company_signed" readonly="1"/>
                         <field name="is_digital_signed" invisble="1"/>
                         <field name="attachment_check" invisible="1"/>
+                        <field name="signature_page"/>
                         <field name="signature_position"/>
                     </group>
                     <group>
