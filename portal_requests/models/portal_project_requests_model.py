@@ -7,7 +7,10 @@ class PortalProjectRequest(models.Model):
     _inherit = ['mail.thread', 'mail.activity.mixin']
 
     user_id = fields.Many2one('res.users', string='User', required=True)
-    company_id = fields.Many2one('res.company', string='Company', required=True)
+    company_id = fields.Many2one('res.company', string='Compañía', required=True, tracking=True)
+    work_group_id = fields.Many2one('portal.work.group', string='Grupo de Trabajo', tracking=True)
+    project_id = fields.Many2one('project.project', string='Project', tracking=True)
+    partner_id = fields.Many2one('res.partner', string='Client', tracking=True)
     date_start = fields.Date(string='Start Date')
     date_end = fields.Date(string='End Date')
     project_name = fields.Char(string='Project Name')
@@ -22,8 +25,8 @@ class PortalProjectRequest(models.Model):
         ('end', 'Finalizar Proyecto'),
     ], string='Tipo', required=True)
     concept = fields.Char(string='Concept')
-    created_company_id = fields.Many2one('res.company', string='Created Company')
-    company_count = fields.Integer(default=1, string='Invoice Count')
+    created_project_id = fields.Many2one('project.project', string='Created Project')
+    project_count = fields.Integer(default=1, string='Project Count')
 
     def show_notificacion(self, title_char, text, type_char):
         return {
@@ -40,12 +43,13 @@ class PortalProjectRequest(models.Model):
     def action_approve(self):
         for record in self:
             if record.type == 'new':
-                record.created_company_id = record.create_new_company()
+                record.created_project_id = record.create_new_project()
                 notification_text = _("El proyecto %s ha sido creado correctamente.") % record.project_name
             else:
                 notification_text = _("El proyecto %s ha sido finalizado correctamente.") % record.project_name
-                record.company_id.active = False
-                record.created_company_id = record.company_id
+                record.project_id.active = False
+                record.project_id.date = self.date_end
+                record.created_project_id = record.project_id
             record.approved = True
             record.is_revised = True
 
@@ -62,52 +66,60 @@ class PortalProjectRequest(models.Model):
         for record in self:
             record.is_revised = False
 
-    def create_new_company(self):
-        country = self.env['res.country'].search([('name', '=', 'España')],
-                                                 limit=1)  # Cambia 'España' por el país que necesitas
-        if not country:
-            raise UserError("No se encontró el país especificado.")
-
-        partner_new = self.env['res.partner'].with_context(default_parent_id=False).sudo().create({
+    def create_new_project(self):
+        # Crear el proyecto
+        project = self.env['project.project'].sudo().create({
             'name': self.project_name,
-            'company_type': 'company',
-            'is_company': True,
-            'country_id': country.id,
+            'partner_id': self.partner_id.id,
+            'company_id': self.company_id.id,
+            'work_group_id': self.work_group_id.id,
+            'date_start': self.date_start,
+            'date': self.date_end,
+            'user_id': self.user_id.id
         })
 
+        # Adjuntar el contrato firmado si existe
+        if self.signed_contract:
+            self.env['ir.attachment'].sudo().create({
+                'name': self.signed_contract_filename or 'contrato_firmado.pdf',
+                'type': 'binary',
+                'datas': self.signed_contract,
+                'res_model': 'project.project',
+                'res_id': project.id,
+            })
 
+        # Adjuntar el presupuesto si existe
+        if self.budget_file:
+            self.env['ir.attachment'].sudo().create({
+                'name': self.budget_file_filename or 'presupuesto.pdf',
+                'type': 'binary',
+                'datas': self.budget_file,
+                'res_model': 'project.project',
+                'res_id': project.id,
+            })
 
-        company = self.env['res.company'].sudo().create({
-            'name': self.project_name,
-            'partner_id': partner_new.id,
-            'parent_id': self.company_id.id,
-            'country_id': country.id,
-            'currency_id': self.env.user.company_id.currency_id.id,  # Esto asegura que se asigna una moneda válida
-        })
-        return company
+        return project
 
-    def action_view_company(self):
+    def action_view_project(self):
         self.ensure_one()
-        company_ids = self.created_company_id.ids
+        project_ids = self.created_project_id.ids
         action = {
-            "res_model": "res.company",
+            "res_model": "project.project",
             "type": "ir.actions.act_window",
         }
-        if len(company_ids) == 1:
+        if len(project_ids) == 1:
             action.update(
                 {
                     "view_mode": "form",
-                    "res_id": company_ids[0],
+                    "res_id": project_ids[0],
                 }
             )
         else:
             action.update(
                 {
-                    "name": "Factura",
-                    "domain": [("id", "in", company_ids)],
+                    "name": "Proyecto",
+                    "domain": [("id", "in", project_ids)],
                     "view_mode": "tree,form",
                 }
             )
         return action
-
-

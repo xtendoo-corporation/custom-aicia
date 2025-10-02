@@ -70,3 +70,51 @@ class PortalUtils(http.Controller):
                 headers={'Content-Type': 'application/json'},
                 status=400
             )
+
+    @route('/get_user_work_groups', type='http', auth='user', methods=['GET'], csrf=False)
+    def get_user_work_groups(self, **kwargs):
+        user = request.env.user
+        work_groups = request.env['portal.work.group'].search([
+            ('user_ids', 'in', user.id)
+        ])
+        work_groups_json = {'work_groups': [{'id': group.id, 'name': group.name, 'code': group.code} for group in work_groups]}
+        print("*"*100)
+        print("user", user.name)
+        print("work_groups", work_groups)
+        print("work_groups_json", work_groups_json)
+        print("*"*100)
+        return request.make_response(json.dumps({'result': work_groups_json}),
+                                   headers={'Content-Type': 'application/json'})
+
+    @route('/get_projects_by_work_group', type='http', auth='user', methods=['GET'], csrf=False)
+    def get_projects_by_work_group(self, **kwargs):
+        user = request.env.user
+        # Obtener los grupos de trabajo del usuario
+        work_groups = request.env['portal.work.group'].search([
+            ('user_ids', 'in', user.id)
+        ])
+        # Buscar proyectos que pertenezcan a esos grupos de trabajo
+        projects = request.env['project.project'].search([
+            ('work_group_id', 'in', work_groups.ids),
+            ('active', '=', True)
+        ])
+        projects_json = {
+            'projects': [{
+                'id': project.id,
+                'name': project.name,
+                'partner_id': project.partner_id.id,
+                'partner_name': project.partner_id.name,
+                'work_group_id': project.work_group_id.id,
+                'work_group_name': project.work_group_id.name,
+                'company_id': project.company_id.id,
+                'company_name': project.company_id.name,
+            } for project in projects]
+        }
+        print("*"*100)
+        print("user", user.name)
+        print("work_groups", work_groups.mapped('name'))
+        print("projects", projects.mapped('name'))
+        print("projects_json", projects_json)
+        print("*"*100)
+        return request.make_response(json.dumps({'result': projects_json}),
+                                   headers={'Content-Type': 'application/json'})

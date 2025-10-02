@@ -58,7 +58,7 @@
                                                         <label
                                                             class="col-form-label col-sm-auto s_website_form_label"
                                                             style="width: 200px" for="contact">
-                                                            <span class="s_website_form_label_content">Grupo de trabajo
+                                                            <span class="s_website_form_label_content">Compañia
                                                             </span>
                                                             <span class="s_website_form_mark">*</span>
                                                         </label>
@@ -66,8 +66,32 @@
                                                             <select id="company_id" name="company_id"
                                                                     class="form-control s_website_form_input">
                                                                 <t t-foreach="companies" t-as="company">
-                                                                    <option t-att-value="company.id">
+                                                                    <option t-att-value="company.id" t-att-selected="company.id == actual_company">
                                                                         <t t-esc="company.name"/>
+                                                                    </option>
+                                                                </t>
+                                                            </select>
+                                                        </div>
+                                                    </div>
+                                                </div>
+                                                <!--GRUPO DE TRABAJO REQUIRED-->
+                                                <div
+                                                    class="mb-0 py-2 col-12 s_website_form_field s_website_form_required s_website_form_model_required"
+                                                    data-type="char" data-name="Field">
+                                                    <div class="row s_col_no_resize s_col_no_bgcolor">
+                                                        <label
+                                                            class="col-form-label col-sm-auto s_website_form_label"
+                                                            style="width: 200px" for="contact">
+                                                            <span class="s_website_form_label_content">Grupo de trabajo
+                                                            </span>
+                                                            <span class="s_website_form_mark">*</span>
+                                                        </label>
+                                                        <div class="col-sm">
+                                                            <select id="work_group_id" name="work_group_id"
+                                                                    class="form-control s_website_form_input">
+                                                                <t t-foreach="work_groups" t-as="group">
+                                                                    <option t-att-value="group.id">
+                                                                        <t t-esc="group.name"/>
                                                                     </option>
                                                                 </t>
                                                             </select>
@@ -89,31 +113,35 @@
                                                         <div class="col-sm">
                                                             <select id="partner_id" name="partner_id"
                                                                     class="form-control s_website_form_input">
-
+                                                                    <t t-foreach="clients" t-as="client">
+                                                                    <option t-att-value="client.id">
+                                                                        <t t-esc="client.name"/>
+                                                                    </option>
+                                                                </t>
                                                             </select>
                                                         </div>
                                                     </div>
                                                 </div>
-                                                 <!--responsibles REQUIRED-->
-                                                <div
-                                                    class="mb-0 py-2 col-12 s_website_form_field s_website_form_required s_website_form_model_required"
-                                                    data-type="date" data-name="Field">
-                                                    <div class="row s_col_no_resize s_col_no_bgcolor">
-                                                        <label
-                                                            class="col-form-label col-sm-auto s_website_form_label"
-                                                            style="width: 200px" for="contact">
-                                                            <span class="s_website_form_label_content">Reponsilbes
-                                                            </span>
-                                                            <span class="s_website_form_mark">*</span>
-                                                        </label>
-                                                        <div class="col-sm">
-                                                            <select id="responsible_id" name="responsible_id[]"
-                                                                    class="form-control s_website_form_input advanced-select" Multiple="">
+<!--                                                 &lt;!&ndash;responsibles REQUIRED&ndash;&gt;-->
+<!--                                                <div-->
+<!--                                                    class="mb-0 py-2 col-12 s_website_form_field s_website_form_required s_website_form_model_required"-->
+<!--                                                    data-type="date" data-name="Field">-->
+<!--                                                    <div class="row s_col_no_resize s_col_no_bgcolor">-->
+<!--                                                        <label-->
+<!--                                                            class="col-form-label col-sm-auto s_website_form_label"-->
+<!--                                                            style="width: 200px" for="contact">-->
+<!--                                                            <span class="s_website_form_label_content">Reponsilbes-->
+<!--                                                            </span>-->
+<!--                                                            <span class="s_website_form_mark">*</span>-->
+<!--                                                        </label>-->
+<!--                                                        <div class="col-sm">-->
+<!--                                                            <select id="responsible_id" name="responsible_id[]"-->
+<!--                                                                    class="form-control s_website_form_input advanced-select" Multiple="">-->
 
-                                                            </select>
-                                                        </div>
-                                                    </div>
-                                                </div>
+<!--                                                            </select>-->
+<!--                                                        </div>-->
+<!--                                                    </div>-->
+<!--                                                </div>-->
                                                 <!-- TYPE REQUIRED -->
                                                 <!--PROJECT NAME REQUIRED-->
                                                 <div
@@ -231,9 +259,9 @@
                                                         <div class="col-sm">
                                                             <select id="company_id_end"
                                                                     class="form-control s_website_form_input">
-                                                                <t t-foreach="companies" t-as="company">
-                                                                    <option t-att-value="company.id">
-                                                                        <t t-esc="company.name"/>
+                                                                <t t-foreach="project_allowed" t-as="project">
+                                                                    <option t-att-value="project.id">
+                                                                        <t t-esc="project.name"/>
                                                                     </option>
                                                                 </t>
                                                             </select>

@@ -46,7 +46,6 @@ class PortalApprovalRequestController(Controller):
             'is_company_signed': is_company_signed,
             'signature_page': 'last',
             'signature_position': 'bottom_left',
-
         })
 
 

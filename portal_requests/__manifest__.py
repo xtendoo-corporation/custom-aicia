@@ -17,6 +17,7 @@
         "hr_expense",
         "web",
         "report_qweb_signer",
+        "project",
     ],
     "license": "AGPL-3",
     "data": [
@@ -40,6 +41,8 @@
         'views/interface/portal_invoice_request.xml',
         'views/interface/portal_employee_request.xml',
         'views/interface/portal_employee_intern_request.xml',
+        'views/interface/work_group_views.xml',
+        'views/interface/project_inherit_views.xml',
         'security/dashboard_permision.xml',
     ],
     "installable": True,
