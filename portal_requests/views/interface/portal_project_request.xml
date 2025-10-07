@@ -52,6 +52,7 @@
                             <group>
                                 <field name="project_name"/>
                                 <field name="work_group_id" invisible="type == 'end'"/>
+                                <field name="partner_id_char" invisible="type == 'end'"/>
                                 <field name="partner_id" invisible="type == 'end'"/>
                                 <field name="created_project_id" invisible="1"/>
                                 <field name="approved" invisible="1"/>

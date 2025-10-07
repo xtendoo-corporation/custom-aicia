@@ -100,28 +100,22 @@
                                                 </div>
                                                 <!--CLIENT REQUIRED-->
                                                 <div
-                                                    class="mb-0 py-2 col-12 s_website_form_field s_website_form_required s_website_form_model_required"
-                                                    data-type="date" data-name="Field">
-                                                    <div class="row s_col_no_resize s_col_no_bgcolor">
-                                                        <label
-                                                            class="col-form-label col-sm-auto s_website_form_label"
-                                                            style="width: 200px" for="contact">
-                                                            <span class="s_website_form_label_content">Client
-                                                            </span>
-                                                            <span class="s_website_form_mark">*</span>
-                                                        </label>
-                                                        <div class="col-sm">
-                                                            <select id="partner_id" name="partner_id"
-                                                                    class="form-control s_website_form_input">
-                                                                    <t t-foreach="clients" t-as="client">
-                                                                    <option t-att-value="client.id">
-                                                                        <t t-esc="client.name"/>
-                                                                    </option>
-                                                                </t>
-                                                            </select>
-                                                        </div>
-                                                    </div>
-                                                </div>
+    class="mb-0 py-2 col-12 s_website_form_field s_website_form_required s_website_form_model_required"
+    data-type="char" data-name="Field">
+    <div class="row s_col_no_resize s_col_no_bgcolor">
+        <label
+            class="col-form-label col-sm-auto s_website_form_label"
+            style="width: 200px" for="contact">
+            <span class="s_website_form_label_content">Client
+            </span>
+            <span class="s_website_form_mark">*</span>
+        </label>
+        <div class="col-sm">
+            <input type="text" id="partner_id_char" name="partner_id_char"
+                   class="form-control s_website_form_input" required="required"/>
+        </div>
+    </div>
+</div>
 <!--                                                 &lt;!&ndash;responsibles REQUIRED&ndash;&gt;-->
 <!--                                                <div-->
 <!--                                                    class="mb-0 py-2 col-12 s_website_form_field s_website_form_required s_website_form_model_required"-->
@@ -321,44 +315,6 @@
                                         </div>
                                     </form>
                                     <script>
-
-                                        //Rellenar clientes
-                                        //PARTE DE RELLENAR CLIENTES CON AJAX
-                                        document.addEventListener('DOMContentLoaded', function () {
-                                            const companySelect = document.getElementById('company_id');
-                                            const clientSelect = document.getElementById('partner_id');
-
-                                            companySelect.addEventListener('change', function () {
-                                                const companyId = companySelect.value;
-                                                clientSelect.innerHTML = '<option value="">Loading...</option>';
-                                                $.ajax({
-                                                    url: '/get_clients_by_company',
-                                                    type: 'GET',
-                                                    data: { company_id: companyId }, // Pasar el company_id como parámetro
-                                                    success: function(response) {
-                                                        var partnerSelect = document.getElementById("partner_id");
-                                                        partnerSelect.innerHTML = '';
-                                                        let clients = response.partners.clients;
-                                                        if (clients.length === 0) {
-                                                            const option = document.createElement('option');
-                                                            option.value = '0';
-                                                            option.textContent = 'Client not found';
-                                                            clientSelect.appendChild(option);
-                                                        } else {
-                                                            clients.forEach(function(client) {
-                                                                const option = document.createElement('option');
-                                                                option.value = client.id;
-                                                                option.textContent = client.name;
-                                                                clientSelect.appendChild(option);
-                                                            });
-                                                        }
-                                                    },
-                                                    error: function(error) {
-                                                        console.log("Error fetching partners: ", error);
-                                                    }
-                                                });
-                                            });
-                                        });
                                         const typeId = document.getElementById('type_id');
                                         const div_new = document.getElementById('new_data');
                                         const div_end = document.getElementById('end_data');
@@ -419,9 +375,6 @@
 
                                             }
                                         });
-
-
-
                                     </script>
                                 </div>
                             </div>

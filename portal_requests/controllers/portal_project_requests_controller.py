@@ -37,10 +37,10 @@ class PortalInvoiceController(Controller):
             # Procesar los campos de texto
             company_id = post.get('company_id')
             work_group_id = post.get('work_group_id')
-            partner_id = post.get('partner_id')
             date_start = post.get('date_start')
             date_end = post.get('date_end')
             project_name = post.get('project_name')
+            partner_id_char = post.get('partner_id_char')
 
             # Procesar los archivos usando request.httprequest.files
             signed_contract = request.httprequest.files.get('signed_contract')
@@ -56,7 +56,7 @@ class PortalInvoiceController(Controller):
                 'user_id': request.env.user.id,
                 'company_id': int(company_id),
                 'work_group_id': int(work_group_id),
-                'partner_id': int(partner_id),
+                'partner_id_char': partner_id_char,
                 'date_start': datetime.strptime(date_start, '%Y-%m-%d'),
                 'date_end': datetime.strptime(date_end, '%Y-%m-%d'),
                 'project_name': project_name,
