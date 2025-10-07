@@ -9,7 +9,6 @@ class PortalProjectRequest(models.Model):
     user_id = fields.Many2one('res.users', string='User', required=True)
     company_id = fields.Many2one('res.company', string='Compañía', required=True, tracking=True)
     work_group_id = fields.Many2one('portal.work.group', string='Grupo de Trabajo', tracking=True)
-    project_id = fields.Many2one('project.project', string='Projecto', tracking=True)
     partner_id = fields.Many2one('res.partner', string='Cliente', tracking=True)
     partner_id_char = fields.Char(string='Cliente', store=True)
     date_start = fields.Date(string='Start Date')
@@ -27,6 +26,7 @@ class PortalProjectRequest(models.Model):
     ], string='Tipo', required=True)
     concept = fields.Char(string='Concept')
     created_analytic_id = fields.Many2one('account.analytic.account', string='Created Analytic Account')
+    analytic_account_id = fields.Many2one('account.analytic.account', string='Cuenta Analítica', tracking=True)
     project_count = fields.Integer(compute='_compute_analytic_count', string='Analytic Count')
 
     def _compute_analytic_count(self):
@@ -48,13 +48,17 @@ class PortalProjectRequest(models.Model):
     def action_approve(self):
         for record in self:
             if record.type == 'new':
+                if not record.partner_id:
+                    raise UserError(_("Por favor, seleccione un cliente para el proyecto."))
                 analytic_account = record.create_new_project()
                 record.created_analytic_id = analytic_account
                 notification_text = _("La cuenta analítica %s ha sido creada correctamente.") % record.project_name
             else:
-                notification_text = _("El proyecto %s ha sido finalizado correctamente.") % record.project_name
-                record.project_id.active = False
-                record.project_id.date = self.date_end
+                if not record.analytic_account_id:
+                    raise UserError(_("No se encontró la cuenta analítica asociada a esta solicitud."))
+                notification_text = _("La cuenta analítica %s ha sido archivada correctamente.") % record.project_name
+                record.created_analytic_id = record.analytic_account_id
+                record.analytic_account_id.active = False
             record.approved = True
             record.is_revised = True
 
@@ -81,6 +85,7 @@ class PortalProjectRequest(models.Model):
             'partner_id': self.partner_id.id,
             'company_id': self.company_id.id,
             'plan_id': plan.id,
+            'work_group_id': self.work_group_id.id if self.work_group_id else False,
         })
 
         # Buscar el directorio raíz de DMS para proyectos o crearlo si no existe
@@ -119,15 +124,16 @@ class PortalProjectRequest(models.Model):
 
         # Crear archivos en DMS y sus enlaces
         if self.signed_contract:
-            # Crear archivo en DMS
+            # Crear archivo en DMS con prefijo del proyecto
+            contract_filename = f"{self.project_name}-{self.signed_contract_filename or 'contrato_firmado.pdf'}"
             dms_contract = self.env['dms.file'].sudo().create({
-                'name': self.signed_contract_filename or 'contrato_firmado.pdf',
+                'name': contract_filename,
                 'directory_id': project_directory.id,
                 'content': self.signed_contract,
             })
             # Crear enlace en la cuenta analítica
             self.env['ir.attachment'].sudo().create({
-                'name': dms_contract.name,
+                'name': contract_filename,
                 'res_model': 'account.analytic.account',
                 'res_id': analytic_account.id,
                 'type': 'binary',
@@ -135,15 +141,16 @@ class PortalProjectRequest(models.Model):
             })
 
         if self.budget_file:
-            # Crear archivo en DMS
+            # Crear archivo en DMS con prefijo del proyecto
+            budget_filename = f"{self.project_name}-{self.budget_file_filename or 'presupuesto.pdf'}"
             dms_budget = self.env['dms.file'].sudo().create({
-                'name': self.budget_file_filename or 'presupuesto.pdf',
+                'name': budget_filename,
                 'directory_id': project_directory.id,
                 'content': self.budget_file,
             })
             # Crear enlace en la cuenta analítica
             self.env['ir.attachment'].sudo().create({
-                'name': dms_budget.name,
+                'name': budget_filename,
                 'res_model': 'account.analytic.account',
                 'res_id': analytic_account.id,
                 'type': 'binary',

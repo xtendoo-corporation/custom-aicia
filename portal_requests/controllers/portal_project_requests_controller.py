@@ -13,10 +13,11 @@ class PortalInvoiceController(Controller):
         allowed_companies = user.company_ids
         allowed_work_groups = request.env['portal.work.group'].search([('user_ids', 'in', user.id)])
         allowed_clients = request.env['res.partner'].search([('company_id', '=', request.env.company.id)])
-        project_allowed = request.env['project.project'].search([
+        project_allowed = request.env['account.analytic.account'].search([
             ('work_group_id', 'in', allowed_work_groups.ids),
             ('active', '=', True)
         ])
+
         print("*"*100)
         print("allowed_work_groups", allowed_work_groups)
         print("project_allowed", project_allowed)
@@ -91,14 +92,14 @@ class PortalInvoiceController(Controller):
 
         elif type == 'end':
             company_id = request.env.company.id
-            project_id = post.get('company_id_end')
+            analytic_id = post.get('company_id_end')
             project_end_date = post.get('project_end_date')
             concept = post.get('concept')
-            project_name = request.env['project.project'].browse(int(project_id)).name
+            project_name = request.env['account.analytic.account'].browse(int(analytic_id)).name
             project = request.env['portal.project.request'].sudo().create({
                 'user_id': request.env.user.id,
                 'company_id': int(company_id),
-                'project_id' : int(project_id),
+                'analytic_account_id': int(analytic_id),
                 'project_name': project_name,
                 'date_end': datetime.strptime(project_end_date, '%Y-%m-%d'),
                 'concept': concept,

@@ -26,7 +26,7 @@
             <field name="arch" type="xml">
                 <form>
                     <header>
-                         <button name="action_approve"
+                        <button name="action_approve"
                                 string="Approve"
                                 type="object"
                                 class="btn-primary"
@@ -43,10 +43,23 @@
                                 invisible="not is_revised or approved"/>
                     </header>
                     <sheet>
+                        <div class="ribbon ribbon-top-right" invisible="not approved">
+                            <span class="bg-success">Aprobada</span>
+                        </div>
+                        <div class="ribbon ribbon-top-right" invisible="approved or not is_revised">
+                            <span class="bg-danger">Rechazada</span>
+                        </div>
                         <div class="oe_button_box" name="button_box">
                             <button name="action_view_analytic" type="object" class="oe_stat_button" icon="fa-sharp fa-thin fa-building" invisible="not created_analytic_id">
                                 <field name="project_count" widget="statinfo" string="Cuenta Analítica"/>
                             </button>
+                        </div>
+                        <div class="oe_title">
+                            <h1>
+                                <field name="type" invisible="1"/>
+                                <span invisible="type != 'new'">Solicitud de apertura de proyecto</span>
+                                <span invisible="type != 'end'">Solicitud de cierre proyecto</span>
+                            </h1>
                         </div>
                         <group>
                             <group>

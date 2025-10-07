@@ -8,8 +8,8 @@
             <xpath expr="//field[@name='partner_id']" position="after">
                 <field name="clientes_asociados_domain" invisible="1"/>
                 <field name="clientes_asociados" widget="many2many_tags"/>
+                <field name="work_group_id"/>
             </xpath>
         </field>
     </record>
 </odoo>
-

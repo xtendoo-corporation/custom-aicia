@@ -343,6 +343,8 @@
                                                 date_end.setAttribute('required', '');
                                                 signed_contract.setAttribute('name', 'signed_contract') ;
                                                 budget_file.setAttribute('name', 'budget_file')  ;
+                                                partner_id_char.setAttribute('name', 'partner_id_char') ;
+                                                partner_id_char.setAttribute('required', ''); ;
 
                                                 div_end.style.display = 'none';
                                                 company_id_end.removeAttribute('name') ;
@@ -364,6 +366,8 @@
                                                 date_end.removeAttribute('required') ;
                                                 signed_contract.removeAttribute('name') ;
                                                 budget_file.removeAttribute('name') ;
+                                                partner_id_char.removeAttribute('name') ;
+                                                partner_id_char.removeAttribute('required') ;
 
                                                 div_end.style.display = 'block';
                                                 company_id_end.setAttribute('name', 'company_id_end') ;

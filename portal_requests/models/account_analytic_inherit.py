@@ -16,3 +16,5 @@ class AccountAnalyticAccountInherit(models.Model):
             record.clientes_asociados_domain = excluded_partners
 
     clientes_asociados_domain = fields.Many2many('res.partner', compute='_compute_clientes_asociados_domain')
+
+    work_group_id = fields.Many2one('portal.work.group', string='Grupo de Trabajo', tracking=True)
