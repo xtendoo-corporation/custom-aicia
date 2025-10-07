@@ -12,4 +12,4 @@ from . import portal_request_dashboard
 from . import res_users
 from . import report_certificate
 from . import work_group
-from . import project_project_inherit
+from . import account_analytic_inherit

@@ -26,8 +26,12 @@ class PortalProjectRequest(models.Model):
         ('end', 'Finalizar Proyecto'),
     ], string='Tipo', required=True)
     concept = fields.Char(string='Concept')
-    created_project_id = fields.Many2one('project.project', string='Created Project')
-    project_count = fields.Integer(default=1, string='Project Count')
+    created_analytic_id = fields.Many2one('account.analytic.account', string='Created Analytic Account')
+    project_count = fields.Integer(compute='_compute_analytic_count', string='Analytic Count')
+
+    def _compute_analytic_count(self):
+        for record in self:
+            record.project_count = 1 if record.created_analytic_id else 0
 
     def show_notificacion(self, title_char, text, type_char):
         return {
@@ -44,19 +48,17 @@ class PortalProjectRequest(models.Model):
     def action_approve(self):
         for record in self:
             if record.type == 'new':
-                record.created_project_id = record.create_new_project()
-                notification_text = _("El proyecto %s ha sido creado correctamente.") % record.project_name
+                analytic_account = record.create_new_project()
+                record.created_analytic_id = analytic_account
+                notification_text = _("La cuenta analítica %s ha sido creada correctamente.") % record.project_name
             else:
                 notification_text = _("El proyecto %s ha sido finalizado correctamente.") % record.project_name
                 record.project_id.active = False
                 record.project_id.date = self.date_end
-                record.created_project_id = record.project_id
             record.approved = True
             record.is_revised = True
 
         return self.show_notificacion("¡Solicitud aprobada!", notification_text, "success")
-
-
 
     def action_reject(self):
         for record in self:
@@ -68,59 +70,98 @@ class PortalProjectRequest(models.Model):
             record.is_revised = False
 
     def create_new_project(self):
-        # Crear el proyecto
-        project = self.env['project.project'].sudo().create({
+        # Buscar el plan analítico AICIA
+        plan = self.env['account.analytic.plan'].sudo().search([('name', '=', 'AICIA')], limit=1)
+        if not plan:
+            raise UserError(_("No se encontró el plan analítico 'AICIA'. Por favor, créelo primero."))
+
+        # Crear la cuenta analítica
+        analytic_account = self.env['account.analytic.account'].sudo().create({
             'name': self.project_name,
             'partner_id': self.partner_id.id,
             'company_id': self.company_id.id,
-            'work_group_id': self.work_group_id.id,
-            'date_start': self.date_start,
-            'date': self.date_end,
-            'user_id': self.user_id.id
+            'plan_id': plan.id,
         })
 
-        # Adjuntar el contrato firmado si existe
+        # Buscar el directorio raíz de DMS para proyectos o crearlo si no existe
+        root_directory = self.env['dms.directory'].sudo().search([
+            ('name', '=', 'Proyectos'),
+            ('is_root_directory', '=', True)
+        ], limit=1)
+
+        if not root_directory:
+            # Buscar o crear almacenamiento para usar el filestore de la base de datos
+            storage = self.env['dms.storage'].sudo().search([
+                ('save_type', '=', 'filesystem')  # Usamos filesystem en lugar de database
+            ], limit=1)
+
+            if not storage:
+                # Si no existe, creamos uno nuevo
+                storage = self.env['dms.storage'].sudo().create({
+                    'name': 'Almacenamiento AICIA',
+                    'save_type': 'filesystem',  # Tipo filesystem para usar una ruta específica
+                    'company_id': self.company_id.id,
+                    'root_directory_path': '/var/lib/docker/volumes/aicia_4_filestore/_data/filestore/aicia/dms',  # Ruta correcta del volumen Docker
+                })
+
+            root_directory = self.env['dms.directory'].sudo().create({
+                'name': 'Proyectos',
+                'storage_id': storage.id,
+                'is_root_directory': True,
+            })
+
+        # Crear directorio del proyecto
+        project_directory = self.env['dms.directory'].sudo().create({
+            'name': self.project_name,
+            'parent_id': root_directory.id,
+            'storage_id': root_directory.storage_id.id,
+        })
+
+        # Crear archivos en DMS y sus enlaces
         if self.signed_contract:
-            self.env['ir.attachment'].sudo().create({
+            # Crear archivo en DMS
+            dms_contract = self.env['dms.file'].sudo().create({
                 'name': self.signed_contract_filename or 'contrato_firmado.pdf',
-                'type': 'binary',
-                'datas': self.signed_contract,
-                'res_model': 'project.project',
-                'res_id': project.id,
+                'directory_id': project_directory.id,
+                'content': self.signed_contract,
             })
-
-        # Adjuntar el presupuesto si existe
-        if self.budget_file:
+            # Crear enlace en la cuenta analítica
             self.env['ir.attachment'].sudo().create({
-                'name': self.budget_file_filename or 'presupuesto.pdf',
+                'name': dms_contract.name,
+                'res_model': 'account.analytic.account',
+                'res_id': analytic_account.id,
                 'type': 'binary',
-                'datas': self.budget_file,
-                'res_model': 'project.project',
-                'res_id': project.id,
+                'dms_file_id': dms_contract.id,
             })
 
-        return project
+        if self.budget_file:
+            # Crear archivo en DMS
+            dms_budget = self.env['dms.file'].sudo().create({
+                'name': self.budget_file_filename or 'presupuesto.pdf',
+                'directory_id': project_directory.id,
+                'content': self.budget_file,
+            })
+            # Crear enlace en la cuenta analítica
+            self.env['ir.attachment'].sudo().create({
+                'name': dms_budget.name,
+                'res_model': 'account.analytic.account',
+                'res_id': analytic_account.id,
+                'type': 'binary',
+                'dms_file_id': dms_budget.id,
+            })
 
-    def action_view_project(self):
+        return analytic_account
+
+    def action_view_analytic(self):
         self.ensure_one()
-        project_ids = self.created_project_id.ids
+        if not self.created_analytic_id:
+            return
+
         action = {
-            "res_model": "project.project",
             "type": "ir.actions.act_window",
+            "res_model": "account.analytic.account",
+            "view_mode": "form",
+            "res_id": self.created_analytic_id.id,
+            "target": "current",
         }
-        if len(project_ids) == 1:
-            action.update(
-                {
-                    "view_mode": "form",
-                    "res_id": project_ids[0],
-                }
-            )
-        else:
-            action.update(
-                {
-                    "name": "Proyecto",
-                    "domain": [("id", "in", project_ids)],
-                    "view_mode": "tree,form",
-                }
-            )
         return action

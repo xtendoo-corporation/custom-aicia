@@ -18,6 +18,8 @@
         "web",
         "report_qweb_signer",
         "project",
+        "dms",
+        "dms_attachment_link",
     ],
     "license": "AGPL-3",
     "data": [
@@ -42,7 +44,7 @@
         'views/interface/portal_employee_request.xml',
         'views/interface/portal_employee_intern_request.xml',
         'views/interface/work_group_views.xml',
-        'views/interface/project_inherit_views.xml',
+        'views/account_analytic_inherit_views.xml',  # Nueva vista heredada
         'security/dashboard_permision.xml',
     ],
     "installable": True,
