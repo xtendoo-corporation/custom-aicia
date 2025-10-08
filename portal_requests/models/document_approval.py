@@ -328,11 +328,98 @@ class DocumentApproval(models.Model):
         #     self.send_request_email(self.type_id.name,self.user_id, "sign_company")
         if self.status == 'final_revision' and self.env.user.has_group("portal_requests.group_director_investigation_and_development"):
             print("Jefe de equipo aprueba")
+            self.create_dms_attachment()
             self.status = 'approve'
             user_to_send = self.env['res.users'].search([
                 ('groups_id', 'in', self.env.ref('portal_requests.group_equip_boss').id)
             ])
             self.send_request_email(self.type_id.name,user_to_send, "final_revision")
+
+    def create_dms_attachment(self):
+        # Buscar el directorio raíz de DMS para proyectos o crearlo si no existe
+        root_directory = self.env['dms.directory'].sudo().search([
+            ('name', '=', 'Documentos'),
+            ('is_root_directory', '=', True)
+        ], limit=1)
+
+        if not root_directory:
+            # Buscar o crear almacenamiento para usar el filestore de la base de datos
+            storage = self.env['dms.storage'].sudo().search([
+                ('save_type', '=', 'filesystem')
+            ], limit=1)
+
+            if not storage:
+                # Si no existe, creamos uno nuevo
+                storage = self.env['dms.storage'].sudo().create({
+                    'name': 'Almacenamiento AICIA',
+                    'save_type': 'filesystem',
+                    'company_id': self.company_id.id,
+                })
+
+            root_directory = self.env['dms.directory'].sudo().create({
+                'name': 'Documentos',
+                'storage_id': storage.id,
+                'is_root_directory': True,
+            })
+
+        #Buscamos la carpeta del tipo de documento
+        type_directory = self.env['dms.directory'].sudo().search([
+            ('name', '=', self.type_id.name)
+        ], limit=1)
+
+        if not type_directory:
+            print("NO HAY TIPO *"*50)
+            type_directory = self.env['dms.directory'].sudo().create({
+                'name': self.type_id.name,
+                'parent_id': root_directory.id,
+                'storage_id': root_directory.storage_id.id,
+            })
+
+        #Ahora creamos la carpeta del documento
+        # el nombre debe ser fecha(dd-mm-aaaa) - description
+        directory_name = f"{fields.Date.context_today(self).strftime('%d-%m-%Y')} - {self.description}"
+        # Verificar si ya existe un directorio con el mismo nombre bajo el mismo padre
+        document_directory = self.env['dms.directory'].sudo().search([
+            ('name', '=', directory_name),
+            ('parent_id', '=', type_directory.id)
+        ], limit=1)
+
+        if not document_directory:
+            document_directory = self.env['dms.directory'].sudo().create({
+                'name': directory_name,
+                'parent_id': type_directory.id,
+                'storage_id': root_directory.storage_id.id,
+            })
+
+        #Buscar todos los adjuntos del documento
+        attachment_ids = self.env['ir.attachment'].search([
+            ('res_model', '=', 'document.approval'),
+            ('res_id', '=', self.id),
+            ('dms_file_id', '=', False)  # Solo los que no son DMS
+        ])
+
+        print("SI HAY TIPO *"*50)
+        for attachment in attachment_ids:
+            # Crear archivo en DMS con prefijo del proyecto
+            #el nombre debe ser fecha - nombre del adjunto
+            date_str = fields.Date.context_today(self).strftime("%Y%m%d")
+            dms_filename = f"{date_str}-{attachment.name}"
+            dms_file = self.env['dms.file'].sudo().create({
+                'name': dms_filename,
+                'directory_id': document_directory.id,
+                'content': attachment.datas,
+            })
+            # Crear nuevo adjunto vinculado al archivo DMS
+            self.env['ir.attachment'].sudo().create({
+                'name': dms_filename,
+                'res_model': 'document.approval',
+                'res_id': self.id,
+                'type': 'binary',
+                'dms_file_id': dms_file.id,
+            })
+            # Eliminar el adjunto original después de crear el nuevo
+            attachment.sudo().unlink()
+        return True
 
     def action_reject(self):
         for record in self:
