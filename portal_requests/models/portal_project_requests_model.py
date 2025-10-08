@@ -6,6 +6,9 @@ class PortalProjectRequest(models.Model):
     _description = 'Portal Project Request'
     _inherit = ['mail.thread', 'mail.activity.mixin']
 
+    # Campo computado para usar name_get como display_name
+    display_name = fields.Char(compute='_compute_display_name', store=True, index=True)
+
     user_id = fields.Many2one('res.users', string='User', required=True)
     company_id = fields.Many2one('res.company', string='Compañía', required=True, tracking=True)
     work_group_id = fields.Many2one('portal.work.group', string='Grupo de Trabajo', tracking=True)
@@ -52,12 +55,28 @@ class PortalProjectRequest(models.Model):
                     raise UserError(_("Por favor, seleccione un cliente para el proyecto."))
                 analytic_account = record.create_new_project()
                 record.created_analytic_id = analytic_account
+                # Añadir mensaje al chatter cuando se crea
+                mensaje = _("La cuenta %s ha sido creada por petición de %s") % (record.project_name, record.user_id.name)
+                record.message_post(
+                    body=mensaje,
+                    message_type='comment',
+                    subtype_xmlid='mail.mt_note'
+                )
                 notification_text = _("La cuenta analítica %s ha sido creada correctamente.") % record.project_name
             else:
                 if not record.analytic_account_id:
                     raise UserError(_("No se encontró la cuenta analítica asociada a esta solicitud."))
                 notification_text = _("La cuenta analítica %s ha sido archivada correctamente.") % record.project_name
                 record.created_analytic_id = record.analytic_account_id
+                # Añadir mensaje al chatter antes de archivar
+                mensaje = _("Ha sido archivada por petición de %s") % record.user_id.name
+                if record.concept:
+                    mensaje += _(" con el concepto: %s") % record.concept
+                record.analytic_account_id.message_post(
+                    body=mensaje,
+                    message_type='comment',
+                    subtype_xmlid='mail.mt_note'
+                )
                 record.analytic_account_id.active = False
             record.approved = True
             record.is_revised = True
@@ -172,3 +191,20 @@ class PortalProjectRequest(models.Model):
             "target": "current",
         }
         return action
+
+    @api.depends('project_name', 'type')
+    def _compute_display_name(self):
+        for record in self:
+            name = dict(record.name_get())[record.id]
+            record.display_name = name
+
+    def name_get(self):
+        result = []
+        for record in self:
+            if record.type == 'new':
+                prefix = _("Nuevo proyecto: ")
+            else:
+                prefix = _("Finalizar proyecto: ")
+            name = prefix + (record.project_name or _("#%s") % record.id)
+            result.append((record.id, name))
+        return result

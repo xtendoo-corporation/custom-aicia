@@ -57,15 +57,15 @@
                         <div class="oe_title">
                             <h1>
                                 <field name="type" invisible="1"/>
-                                <span invisible="type != 'new'">Solicitud de apertura de proyecto</span>
-                                <span invisible="type != 'end'">Solicitud de cierre proyecto</span>
+                                <span invisible="type != 'new'">Apertura de nuevo proyecto</span>
+                                <span invisible="type != 'end'">Finalización de proyecto</span>
                             </h1>
                         </div>
                         <group>
                             <group>
                                 <field name="project_name"/>
                                 <field name="work_group_id" invisible="type == 'end'"/>
-                                <field name="partner_id_char" invisible="type == 'end'"/>
+                                <field name="partner_id_char" string="Cliente sugerido" invisible="type == 'end'"/>
                                 <field name="partner_id" invisible="type == 'end'"/>
                                 <field name="approved" invisible="1"/>
                                 <field name="is_revised" invisible="1"/>
