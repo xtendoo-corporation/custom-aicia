@@ -53,6 +53,9 @@
                             <button name="action_view_analytic" type="object" class="oe_stat_button" icon="fa-sharp fa-thin fa-building" invisible="not created_analytic_id">
                                 <field name="project_count" widget="statinfo" string="Cuenta Analítica"/>
                             </button>
+                            <button name="action_view_dms_documents" type="object" class="oe_stat_button" icon="fa-solid fa-folder-open" invisible="not created_analytic_id or dms_document_count == 0">
+                                <field name="dms_document_count" widget="statinfo" string="Documentos DMS"/>
+                            </button>
                         </div>
                         <div class="oe_title">
                             <h1>
@@ -139,20 +142,91 @@
                   groups="portal_requests.group_director_investigation_and_development"
                   sequence="20"/>
 
-<!--        <menuitem id="menu_portal_project_request_toreview"-->
-<!--                  name="To review"-->
-<!--                  parent="portal_requests.menu_portal_project_request"-->
-<!--                  action="action_portal_project_request"-->
-<!--                  sequence="20"/>-->
-<!--        <menuitem id="menu_portal_project_request_approved"-->
-<!--                  name="Approved"-->
-<!--                  parent="portal_requests.menu_portal_project_request"-->
-<!--                  action="action_portal_project_request_approved"-->
-<!--                  sequence="30"/>-->
-<!--        <menuitem id="menu_portal_project_request_notaprpproved"-->
-<!--                  name="Not approved"-->
-<!--                  parent="portal_requests.menu_portal_project_request"-->
-<!--                  action="action_portal_project_request_notapproved"-->
-<!--                  sequence="40"/>-->
+        <record id="action_custom_dms_documents" model="ir.actions.act_window">
+            <field name="name">Documentos DMS del Proyecto</field>
+            <field name="res_model">dms.file</field>
+            <field name="view_mode">kanban,tree,form</field>
+            <field name="search_view_id" ref="portal_requests.search_dms_file_inherit"/>
+            <field name="target">current</field>
+            <field name="context">{'create': False}</field>
+        </record>
+
+         <record id="search_dms_file_inherit" model="ir.ui.view">
+        <field name="name">dms_file.search.inherit</field>
+        <field name="model">dms.file</field>
+        <field name="arch" type="xml">
+            <search>
+                <field name="name" filter_domain="[('name','ilike',self)]" />
+                <filter
+                    string="All Files"
+                    name="all"
+                    domain="['|',('active', '=',  False), ('active', '!=',  False)]"
+                />
+                <filter
+                    string="My Files"
+                    name="filter_user"
+                    domain="[('create_uid', '=', uid)]"
+                />
+                <separator />
+                <filter
+                    string="Archived Files"
+                    name="filter_active"
+                    domain="[('active', '=', False)]"
+                />
+                <separator />
+                <filter
+                    string="Creation Date"
+                    name="filter_create"
+                    date="create_date"
+                />
+                <filter
+                    string="Modification Date"
+                    name="filter_write"
+                    date="write_date"
+                />
+                <group expand="0" string="Group By">
+                    <filter
+                        name="group_color"
+                        string="Color"
+                        domain="[]"
+                        context="{'group_by':'color'}"
+                    />
+                    <filter
+                        name="group_category"
+                        string="Category"
+                        domain="[]"
+                        context="{'group_by':'category_id'}"
+                    />
+                    <separator />
+                    <filter
+                        name="group_storage"
+                        string="Storage"
+                        domain="[]"
+                        context="{'group_by':'storage_id'}"
+                    />
+                    <filter
+                        name="group_directory"
+                        string="Directories"
+                        domain="[]"
+                        context="{'group_by':'directory_id'}"
+                    />
+                </group>
+<!--                <searchpanel>-->
+<!--                    <field-->
+<!--                        name="directory_id"-->
+<!--                        icon="fa-folder"-->
+<!--                        limit="0"-->
+<!--                        enable_counters="1"-->
+<!--                    />-->
+<!--                    <field-->
+<!--                        name="category_id"-->
+<!--                        icon="fa-users"-->
+<!--                        limit="0"-->
+<!--                        enable_counters="1"-->
+<!--                    />-->
+<!--                </searchpanel>-->
+            </search>
+        </field>
+    </record>
     </data>
 </odoo>

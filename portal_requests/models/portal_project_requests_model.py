@@ -32,9 +32,34 @@ class PortalProjectRequest(models.Model):
     analytic_account_id = fields.Many2one('account.analytic.account', string='Cuenta Analítica', tracking=True)
     project_count = fields.Integer(compute='_compute_analytic_count', string='Analytic Count')
 
+    # Campo para contar documentos DMS asociados al proyecto
+    dms_document_count = fields.Integer(
+        compute='_compute_dms_document_count',
+        string='Documentos DMS'
+    )
+
     def _compute_analytic_count(self):
         for record in self:
             record.project_count = 1 if record.created_analytic_id else 0
+
+    def _compute_dms_document_count(self):
+        """Cuenta los archivos DMS asociados al proyecto"""
+        for record in self:
+            if record.created_analytic_id and record.project_name:
+                # Buscar el directorio del proyecto en DMS
+                project_directory = self.env['dms.directory'].sudo().search([
+                    ('name', '=', record.project_name)
+                ], limit=1)
+
+                if project_directory:
+                    # Contar archivos en el directorio del proyecto
+                    record.dms_document_count = self.env['dms.file'].sudo().search_count([
+                        ('directory_id', '=', project_directory.id)
+                    ])
+                else:
+                    record.dms_document_count = 0
+            else:
+                record.dms_document_count = 0
 
     def show_notificacion(self, title_char, text, type_char):
         return {
@@ -190,6 +215,33 @@ class PortalProjectRequest(models.Model):
             "res_id": self.created_analytic_id.id,
             "target": "current",
         }
+        return action
+
+    def action_view_dms_documents(self):
+        """Abre la vista personalizada de documentos DMS filtrada por el directorio del proyecto"""
+        self.ensure_one()
+
+        # Buscar el directorio del proyecto
+        project_directory = self.env['dms.directory'].sudo().search([
+            ('name', '=', self.project_name)
+        ], limit=1)
+
+        if not project_directory:
+            raise UserError(_("No se encontró el directorio DMS para el proyecto '%s'") % self.project_name)
+
+        # Obtener la acción personalizada y modificar el dominio y contexto
+        action = self.env.ref('portal_requests.action_custom_dms_documents').read()[0]
+        action.update({
+            'name': _('Documentos DMS - %s') % self.project_name,
+            'domain': [('directory_id', '=', project_directory.id)],
+            'context': {
+                'default_directory_id': project_directory.id,
+                'search_default_directory_id': project_directory.id,
+                'create': False,  # Deshabilitar creación
+                'edit': False,    # Solo lectura
+                'delete': False,  # Sin eliminar
+            },
+        })
         return action
 
     @api.depends('project_name', 'type')

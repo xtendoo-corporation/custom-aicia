@@ -45,8 +45,8 @@
         'views/interface/portal_employee_intern_request.xml',
         'views/interface/work_group_views.xml',
         'views/interface/account_analytic_inherit_views.xml',  # Nueva vista heredada
+        'views/interface/account_move_inherit_views.xml',  # Nueva vista para facturas
         'security/dashboard_permision.xml',
     ],
     "installable": True,
-    'application': False,
 }

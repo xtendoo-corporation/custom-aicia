@@ -1,0 +1,20 @@
+<?xml version="1.0" encoding="utf-8"?>
+<odoo>
+    <data>
+        <record id="view_move_form_inherit_analytic_header" model="ir.ui.view">
+            <field name="name">account.move.form.inherit.analytic.header</field>
+            <field name="model">account.move</field>
+            <field name="inherit_id" ref="account.view_move_form"/>
+            <field name="arch" type="xml">
+                <xpath expr="//field[@name='partner_id']" position="after">
+                    <label for="analytic_account_header_id"
+                           string="Cuenta Analítica"
+                           invisible="move_type not in ('out_invoice', 'out_refund', 'in_invoice', 'in_refund')"/>
+                    <field name="analytic_account_header_id"
+                           invisible="move_type not in ('out_invoice', 'out_refund', 'in_invoice', 'in_refund')"
+                           options="{'no_create': True, 'no_open': True}"/>
+                </xpath>
+            </field>
+        </record>
+    </data>
+</odoo>

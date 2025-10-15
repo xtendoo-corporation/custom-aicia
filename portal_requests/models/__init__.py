@@ -13,3 +13,4 @@ from . import res_users
 from . import report_certificate
 from . import work_group
 from . import account_analytic_inherit
+from . import account_move_inherit

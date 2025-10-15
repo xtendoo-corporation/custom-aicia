@@ -5,7 +5,11 @@ import base64
 class PortalApprovalRequestController(Controller):
     @route('/portal/approval_request', auth='user', website=True)
     def approval_request_form(self, **kwargs):
-        return request.render('portal_requests.portal_approval_request_template', {})
+        user = request.env.user
+        allowed_work_groups = request.env['portal.work.group'].search([('user_ids', 'in', user.id)])
+        return request.render('portal_requests.portal_approval_request_template', {
+            'work_groups': allowed_work_groups,
+        })
 
     @route('/portal/approval_request/submit', type='http', auth='user', website=True, methods=['POST'])
     def approval_request_submit(self, **post):
@@ -46,6 +50,7 @@ class PortalApprovalRequestController(Controller):
             'is_company_signed': is_company_signed,
             'signature_page': 'last',
             'signature_position': 'bottom_left',
+            'work_group_id': post.get('work_group_id') or False
         })
 
 
