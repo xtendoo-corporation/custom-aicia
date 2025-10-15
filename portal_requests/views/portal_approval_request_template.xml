@@ -165,8 +165,14 @@
         </t>
     </template>
 
-    <record id="portal_approval_menu" model="website.menu">
-        <field name="name">Solicitudes de Documentos</field>
+     <record id="portal_approval_menu" model="website.menu">
+        <field name="name">Solicitudes</field>
+        <field name="parent_id" ref="website.main_menu"/>
+        <field name="sequence" type="int">90</field>
+    </record>
+
+    <record id="portal_hr_expensive_menu" model="website.menu">
+        <field name="name">Approval Request</field>
         <field name="url">/portal/approval_request</field>
         <field name="parent_id" ref="website.main_menu"/>
         <field name="sequence" type="int">100</field>
