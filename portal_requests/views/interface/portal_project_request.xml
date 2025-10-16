@@ -142,93 +142,225 @@
                   groups="portal_requests.group_director_investigation_and_development"
                   sequence="20"/>
 
-        <record id="search_dms_file_inherit" model="ir.ui.view">
-        <field name="name">dms_file.search.inherit</field>
-        <field name="model">dms.file</field>
-        <field name="arch" type="xml">
-            <search>
-                <field name="name" filter_domain="[('name','ilike',self)]" />
-                <filter
-                    string="All Files"
-                    name="all"
-                    domain="['|',('active', '=',  False), ('active', '!=',  False)]"
-                />
-                <filter
-                    string="My Files"
-                    name="filter_user"
-                    domain="[('create_uid', '=', uid)]"
-                />
-                <separator />
-                <filter
-                    string="Archived Files"
-                    name="filter_active"
-                    domain="[('active', '=', False)]"
-                />
-                <separator />
-                <filter
-                    string="Creation Date"
-                    name="filter_create"
-                    date="create_date"
-                />
-                <filter
-                    string="Modification Date"
-                    name="filter_write"
-                    date="write_date"
-                />
-                <group expand="0" string="Group By">
-                    <filter
-                        name="group_color"
-                        string="Color"
-                        domain="[]"
-                        context="{'group_by':'color'}"
-                    />
-                    <filter
-                        name="group_category"
-                        string="Category"
-                        domain="[]"
-                        context="{'group_by':'category_id'}"
-                    />
-                    <separator />
-                    <filter
-                        name="group_storage"
-                        string="Storage"
-                        domain="[]"
-                        context="{'group_by':'storage_id'}"
-                    />
-                    <filter
-                        name="group_directory"
-                        string="Directories"
-                        domain="[]"
-                        context="{'group_by':'directory_id'}"
-                    />
-                </group>
-<!--                <searchpanel>-->
-<!--                    <field-->
-<!--                        name="directory_id"-->
-<!--                        icon="fa-folder"-->
-<!--                        limit="0"-->
-<!--                        enable_counters="1"-->
+<!--        <record id="search_dms_file_inherit" model="ir.ui.view">-->
+<!--        <field name="name">dms_file.search.inherit</field>-->
+<!--        <field name="model">dms.file</field>-->
+<!--        <field name="arch" type="xml">-->
+<!--            <search>-->
+<!--                <field name="name" filter_domain="[('name','ilike',self)]" />-->
+<!--                <filter-->
+<!--                    string="All Files"-->
+<!--                    name="all"-->
+<!--                    domain="['|',('active', '=',  False), ('active', '!=',  False)]"-->
+<!--                />-->
+<!--                <filter-->
+<!--                    string="My Files"-->
+<!--                    name="filter_user"-->
+<!--                    domain="[('create_uid', '=', uid)]"-->
+<!--                />-->
+<!--                <separator />-->
+<!--                <filter-->
+<!--                    string="Archived Files"-->
+<!--                    name="filter_active"-->
+<!--                    domain="[('active', '=', False)]"-->
+<!--                />-->
+<!--                <separator />-->
+<!--                <filter-->
+<!--                    string="Creation Date"-->
+<!--                    name="filter_create"-->
+<!--                    date="create_date"-->
+<!--                />-->
+<!--                <filter-->
+<!--                    string="Modification Date"-->
+<!--                    name="filter_write"-->
+<!--                    date="write_date"-->
+<!--                />-->
+<!--                <group expand="0" string="Group By">-->
+<!--                    <filter-->
+<!--                        name="group_color"-->
+<!--                        string="Color"-->
+<!--                        domain="[]"-->
+<!--                        context="{'group_by':'color'}"-->
 <!--                    />-->
-<!--                    <field-->
-<!--                        name="category_id"-->
-<!--                        icon="fa-users"-->
-<!--                        limit="0"-->
-<!--                        enable_counters="1"-->
+<!--                    <filter-->
+<!--                        name="group_category"-->
+<!--                        string="Category"-->
+<!--                        domain="[]"-->
+<!--                        context="{'group_by':'category_id'}"-->
 <!--                    />-->
-<!--                </searchpanel>-->
-            </search>
-        </field>
-    </record>
+<!--                    <separator />-->
+<!--                    <filter-->
+<!--                        name="group_storage"-->
+<!--                        string="Storage"-->
+<!--                        domain="[]"-->
+<!--                        context="{'group_by':'storage_id'}"-->
+<!--                    />-->
+<!--                    <filter-->
+<!--                        name="group_directory"-->
+<!--                        string="Directories"-->
+<!--                        domain="[]"-->
+<!--                        context="{'group_by':'directory_id'}"-->
+<!--                    />-->
+<!--                </group>-->
+<!--&lt;!&ndash;                <searchpanel>&ndash;&gt;-->
+<!--&lt;!&ndash;                    <field&ndash;&gt;-->
+<!--&lt;!&ndash;                        name="directory_id"&ndash;&gt;-->
+<!--&lt;!&ndash;                        icon="fa-folder"&ndash;&gt;-->
+<!--&lt;!&ndash;                        limit="0"&ndash;&gt;-->
+<!--&lt;!&ndash;                        enable_counters="1"&ndash;&gt;-->
+<!--&lt;!&ndash;                    />&ndash;&gt;-->
+<!--&lt;!&ndash;                    <field&ndash;&gt;-->
+<!--&lt;!&ndash;                        name="category_id"&ndash;&gt;-->
+<!--&lt;!&ndash;                        icon="fa-users"&ndash;&gt;-->
+<!--&lt;!&ndash;                        limit="0"&ndash;&gt;-->
+<!--&lt;!&ndash;                        enable_counters="1"&ndash;&gt;-->
+<!--&lt;!&ndash;                    />&ndash;&gt;-->
+<!--&lt;!&ndash;                </searchpanel>&ndash;&gt;-->
+<!--            </search>-->
+<!--        </field>-->
+<!--    </record>-->
+
+        <!-- Vista heredada que añade grupos al searchpanel de DMS base -->
+        <record id="search_dms_file_groups" model="ir.ui.view">
+            <field name="name">dms_file.search.groups</field>
+            <field name="model">dms.file</field>
+            <field name="inherit_id" ref="dms.search_dms_file"/>
+            <field name="arch" type="xml">
+                <searchpanel position="attributes">
+                    <attribute name="groups">portal_requests.group_director_manager</attribute>
+                </searchpanel>
+            </field>
+        </record>
+
+        <!-- Vista Kanban personalizada para DMS sin panel lateral -->
+<!--        <record id="view_dms_file_kanban_custom" model="ir.ui.view">-->
+<!--            <field name="name">dms_file.kanban.custom</field>-->
+<!--            <field name="model">dms.file</field>-->
+<!--            <field name="arch" type="xml">-->
+<!--                <kanban-->
+<!--                    js_class="file_kanban"-->
+<!--                    class="mk_file_kanban_view o_kanban_small_column o_kanban_mobile"-->
+<!--                    banner_route="/onboarding/document_onboarding_file"-->
+<!--                >-->
+<!--                    <field name="id" />-->
+<!--                    <field name="tag_ids" />-->
+<!--                    <field name="name" />-->
+<!--                    <field name="color" />-->
+<!--                    <field name="active" />-->
+<!--                    <field name="mimetype" />-->
+<!--                    <field name="icon_url" />-->
+<!--                    <field name="create_uid" />-->
+<!--                    <field name="write_date" />-->
+<!--                    <field name="locked_by" />-->
+<!--                    <field name="is_locked" />-->
+<!--                    <field name="is_lock_editor" />-->
+<!--                    <field name="permission_write" />-->
+<!--                    <field name="permission_unlink" />-->
+<!--                    <field name="write_date" />-->
+<!--                    <field name="directory_id" />-->
+<!--                    <templates>-->
+<!--                        <t t-name="kanban-menu">-->
+<!--                            <div class="container">-->
+<!--                                <div class="row">-->
+<!--                                    <div class="col-6 o_kanban_card_manage_section o_kanban_manage_view">-->
+<!--                                        <h5 role="menuitem" class="o_kanban_card_manage_title">-->
+<!--                                            <span>Operations</span>-->
+<!--                                        </h5>-->
+<!--                                        <div role="menuitem" t-if="record.permission_write.raw_value and !record.is_locked.raw_value">-->
+<!--                                            <a name="lock" type="object">-->
+<!--                                                <i class="fa fa-lock" />-->
+<!--                                                Lock-->
+<!--                                            </a>-->
+<!--                                        </div>-->
+<!--                                        <div role="menuitem" t-if="record.is_locked.raw_value and record.is_lock_editor.raw_value">-->
+<!--                                            <a name="unlock" type="object">-->
+<!--                                                <i class="fa fa-unlock-alt" />-->
+<!--                                                Unlock-->
+<!--                                            </a>-->
+<!--                                        </div>-->
+<!--                                        <div role="menuitem">-->
+<!--                                            <a t-attf-href="/web/content?id=#{record.id.raw_value}&amp;field=content&amp;model=dms.file&amp;filename_field=name&amp;download=true">-->
+<!--                                                <i class="fa fa-download" />-->
+<!--                                                Download-->
+<!--                                            </a>-->
+<!--                                        </div>-->
+<!--                                    </div>-->
+<!--                                    <div class="col-6 o_kanban_card_manage_section">-->
+<!--                                        <h5 role="menuitem" class="o_kanban_card_manage_title">-->
+<!--                                            <span>Actions</span>-->
+<!--                                        </h5>-->
+<!--                                        <div role="menuitem">-->
+<!--                                            <a type="open">-->
+<!--                                                <i class="fa fa-external-link" />-->
+<!--                                                Open-->
+<!--                                            </a>-->
+<!--                                        </div>-->
+<!--                                        <div role="menuitem" t-if="record.permission_write.raw_value">-->
+<!--                                            <a type="edit">-->
+<!--                                                <i class="fa fa-pencil-square-o" />-->
+<!--                                                Edit-->
+<!--                                            </a>-->
+<!--                                        </div>-->
+<!--                                        <div role="menuitem" t-if="record.permission_unlink.raw_value and (!record.is_locked.raw_value or (record.is_locked.raw_value and record.is_lock_editor.raw_value))">-->
+<!--                                            <a type="delete">-->
+<!--                                                <i class="fa fa-trash-o" />-->
+<!--                                                Delete-->
+<!--                                            </a>-->
+<!--                                        </div>-->
+<!--                                    </div>-->
+<!--                                </div>-->
+<!--                                <div class="o_kanban_card_manage_settings row">-->
+<!--                                    <div t-if="record.permission_write.raw_value" role="menuitem" aria-haspopup="true">-->
+<!--                                        <ul class="oe_kanban_colorpicker" data-field="color" role="popup" />-->
+<!--                                    </div>-->
+<!--                                </div>-->
+<!--                            </div>-->
+<!--                        </t>-->
+<!--                        <t t-name="kanban-box">-->
+<!--                            <div t-attf-class="#{kanban_color(record.color.raw_value)} oe_kanban_global_click oe_kanban_content oe_kanban_card row g-0">-->
+<!--                                <div class="col-3 h-100">-->
+<!--                                    <a class="h-100 d-block o_kanban_dms_file_preview"-->
+<!--                                       t-att-data-id="record.id.raw_value"-->
+<!--                                       t-att-id="record.id.raw_value"-->
+<!--                                       t-att-name="record.name.raw_value">-->
+<!--                                        <img t-att-src="record.icon_url.raw_value" alt="Icon" />-->
+<!--                                    </a>-->
+<!--                                </div>-->
+<!--                                <div class="col-9">-->
+<!--                                    <div class="o_kanban_details">-->
+<!--                                        <h5 class="o_kanban_record_title o_text_overflow">-->
+<!--                                            <field name="name" />-->
+<!--                                        </h5>-->
+<!--                                        <div class="o_kanban_record_body">-->
+<!--                                            <field name="tag_ids" widget="many2many_tags" options="{'color_field': 'color'}" />-->
+<!--                                            <field name="write_date" widget="date" />-->
+<!--                                        </div>-->
+<!--                                        <div class="o_kanban_record_bottom">-->
+<!--                                            <div class="oe_kanban_bottom_right">-->
+<!--                                                <span t-if="record.is_locked.raw_value" class="o_dms_file_kanban_lock">-->
+<!--                                                    <i t-attf-class="fa #{(record.is_locked.raw_value and !record.is_lock_editor.raw_value) ? 'fa-lock' : ''} #{((record.is_locked.raw_value and record.is_lock_editor.raw_value)) ? 'fa-unlock-alt' : ''}"-->
+<!--                                                       t-att-title="record.locked_by.value" />-->
+<!--                                                </span>-->
+<!--                                                <img t-att-src="kanban_image('res.users', 'image_128', record.create_uid.raw_value)"-->
+<!--                                                     t-att-alt="record.create_uid.value"-->
+<!--                                                     class="oe_kanban_avatar" />-->
+<!--                                            </div>-->
+<!--                                        </div>-->
+<!--                                    </div>-->
+<!--                                </div>-->
+<!--                            </div>-->
+<!--                        </t>-->
+<!--                    </templates>-->
+<!--                </kanban>-->
+<!--            </field>-->
+<!--        </record>-->
 
         <record id="action_custom_dms_documents" model="ir.actions.act_window">
             <field name="name">Documentos DMS del Proyecto</field>
             <field name="res_model">dms.file</field>
             <field name="view_mode">kanban,tree,form</field>
-            <field name="search_view_id" ref="search_dms_file_inherit"/>
             <field name="target">current</field>
             <field name="context">{'create': False}</field>
         </record>
-
-
     </data>
 </odoo>
