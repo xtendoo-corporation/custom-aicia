@@ -5,15 +5,6 @@
         <field name="model">account.analytic.account</field>
         <field name="inherit_id" ref="analytic.view_account_analytic_account_form"/>
         <field name="arch" type="xml">
-            <div name="button_box" position="inside">
-                <button name="action_view_dms_documents"
-                        type="object"
-                        class="oe_stat_button"
-                        icon="fa-solid fa-folder-open"
-                        invisible="dms_document_count == 0">
-                    <field name="dms_document_count" widget="statinfo" string="Documentos DMS"/>
-                </button>
-            </div>
             <xpath expr="//field[@name='partner_id']" position="after">
                 <field name="clientes_asociados_domain" invisible="1"/>
                 <field name="clientes_asociados" widget="many2many_tags"/>
