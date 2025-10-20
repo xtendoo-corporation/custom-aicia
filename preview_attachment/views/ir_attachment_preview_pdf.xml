@@ -1,0 +1,24 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<odoo>
+    <data>
+        <record id="view_attachment_pdf_preview" model="ir.ui.view">
+            <field name="name">ir.attachment.pdf.preview</field>
+            <field name="model">ir.attachment</field>
+            <field name="mode">primary</field>
+            <field name="arch" type="xml">
+                <form string="Previsualización PDF">
+                    <sheet>
+                        <group>
+                            <field name="name" readonly="1"/>
+                            <field name="mimetype" readonly="1"/>
+                        </group>
+                        <group>
+                            <field name="pdf_preview" readonly="1" widget="html"/>
+                        </group>
+                    </sheet>
+                </form>
+            </field>
+        </record>
+    </data>
+</odoo>
+

@@ -1,0 +1,18 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!-- Vista heredada para añadir el botón de previsualización en el formulario de adjuntos -->
+<odoo>
+    <data>
+        <record id="view_attachment_form_preview" model="ir.ui.view">
+            <field name="name">ir.attachment.form.preview</field>
+            <field name="model">ir.attachment</field>
+            <field name="inherit_id" ref="base.view_attachment_form"/>
+            <field name="arch" type="xml">
+                <!-- Añadimos el botón justo después del campo 'datas' -->
+                <field name="datas" position="after">
+                    <button name="preview_attachment" type="object" string="Previsualizar"
+                        class="btn-primary"/>
+                </field>
+            </field>
+        </record>
+    </data>
+</odoo>
