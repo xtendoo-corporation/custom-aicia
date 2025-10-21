@@ -35,7 +35,7 @@ class AccountAnalyticAccountInherit(models.Model):
             'name': 'Adjuntos',
             'type': 'ir.actions.act_window',
             'res_model': 'ir.attachment',
-            'view_mode': 'kanban,tree,form',
+            'view_mode': 'tree,kanban,form',
             'domain': [
                 ('res_model', '=', 'account.analytic.account'),
                 ('res_id', '=', self.id)

@@ -6,6 +6,9 @@
 <odoo>
     <data>
 
+        <!-- Menú raíz para el módulo portal_requests -->
+        <menuitem id="menu_portal_requests_root" name="Portal Requests" sequence="1"/>
+
         <record id="action_unresised" model="ir.actions.act_window">
         <field name="name">Unapproved Type Approvals</field>
         <field name="res_model">document.approval</field>

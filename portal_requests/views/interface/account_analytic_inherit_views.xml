@@ -12,9 +12,13 @@
             </xpath>
             <xpath expr="//div[@name='button_box']" position="inside">
                 <!-- Smart button de adjuntos con icono Odoo -->
-                <button name="action_open_attachments" type="object" class="oe_stat_button" icon="fa fa-paperclip">
-                    <field name="attachment_count" widget="statinfo" string="Adjuntos"/>
-                </button>
+                <button name="action_open_attachments"
+                        type="object"
+                        class="oe_stat_button"
+                        icon="fa-paperclip "
+                        invisible="attachment_count == 0">
+                        <field name="attachment_count" widget="statinfo" string="Adjuntos" />
+                    </button>
             </xpath>
         </field>
     </record>

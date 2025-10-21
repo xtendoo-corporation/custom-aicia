@@ -9,8 +9,8 @@
             <field name="arch" type="xml">
                 <!-- Añadimos el botón justo después del campo 'datas' -->
                 <field name="mimetype" position="after">
-                    <button name="preview_attachment" type="object" string="Previsualizar"
-                        class="btn-primary"/>
+                    <field name="etiqueta_ids" widget="many2many_tags" options="{'color_field': 'color'}"/>
+                <field name="categoria_ids" widget="many2many_tags" options="{'color_field': 'color'}"/>
                 </field>
             </field>
         </record>
@@ -21,8 +21,8 @@
             <field name="arch" type="xml">
                 <!-- Añadimos el botón justo después del campo 'datas' -->
                 <field name="file_size" position="before">
-                    <button name="preview_attachment" type="object" string="Previsualizar"
-                        class="btn-primary"/>
+                    <field name="etiqueta_ids" widget="many2many_tags" options="{'color_field': 'color'}"/>
+                <field name="categoria_ids" widget="many2many_tags" options="{'color_field': 'color'}"/>
                 </field>
             </field>
         </record>

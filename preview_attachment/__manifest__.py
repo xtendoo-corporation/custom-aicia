@@ -10,8 +10,17 @@
     'depends': ['base', 'web'],
     'data': [
         'views/ir_attachment_preview_button.xml',
-        'views/ir_attachment_preview_pdf.xml',  # Añadida vista para previsualización PDF
+        'views/ir_attachment_preview_pdf.xml',
+        'views/ir_attachment_kanban_preview.xml',
     ],
+    'qweb': [
+        'views/ir_attachment_kanban_preview.xml',
+    ],
+    'assets': {
+        'web.assets_backend': [
+            'preview_attachment/static/src/js/kanban_preview_button.js',
+        ],
+    },
     'installable': True,
     'application': False,
     'license': 'LGPL-3',
