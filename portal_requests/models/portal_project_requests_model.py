@@ -4,6 +4,7 @@ from odoo.exceptions import UserError
 class PortalProjectRequest(models.Model):
     _name = 'portal.project.request'
     _description = 'Portal Project Request'
+    _rec_name = 'computed_name'
     _inherit = ['mail.thread', 'mail.activity.mixin']
 
     user_id = fields.Many2one('res.users', string='User', required=True)
@@ -20,6 +21,7 @@ class PortalProjectRequest(models.Model):
     budget_file_filename = fields.Char(string="Budget Filename")
     approved = fields.Boolean(string='Approved', default=False)
     is_revised = fields.Boolean(string='Is revised', default=False, store=True)
+    computed_name = fields.Char('Computed Name', compute='_compute_name')
     type= fields.Selection([
         ('new', 'Nuevo Proyecto'),
         ('end', 'Finalizar Proyecto'),
@@ -28,6 +30,10 @@ class PortalProjectRequest(models.Model):
     created_analytic_id = fields.Many2one('account.analytic.account', string='Created Analytic Account')
     analytic_account_id = fields.Many2one('account.analytic.account', string='Cuenta Analítica', tracking=True)
     project_count = fields.Integer(compute='_compute_analytic_count', string='Analytic Count')
+
+    def _compute_name(self):
+        for record in self:
+            record.computed_name = f"Solicitud de apertura - {record.project_name}"
 
     def _compute_analytic_count(self):
         for record in self:
