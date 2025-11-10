@@ -8,7 +8,6 @@ class AccountMove(models.Model):
 
     # Campo Many2one que relaciona con cuenta analítica
     analytic_distribution = fields.Json(
-        inverse="_inverse_analytic_distribution",
     )
     analytic_precision = fields.Integer(
         store=False,

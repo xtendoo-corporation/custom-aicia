@@ -32,6 +32,33 @@ class PortalUtils(http.Controller):
         clients_json = {'clients': [{'id': client.id, 'name': client.name} for client in clients]}
         return request.make_response(json.dumps({'partners': clients_json}), headers={'Content-Type': 'application/json'})
 
+    @route('/get_clients_by_analytic', type='http', auth='public', methods=['GET'], csrf=False)
+    def get_clients_by_analytic(self, **kwargs):
+        company_id = kwargs.get('company_id')
+
+        # Buscar cuentas analíticas de la empresa
+        analytic_accounts = request.env['account.analytic.account'].search([
+            ('id', '=', int(company_id))
+        ])
+
+        # Recopilar clientes del campo partner_id y clientes_asociados
+        all_clients = request.env['res.partner']
+
+        for account in analytic_accounts:
+            # Añadir el cliente principal (partner_id)
+            if account.partner_id:
+                all_clients |= account.partner_id
+
+            # Añadir los clientes asociados (Many2many)
+            if account.clientes_asociados:
+                all_clients |= account.clientes_asociados
+
+        # Crear respuesta JSON con clientes únicos
+        clients_json = {'clients': [{'id': client.id, 'name': client.name} for client in all_clients]}
+
+        return request.make_response(json.dumps({'partners': clients_json}),
+                                     headers={'Content-Type': 'application/json'})
+
     @route('/get_invoice_by_clients', type='http', auth='public', methods=['GET'], csrf=False)
     def get_invoice_by_clients(self, **kwargs):
         company_id = kwargs.get('company_id')

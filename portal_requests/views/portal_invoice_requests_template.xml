@@ -123,7 +123,8 @@
                                                     </label>
                                                     <div class="col-sm">
                                                         <input type="date" class="form-control" name="date"
-                                                               required="required"/>
+                                                               required="required"
+                                                               t-att-min="datetime.date.today().strftime('%Y-%m-%d')"/>
                                                     </div>
                                                 </div>
                                             </div>
@@ -255,7 +256,7 @@
                                                 const companyId = companySelect.value;
                                                 clientSelect.innerHTML = '<option value="">Loading...</option>';
                                                 $.ajax({
-                                                    url: '/get_clients_by_company',
+                                                    url: '/get_clients_by_analytic',
                                                     type: 'GET',
                                                     data: { company_id: companyId }, // Pasar el company_id como parámetro
                                                     success: function(response) {

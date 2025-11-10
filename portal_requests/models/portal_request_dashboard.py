@@ -98,7 +98,7 @@ class PortalRequestDashboard(models.Model):
             'res_model': 'portal.invoice.request',
             'view_mode': 'tree,form',
             'domain': [('is_revised', '=', False), ('move_type', '=', 'out_invoice')],
-            'context': {'group_by': 'company_id'},
+            'context': {'group_by': 'analytic_id'},
         }
     def open_to_revise_invoice_refund(self):
         return {
@@ -107,7 +107,7 @@ class PortalRequestDashboard(models.Model):
             'res_model': 'portal.invoice.request',
             'view_mode': 'tree,form',
             'domain': [('is_revised', '=', False), ('move_type', '=', 'out_refund')],
-            'context': {'group_by': 'company_id'},
+            'context': {'group_by': 'analytic_id'},
         }
 
     def open_to_revise_employee(self):
@@ -172,7 +172,7 @@ class PortalRequestDashboard(models.Model):
             'res_model': 'portal.invoice.request',
             'view_mode': 'tree,form',
             'domain': [('approved', '=', True), ('move_type', '=', 'out_invoice')],
-            'context': {'group_by': 'company_id'},
+            'context': {'group_by': 'analytic_id'},
         }
     def open_approved_invoice_refund(self):
         return {
@@ -181,7 +181,7 @@ class PortalRequestDashboard(models.Model):
             'res_model': 'portal.invoice.request',
             'view_mode': 'tree,form',
             'domain': [('approved', '=', True), ('move_type', '=', 'out_refund')],
-            'context': {'group_by': 'company_id'},
+            'context': {'group_by': 'analytic_id'},
         }
 
     def open_approved_employee(self):
@@ -246,7 +246,7 @@ class PortalRequestDashboard(models.Model):
             'res_model': 'portal.invoice.request',
             'view_mode': 'tree,form',
             'domain': [('approved', '=', False), ('is_revised', '=', True), ('move_type', '=', 'out_invoice')],
-            'context': {'group_by': 'company_id'},
+            'context': {'group_by': 'analytic_id'},
         }
     def open_rejected_invoice_refund(self):
         return {
@@ -255,7 +255,7 @@ class PortalRequestDashboard(models.Model):
             'res_model': 'portal.invoice.request',
             'view_mode': 'tree,form',
             'domain': [('approved', '=', False), ('is_revised', '=', True), ('move_type', '=', 'out_refund')],
-            'context': {'group_by': 'company_id'},
+            'context': {'group_by': 'analytic_id'},
         }
 
     def open_rejected_employee(self):

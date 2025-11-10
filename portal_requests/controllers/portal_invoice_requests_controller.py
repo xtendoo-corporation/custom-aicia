@@ -7,6 +7,8 @@ class PortalInvoiceController(Controller):
         user = request.env.user
         # Obtener las compañías permitidas para el usuario logueado
         allowed_companies = user.company_ids
+        allowed_work_groups = request.env['portal.work.group'].search([('user_ids', 'in', user.id)])
+        allowed_companies = request.env['account.analytic.account'].search([('work_group_id', 'in', allowed_work_groups.ids)])
         options = request.env['account.move']._fields['l10n_es_edi_facturae_reason_code']._description_selection(
             request.env)
         return request.render('portal_requests.portal_invoice_request_template', {
@@ -17,7 +19,7 @@ class PortalInvoiceController(Controller):
     @route('/portal/invoice_request/submit', type='http', auth='user', website=True, methods=['POST'])
     def invoice_request_submit(self, **post):
         user_id = request.env.user.id
-        company_id = int(post.get('company_id'))
+        analytic_id = int(post.get('company_id'))
         partner_id = int(post.get('partner_id'))
         amount = float(post.get('amount'))
         notes = post.get('notes')
@@ -37,7 +39,7 @@ class PortalInvoiceController(Controller):
             invoice_to_refund = False
         invoice_request = request.env['portal.invoice.request'].sudo().create({
             'user_id': user_id,
-            'company_id': company_id,
+            'analytic_id': analytic_id,
             'partner_id': partner_id,
             'amount': amount,
             'notes': notes,
@@ -51,7 +53,7 @@ class PortalInvoiceController(Controller):
         else:
             invoice_name = request.env['account.move'].sudo().search([('id', '=', invoice_to_refund)]).name
             move_text = "factura rectificativa para la factura " + invoice_name
-        self.send_request_email(move_text,invoice_request.user_id.name,invoice_request.company_id.name,invoice_request.partner_id.name, invoice_request.notes, invoice_request.invoice_to_refund, invoice_request)
+        self.send_request_email(move_text,invoice_request.user_id.name,invoice_request.analytic_id.name,invoice_request.partner_id.name, invoice_request.notes, invoice_request.invoice_to_refund, invoice_request)
         return request.redirect('/contactus-thank-you')
 
     def send_request_email(self, move_text, user_name,company_name, partner_name, notes, invoice_to_refund, invoice_request):
