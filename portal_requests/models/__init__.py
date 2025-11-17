@@ -15,4 +15,5 @@ from . import work_group
 from . import account_analytic_inherit
 from . import etiqueta_categoria
 from . import ir_attachment
+from . import account_move
 

@@ -83,12 +83,31 @@
             </field>
         </record>
 
+        <record id="action_analytic_accounts" model="ir.actions.act_window">
+            <field name="name">Cuentas Analíticas</field>
+            <field name="res_model">account.analytic.account</field>
+            <field name="view_mode">tree,form</field>
+            <field name="help" type="html">
+                <p>
+                    Gestión de cuentas analíticas del proyecto.
+                </p>
+            </field>
+        </record>
+
         <menuitem
             id="portal_requests_menu"
             name="Portal Request"
             sequence="200"
             action="portal_requests.action_portal_request_dashboard"
             web_icon="portal_requests,static/description/menu_icon.png"
+            groups="base.group_user" />
+
+        <menuitem
+            id="analytic_accounts_menu"
+            name="Cuentas Analíticas"
+            sequence="210"
+            action="action_analytic_accounts"
+            web_icon="portal_requests,static/description/analytic_account_icon.png"
             groups="base.group_user" />
     </data>
 </odoo>

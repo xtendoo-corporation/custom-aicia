@@ -49,6 +49,7 @@ class PortalInvoiceRequest(models.Model):
 
     def action_approve(self):
         for record in self:
+            record.add_group_boss_to_followers()
             record.approved = True
             record.is_revised = True
             record.create_invoice()
@@ -67,11 +68,13 @@ class PortalInvoiceRequest(models.Model):
         print("*" * 100)
         if self.move_type == 'out_invoice':
             print("Factura")
+            tax_ids =self.env['account.tax'].search([('name', '=', '21% S')], limit=1)
+            journal_id = self.env['account.journal'].search([('name', '=', 'Facturas de cliente')], limit=1)
             invoice = self.env['account.move'].sudo().create({
                 'partner_id': self.partner_id.id,
                 'invoice_date': self.date,
                 'invoice_origin': False,
-                'amount_total': self.amount,
+                'journal_id': journal_id.id,
                 'move_type': 'out_invoice',
                 'analytic_distribution': {
                     self.analytic_id.id: 100,  # 100 significa 100% de distribución
@@ -84,6 +87,7 @@ class PortalInvoiceRequest(models.Model):
                         'analytic_distribution': {
                             self.analytic_id.id: 100,  # 100 significa 100% de distribución
                         } if self.analytic_id else {},
+                        'tax_ids': [(6, 0, tax_ids.ids)],
                     })
                 ],
             })
@@ -112,9 +116,12 @@ class PortalInvoiceRequest(models.Model):
                     })
                 ],
             })
-            self.invoice_created._onchange_analytic_distribution()
+
         # invoice.sudo().action_post()
         self.invoice_created = invoice.id
+        self.invoice_created._onchange_analytic_distribution()
+        group = self.analytic_id.work_group_id
+        self.invoice_created.add_group_boss_to_followers(group)
 
     def action_view_invoice(self):
         self.ensure_one()
@@ -139,3 +146,16 @@ class PortalInvoiceRequest(models.Model):
                 }
             )
         return action
+
+
+    def add_group_boss_to_followers(self):
+        group = self.analytic_id.work_group_id
+        if not group:
+            return
+        boss = group.user_ids.filtered(lambda u: u.has_group('portal_requests.group_equip_boss'))
+        if boss:
+            print("*"*100)
+            print("Adding boss to followers:", boss.name)
+            print("*"*100)
+            self.message_subscribe(partner_ids=[boss.partner_id.id])
+

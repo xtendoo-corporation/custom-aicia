@@ -18,6 +18,31 @@ class AccountAnalyticAccountInherit(models.Model):
     clientes_asociados_domain = fields.Many2many('res.partner', compute='_compute_clientes_asociados_domain')
 
     work_group_id = fields.Many2one('portal.work.group', string='Grupo de Trabajo', tracking=True)
+    responsible_domain = fields.Many2many('res.users', compute='_compute_responsible_domain')
+
+    @api.depends('work_group_id')
+    def _compute_responsible_domain(self):
+        for record in self:
+            if record.work_group_id:
+                record.responsible_domain = record.work_group_id.user_ids.ids
+            else:
+                record.responsible_domain = []
+
+    responsible_id = fields.Many2one('res.users', string='Responsable', tracking=True,
+                                     domain="[('id', 'in', responsible_domain)]")
+
+    user_can_edit = fields.Boolean(string='User Can Edit', compute='_compute_user_can_edit')
+
+    @api.depends('work_group_id', 'responsible_id')
+    def _compute_user_can_edit(self):
+        for record in self:
+            user = self.env.user
+            if user.has_group('portal_requests.group_director_manager'):
+                record.user_can_edit = True
+            elif record.responsible_id == user:
+                record.user_can_edit = True
+            else:
+                record.user_can_edit = False
 
     def _compute_attachment_count(self):
         Attachment = self.env['ir.attachment']
