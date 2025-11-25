@@ -12,5 +12,17 @@
             </xpath>
         </field>
     </record>
+    <record id="view_move_analytic_account_tree" model="ir.ui.view">
+        <field name="name">account.move.analytic.account.tree</field>
+        <field name="model">account.move</field>
+        <field name="inherit_id" ref="account.view_invoice_tree"/>
+        <field name="arch" type="xml">
+            <!-- Añade el campo de cuenta analítica después del campo de empresa -->
+            <xpath expr="//field[@name='invoice_date']" position="before">
+                <field string="Proyecto" name="analytic_distribution" widget="analytic_distribution"/>
+                <field name="work_group_id"/>
+            </xpath>
+        </field>
+    </record>
 </odoo>
 
