@@ -18,7 +18,6 @@ class AccountMove(models.Model):
             "Percentage Analytic"
         ),
     )
-
     work_group_id = fields.Many2one(
         compute="_compute_work_group_id",
         comodel_name="portal.work.group",
@@ -37,7 +36,9 @@ class AccountMove(models.Model):
                     account = self.env['account.analytic.account'].browse(int(first_key))
                     print("first_key",first_key)
                     if account and account.work_group_id:
-                        record.work_group_id = account.work_group_id
+                        work_group = self.env['portal.work.group'].browse(account.work_group_id.id)
+                        if work_group:
+                            record.work_group_id = work_group.id
                 else:
                     record.work_group_id = False
             else:
