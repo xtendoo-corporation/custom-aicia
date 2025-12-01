@@ -13,3 +13,26 @@ class WorkGroup(models.Model):
         'user_id',
         string='Usuarios'
     )
+
+    equip_boss_domain = fields.Many2many('res.users', compute='_compute_equip_boss_domain')
+
+
+    @api.depends('user_ids')
+    def _compute_equip_boss_domain(self):
+        group = self.env.ref('portal_requests.group_equip_boss', False)
+        for record in self:
+            if record.user_ids:
+                domain_user = record.user_ids.filtered(lambda u: group in u.groups_id)
+                record.equip_boss_domain = domain_user.ids
+            else:
+                record.equip_boss_domain = []
+
+    equip_boss = fields.Many2one(
+        'res.users',
+        string='Jefe de Equipo',
+        domain="[('id', 'in', equip_boss_domain)]"
+    )
+
+
+
+

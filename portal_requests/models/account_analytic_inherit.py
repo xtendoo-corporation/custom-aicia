@@ -19,6 +19,7 @@ class AccountAnalyticAccountInherit(models.Model):
 
     work_group_id = fields.Many2one('portal.work.group', string='Grupo de Trabajo', tracking=True)
     responsible_domain = fields.Many2many('res.users', compute='_compute_responsible_domain')
+    work_group_boss_id = fields.Many2one('res.users', string='Jefe de Equipo', related='work_group_id.equip_boss', store=True)
 
     @api.depends('work_group_id')
     def _compute_responsible_domain(self):
