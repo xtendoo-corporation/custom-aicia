@@ -23,7 +23,13 @@
             <field name="image" type="base64" file="portal_requests/static/description/invoicing.png"/>
             <field name="model">portal.invoice.request</field>
             <field name="type">out_invoice</field>
-             <field name="allowed_group_ids" eval="[(4, ref('portal_requests.group_partner_responsible'))]"/>
+            <field name="allowed_group_ids" eval="[
+                (4, ref('portal_requests.group_director_investigation_and_development')),
+                (4, ref('portal_requests.group_director_manager')),
+                (4, ref('portal_requests.group_partner_responsible')),
+                (4, ref('portal_requests.group_equip_boss')),
+                (4, ref('portal_requests.group_project_boss')),
+            ]"/>
         </record>
         <record id="dashboard_out_refund" model="portal.request.dashboard">
             <field name="name">Facturas rectificativas</field>

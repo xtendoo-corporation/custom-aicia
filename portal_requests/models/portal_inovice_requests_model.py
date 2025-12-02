@@ -8,7 +8,12 @@ class PortalInvoiceRequest(models.Model):
     _rec_name = 'computed_name'
 
     user_id = fields.Many2one('res.users', string='User', required=True)
+
     analytic_id = fields.Many2one('account.analytic.account', string='Proyecto', required=True)
+    responsible_id = fields.Many2one('res.users', related='analytic_id.responsible_id', string='Responsable', store=True)
+    work_group_id = fields.Many2one('portal.work.group', related='analytic_id.work_group_id', string='Grupo de Trabajo', store=True)
+    equip_boss = fields.Many2one('res.users', related='work_group_id.equip_boss', string='Jefe de Equipo', store=True)
+
     partner_id = fields.Many2one('res.partner', string='Client', required=True)
     amount = fields.Float(string='Amount', required=True)
     notes = fields.Text(string='Invoice Concept')
@@ -30,6 +35,13 @@ class PortalInvoiceRequest(models.Model):
 
     invoice_count = fields.Integer(default=1, string='Invoice Count')
     computed_name = fields.Char('Computed Name', compute='_compute_name')
+    send_draft = fields.Boolean(string='Send Draft Invoice', default=False)
+    status = fields.Selection([('to_revise', 'Volver a revisar'),
+                               ('approved_by_boss_group', 'Aprobación del Jefe de Equipo'),
+                               ('approved_by_client_responsible', 'Aprobación del Responsable de clientes'),
+                               ('approve', 'Aprobada'), ("rejected", 'Rechazada')
+                               ], 'Estado',
+                              default='approved_by_boss_group', tracking=True)
 
     def _compute_name(self):
         for record in self:
@@ -48,6 +60,11 @@ class PortalInvoiceRequest(models.Model):
         }
 
     def action_approve(self):
+        if self.status=='approved_by_boss_group':
+            self.status = 'approved_by_client_responsible'
+            return self.show_notificacion("¡Aprobación registrada!", "La solicitud ha sido aprobada y enviada al responsable de clientes para su revisión.", "success")
+        if self.status=='approved_by_client_responsible':
+            self.status = 'approve'
         for record in self:
             record.add_group_boss_to_followers()
             record.approved = True

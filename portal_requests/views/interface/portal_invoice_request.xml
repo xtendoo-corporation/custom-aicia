@@ -25,22 +25,39 @@
             <field name="arch" type="xml">
                 <form string="Portal Invoice Request">
                     <header>
-
-                         <button name="action_approve"
+                        <field name="status" widget="statusbar"/>
+                        <!-- Botonera jefe de equipo -->
+                        <button name="action_approve"
                                 string="Approve"
                                 type="object"
                                 class="btn-primary"
-                                invisible="is_revised == True"/>
-                        <button name="action_reject"
-                                string="Reject"
+                                groups="portal_requests.group_equip_boss"
+                                invisible="status not in ('approved_by_boss_group')"
+                                />
+                        <button name="action_approve"
+                                string="Approve"
                                 type="object"
-                                class="btn-secondary"
-                                invisible="is_revised == True"/>
-                        <button name="action_to_revise"
-                                string="Para Revisar"
-                                type="object"
-                                class="btn-secondary"
-                                invisible="not is_revised or approved"/>
+                                class="btn-primary"
+                                groups="portal_requests.group_partner_responsible"
+                                invisible="status in ('approved_by_boss_group','approve','to_revise','rejected')"
+                                />
+                        <!-- Fin botonera jefe de equipo -->
+
+<!--                         <button name="action_approve"-->
+<!--                                string="Approve"-->
+<!--                                type="object"-->
+<!--                                class="btn-primary"-->
+<!--                                invisible="is_revised == True"/>-->
+<!--                        <button name="action_reject"-->
+<!--                                string="Reject"-->
+<!--                                type="object"-->
+<!--                                class="btn-secondary"-->
+<!--                                invisible="is_revised == True"/>-->
+<!--                        <button name="action_to_revise"-->
+<!--                                string="Para Revisar"-->
+<!--                                type="object"-->
+<!--                                class="btn-secondary"-->
+<!--                                invisible="not is_revised or approved"/>-->
                     </header>
                     <sheet>
 
