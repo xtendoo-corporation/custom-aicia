@@ -35,7 +35,7 @@ class PortalInvoiceRequest(models.Model):
 
     invoice_count = fields.Integer(default=1, string='Invoice Count')
     computed_name = fields.Char('Computed Name', compute='_compute_name')
-    send_draft = fields.Boolean(string='Send Draft Invoice', default=False)
+    send_draft = fields.Boolean(string='Enviar Borrador de Factura', default=False)
     status = fields.Selection([('to_revise', 'Volver a revisar'),
                                ('approved_by_boss_group', 'Aprobación del Jefe de Equipo'),
                                ('approved_by_client_responsible', 'Aprobación del Responsable de clientes'),
@@ -46,6 +46,19 @@ class PortalInvoiceRequest(models.Model):
     def _compute_name(self):
         for record in self:
             record.computed_name = F"Solicitud de Factura para {record.analytic_id.name}"
+
+    show_solicitar_revision = fields.Boolean(
+        string='Mostrar Solicitar Revisión',
+        compute='_compute_show_solicitar_revision',
+        store=False,
+    )
+
+    @api.depends('status')
+    def _compute_show_solicitar_revision(self):
+        is_boss = self.env.user.has_group('portal_requests.group_equip_boss')
+        client_reponsible = is_boss = self.env.user.has_group('portal_requests.group_equip_boss')
+        for rec in self:
+            rec.show_solicitar_revision = (rec.status == 'to_revise') and (not is_boss) and (not client_reponsible)
 
     def show_notificacion(self, title_char, text, type_char):
         return {
@@ -59,23 +72,111 @@ class PortalInvoiceRequest(models.Model):
             }
         }
 
+    def _send_invoice_request_mail(self,type, users_to_send, move_text, user_name, company_name, partner_name, notes=""):
+            invoice_request_link = f"/web#id={self.id}&cids=1-24-28-29-32-25-30-31&menu_id=899&active_id=1&model=portal.invoice.request&view_type=form"
+            if type == 'to_revise':
+                for admin_user in users_to_send:
+                    admin_name = admin_user.name
+                    body_html = f"""
+                                <p>Estimado/a {admin_name},</p>
+                                <p>Se ha solicitado una nueva revisión de {move_text}, por parte de {user_name}.</p>
+                                <p>Puede acceder a ella a traves del siguiente enlace:</p>
+                                <p><strong>Enlace:</strong> <a href="{invoice_request_link}">Solicitud</a></p>
+                                <p>Saludos cordiales, Odoo</p>
+                            """
+                    email = admin_user.email
+                    mail_values = {
+                        'subject': f'Nueva Revisión de {move_text}',
+                        'email_from': self.env.user.email or '',
+                        'email_to': email,
+                        'body_html': body_html,
+                    }
+                    mail = self.env['mail.mail'].create(mail_values)
+                    mail.send()
+            if type == 'approved_by_boss_group':
+                for admin_user in users_to_send:
+                    admin_name = admin_user.name
+                    body_html = f"""
+                                <p>Estimado/a {admin_name},</p>
+                                <p>La solicitud de {move_text} en el proyecto {company_name} ha sido aprobada por el jefe de equipo ({user_name}).</p>
+                                <p>Puede acceder a ella a traves del siguiente enlace:</p>
+                                <p><strong>Enlace:</strong> <a href="{invoice_request_link}">Solicitud</a></p>
+                                <p>Saludos cordiales, Odoo</p>
+                            """
+                    email = admin_user.email
+                    mail_values = {
+                        'subject': f'Solicitud de {move_text}',
+                        'email_from': self.env.user.email or 'no-reply@example.com',
+                        'email_to': email,
+                        'body_html': body_html,
+                    }
+                    mail = self.env['mail.mail'].create(mail_values)
+                    mail.send()
+            if type == 'rejected':
+                for admin_user in users_to_send:
+                    admin_name = admin_user.name
+                    body_html = f"""
+                                <p>Estimado/a {admin_name},</p>
+                                <p>La solicitud de {move_text} en el proyecto {company_name} ha sido rechazada por el siguiente motivo:</p>
+                                <p><em>{notes}</em></p>
+                                <p>Puede acceder a ella a traves del siguiente enlace:</p>
+                                <p><strong>Enlace:</strong> <a href="{invoice_request_link}">Solicitud</a></p>
+                                <p>Saludos cordiales, Odoo</p>
+                            """
+                    email = admin_user.email
+                    mail_values = {
+                        'subject': f'Solicitud de {move_text}',
+                        'email_from': self.env.user.email or 'no-reply@example.com',
+                        'email_to': email,
+                        'body_html': body_html,
+                    }
+                    mail = self.env['mail.mail'].create(mail_values)
+                    mail.send()
+
+
+
+
     def action_approve(self):
+        type = self.status
+        if type == 'to_revise':
+            self.status = 'approved_by_boss_group'
+            user_to_send = self.env['res.users'].search([('id', '=', self.equip_boss.id)])
+            move_text = self.computed_name
+            self._send_invoice_request_mail(type,user_to_send,move_text, self.user_id.name, self.analytic_id.name, self.partner_id.name)
+            return self.show_notificacion("¡Solicitud enviada!", "La solicitud ha sido enviada al jefe de equipo para su revisión.", "success")
+
         if self.status=='approved_by_boss_group':
             self.status = 'approved_by_client_responsible'
+            user_to_send = self.env['res.users'].search([('groups_id', 'in', self.env.ref('portal_requests.group_partner_responsible').id)])
+            move_text = "factura" if self.move_type == 'out_invoice' else "factura rectificativa"
+            self._send_invoice_request_mail(type,user_to_send,move_text, self.user_id.name, self.analytic_id.name, self.partner_id.name)
             return self.show_notificacion("¡Aprobación registrada!", "La solicitud ha sido aprobada y enviada al responsable de clientes para su revisión.", "success")
+
         if self.status=='approved_by_client_responsible':
             self.status = 'approve'
-        for record in self:
-            record.add_group_boss_to_followers()
-            record.approved = True
-            record.is_revised = True
-            record.create_invoice()
-        return self.show_notificacion("¡Solicitud aprobada!", "La factura ha sido creada correctamente.", "success")
+            for record in self:
+                record.add_group_boss_to_followers()
+                record.approved = True
+                record.is_revised = True
+                record.create_invoice()
+                if record.send_draft:
+                    record.invoice_created.action_send_draft_to_followers()
+                    return self.show_notificacion("¡Solicitud aprobada!", "La factura ha sido creada y enviada como borrador correctamente.",
+                                                  "success")
+            return self.show_notificacion("¡Solicitud aprobada!", "La factura ha sido creada correctamente.", "success")
 
     def action_reject(self):
-        for record in self:
-            record.approved = False
-            record.is_revised = True
+        self.ensure_one()
+        return {
+            'type': 'ir.actions.act_window',
+            'name': 'Rechazar solicitud de factura',
+            'res_model': 'invoice.request.reject.wizard',
+            'view_mode': 'form',
+            'target': 'new',
+            'context': {
+                'default_request_id': self.id,
+            }
+        }
 
     def action_to_revise(self):
         for record in self:

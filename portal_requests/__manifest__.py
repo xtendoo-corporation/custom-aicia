@@ -19,6 +19,7 @@
         "report_qweb_signer",
         "project",
         "account_move_analytic_account",
+        "send_draft_invoices",
     ],
     "license": "AGPL-3",
     "data": [
@@ -47,6 +48,7 @@
         'views/interface/etiqueta_categoria_views.xml',
         'views/interface/ir_attachment_views.xml',
         'security/dashboard_permision.xml',
+        'wizards/invoice_request_reject_wizard.xml',
     ],
     "installable": True,
     'application': False,

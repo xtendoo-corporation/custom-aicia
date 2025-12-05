@@ -14,7 +14,6 @@
                     <field name="date"/>
                     <field name="l10n_es_edi_facturae_reason_code"/>
                     <field name="approved"/>
-                    <field name="is_revised"/>
                 </tree>
             </field>
         </record>
@@ -26,6 +25,15 @@
                 <form string="Portal Invoice Request">
                     <header>
                         <field name="status" widget="statusbar"/>
+                        <field name="show_solicitar_revision" invisible="0"/>
+                        <!-- Botonera jefe de equipo -->
+                        <button name="action_approve"
+                                string="Solicitar Revisión"
+                                type="object"
+                                class="btn-primary"
+                                invisible="not show_solicitar_revision"
+                                />
+                        <!-- Fin botonera jefe de equipo -->
                         <!-- Botonera jefe de equipo -->
                         <button name="action_approve"
                                 string="Approve"
@@ -34,6 +42,16 @@
                                 groups="portal_requests.group_equip_boss"
                                 invisible="status not in ('approved_by_boss_group')"
                                 />
+
+                        <button name="action_reject"
+                                string="Reject"
+                                type="object"
+                                class="btn-secondary"
+                                groups="portal_requests.group_equip_boss"
+                                invisible="status not in ('approved_by_boss_group')"
+                                />
+                        <!-- Fin botonera jefe de equipo -->
+                        <!-- Botonera Responsable clientes -->
                         <button name="action_approve"
                                 string="Approve"
                                 type="object"
@@ -41,7 +59,14 @@
                                 groups="portal_requests.group_partner_responsible"
                                 invisible="status in ('approved_by_boss_group','approve','to_revise','rejected')"
                                 />
-                        <!-- Fin botonera jefe de equipo -->
+                        <button name="action_reject"
+                                string="Reject"
+                                type="object"
+                                class="btn-secondary"
+                                groups="portal_requests.group_partner_responsible"
+                                invisible="status in ('approved_by_boss_group','approve','to_revise','rejected')"
+                                />
+                        <!-- Fin botonera Responsable clientes -->
 
 <!--                         <button name="action_approve"-->
 <!--                                string="Approve"-->
@@ -71,6 +96,7 @@
                                 <field name="user_id"/>
                                 <field name="analytic_id"/>
                                 <field name="partner_id"/>
+                                <field name="send_draft"/>
                                 <field name="invoice_created" invisible="1"/>
                                 <field name="invoice_to_refund" invisible="move_type == 'out_invoice'" readonly="1"/>
                             </group>
@@ -79,7 +105,6 @@
                                 <field name="move_type"/>
                                 <field name="date"/>
                                 <field name="approved" invisible="1"/>
-                                <field name="is_revised" invisible="1"/>
                             </group>
                         </group>
                         <group>
