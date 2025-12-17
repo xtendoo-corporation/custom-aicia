@@ -20,6 +20,7 @@
         </record>
         <record id="dashboard_out_invoice" model="portal.request.dashboard">
             <field name="name">Facturas</field>
+            <field name="show_unapproved">False</field>
             <field name="image" type="base64" file="portal_requests/static/description/invoicing.png"/>
             <field name="model">portal.invoice.request</field>
             <field name="type">out_invoice</field>
@@ -34,6 +35,7 @@
         <record id="dashboard_out_refund" model="portal.request.dashboard">
             <field name="name">Facturas rectificativas</field>
             <field name="image" type="base64" file="portal_requests/static/description/invoicing.png"/>
+            <field name="show_unapproved">False</field>
             <field name="model">portal.invoice.request</field>
             <field name="type">out_refund</field>
              <field name="allowed_group_ids" eval="[(4, ref('portal_requests.group_partner_responsible'))]"/>

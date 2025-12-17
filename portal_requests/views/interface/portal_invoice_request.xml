@@ -25,7 +25,7 @@
                 <form string="Portal Invoice Request">
                     <header>
                         <field name="status" widget="statusbar"/>
-                        <field name="show_solicitar_revision" invisible="0"/>
+                        <field name="show_solicitar_revision" invisible="1"/>
                         <!-- Botonera jefe de equipo -->
                         <button name="action_approve"
                                 string="Solicitar Revisión"
@@ -40,7 +40,7 @@
                                 type="object"
                                 class="btn-primary"
                                 groups="portal_requests.group_equip_boss"
-                                invisible="status not in ('approved_by_boss_group')"
+                                invisible="status in ('approved_by_client_responsible','approve','to_revise','rejected')"
                                 />
 
                         <button name="action_reject"
@@ -48,7 +48,7 @@
                                 type="object"
                                 class="btn-secondary"
                                 groups="portal_requests.group_equip_boss"
-                                invisible="status not in ('approved_by_boss_group')"
+                                invisible="status in ('approved_by_client_responsible','approve','to_revise','rejected')"
                                 />
                         <!-- Fin botonera jefe de equipo -->
                         <!-- Botonera Responsable clientes -->

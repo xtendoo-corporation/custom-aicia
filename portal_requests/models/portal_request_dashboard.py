@@ -27,6 +27,7 @@ class PortalRequestDashboard(models.Model):
         string='Allowed Groups',
         help="Only users in these groups can see this record."
     )
+    show_unapproved = fields.Boolean(string='Show Unapproved', default=True)
     # To revise
     def open_new_action_to_revise(self):
         self.ensure_one()

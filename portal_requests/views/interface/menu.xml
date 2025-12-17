@@ -27,6 +27,7 @@
                 <field name="unaproved_text"/>
                 <field name="approved_text"/>
                 <field name="image"/>
+                <field name="show_unapproved"/>
                 <templates>
                     <t t-name="kanban-box">
                         <div class="oe_module_vignette">
@@ -53,7 +54,8 @@
                                     >
                                         <field name="approved_text" readonly="1"/>
                                     </button>
-                                 <button type="object" name="open_new_action_rejected"
+                                           <field name="show_unapproved" invisible="1"/>
+                                 <button invisible="not show_unapproved" type="object" name="open_new_action_rejected"
                                             class="btn btn-link"
                                     >
                                         <field name="unaproved_text" readonly="1"/>

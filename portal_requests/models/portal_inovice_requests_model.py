@@ -55,10 +55,14 @@ class PortalInvoiceRequest(models.Model):
 
     @api.depends('status')
     def _compute_show_solicitar_revision(self):
-        is_boss = self.env.user.has_group('portal_requests.group_equip_boss')
-        client_reponsible = is_boss = self.env.user.has_group('portal_requests.group_equip_boss')
+        is_boss = self.env.user.has_group('portal_requests.group_equip_boss') or self.env.user.has_group('portal_requests.group_partner_responsible')
+        print("*"*100)
+        print("is_boss:", is_boss)
+        print("rec.status:", self.status)
+        print("status:",(self.status == 'to_revise') and (not is_boss))
+        print("*"*100)
         for rec in self:
-            rec.show_solicitar_revision = (rec.status == 'to_revise') and (not is_boss) and (not client_reponsible)
+            rec.show_solicitar_revision = (rec.status == 'to_revise') and (not is_boss)
 
     def show_notificacion(self, title_char, text, type_char):
         return {
@@ -146,6 +150,11 @@ class PortalInvoiceRequest(models.Model):
             return self.show_notificacion("¡Solicitud enviada!", "La solicitud ha sido enviada al jefe de equipo para su revisión.", "success")
 
         if self.status=='approved_by_boss_group':
+            group = self.analytic_id.work_group_id
+            if group:
+                boss = group.user_ids.filtered(lambda u: u.has_group('portal_requests.group_equip_boss'))
+                if self.responsible_id != boss:
+                    self.message_subscribe(partner_ids=[boss.partner_id.id])
             self.status = 'approved_by_client_responsible'
             user_to_send = self.env['res.users'].search([('groups_id', 'in', self.env.ref('portal_requests.group_partner_responsible').id)])
             move_text = "factura" if self.move_type == 'out_invoice' else "factura rectificativa"
@@ -155,15 +164,22 @@ class PortalInvoiceRequest(models.Model):
         if self.status=='approved_by_client_responsible':
             self.status = 'approve'
             for record in self:
-                record.add_group_boss_to_followers()
+                record.add_partner_id_to_followers()
                 record.approved = True
                 record.is_revised = True
                 record.create_invoice()
+                body = 'Factura borrador creada correctamente.'
+
+                # publicar como nota en el chatter (usar subtype_id con env.ref)
+                self.sudo().message_post(
+                    body=body,
+                    subtype_id=self.env.ref('mail.mt_note').id
+                )
                 if record.send_draft:
                     record.invoice_created.action_send_draft_to_followers()
-                    return self.show_notificacion("¡Solicitud aprobada!", "La factura ha sido creada y enviada como borrador correctamente.",
+                    return self.show_notificacion("¡Solicitud aprobada!", "La factura borrador ha sido creada y enviada como borrador correctamente.",
                                                   "success")
-            return self.show_notificacion("¡Solicitud aprobada!", "La factura ha sido creada correctamente.", "success")
+            return self.show_notificacion("¡Solicitud aprobada!", "La factura borrador ha sido creada correctamente.", "success")
 
     def action_reject(self):
         self.ensure_one()
@@ -239,7 +255,8 @@ class PortalInvoiceRequest(models.Model):
         self.invoice_created = invoice.id
         self.invoice_created._onchange_analytic_distribution()
         group = self.analytic_id.work_group_id
-        self.invoice_created.add_group_boss_to_followers(group)
+        invoice.add_followers_from_request(self)
+        #self.invoice_created.add_partner_id_to_followers(group)
 
     def action_view_invoice(self):
         self.ensure_one()
@@ -266,14 +283,9 @@ class PortalInvoiceRequest(models.Model):
         return action
 
 
-    def add_group_boss_to_followers(self):
-        group = self.analytic_id.work_group_id
-        if not group:
+    def add_partner_id_to_followers(self):
+        self.ensure_one()
+        if not self.partner_id:
             return
-        boss = group.user_ids.filtered(lambda u: u.has_group('portal_requests.group_equip_boss'))
-        if boss:
-            print("*"*100)
-            print("Adding boss to followers:", boss.name)
-            print("*"*100)
-            self.message_subscribe(partner_ids=[boss.partner_id.id])
+        self.message_subscribe(partner_ids=[self.partner_id.id])
 
