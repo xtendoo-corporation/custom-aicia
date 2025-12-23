@@ -3,7 +3,7 @@
 {
     "name": "Account Move Analytic Account",
     "summary": """Añade campo de cuenta analítica en facturas""",
-    "version": "17.0.1.0.0",
+    "version": "18.0.1.0.0",
     "description": """Este módulo añade un campo relacionado con cuenta analítica en el modelo account.move""",
     "author": "Dani Domínguez, Xtendoo",
     "company": "Xtendoo",

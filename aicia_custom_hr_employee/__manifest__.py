@@ -1,7 +1,7 @@
 {
     "name": "aicia_custom_hr_employee",
     "summary": """Aicia Custom Hr Employee""",
-    "version": "17.0.1.0.0",
+    "version": "18.0.1.0.0",
     "description": """Aicia Custom Hr Employee""",
     "company": "Xtendoo",
     "website": "http://www.xtendoo.es",
