@@ -4,7 +4,7 @@
             <field name="name">portal.project.request.tree</field>
             <field name="model">portal.project.request</field>
             <field name="arch" type="xml">
-                <tree>
+                <list>
                     <field name="project_name"/>
                     <field name="user_id"/>
                     <field name="company_id"/>
@@ -16,7 +16,7 @@
                     <field name="concept"/>
                     <field name="approved"/>
                     <field name="is_revised"/>
-                </tree>
+                </list>
             </field>
         </record>
 
@@ -80,11 +80,7 @@
                             </group>
                         </group>
                     </sheet>
-                    <div class="oe_chatter">
-                        <field name="message_follower_ids"/>
-                        <field name="activity_ids"/>
-                        <field name="message_ids"/>
-                    </div>
+                    <chatter/>
                 </form>
             </field>
         </record>
@@ -92,14 +88,14 @@
         <record id="action_portal_project_request_all" model="ir.actions.act_window">
             <field name="name">Proyectos</field>
             <field name="res_model">portal.project.request</field>
-            <field name="view_mode">tree,form</field>
+            <field name="view_mode">list,form</field>
             <field name="context">{'group_by': 'company_id'}</field>
         </record>
 
         <record id="action_portal_project_request_approved" model="ir.actions.act_window">
             <field name="name">Approved</field>
             <field name="res_model">portal.project.request</field>
-            <field name="view_mode">tree,form</field>
+            <field name="view_mode">list,form</field>
             <field name="domain">[('approved', '=', True)]</field>
             <field name="context">{'group_by': 'company_id'}</field>
         </record>
@@ -127,7 +123,7 @@
         <record id="action_portal_project_request_notapproved" model="ir.actions.act_window">
             <field name="name">Not approved</field>
             <field name="res_model">portal.project.request</field>
-            <field name="view_mode">tree,form</field>
+            <field name="view_mode">list,form</field>
             <field name="domain">[('is_revised', '=', True), ('approved', '=', False)]</field>
             <field name="context">{'group_by': 'company_id'}</field>
         </record>

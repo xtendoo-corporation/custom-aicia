@@ -46,39 +46,39 @@ class PortalRequestDashboard(models.Model):
             return self.open_to_revise_intern()
 
     def open_to_revise_document(self):
-        if self.user_has_groups('portal_requests.group_director_investigation_and_development'):
+        if self.env.user.has_group('portal_requests.group_director_investigation_and_development'):
             return {
                 'name': _('Documentos para revisar'),
                 'type': 'ir.actions.act_window',
                 'res_model': 'document.approval',
-                'view_mode': 'tree,form',
+                'view_mode': 'list,form',
                 'domain': [('status', 'in', ('approved_by_director_i_d','final_revision','sign_company'))],
                 'context': {'group_by': 'type_id'},
             }
-        # if self.user_has_groups('portal_requests.group_financial_director'):
+        # if self.env.user.has_group('portal_requests.group_financial_director'):
         #     return {
         #         'name': _('Documentos para revisar'),
         #         'type': 'ir.actions.act_window',
         #         'res_model': 'document.approval',
-        #         'view_mode': 'tree,form',
+        #         'view_mode': 'list,form',
         #         'domain': [('status', '=', 'sign_director_accounting')],
         #         'context': {'group_by': 'type_id'},
         #     }
-        if self.user_has_groups('portal_requests.group_director_manager'):
+        if self.env.user.has_group('portal_requests.group_director_manager'):
             return {
                 'name': _('Documentos para revisar'),
                 'type': 'ir.actions.act_window',
                 'res_model': 'document.approval',
-                'view_mode': 'tree,form',
+                'view_mode': 'list,form',
                 'domain': [('status', '=','approved_by_director_gerente')],
                 'context': {'group_by': 'type_id'},
             }
-        if self.user_has_groups('portal_requests.group_project_boss') or self.user_has_groups('portal_requests.group_equip_boss'):
+        if self.env.user.has_group('portal_requests.group_project_boss') or self.env.user.has_group('portal_requests.group_equip_boss'):
             return {
                 'name': _('Documentos para revisar'),
                 'type': 'ir.actions.act_window',
                 'res_model': 'document.approval',
-                'view_mode': 'tree,form',
+                'view_mode': 'list,form',
                 'domain': [('status', 'not in',('approve', 'rejected')), ('company_id', '=', self.env.user.company_id.id)],
                 'context': {'group_by': 'type_id'},
             }
@@ -88,44 +88,44 @@ class PortalRequestDashboard(models.Model):
             'name': _('Proyectos para revisar'),
             'type': 'ir.actions.act_window',
             'res_model': 'portal.project.request',
-            'view_mode': 'tree,form',
+            'view_mode': 'list,form',
             'domain': [('is_revised', '=', False)],
             'context': {'group_by': 'company_id'},
         }
     def open_to_revise_invoice(self):
-        if self.user_has_groups('portal_requests.group_director_investigation_and_development') or self.user_has_groups('portal_requests.group_director_manager'):
+        if self.env.user.has_group('portal_requests.group_director_investigation_and_development') or self.env.user.has_group('portal_requests.group_director_manager'):
             return {
                 'name': _('Facturas para revisar'),
                 'type': 'ir.actions.act_window',
                 'res_model': 'portal.invoice.request',
-                'view_mode': 'tree,form',
+                'view_mode': 'list,form',
                 'domain': [('status', 'in', ('approved_by_boss_group','approved_by_client_responsible')), ('move_type', '=', 'out_invoice')],
                 'context': {'group_by': 'analytic_id'},
             }
-        if self.user_has_groups('portal_requests.group_partner_responsible'):
+        if self.env.user.has_group('portal_requests.group_partner_responsible'):
             return {
                 'name': _('Facturas para revisar'),
                 'type': 'ir.actions.act_window',
                 'res_model': 'portal.invoice.request',
-                'view_mode': 'tree,form',
+                'view_mode': 'list,form',
                 'domain': [('status', '=', 'approved_by_client_responsible'), ('move_type', '=', 'out_invoice')],
                 'context': {'group_by': 'analytic_id'},
             }
-        if self.user_has_groups('portal_requests.group_equip_boss'):
+        if self.env.user.has_group('portal_requests.group_equip_boss'):
             return {
                 'name': _('Facturas para revisar'),
                 'type': 'ir.actions.act_window',
                 'res_model': 'portal.invoice.request',
-                'view_mode': 'tree,form',
+                'view_mode': 'list,form',
                 'domain': [('status', '=', 'approved_by_boss_group'), ('equip_boss','=',self.env.user.id), ('move_type', '=', 'out_invoice')],
                 'context': {'group_by': 'analytic_id'},
             }
-        if self.user_has_groups('portal_requests.group_project_boss'):
+        if self.env.user.has_group('portal_requests.group_project_boss'):
             return {
                 'name': _('Facturas para revisar'),
                 'type': 'ir.actions.act_window',
                 'res_model': 'portal.invoice.request',
-                'view_mode': 'tree,form',
+                'view_mode': 'list,form',
                 'domain': [('status', '=', 'to_revise'), ('responsible_id','=',self.env.user.id), ('move_type', '=', 'out_invoice')],
                 'context': {'group_by': 'analytic_id'},
             }
@@ -133,7 +133,7 @@ class PortalRequestDashboard(models.Model):
         #     'name': _('Facturas para revisar'),
         #     'type': 'ir.actions.act_window',
         #     'res_model': 'portal.invoice.request',
-        #     'view_mode': 'tree,form',
+        #     'view_mode': 'list,form',
         #     'domain': [('is_revised', '=', False), ('move_type', '=', 'out_invoice')],
         #     'context': {'group_by': 'analytic_id'},
         # }
@@ -142,7 +142,7 @@ class PortalRequestDashboard(models.Model):
             'name': _('Facturas rectificativas para revisar'),
             'type': 'ir.actions.act_window',
             'res_model': 'portal.invoice.request',
-            'view_mode': 'tree,form',
+            'view_mode': 'list,form',
             'domain': [('is_revised', '=', False), ('move_type', '=', 'out_refund')],
             'context': {'group_by': 'analytic_id'},
         }
@@ -152,7 +152,7 @@ class PortalRequestDashboard(models.Model):
             'name': _('Empleados para revisar'),
             'type': 'ir.actions.act_window',
             'res_model': 'portal.hr.employee.request',
-            'view_mode': 'tree,form',
+            'view_mode': 'list,form',
             'domain': [('is_revised', '=', False)],
             'context': {'group_by': 'company_id'},
         }
@@ -162,7 +162,7 @@ class PortalRequestDashboard(models.Model):
             'name': _('Becarios para revisar'),
             'type': 'ir.actions.act_window',
             'res_model': 'portal.hr.employee.intern.request',
-            'view_mode': 'tree,form',
+            'view_mode': 'list,form',
             'domain': [('is_revised', '=', False)],
             'context': {'group_by': 'company_id'},
         }
@@ -189,7 +189,7 @@ class PortalRequestDashboard(models.Model):
             'name': _('Documentos Aprobados'),
             'type': 'ir.actions.act_window',
             'res_model': 'document.approval',
-            'view_mode': 'tree,form',
+            'view_mode': 'list,form',
             'domain': [('status', '=', 'approve')],
             'context': {'group_by': 'type_id'},
         }
@@ -198,7 +198,7 @@ class PortalRequestDashboard(models.Model):
             'name': _('Proyectos Aprobados'),
             'type': 'ir.actions.act_window',
             'res_model': 'portal.project.request',
-            'view_mode': 'tree,form',
+            'view_mode': 'list,form',
             'domain': [('approved', '=', True), ('is_revised', '=', True)],
             'context': {'group_by': 'company_id'},
         }
@@ -207,7 +207,7 @@ class PortalRequestDashboard(models.Model):
             'name': _('Facturas Aprobadas'),
             'type': 'ir.actions.act_window',
             'res_model': 'portal.invoice.request',
-            'view_mode': 'tree,form',
+            'view_mode': 'list,form',
             'domain': [('approved', '=', True), ('move_type', '=', 'out_invoice')],
             'context': {'group_by': 'analytic_id'},
         }
@@ -216,7 +216,7 @@ class PortalRequestDashboard(models.Model):
             'name': _('Facturas rectificativas Aprobadas'),
             'type': 'ir.actions.act_window',
             'res_model': 'portal.invoice.request',
-            'view_mode': 'tree,form',
+            'view_mode': 'list,form',
             'domain': [('approved', '=', True), ('move_type', '=', 'out_refund')],
             'context': {'group_by': 'analytic_id'},
         }
@@ -226,7 +226,7 @@ class PortalRequestDashboard(models.Model):
             'name': _('Contratos Aprobados'),
             'type': 'ir.actions.act_window',
             'res_model': 'portal.hr.employee.request',
-            'view_mode': 'tree,form',
+            'view_mode': 'list,form',
             'domain': [('approved', '=', True), ('is_revised', '=', True)],
             'context': {'group_by': 'company_id'},
         }
@@ -236,7 +236,7 @@ class PortalRequestDashboard(models.Model):
             'name': _('Becarios Aprobados'),
             'type': 'ir.actions.act_window',
             'res_model': 'portal.hr.employee.intern.request',
-            'view_mode': 'tree,form',
+            'view_mode': 'list,form',
             'domain': [('approved', '=', True), ('is_revised', '=', True)],
             'context': {'group_by': 'company_id'},
         }
@@ -263,7 +263,7 @@ class PortalRequestDashboard(models.Model):
             'name': _('Documentos Rechazados'),
             'type': 'ir.actions.act_window',
             'res_model': 'document.approval',
-            'view_mode': 'tree,form',
+            'view_mode': 'list,form',
             'domain': [('status', '=', 'rejected')],
             'context': {'group_by': 'type_id'},
         }
@@ -272,7 +272,7 @@ class PortalRequestDashboard(models.Model):
             'name': _('Proyectos Rechazados'),
             'type': 'ir.actions.act_window',
             'res_model': 'portal.project.request',
-            'view_mode': 'tree,form',
+            'view_mode': 'list,form',
             'domain': [('approved', '=', False), ('is_revised', '=', True)],
             'context': {'group_by': 'company_id'},
         }
@@ -281,7 +281,7 @@ class PortalRequestDashboard(models.Model):
             'name': _('Facturas Rechazadas'),
             'type': 'ir.actions.act_window',
             'res_model': 'portal.invoice.request',
-            'view_mode': 'tree,form',
+            'view_mode': 'list,form',
             'domain': [('approved', '=', False), ('is_revised', '=', True), ('move_type', '=', 'out_invoice')],
             'context': {'group_by': 'analytic_id'},
         }
@@ -290,7 +290,7 @@ class PortalRequestDashboard(models.Model):
             'name': _('Facturas rectificativas Rechazadas'),
             'type': 'ir.actions.act_window',
             'res_model': 'portal.invoice.request',
-            'view_mode': 'tree,form',
+            'view_mode': 'list,form',
             'domain': [('approved', '=', False), ('is_revised', '=', True), ('move_type', '=', 'out_refund')],
             'context': {'group_by': 'analytic_id'},
         }
@@ -300,7 +300,7 @@ class PortalRequestDashboard(models.Model):
             'name': _('Contratos Rechazados'),
             'type': 'ir.actions.act_window',
             'res_model': 'portal.hr.employee.request',
-            'view_mode': 'tree,form',
+            'view_mode': 'list,form',
             'domain': [('approved', '=', False), ('is_revised', '=', True)],
             'context': {'group_by': 'company_id'},
         }
@@ -310,7 +310,7 @@ class PortalRequestDashboard(models.Model):
             'name': _('Becarios Rechazados'),
             'type': 'ir.actions.act_window',
             'res_model': 'portal.hr.employee.intern.request',
-            'view_mode': 'tree,form',
+            'view_mode': 'list,form',
             'domain': [('approved', '=', False), ('is_revised', '=', True)],
             'context': {'group_by': 'company_id'},
         }
@@ -345,24 +345,24 @@ class PortalRequestDashboard(models.Model):
                     [('is_revised', '=', False)])
 
     def _compute_count_to_revise_document(self):
-        if self.user_has_groups('portal_requests.group_director_investigation_and_development'):
+        if self.env.user.has_group('portal_requests.group_director_investigation_and_development'):
             return self.env['document.approval'].search_count([('status', 'in', ('approved_by_director_i_d','final_revision','sign_company'))])
-        # if self.user_has_groups('portal_requests.group_financial_director'):
+        # if self.env.user.has_group('portal_requests.group_financial_director'):
         #     return self.env['document.approval'].search_count([('status', '=', 'sign_director_accounting')])
-        if self.user_has_groups('portal_requests.group_director_manager'):
+        if self.env.user.has_group('portal_requests.group_director_manager'):
             return self.env['document.approval'].search_count([('status', '=','approved_by_director_gerente')])
-        if self.user_has_groups('portal_requests.group_project_boss') or self.user_has_groups('portal_requests.group_equip_boss'):
+        if self.env.user.has_group('portal_requests.group_project_boss') or self.env.user.has_group('portal_requests.group_equip_boss'):
             return self.env['document.approval'].search_count([('status', 'not in',('approve', 'rejected'))])
     def _compute_count_to_revise_out_invoice(self):
-        if self.user_has_groups('portal_requests.group_director_investigation_and_development'):
+        if self.env.user.has_group('portal_requests.group_director_investigation_and_development'):
             return self.env['portal.invoice.request'].search_count([('status', 'in', ('approved_by_boss_group','approved_by_client_responsible'))])
-        if self.user_has_groups('portal_requests.group_director_manager'):
+        if self.env.user.has_group('portal_requests.group_director_manager'):
             return self.env['portal.invoice.request'].search_count([('status', 'in', ('approved_by_boss_group','approved_by_client_responsible'))])
-        if self.user_has_groups('portal_requests.group_partner_responsible'):
+        if self.env.user.has_group('portal_requests.group_partner_responsible'):
             return self.env['portal.invoice.request'].search_count([('status', '=','approved_by_client_responsible')])
-        if self.user_has_groups('portal_requests.group_equip_boss'):
+        if self.env.user.has_group('portal_requests.group_equip_boss'):
             return self.env['portal.invoice.request'].search_count([('status', '=', 'approved_by_boss_group'),('equip_boss','=',self.env.user.id)])
-        if self.user_has_groups('portal_requests.group_project_boss'):
+        if self.env.user.has_group('portal_requests.group_project_boss'):
             return self.env['portal.invoice.request'].search_count([('status', '=', 'to_revise'),('responsible_id','=',self.env.user.id)])
     def _compute_approved_text(self):
         for record in self:
@@ -403,15 +403,15 @@ class PortalRequestDashboard(models.Model):
                     [('approved', '=', True), ('is_revised', '=', True)])
 
     def _compute_count_approved_out_invoice(self):
-        if self.user_has_groups('portal_requests.group_director_investigation_and_development'):
+        if self.env.user.has_group('portal_requests.group_director_investigation_and_development'):
             return self.env['portal.invoice.request'].search_count([('status', '=', 'approve')])
-        if self.user_has_groups('portal_requests.group_director_manager'):
+        if self.env.user.has_group('portal_requests.group_director_manager'):
             return self.env['portal.invoice.request'].search_count([('status', '=', 'approve')])
-        if self.user_has_groups('portal_requests.group_partner_responsible'):
+        if self.env.user.has_group('portal_requests.group_partner_responsible'):
             return self.env['portal.invoice.request'].search_count([('status', '=', 'approve')])
-        if self.user_has_groups('portal_requests.group_equip_boss'):
+        if self.env.user.has_group('portal_requests.group_equip_boss'):
             return self.env['portal.invoice.request'].search_count([('status', '=', 'approve'),('equip_boss','=',self.env.user.id)])
-        if self.user_has_groups('portal_requests.group_project_boss'):
+        if self.env.user.has_group('portal_requests.group_project_boss'):
             return self.env['portal.invoice.request'].search_count([('status', '=', 'approve'),('responsible_id','=',self.env.user.id)])
     def _compute_unapproved_text(self):
         for record in self:
