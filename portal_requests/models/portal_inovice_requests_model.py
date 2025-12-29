@@ -164,7 +164,7 @@ class PortalInvoiceRequest(models.Model):
         if self.status=='approved_by_client_responsible':
             self.status = 'approve'
             for record in self:
-                record.add_partner_id_to_followers()
+                #record.add_partner_id_to_followers()
                 record.approved = True
                 record.is_revised = True
                 record.create_invoice()
