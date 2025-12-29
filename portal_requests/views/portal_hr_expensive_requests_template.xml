@@ -23,7 +23,7 @@
                                     Por favor, complete el siguiente formulario para enviar una solicitud de gasto.
                                 </p>
                                 <div class="container">
-                                    <form action="/portal/hr_expensive_request/submit" method="POST">
+                                    <form action="/portal/hr_expensive_request/submit" method="POST" enctype="multipart/form-data">
                                         <input type="hidden" name="csrf_token" t-att-value="request.csrf_token()"/>
                                         <input type="hidden" name="user_id" t-att-value="request.env.user.id"/>
                                         <div class="s_website_form_rows row s_col_no_bgcolor">
@@ -167,5 +167,6 @@
         <field name="url">/portal/hr_expensive_request</field>
         <field name="parent_id" ref="website.main_menu"/>
         <field name="sequence" type="int">160</field>
+        <field name="website_id" eval="1"/>
     </record>
 </odoo>

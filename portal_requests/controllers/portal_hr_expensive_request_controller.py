@@ -33,7 +33,7 @@ class PortalHrExpensiveRequestController(Controller):
         print("antes del if")
         print("*"*50)
         print("request")
-        if user_id == request.env['portal.work.group'].sudo().browse(work_group_id).equip_boss.id:
+        if user_id == work_group_id.equip_boss.id:
             status = 'approved_purchase_responsible'
         print("despues del if")
         expensive = request.env['portal.hr.expensive.request'].sudo().create({
@@ -44,6 +44,9 @@ class PortalHrExpensiveRequestController(Controller):
 
         })
         attachments = request.httprequest.files.getlist('file')
+        print("-"*50)
+        print("attachments", attachments)
+        print("-"*50)
         for attachment in attachments:
             attachment_data = {
                 'name': attachment.filename,

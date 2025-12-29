@@ -1,0 +1,107 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<odoo>
+    <data>
+        <record id="view_portal_hr_expensive_request_tree" model="ir.ui.view">
+            <field name="name">view.portal.hr.expensive.request.treee</field>
+            <field name="model">portal.hr.expensive.request</field>
+            <field name="arch" type="xml">
+                <list string="Portal Hr Expensive Requests">
+                    <field name="user_id"/>
+                    <field name="project" string="Proyecto"/>
+                    <field name="type"/>
+                    <field name="status"/>
+                </list>
+            </field>
+        </record>
+
+        <record id="view_portal_hr_expensive_request_form" model="ir.ui.view">
+            <field name="name">portal.hr.expensive.request.form</field>
+            <field name="model">portal.hr.expensive.request</field>
+            <field name="arch" type="xml">
+                <form string="Portal Invoice Request">
+                    <header>
+                        <field name="status" widget="statusbar"/>
+                    </header>
+                    <sheet>
+                        <group>
+                            <group>
+                                <field name="user_id"/>
+                            </group>
+                        </group>
+                    </sheet>
+                     <chatter/>
+                </form>
+            </field>
+        </record>
+<!--        <record id="action_portal_hr_expensive_request_approved" model="ir.actions.act_window">-->
+<!--            <field name="name">Approved</field>-->
+<!--            <field name="res_model">portal.hr.expensive.request</field>-->
+<!--            <field name="view_mode">list,form</field>-->
+<!--            <field name="domain">[('approved', '=', True)]</field>-->
+<!--            <field name="context">{'group_by': 'analytic_id'}</field>-->
+<!--        </record>-->
+
+<!--        <record id="action_portal_hr_expensive_request_notapproved" model="ir.actions.act_window">-->
+<!--            <field name="name">Not approved</field>-->
+<!--            <field name="res_model">portal.hr.expensive.request</field>-->
+<!--            <field name="view_mode">list,form</field>-->
+<!--            <field name="domain">[('is_revised', '=', True), ('approved', '=', False), ('move_type', '=', 'out_invoice')]</field>-->
+<!--            <field name="context">{'group_by': 'analytic_id'}</field>-->
+<!--        </record>-->
+
+<!--        <record id="action_portal_refund_request_notapproved" model="ir.actions.act_window">-->
+<!--            <field name="name">Not approved</field>-->
+<!--            <field name="res_model">portal.hr.expensive.request</field>-->
+<!--            <field name="view_mode">list,form</field>-->
+<!--            <field name="domain">[('is_revised', '=', True), ('approved', '=', False), ('move_type', '=', 'out_invoice')]</field>-->
+<!--            <field name="context">{'group_by': 'analytic_id'}</field>-->
+<!--        </record>-->
+
+<!--        <record id="view_portal_hr_expensive_request_search" model="ir.ui.view">-->
+<!--            <field name="name">portal.hr.expensive.request.search</field>-->
+<!--            <field name="model">portal.hr.expensive.request</field>-->
+<!--            <field name="arch" type="xml">-->
+<!--                <search string="Facturas">-->
+<!--                    <field name="is_revised"/>-->
+<!--                    <filter string="Para revisar" name="approved_filter" domain="[('is_revised', '=', False)]"/>-->
+<!--                    <field name="approved"/>-->
+<!--                    <filter string="Aprobadas" name="approved_filter" domain="[('approved', '=', True)]"/>-->
+<!--                    <field name="approved"/>-->
+<!--                    <filter string="Rechazadas" name="rejected_filter" domain="[('approved', '=', False), ('is_revised', '=', True)]"/>-->
+<!--                </search>-->
+<!--            </field>-->
+<!--        </record>-->
+
+
+<!--         <record id="action_portal_hr_expensive_request_all_invoice" model="ir.actions.act_window">-->
+<!--            <field name="name">GActos</field>-->
+<!--            <field name="res_model">portal.hr.expensive.request</field>-->
+<!--            <field name="view_mode">list,form</field>-->
+<!--             <field name="domain">[('move_type', '=', 'out_invoice')]</field>-->
+<!--            <field name="context">{'group_by': 'analytic_id'}</field>-->
+<!--        </record>-->
+
+<!--        <menuitem id="menu_portal_hr_expensive_request_all_invoice"-->
+<!--                  name="Facturas"-->
+<!--                  parent="portal_requests.portal_requests_menu"-->
+<!--                  action="action_portal_hr_expensive_request_all_invoice"-->
+<!--                  groups="portal_requests.group_partner_responsible"-->
+<!--                  sequence="50"/>-->
+
+<!--        <menuitem id="menu_portal_hr_expensive_request_toreview"-->
+<!--                  name="To review"-->
+<!--                  parent="portal_requests.menu_portal_hr_expensive_request"-->
+<!--                  action="action_portal_hr_expensive_request"-->
+<!--                  sequence="20"/>-->
+<!--        <menuitem id="menu_portal_hr_expensive_request_approved"-->
+<!--                  name="Approved"-->
+<!--                  parent="portal_requests.menu_portal_hr_expensive_request"-->
+<!--                  action="action_portal_hr_expensive_request_approved"-->
+<!--                  sequence="30"/>-->
+<!--        <menuitem id="menu_portal_hr_expensive_request_notaprpproved"-->
+<!--                  name="Not approved"-->
+<!--                  parent="portal_requests.menu_portal_hr_expensive_request"-->
+<!--                  action="action_portal_hr_expensive_request_notapproved"-->
+<!--                  sequence="40"/>-->
+    </data>
+</odoo>

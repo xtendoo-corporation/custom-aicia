@@ -46,6 +46,7 @@
         'views/interface/work_group_views.xml',
         'views/interface/account_analytic_inherit_views.xml',  # Nueva vista heredada
         'views/interface/etiqueta_categoria_views.xml',
+        'views/interface/portal_hr_expensive_request.xml',
         'views/interface/ir_attachment_views.xml',
         'security/dashboard_permision.xml',
         'wizards/invoice_request_reject_wizard.xml',

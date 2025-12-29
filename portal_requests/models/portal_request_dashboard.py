@@ -1,6 +1,10 @@
 from odoo import models, fields, tools, _
 import base64
 
+# Nota: Se reemplazaron llamadas a `self.user_has_groups(...)` por
+# `self.env.user.has_group(...)` porque `user_has_groups` no es un
+# método de instancias del modelo; usar `env.user.has_group(xmlid)` es
+# la API correcta en Odoo para comprobar pertenencia a grupos.
 
 class PortalRequestDashboard(models.Model):
     _name = 'portal.request.dashboard'
@@ -44,6 +48,48 @@ class PortalRequestDashboard(models.Model):
             return self.open_to_revise_employee()
         elif self.model == 'portal.hr.employee.intern.request':
             return self.open_to_revise_intern()
+        elif self.model == 'portal.hr.expensive.request':
+            return self.open_to_revise_expensive()
+
+    def open_to_revise_expensive(self):
+        if self.env.user.has_group('portal_requests.group_director_investigation_and_development') or self.env.user.has_group(
+            'portal_requests.group_director_manager'):
+            return {
+                'name': _('Gastos para revisar'),
+                'type': 'ir.actions.act_window',
+                'res_model': 'portal.hr.expensive.request',
+                'view_mode': 'list,form',
+                'domain': [('status', 'in', ('approved_by_boss_group', 'approved_purchase_responsible'))],
+                'context': {'group_by': 'project'},
+            }
+        if self.env.user.has_group('portal_requests.group_purchase_responsible'):
+            return {
+                'name': _('Gastos para revisar'),
+                'type': 'ir.actions.act_window',
+                'res_model': 'portal.hr.expensive.request',
+                'view_mode': 'list,form',
+                'domain': [('status', '=', 'approved_purchase_responsible')],
+                'context': {'group_by': 'project'},
+            }
+        if self.env.user.has_group('portal_requests.group_equip_boss'):
+            return {
+                'name': _('Gastos para revisar'),
+                'type': 'ir.actions.act_window',
+                'res_model': 'portal.hr.expensive.request',
+                'view_mode': 'list,form',
+                'domain': [('status', '=', 'approved_by_boss_group'), ('equip_boss', '=', self.env.user.id)],
+                'context': {'group_by': 'project'},
+            }
+        if self.env.user.has_group('portal_requests.group_project_boss'):
+            return {
+                'name': _('Gastos para revisar'),
+                'type': 'ir.actions.act_window',
+                'res_model': 'portal.hr.expensive.request',
+                'view_mode': 'list,form',
+                'domain': [('status', '=', 'to_revise'), ('user_id', '=', self.env.user.id)],
+                'context': {'group_by': 'project'},
+            }
+
 
     def open_to_revise_document(self):
         if self.env.user.has_group('portal_requests.group_director_investigation_and_development'):
@@ -183,7 +229,18 @@ class PortalRequestDashboard(models.Model):
             return self.open_approved_employee()
         elif self.model == 'portal.hr.employee.intern.request':
             return self.open_approved_intern()
+        elif self.model == 'portal.hr.expensive.request':
+            return self.open_approved_expensive()
 
+    def open_approved_expensive(self):
+        return {
+            'name': _('Gastos Aprobadas'),
+            'type': 'ir.actions.act_window',
+            'res_model': 'portal.hr.expensive.request',
+            'view_mode': 'list,form',
+                'domain': [('status', '=', 'approve')],
+            'context': {'group_by': 'project'},
+        }
     def open_approved_document(self):
         return {
             'name': _('Documentos Aprobados'),
@@ -257,6 +314,18 @@ class PortalRequestDashboard(models.Model):
             return self.open_rejected_employee()
         elif self.model == 'portal.hr.employee.intern.request':
             return self.open_rejected_intern()
+        elif self.model == 'portal.hr.expensive.request':
+            return self.open_rejected_expensive()
+
+    def open_rejected_expensive(self):
+        return {
+            'name': _('Gastos Rechazadas'),
+            'type': 'ir.actions.act_window',
+            'res_model': 'portal.hr.expensive.request',
+            'view_mode': 'list,form',
+            'domain': [('approved', '=', False), ('is_revised', '=', True), ('move_type', '=', 'out_invoice')],
+            'context': {'group_by': 'project'},
+        }
 
     def open_rejected_document(self):
         return {
@@ -343,7 +412,20 @@ class PortalRequestDashboard(models.Model):
             elif record.model == 'portal.hr.employee.intern.request':
                 record.count_to_revise = self.env['portal.hr.employee.intern.request'].search_count(
                     [('is_revised', '=', False)])
+            elif record.model == 'portal.hr.expensive.request':
+                record.count_to_revise = self._compute_count_to_revise_expensive()
 
+    def _compute_count_to_revise_expensive(self):
+        if self.env.user.has_group('portal_requests.group_director_investigation_and_development'):
+            return self.env['portal.hr.expensive.request'].search_count([('status', 'in', ('approved_by_boss_group','approved_purchase_responsible'))])
+        if self.env.user.has_group('portal_requests.group_director_manager'):
+            return self.env['portal.hr.expensive.request'].search_count([('status', 'in', ('approved_by_boss_group','approved_purchase_responsible'))])
+        if self.env.user.has_group('portal_requests.group_purchase_responsible'):
+            return self.env['portal.hr.expensive.request'].search_count([('status', '=','approved_purchase_responsible')])
+        if self.env.user.has_group('portal_requests.group_equip_boss'):
+            return self.env['portal.hr.expensive.request'].search_count([('status', '=', 'approved_by_boss_group'),('equip_boss','=',self.env.user.id)])
+        if self.env.user.has_group('portal_requests.group_project_boss'):
+            return self.env['portal.hr.expensive.request'].search_count([('status', '=', 'to_revise'),('user_id','=',self.env.user.id)])
     def _compute_count_to_revise_document(self):
         if self.env.user.has_group('portal_requests.group_director_investigation_and_development'):
             return self.env['document.approval'].search_count([('status', 'in', ('approved_by_director_i_d','final_revision','sign_company'))])
@@ -378,6 +460,8 @@ class PortalRequestDashboard(models.Model):
                 record.approved_text = _('Aprobados: %s', number)
             elif record.model == 'portal.hr.employee.intern.request':
                 record.approved_text = _('Aprobados: %s', number)
+            elif record.model == 'portal.hr.expensive.request':
+                record.approved_text = _('Aprobados: %s', number)
 
     def _compute_count_approved(self):
         for record in self:
@@ -401,6 +485,20 @@ class PortalRequestDashboard(models.Model):
             elif record.model == 'portal.hr.employee.intern.request':
                 record.count_approved = self.env['portal.hr.employee.intern.request'].search_count(
                     [('approved', '=', True), ('is_revised', '=', True)])
+            elif record.model == 'portal.hr.expensive.request':
+                record.count_approved = self._compute_count_approved_expensive()
+
+    def _compute_count_approved_expensive(self):
+        if self.env.user.has_group('portal_requests.group_director_investigation_and_development'):
+            return self.env['portal.hr.expensive.request'].search_count([('status', '=', 'approve')])
+        if self.env.user.has_group('portal_requests.group_director_manager'):
+            return self.env['portal.hr.expensive.request'].search_count([('status', '=', 'approve')])
+        if self.env.user.has_group('portal_requests.group_purchase_responsible'):
+            return self.env['portal.hr.expensive.request'].search_count([('status', '=', 'approve')])
+        if self.env.user.has_group('portal_requests.group_equip_boss'):
+            return self.env['portal.hr.expensive.request'].search_count([('status', '=', 'approve'),('equip_boss','=',self.env.user.id)])
+        if self.env.user.has_group('portal_requests.group_project_boss'):
+            return self.env['portal.hr.expensive.request'].search_count([('status', '=', 'approve'),('user_id','=',self.env.user.id)])
 
     def _compute_count_approved_out_invoice(self):
         if self.env.user.has_group('portal_requests.group_director_investigation_and_development'):
@@ -427,6 +525,8 @@ class PortalRequestDashboard(models.Model):
                 record.unaproved_text = _('Rechazados: %s', number)
             elif record.model == 'portal.hr.employee.intern.request':
                 record.unaproved_text = _('Rechazados: %s', number)
+            elif record.model == 'portal.hr.expensive.request':
+                record.unaproved_text = _('Rechazados: %s', number)
 
 
     def _compute_count_unapproved(self):
@@ -450,5 +550,10 @@ class PortalRequestDashboard(models.Model):
             elif record.model == 'portal.hr.employee.intern.request':
                 record.count_unapproved = self.env['portal.hr.employee.intern.request'].search_count(
                     [('approved', '=', False), ('is_revised', '=', True)])
+            elif record.model == 'portal.hr.expensive.request':
+                record.count_unapproved = self.env['portal.hr.expensive.request'].search_count(
+                    [('status', '=', 'approve')])
+
+
 
 
