@@ -31,6 +31,15 @@ class DocumentApproval(models.Model):
     # approved_by_director_gerente = fields.Boolean(string='Aprobación Director Gerente ', default=False, tracking=True)
     # is_revised = fields.Boolean(string='Está revisado', default=False, store=True, tracking=True)
     company_id = fields.Many2one('res.company', string='Grupo de trabajo',tracking=True)
+    def _get_work_group_id(self):
+        for record in self:
+            work_group = self.env['portal.work.group'].search([
+                ('user_ids', 'in', record.user_id.id)
+            ], limit=1)
+            record.work_group_id = work_group.id if work_group else False
+            
+    work_group_id = fields.Many2one('portal.work.group', compute="_get_work_group_id", string='Grupo de Trabajo',
+                                    store=True)
     user_id = fields.Many2one('res.users', string='Solicitante', tracking=True)
     status = fields.Selection([('approved_by_director_i_d', 'Aprobación del DIrector I+D'), ('approved_by_director_gerente', 'Aprobación del DIrector Gerente'), ('sign_company', 'Esperando firma de empresa'),('final_revision','Revisión final'), ("approve", 'Aprobada'), ("rejected", 'Rechazada')], 'Estado', default='approved_by_director_i_d' ,tracking=True)
     financial_signature = fields.Binary(string="Firma Director Gerente")

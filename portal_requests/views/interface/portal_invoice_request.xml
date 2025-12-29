@@ -9,6 +9,7 @@
                     <field name="user_id"/>
                     <field name="analytic_id"/>
                     <field name="partner_id"/>
+                    <field name="work_group_id" optional="hidden"/>
                     <field name="amount"/>
                     <field name="move_type"/>
                     <field name="date"/>

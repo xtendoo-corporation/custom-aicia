@@ -701,10 +701,10 @@
         </t>
     </template>
 
-    <record id="portal_hr_employee_intern_menu" model="website.menu">
-        <field name="name">Solicitud de Becarios</field>
-        <field name="url">/portal/hr_employee_intern_request</field>
-        <field name="parent_id" ref="website.main_menu"/>
-        <field name="sequence" type="int">140</field>
-    </record>
+<!--    <record id="portal_hr_employee_intern_menu" model="website.menu">-->
+<!--        <field name="name">Solicitud de Becarios</field>-->
+<!--        <field name="url">/portal/hr_employee_intern_request</field>-->
+<!--        <field name="parent_id" ref="website.main_menu"/>-->
+<!--        <field name="sequence" type="int">140</field>-->
+<!--    </record>-->
 </odoo>

@@ -25,8 +25,28 @@
                                 <div class="container">
                                     <form action="/portal/hr_expensive_request/submit" method="POST">
                                         <input type="hidden" name="csrf_token" t-att-value="request.csrf_token()"/>
+                                        <input type="hidden" name="user_id" t-att-value="request.env.user.id"/>
                                         <div class="s_website_form_rows row s_col_no_bgcolor">
-                                            <!--COMPANY REQUIRED-->
+                                            <!-- TYPE REQUIRED -->
+                                            <div
+                                                class="mb-0 py-2 col-12 s_website_form_field s_website_form_required s_website_form_model_required"
+                                                data-type="char" data-name="Field">
+                                                <div class="row s_col_no_resize s_col_no_bgcolor">
+                                                    <label class="col-form-label col-sm-auto s_website_form_label"
+                                                           style="width: 200px" for="contact">
+                                                        <span class="s_website_form_label_content">Tipo</span>
+                                                        <span class="s_website_form_mark">*</span>
+                                                    </label>
+                                                    <div class="col-sm">
+                                                        <select id="expensive_type" name="expensive_type"
+                                                                class="form-control s_website_form_input">
+                                                            <option value="">Seleccione...</option>
+                                                            <option value="bienes_servicios">Compra de bienes o servicios</option>
+                                                        </select>
+                                                    </div>
+                                                </div>
+                                            </div>
+                                           <!--COMPANY REQUIRED-->
                                             <div
                                                 class="mb-0 py-2 col-12 s_website_form_field s_website_form_required s_website_form_model_required"
                                                 data-type="char" data-name="Field">
@@ -41,6 +61,7 @@
                                                     <div class="col-sm">
                                                         <select id="company_id" name="company_id"
                                                                 class="form-control s_website_form_input">
+                                                            <option value="0">Selecciona un proyecto</option>
                                                             <t t-foreach="companies" t-as="company">
                                                                 <option t-att-value="company.id">
                                                                     <t t-esc="company.name"/>
@@ -50,25 +71,42 @@
                                                     </div>
                                                 </div>
                                             </div>
-                                            <!--NAME REQUIRED-->
+                                            <!--FILE REQUIRED-->
                                             <div
                                                 class="mb-0 py-2 col-12 s_website_form_field s_website_form_required s_website_form_model_required"
-                                                data-type="text" data-name="Field">
+                                                data-type="binary" data-name="Field">
                                                 <div class="row s_col_no_resize s_col_no_bgcolor">
                                                     <label
                                                         class="col-form-label col-sm-auto s_website_form_label"
                                                         style="width: 200px" for="contact">
-                                                        <span class="s_website_form_label_content">Name
+                                                        <span class="s_website_form_label_content">Factura
                                                         </span>
                                                         <span class="s_website_form_mark">*</span>
                                                     </label>
                                                     <div class="col-sm">
-                                                        <input type="text" class="form-control"
-                                                               name="name"
-                                                               required="required"/>
+                                                        <input type="file" class="form-control" name="file" accept=".pdf,.doc,.docx"/>
                                                     </div>
                                                 </div>
                                             </div>
+<!--                                            &lt;!&ndash;NAME REQUIRED&ndash;&gt;-->
+<!--                                            <div-->
+<!--                                                class="mb-0 py-2 col-12 s_website_form_field s_website_form_required s_website_form_model_required"-->
+<!--                                                data-type="text" data-name="Field">-->
+<!--                                                <div class="row s_col_no_resize s_col_no_bgcolor">-->
+<!--                                                    <label-->
+<!--                                                        class="col-form-label col-sm-auto s_website_form_label"-->
+<!--                                                        style="width: 200px" for="contact">-->
+<!--                                                        <span class="s_website_form_label_content">Name-->
+<!--                                                        </span>-->
+<!--                                                        <span class="s_website_form_mark">*</span>-->
+<!--                                                    </label>-->
+<!--                                                    <div class="col-sm">-->
+<!--                                                        <input type="text" class="form-control"-->
+<!--                                                               name="name"-->
+<!--                                                               required="required"/>-->
+<!--                                                    </div>-->
+<!--                                                </div>-->
+<!--                                            </div>-->
                                             <!--SEND BUTTON-->
                                             <div class="mb-0 py-2 col-12 s_website_form_submit"
                                                  data-name="Submit Button">
@@ -125,7 +163,7 @@
     </template>
 
     <record id="portal_hr_expensive_menu" model="website.menu">
-        <field name="name">Expense Requests</field>
+        <field name="name">Solicitud de gastos</field>
         <field name="url">/portal/hr_expensive_request</field>
         <field name="parent_id" ref="website.main_menu"/>
         <field name="sequence" type="int">160</field>

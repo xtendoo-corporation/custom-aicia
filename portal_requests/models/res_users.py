@@ -11,3 +11,11 @@ class ResUsers(models.Model):
         help="Certificado asignado para firmar informes",
         ondelete="restrict",
     )
+
+    work_group_ids = fields.Many2many(
+        'portal.work.group',
+        'work_group_users_rel',  # MISMA tabla relacional
+        'user_id',  # columna del usuario
+        'group_id',  # columna del grupo
+        string='Grupos de Trabajo'
+    )
