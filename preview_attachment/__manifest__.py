@@ -2,7 +2,7 @@
 # Manifest del módulo para previsualización de adjuntos
 {
     'name': 'Previsualización de Adjuntos',
-    'version': '18.0.1.0.0',
+    'version': '19.0.1.0.0',
     'category': 'Tools',
     'summary': 'Añade botón para previsualizar adjuntos en su formulario',
     'author': 'Dani Domínguez - Xtendoo',
