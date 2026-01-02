@@ -1,3 +1,4 @@
+from . import work_group
 from . import portal_approval_request_model
 from . import portal_hr_employee_request_model
 from . import portal_hr_employee_intern_request_model
@@ -11,7 +12,6 @@ from . import document_approval
 from . import portal_request_dashboard
 from . import res_users
 from . import report_certificate
-from . import work_group
 from . import account_analytic_inherit
 from . import etiqueta_categoria
 from . import ir_attachment

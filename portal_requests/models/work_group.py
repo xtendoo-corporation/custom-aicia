@@ -29,8 +29,7 @@ class WorkGroup(models.Model):
 
     equip_boss = fields.Many2one(
         'res.users',
-        string='Jefe de Equipo',
-        domain="[('id', 'in', equip_boss_domain)]"
+        string='Jefe de Equipo'
     )
 
 

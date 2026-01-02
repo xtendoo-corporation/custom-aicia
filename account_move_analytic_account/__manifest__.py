@@ -11,6 +11,7 @@
     "category": "Accounting",
     "depends": [
         "account",
+        "portal_requests",
     ],
     "license": "AGPL-3",
     "data": [

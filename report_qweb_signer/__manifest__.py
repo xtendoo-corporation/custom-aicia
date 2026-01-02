@@ -12,11 +12,10 @@
     "author": "Tecnativa, " "Odoo Community Association (OCA)",
     "license": "AGPL-3",
     "installable": True,
-    "depends": ["web_editor"],
+    #"depends": ["web_editor"],
     "external_dependencies": {
         "python": [
-            "endesive<=2.18.5 ; python_version < '3.12'",
-            "endesive ; python_version >= '3.12'",
+            "endesive",
             "cryptography",
         ],
         "deb": ["default-jre-headless"],

@@ -18,7 +18,6 @@
         "web",
         "report_qweb_signer",
         "project",
-        "account_move_analytic_account",
         "send_draft_invoices",
     ],
     "license": "AGPL-3",
