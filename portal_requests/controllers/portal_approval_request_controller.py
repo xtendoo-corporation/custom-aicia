@@ -18,6 +18,7 @@ class PortalApprovalRequestController(Controller):
         description = post.get('description')
         is_company_signed = post.get('company_signed')
         user_id = request.env.user.id
+        work_group_id = post.get('work_group')
 
         if approval_type == "sign_nda":
             approval_type = "Solicitud de firma NDA"
@@ -48,6 +49,7 @@ class PortalApprovalRequestController(Controller):
             'is_company_signed': is_company_signed,
             'signature_page': 'last',
             'signature_position': 'bottom_left',
+            'work_group_id': work_group_id,
         })
 
 
@@ -60,50 +62,78 @@ class PortalApprovalRequestController(Controller):
                 'datas': base64.b64encode(attachment.read()),
                 'type': 'binary',
             }
-            request.env['ir.attachment'].create(attachment_data)
+            request.env['ir.attachment'].sudo().create(attachment_data)
         self.send_request_email(approval_type, new_document_approval)
 
 
         return request.redirect('/contactus-thank-you')
 
+    def send_request_email(self, move_text, document_id):
 
-    def send_request_email(self, move_text,document_id):
-        admin_users = request.env['res.users'].search(
-            [('groups_id', 'in', request.env.ref('portal_requests.group_director_investigation_and_development').id)])
-        document_request_link = f"/web#id={document_id.id}&cids=1-24-28-29-32-25-30-31&menu_id=899&active_id=1&model=document.approval&view_type=form"
-        user_id = request.env.user.id
-        user= request.env['res.users'].search([('id', '=', user_id)], limit=1)
-        print("*"*100)
-        print("admin_users",admin_users)
+        env = request.env
+
+        group = request.env.ref('portal_requests.group_director_investigation_and_development')
+        #group_rel = request.env['res.groups.users.rel'].sudo().search([('gid', 'in', [group.id])])
+        print("*" * 100)
+        print("group", group)
+        #print("group_rel", group_rel)
+        print("*" * 100)
+        #admin_users = request.env['res.groups'].sudo().search([('id', 'in', [group.id])])
+        admin_users = group.user_ids
+        print("*" * 100)
+        print("group", group)
+        print("admin_users", admin_users)
+        print("*" * 100)
+
+        document_request_link = (
+            f"/web#id={document_id.id}"
+            f"&cids=1-24-28-29-32-25-30-31"
+            f"&menu_id=899&active_id=1"
+            f"&model=document.approval&view_type=form"
+        )
+
+        user = env.user
+
+        print("*" * 100)
+        print("admin_users", admin_users)
+
         for admin_user in admin_users:
-            print("admin_user",admin_user)
-            admin_name = admin_user.name
-            body_html = f"""
-                                <p>Estimado/a {admin_name},</p>
-                                <p>El usuario {user.name} ha creado una solicitud de nuevo documento.</p>
-                                <p>A continuación, se detallan los datos de la solicitud:
-                                <ul>
-                                    <li><strong>Usuario:</strong> {user.name}</li>
-                                    <li><strong>Tipo:</strong> {move_text}</li>
-                                    <li><strong>Enlace:</strong><a href="{document_request_link}">Solicitud</a></li>
-                                <ul>
-                                </p>
-                                <p>Saludos cordiales, Odoo</p>
-                            """
-            # Filtrar usuarios que tienen un correo electrónico válido
+
+            print("admin_user", admin_user)
+
             email = admin_user.email
-            print("email",email)
-            #email_list = [email for email in email_list if email]  # Solo correos no vacíos
-            # Validar que haya destinatarios
-            # if not email_list:
-            #     raise ValueError("No hay destinatarios con correo válido en el grupo especificado.")
+            if not email:
+                continue
+
+            body_html = f"""
+                <p>Estimado/a {admin_user.name},</p>
+                <p>El usuario {user.name} ha creado una solicitud de nuevo documento.</p>
+                <ul>
+                    <li><strong>Usuario:</strong> {user.name}</li>
+                    <li><strong>Tipo:</strong> {move_text}</li>
+                    <li>
+                        <strong>Enlace:</strong>
+                        <a href="{document_request_link}">Solicitud</a>
+                    </li>
+                </ul>
+                <p>Saludos cordiales, Odoo</p>
+            """
+
             mail_values = {
-                'subject': f'Solicitud de documento',
-                'email_from': request.env.user.email or 'no-reply@example.com',
+                'subject': 'Solicitud de documento',
+                'email_from': user.email or 'no-reply@example.com',
                 'email_to': email,
                 'body_html': body_html,
             }
-            mail = request.env['mail.mail'].sudo().create(mail_values)
-            mail.sudo().send()
+
+            try:
+                mail = env['mail.mail'].sudo().create(mail_values)
+                env.cr.commit()  # 🔥 ESTO ES LO QUE FALTABA
+                mail.sudo().send()  # opcional, pero correcto
+
+            except Exception as e:
+                env.cr.rollback()
+                print("ERROR enviando mail a", email, e)
 
         return request.render("portal.email_sent_confirmation")
+

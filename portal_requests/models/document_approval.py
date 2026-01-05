@@ -37,8 +37,8 @@ class DocumentApproval(models.Model):
                 ('user_ids', 'in', record.user_id.id)
             ], limit=1)
             record.work_group_id = work_group.id if work_group else False
-            
-    work_group_id = fields.Many2one('portal.work.group', compute="_get_work_group_id", string='Grupo de Trabajo',
+
+    work_group_id = fields.Many2one('portal.work.group', string='Grupo de Trabajo',
                                     store=True)
     user_id = fields.Many2one('res.users', string='Solicitante', tracking=True)
     status = fields.Selection([('approved_by_director_i_d', 'Aprobación del DIrector I+D'), ('approved_by_director_gerente', 'Aprobación del DIrector Gerente'), ('sign_company', 'Esperando firma de empresa'),('final_revision','Revisión final'), ("approve", 'Aprobada'), ("rejected", 'Rechazada')], 'Estado', default='approved_by_director_i_d' ,tracking=True)
@@ -296,9 +296,8 @@ class DocumentApproval(models.Model):
             print("Solicitante solicita revisión final")
             self.status = 'final_revision'
             self.is_company_signed = True
-            user_to_send = self.env['res.users'].search([
-                ('groups_id', 'in', self.env.ref('portal_requests.group_director_investigation_and_development').id)
-            ])
+            group = self.env.ref('portal_requests.group_director_manager')
+            user_to_send = group.user_ids
             self.send_request_email(self.type_id.name,user_to_send, "final_revision")
 
     def action_approve(self):
@@ -306,9 +305,8 @@ class DocumentApproval(models.Model):
         if self.status == 'approved_by_director_i_d' and self.env.user.has_group("portal_requests.group_director_investigation_and_development"):
             print("Director I+D aprueba")
             self.status = 'approved_by_director_gerente'
-            user_to_send = self.env['res.users'].search([
-                ('groups_id', 'in', self.env.ref('portal_requests.group_director_manager').id)
-            ])
+            group = self.env.ref('portal_requests.group_director_manager')
+            user_to_send = group.user_ids
             self.send_request_email(self.type_id.name,user_to_send, "approved_by_director_i_d")
         if self.status == 'approved_by_director_gerente' and self.env.user.has_group("portal_requests.group_director_manager"):
             if not self.financial_signature and self.is_digital_signed == False:
@@ -317,9 +315,8 @@ class DocumentApproval(models.Model):
             if self.financial_signature:
                 self.add_signature_to_pdf()
             if self.is_company_signed:
-                user_to_send = self.env['res.users'].search([
-                    ('groups_id', 'in', self.env.ref('portal_requests.group_director_investigation_and_development').id)
-                ])
+                group = self.env.ref('portal_requests.group_director_investigation_and_development')
+                user_to_send = group.user_ids
                 print("esta ya firmado por la empresa")
                 self.status = 'final_revision'
                 self.send_request_email(self.type_id.name, user_to_send, "final_revision")
@@ -338,9 +335,7 @@ class DocumentApproval(models.Model):
         if self.status == 'final_revision' and self.env.user.has_group("portal_requests.group_director_investigation_and_development"):
             print("Jefe de equipo aprueba")
             self.status = 'approve'
-            user_to_send = self.env['res.users'].search([
-                ('groups_id', 'in', self.env.ref('portal_requests.group_equip_boss').id)
-            ])
+            user_to_send = self.user_id
             self.send_request_email(self.type_id.name,user_to_send, "final_revision")
 
     def action_reject(self):
@@ -412,7 +407,7 @@ class DocumentApproval(models.Model):
                 admin_name = admin_user.name
                 body_html = f"""
                                        <p>Estimado/a {admin_name},</p>
-                                       <p>El Director de I+D ya ha dado su aprobación para la siguiente solicitud:</p>
+                                       <p>El Director Gerente ya ha dado su aprobación para la siguiente solicitud:</p>
                                        <ul>
                                            <li><strong>Solicitante:</strong> {user.name}</li>
                                            <li><strong>Tipo:</strong> {move_text}</li>
@@ -422,7 +417,7 @@ class DocumentApproval(models.Model):
                                    """
             mail_values = {
                 'subject': 'Solicitud de documento',
-                'email_from': user.email or 'no-reply@example.com',
+                'email_from': 'no-reply@aicia.com',
                 'email_to': admin_user.email,
                 'body_html': body_html,
             }
