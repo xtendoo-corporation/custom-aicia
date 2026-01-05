@@ -185,8 +185,10 @@ class PortalInvoiceController(Controller):
 
     # Método para enviar el correo electrónico
     def send_project_email(self, project ):
-        admin_users = request.env['res.users'].search(
-            [('groups_id', 'in', request.env.ref('portal_requests.group_director_investigation_and_development').id)])
+        group = self.env.ref('portal_requests.group_director_investigation_and_development')
+        admin_users = group.user_ids
+        # admin_users = request.env['res.users'].search(
+        #     [('groups_id', 'in', request.env.ref('portal_requests.group_director_investigation_and_development').id)])
         project_request_link = f"/web#id={project.id}&cids=1-24-28-29-32-25-30-31&menu_id=899&active_id=1&model=portal.project.request&view_type=form"
         if project.type == 'new':
             for admin_user in admin_users:
