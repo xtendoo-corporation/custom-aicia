@@ -6,7 +6,7 @@
             <field name="model_id" ref="model_portal_request_dashboard"/>
             <field name="global" eval="False"/>
             <field name="domain_force">
-                [('allowed_group_ids', 'in', user.groups_id.ids)]
+                [('allowed_group_ids', 'in', user.group_ids.ids)]
             </field>
         </record>
     </data>

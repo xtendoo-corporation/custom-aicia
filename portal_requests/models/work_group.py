@@ -22,7 +22,7 @@ class WorkGroup(models.Model):
         group = self.env.ref('portal_requests.group_equip_boss', False)
         for record in self:
             if record.user_ids:
-                domain_user = record.user_ids.filtered(lambda u: group in u.groups_id)
+                domain_user = record.user_ids.filtered(lambda u: group in u.group_ids)
                 record.equip_boss_domain = domain_user.ids
             else:
                 record.equip_boss_domain = []

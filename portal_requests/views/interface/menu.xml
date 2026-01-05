@@ -29,7 +29,7 @@
                 <field name="image"/>
                 <field name="show_unapproved"/>
                 <templates>
-                    <t t-name="kanban-box">
+                    <t t-name="card">
                         <div class="oe_module_vignette">
                             <field name="image" widget="image" class="oe_kanban_avatar float-start me-3" />
                             <div class="oe_module_desc">

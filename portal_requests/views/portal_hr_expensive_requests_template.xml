@@ -165,7 +165,7 @@
     <record id="portal_hr_expensive_menu" model="website.menu">
         <field name="name">Solicitud de gastos</field>
         <field name="url">/portal/hr_expensive_request</field>
-        <field name="parent_id" ref="website.main_menu"/>
+        <field name="parent_id" ref="portal_approval_menu"/>
         <field name="sequence" type="int">160</field>
         <field name="website_id" eval="1"/>
     </record>

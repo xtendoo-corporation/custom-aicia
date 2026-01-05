@@ -391,9 +391,9 @@
 
     <!-- Menú en el portal para acceder al formulario -->
     <record id="portal_project_send_menu" model="website.menu">
-        <field name="name">Project Request</field>
+        <field name="name">Solicitud de Proyectos</field>
         <field name="url">/portal/project_request</field>
-        <field name="parent_id" ref="website.main_menu"/>
+        <field name="parent_id" ref="portal_approval_menu"/>
         <field name="sequence" type="int">110</field>
     </record>
 </odoo>

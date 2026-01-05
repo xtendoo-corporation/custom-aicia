@@ -32,8 +32,9 @@
                             <page string="Usuarios">
                                 <field name="user_ids"/>
                                 <field name="equip_boss_domain" invisible="1"/>
-                                <label for="equip_boss">Jefe de equipo</label>
-                                <field name="equip_boss" string="Jefe de equipo"/>
+                                <group>
+                                    <field name="equip_boss" string="Jefe de equipo" domain="[('id', 'in', equip_boss_domain)]"/>
+                                </group>
                             </page>
                         </notebook>
                     </sheet>
