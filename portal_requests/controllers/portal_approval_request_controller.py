@@ -73,17 +73,7 @@ class PortalApprovalRequestController(Controller):
         env = request.env
 
         group = request.env.ref('portal_requests.group_director_investigation_and_development')
-        #group_rel = request.env['res.groups.users.rel'].sudo().search([('gid', 'in', [group.id])])
-        print("*" * 100)
-        print("group", group)
-        #print("group_rel", group_rel)
-        print("*" * 100)
-        #admin_users = request.env['res.groups'].sudo().search([('id', 'in', [group.id])])
         admin_users = group.user_ids
-        print("*" * 100)
-        print("group", group)
-        print("admin_users", admin_users)
-        print("*" * 100)
 
         document_request_link = (
             f"/web#id={document_id.id}"
