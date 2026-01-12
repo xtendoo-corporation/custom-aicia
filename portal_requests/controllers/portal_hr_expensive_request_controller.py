@@ -32,6 +32,7 @@ class PortalHrExpensiveRequestController(Controller):
         user_to_notify = [work_group_id.equip_boss]
         user_name = request.env['res.users'].sudo().browse(int(user_id)).name
         company_name = request.env['account.analytic.account'].sudo().browse(project).name
+        is_more = post.get('is_more')
         #Si solicita el jefe de equipo
         if int(user_id) == int(work_group_id.equip_boss.id):
             print("*"*50)
@@ -46,7 +47,7 @@ class PortalHrExpensiveRequestController(Controller):
             'user_id': user_id,
             'status': status,
             'project': project,
-
+            'is_more': is_more,
         })
         attachments = request.httprequest.files.getlist('file')
         for attachment in attachments:

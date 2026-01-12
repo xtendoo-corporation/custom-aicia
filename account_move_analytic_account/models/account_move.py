@@ -29,20 +29,20 @@ class AccountMove(models.Model):
     @api.depends("analytic_distribution")
     def _compute_work_group_id(self):
         for record in self:
-            if record.analytic_distribution:
-                print("analytic_distribution",record.analytic_distribution)
-                first_key = next(iter(record.analytic_distribution))
-                if first_key:
-                    account = self.env['account.analytic.account'].browse(int(first_key))
-                    print("first_key",first_key)
-                    if account and account.work_group_id:
-                        work_group = self.env['portal.work.group'].browse(account.work_group_id.id)
-                        if work_group:
-                            record.work_group_id = work_group.id
-                else:
-                    record.work_group_id = False
-            else:
-                record.work_group_id = False
+            # if record.analytic_distribution:
+            #     print("analytic_distribution",record.analytic_distribution)
+            #     first_key = next(iter(record.analytic_distribution))
+            #     if first_key:
+            #         account = self.env['account.analytic.account'].browse(int(first_key))
+            #         print("first_key",first_key)
+            #         if account and account.work_group_id:
+            #             work_group = self.env['portal.work.group'].browse(account.work_group_id.id)
+            #             if work_group:
+            #                 record.work_group_id = work_group.id
+            #     else:
+            #         record.work_group_id = False
+            # else:
+            record.work_group_id = False
 
 
     @api.onchange("analytic_distribution")

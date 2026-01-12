@@ -49,6 +49,7 @@
         'views/interface/ir_attachment_views.xml',
         'security/dashboard_permision.xml',
         'wizards/invoice_request_reject_wizard.xml',
+        'wizards/purchase_request_reject_wizard.xml',
     ],
     "installable": True,
     'application': False,

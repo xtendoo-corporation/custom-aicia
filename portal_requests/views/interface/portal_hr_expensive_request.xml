@@ -10,6 +10,7 @@
                     <field name="project" string="Proyecto"/>
                     <field name="type"/>
                     <field name="status"/>
+                    <field name="is_more"/>
                 </list>
             </field>
         </record>
@@ -80,11 +81,17 @@
                         <!-- Fin botonera del Director gerente -->
                     </header>
                     <sheet>
+                        <div class="oe_button_box" name="button_box">
+                            <button name="action_view_invoice" type="object" class="oe_stat_button" icon="fa-pencil-square-o" invisible="not invoice_created">
+                        <field name="invoice_count" widget="statinfo" string="Invoices"/>
+                    </button>
+                        </div>
                         <group>
                             <group>
                                 <field name="type"/>
                                 <field name="project" string="Proyecto"/>
                                 <field name="user_id"/>
+                                <field name="is_more" string="¿Es más de 1000€?"/>
                             </group>
                         </group>
                     </sheet>
