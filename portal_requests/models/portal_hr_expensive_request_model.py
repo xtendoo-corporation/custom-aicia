@@ -28,5 +28,63 @@ class PortalHrExpensiveRequest(models.Model):
                                ], 'Estado',
                               default='approved_by_boss_group', tracking=True)
 
+    @api.depends('status')
+    def _compute_show_solicitar_revision(self):
+        is_boss = self.env.user.has_group('portal_requests.group_equip_boss') or self.env.user.has_group(
+            'portal_requests.group_partner_responsible')
+        for rec in self:
+            if rec.status == 'to_revise' and not is_boss:
+                print("Setting show_solicitar_revision to True for record ID:", rec.id)
+            else:
+                print("Setting show_solicitar_revision to False for record ID:", rec.id)
+            rec.show_solicitar_revision = (rec.status == 'to_revise') and (not is_boss)
+
+    show_solicitar_revision = fields.Boolean(
+        string='Mostrar Solicitar Revisión',
+        compute='_compute_show_solicitar_revision',
+        store=False,
+    )
+
+    def show_notificacion(self, title_char, text, type_char):
+        return {
+            'type': 'ir.actions.client',
+            'tag': 'display_notification',
+            'params': {
+                'type': type_char,
+                'message': text,
+                'title': title_char,
+                'next': {'type': 'ir.actions.client', 'tag': 'soft_reload'},
+            }
+        }
+
+    def action_approve(self):
+        if self.env.user.has_group('portal_requests.group_equip_boss') and self.status == 'approved_by_boss_group':
+            self.status = 'approved_purchase_responsible'
+        elif self.env.user.has_group('portal_requests.group_purchase_responsible') and self.status == 'approved_purchase_responsible':
+            self.status = 'approved_director'
+        elif self.env.user.has_group('portal_requests.group_director_manager') and self.status == 'approved_director':
+            self.status = 'approve'
+        print("Approved HR Expensive Request")
+
+    # def action_reject(self):
+    #     print("Rejected HR Expensive Request")
+
+    def action_reject(self):
+        self.ensure_one()
+        return {
+            'type': 'ir.actions.act_window',
+            'name': 'Rechazar solicitud de gasto',
+            'res_model': 'purchase.request.reject.wizard',
+            'view_mode': 'form',
+            'target': 'new',
+            'context': {
+                'default_request_id': self.id,
+            }
+        }
+
+    def action_to_revise(self):
+        for record in self:
+            record.is_revised = False
+
 
 

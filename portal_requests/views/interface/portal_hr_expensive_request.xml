@@ -21,10 +21,69 @@
                 <form string="Portal Invoice Request">
                     <header>
                         <field name="status" widget="statusbar"/>
+                        <field name="show_solicitar_revision" invisible="1"/>
+                        <!-- Botonera responsable proyecto -->
+                        <button name="action_approve"
+                                string="Solicitar Revisión"
+                                type="object"
+                                class="btn-primary"
+                                invisible="not show_solicitar_revision"
+                                />
+                        <!-- Fin botonera responsable proyecto -->
+                        <!--Botonera del jefe de equipo -->
+                        <button name="action_approve"
+                                string="Aprobar"
+                                type="object"
+                                class="btn-primary"
+                                groups="portal_requests.group_equip_boss"
+                                invisible="status != 'approved_by_boss_group'"
+                                />
+                        <button name="action_reject"
+                                string="Rechazar"
+                                type="object"
+                                class="btn-primary"
+                                groups="portal_requests.group_equip_boss"
+                                invisible="status != 'approved_by_boss_group'"
+                                />
+                        <!-- Fin botonera del jefe de equipo -->
+                        <!--Botonera del Responsable compras -->
+                        <button name="action_approve"
+                                string="Aprobar"
+                                type="object"
+                                class="btn-primary"
+                                groups="portal_requests.group_purchase_responsible"
+                                invisible="status != 'approved_purchase_responsible'"
+                                />
+                        <button name="action_reject"
+                                string="Rechazar"
+                                type="object"
+                                class="btn-primary"
+                                groups="portal_requests.group_purchase_responsible"
+                                invisible="status != 'approved_purchase_responsible'"
+                                />
+                        <!-- Fin botonera del Responsable compras -->
+                        <!--Botonera del Director gerente -->
+                        <button name="action_approve"
+                                string="Aprobar"
+                                type="object"
+                                class="btn-primary"
+                                groups="portal_requests.group_director_manager"
+                                invisible="status != 'approved_director'"
+                                />
+                        <button name="action_reject"
+                                string="Rechazar"
+                                type="object"
+                                class="btn-primary"
+                                groups="portal_requests.group_director_manager"
+                                invisible="status != 'approved_director'"
+                                />
+                        <!-- Fin botonera del Director gerente -->
                     </header>
                     <sheet>
                         <group>
                             <group>
+                                <field name="type"/>
+                                <field name="project" string="Proyecto"/>
                                 <field name="user_id"/>
                             </group>
                         </group>

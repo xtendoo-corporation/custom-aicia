@@ -29,13 +29,18 @@ class PortalHrExpensiveRequestController(Controller):
         status = 'approved_by_boss_group'
         project = int(post.get('company_id'))
         work_group_id = request.env['account.analytic.account'].sudo().browse(project).work_group_id
-        print("*"*50)
-        print("antes del if")
-        print("*"*50)
-        print("request")
-        if user_id == work_group_id.equip_boss.id:
+        user_to_notify = [work_group_id.equip_boss]
+        user_name = request.env['res.users'].sudo().browse(int(user_id)).name
+        company_name = request.env['account.analytic.account'].sudo().browse(project).name
+        #Si solicita el jefe de equipo
+        if int(user_id) == int(work_group_id.equip_boss.id):
+            print("*"*50)
+            print("ES JEFE DE EQUIPO")
             status = 'approved_purchase_responsible'
-        print("despues del if")
+            group = request.env.ref('portal_requests.group_purchase_responsible')
+            user_to_notify = group.user_ids
+            print("user_to_notify:", user_to_notify)
+            print("*" * 50)
         expensive = request.env['portal.hr.expensive.request'].sudo().create({
             'type': expensive_type,
             'user_id': user_id,
@@ -44,9 +49,6 @@ class PortalHrExpensiveRequestController(Controller):
 
         })
         attachments = request.httprequest.files.getlist('file')
-        print("-"*50)
-        print("attachments", attachments)
-        print("-"*50)
         for attachment in attachments:
             attachment_data = {
                 'name': attachment.filename,
@@ -56,7 +58,36 @@ class PortalHrExpensiveRequestController(Controller):
                 'type': 'binary',
             }
             request.env['ir.attachment'].create(attachment_data)
-        #self.send_request_email(approval_type, new_document_approval)
+        self.send_request_email(user_to_notify,user_name, company_name, expensive)
 
         return request.redirect('/contactus-thank-you')
+
+    def send_request_email(self,to_notify_users, user_name,company_name, expensive_request):
+        expensive_request_link = f"/web#id={expensive_request.id}&cids=1-24-28-29-32-25-30-31&menu_id=899&active_id=1&model=portal.hr.expensive.request&view_type=form"
+        for admin_user in to_notify_users:
+            admin_name = admin_user.name
+            body_html = f"""
+                        <p>Estimado/a {admin_name},</p>
+                        <p>El usuario {user_name} ha creado una solicitud de gasto en el proyecto {company_name}.</p>
+                        <p>A continuación, se detallan los datos de la solicitud:
+                        <ul>
+                            <li><strong>Usuario:</strong> {user_name}</li>
+                            <li><strong>Proyecto:</strong> {company_name}</li>
+                            <li><strong>Enlace:</strong> <a href="{expensive_request_link}">Solicitud</a></li>
+                        <ul>
+                        </p>
+                        <p>Saludos cordiales, Odoo</p>
+                    """
+            email = admin_user.email
+            mail_values = {
+                'subject': f'Solicitud de Gasto',
+                'email_from': request.env.user.email or 'no-reply@example.com',
+                'email_to': email,
+                'body_html': body_html,
+            }
+            mail = request.env['mail.mail'].create(mail_values)
+
+            mail.send()
+
+        return request.render("portal.email_sent_confirmation")
 
