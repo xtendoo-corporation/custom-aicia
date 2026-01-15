@@ -59,7 +59,7 @@ class PortalRequestDashboard(models.Model):
                 'type': 'ir.actions.act_window',
                 'res_model': 'portal.hr.expensive.request',
                 'view_mode': 'list,form',
-                'domain': [('status', 'in', ('approved_by_boss_group', 'approved_purchase_responsible'))],
+                'domain': [('status', 'in', ('approved_by_boss_group', 'approved_purchase_responsible', 'approved_director'))],
                 'context': {'group_by': 'project'},
             }
         if self.env.user.has_group('portal_requests.group_purchase_responsible'):
@@ -417,9 +417,9 @@ class PortalRequestDashboard(models.Model):
 
     def _compute_count_to_revise_expensive(self):
         if self.env.user.has_group('portal_requests.group_director_investigation_and_development'):
-            return self.env['portal.hr.expensive.request'].search_count([('status', 'in', ('approved_by_boss_group','approved_purchase_responsible'))])
+            return self.env['portal.hr.expensive.request'].search_count([('status', 'in', ('approved_by_boss_group','approved_purchase_responsible', 'approved_director'))])
         if self.env.user.has_group('portal_requests.group_director_manager'):
-            return self.env['portal.hr.expensive.request'].search_count([('status', 'in', ('approved_by_boss_group','approved_purchase_responsible'))])
+            return self.env['portal.hr.expensive.request'].search_count([('status', 'in', ('approved_by_boss_group','approved_purchase_responsible', 'approved_director'))])
         if self.env.user.has_group('portal_requests.group_purchase_responsible'):
             return self.env['portal.hr.expensive.request'].search_count([('status', '=','approved_purchase_responsible')])
         if self.env.user.has_group('portal_requests.group_equip_boss'):

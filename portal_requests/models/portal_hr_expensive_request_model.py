@@ -132,12 +132,13 @@ class PortalHrExpensiveRequest(models.Model):
     def _create_purchase_invoice(self):
         self.ensure_one()
         # Lógica para crear la factura de compra en blanco con el adjunto y la distribución contable
-        # Esto es un ejemplo básico y debe adaptarse a las necesidades específicas
+        # El analytic_distribution debe ser un JSON con formato: {str(account_id): percentage}
+        analytic_distribution = {str(self.project.id): 100.0}
+
         invoice_vals = {
             # 'partner_id': self.project.partner_id.id,
             'move_type': 'in_invoice',
-            'analytic_distribution': self.project.id,
-            # Agregar más campos según sea necesario
+            'analytic_distribution': analytic_distribution,
         }
         invoice = self.env['account.move'].create(invoice_vals)
         #añadimos el adjunto de la solicitud a la factura
