@@ -52,11 +52,11 @@
                     <field name="name"/>
                     <field name="user_id"/>
                     <field name="subject"/>
-                    <filter string="Mis Certificados" name="my_certificates" domain="[('user_id', '=', uid)]"/>
+                    <filter string="Mis Certificados" name="my_certificates" domain="[('user_ids', '=', uid)]"/>
                     <filter string="Activos" name="active" domain="[('active', '=', True)]"/>
                     <filter string="Inactivos" name="inactive" domain="[('active', '=', False)]"/>
                     <group expand="0" string="Agrupar Por">
-                        <filter name="group_by_user" string="Usuario" context="{'group_by': 'user_id'}"/>
+                        <filter name="group_by_user" string="Usuario" context="{'group_by': 'user_ids'}"/>
                     </group>
                 </search>
             </field>

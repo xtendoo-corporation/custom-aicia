@@ -15,6 +15,7 @@ class PortalHrExpensiveRequest(models.Model):
     user_id = fields.Many2one('res.users', string='User', required=True)
     type = fields.Selection([
         ('bienes_servicios', 'Compra de bienes o servicios'),
+        ('material_inventariable', 'Pago de material inventariable'),
     ], string='Tipo', required=True)
     project = fields.Many2one('account.analytic.account', string='Project', required=True)
     work_group_id = fields.Many2one('portal.work.group', related='project.work_group_id', string='Grupo de Trabajo',
@@ -30,6 +31,10 @@ class PortalHrExpensiveRequest(models.Model):
     is_more = fields.Boolean(string='Es más de 10000€', default=True)
     invoice_created = fields.Many2one('account.move', string='Invoice Created')
     invoice_count = fields.Integer(default=1, string='Invoice Count')
+    inmovilizado_type = fields.Selection([
+        ('computer_equipment', 'Equipo informático'),
+        ('furniture', 'Mobiliario'),
+        ('other', 'Otro'),], string='Tipo de Inmovilizado')
 
     @api.depends('status')
     def _compute_show_solicitar_revision(self):

@@ -92,6 +92,10 @@
                                 <field name="project" string="Proyecto"/>
                                 <field name="user_id"/>
                                 <field name="is_more" string="¿Es más de 1000€?"/>
+                                <field name="inmovilizado_type"
+                                    invisible="type != 'material_inventariable'"
+                                    required="type == 'material_inventariable'"
+                                    groups="portal_requests.group_purchase_responsible,portal_requests.group_director_manager"/>
                             </group>
                         </group>
                     </sheet>

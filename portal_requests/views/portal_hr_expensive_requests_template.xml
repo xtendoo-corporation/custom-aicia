@@ -42,6 +42,7 @@
                                                                 class="form-control s_website_form_input">
                                                             <option value="">Seleccione...</option>
                                                             <option value="bienes_servicios">Compra de bienes o servicios</option>
+                                                            <option value="material_inventariable">Pago de material inventariable</option>
                                                         </select>
                                                     </div>
                                                 </div>
