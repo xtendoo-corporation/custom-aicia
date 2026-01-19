@@ -19,6 +19,7 @@
         "report_qweb_signer",
         "project",
         "send_draft_invoices",
+        "xtendoo_invoice_import_gemini_ai"
     ],
     "license": "AGPL-3",
     "data": [

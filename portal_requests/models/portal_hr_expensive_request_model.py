@@ -139,11 +139,14 @@ class PortalHrExpensiveRequest(models.Model):
         # Lógica para crear la factura de compra en blanco con el adjunto y la distribución contable
         # El analytic_distribution debe ser un JSON con formato: {str(account_id): percentage}
         analytic_distribution = {str(self.project.id): 100.0}
+        attachments = self.env['ir.attachment'].search(
+            [('res_model', '=', 'portal.hr.expensive.request'), ('res_id', '=', self.id)])
 
         invoice_vals = {
-            # 'partner_id': self.project.partner_id.id,
             'move_type': 'in_invoice',
             'analytic_distribution': analytic_distribution,
+            'gemini_attachment_id': attachments[:1].id if attachments else False,
+
         }
         invoice = self.env['account.move'].create(invoice_vals)
         #añadimos el adjunto de la solicitud a la factura
@@ -154,6 +157,12 @@ class PortalHrExpensiveRequest(models.Model):
                 'res_id': invoice.id,
             })
         self.invoice_created = invoice.id
+
+        invoice.gemini_attachment_id = attachments.ids[0] if attachments else False
+        print("*"*50)
+        print("invoice.gemini_attachment_id:", invoice.gemini_attachment_id)
+        print("*"*50)
+        invoice._auto_scan_if_configured()
 
     def action_reject(self):
         self.ensure_one()
