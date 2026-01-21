@@ -91,11 +91,21 @@
                                 <field name="type"/>
                                 <field name="project" string="Proyecto"/>
                                 <field name="user_id"/>
-                                <field name="is_more" string="¿Es más de 1000€?"/>
-                                <field name="inmovilizado_type"
+                                <field name="is_more" string="¿Es más de 10.000€?"/>
+                                <field name="inmovilizado_account_id" widget="many2one"
                                     invisible="type != 'material_inventariable'"
                                     required="type == 'material_inventariable'"
                                     groups="portal_requests.group_purchase_responsible,portal_requests.group_director_manager"/>
+                                <field name="bank_account"
+                                    invisible="type != 'material_inventariable'"
+                                    groups="portal_requests.group_purchase_responsible,portal_requests.group_director_manager"
+                                placeholder="Rellenar solo en caso necesario" />
+                                <field name="show_project_credit" invisible="1"/>
+                                <field name="project_credit"
+                                    invisible="not show_project_credit"/>
+                                <field name="show_group_credit" invisible="1"/>
+                                <field name="group_credit"
+                                    invisible="not show_group_credit"/>
                             </group>
                         </group>
                     </sheet>

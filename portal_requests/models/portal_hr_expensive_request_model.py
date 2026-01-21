@@ -31,10 +31,32 @@ class PortalHrExpensiveRequest(models.Model):
     is_more = fields.Boolean(string='Es más de 10000€', default=True)
     invoice_created = fields.Many2one('account.move', string='Invoice Created')
     invoice_count = fields.Integer(default=1, string='Invoice Count')
-    inmovilizado_type = fields.Selection([
-        ('computer_equipment', 'Equipo informático'),
-        ('furniture', 'Mobiliario'),
-        ('other', 'Otro'),], string='Tipo de Inmovilizado')
+    inmovilizado_account_id = fields.Many2one('account.account', string='Cuenta de Inmovilizado')
+    # inmovilizado_type = fields.Selection([
+    #     ('computer_equipment', 'Equipo informático'),
+    #     ('furniture', 'Mobiliario'),
+    #     ('other', 'Otro'),], string='Tipo de Inmovilizado')
+    bank_account = fields.Char(string='Cuenta Bancaria')
+    project_credit = fields.Float(string='Saldo del Proyecto', compute='_compute_project_credit')
+    @api.depends('project')
+    def _compute_project_credit(self):
+        for record in self:
+            if record.project:
+                record.project_credit = record.project.balance
+            else:
+                record.project_credit = 0.0
+    group_credit = fields.Float(string='Saldo del Grupo de Trabajo', compute='_compute_group_credit')
+    @api.depends('work_group_id')
+    def _compute_group_credit(self):
+        for record in self:
+            if record.work_group_id:
+                analytic_accounts = self.env['account.analytic.account'].search([('work_group_id', '=', record.work_group_id.id)])
+                balance = 0.0
+                for account in analytic_accounts:
+                    balance += account.balance
+                record.group_credit = balance
+            else:
+                record.group_credit = 0.0
 
     @api.depends('status')
     def _compute_show_solicitar_revision(self):
@@ -52,6 +74,24 @@ class PortalHrExpensiveRequest(models.Model):
         compute='_compute_show_solicitar_revision',
         store=False,
     )
+    show_project_credit = fields.Boolean(string='Mostrar Saldo del Proyecto', compute='_compute_show_project_credit')
+    @api.depends('user_id', 'project')
+    def _compute_show_project_credit(self):
+        for record in self:
+            if self.env.user.has_group('portal_requests.group_director_manager') or self.env.user.has_group('portal_requests.group_purchase_responsible') or self.env.user == record.equip_boss  or self.env.user == record.project.responsible_id:
+                record.show_project_credit = True
+            else:
+                record.show_project_credit = False
+
+    show_group_credit = fields.Boolean(string='Mostrar Saldo del Proyecto', compute='_compute_show_group_credit')
+
+    @api.depends('user_id', 'project')
+    def _compute_show_group_credit(self):
+        for record in self:
+            if self.env.user.has_group('portal_requests.group_director_manager') or self.env.user.has_group('portal_requests.group_purchase_responsible') or self.env.user == record.equip_boss:
+                record.show_group_credit = True
+            else:
+                record.show_group_credit = False
 
     def show_notificacion(self, title_char, text, type_char):
         return {
@@ -65,6 +105,8 @@ class PortalHrExpensiveRequest(models.Model):
             }
         }
 
+
+
     def action_approve(self):
         if self.env.user.has_group('portal_requests.group_equip_boss') and self.status == 'approved_by_boss_group':
             self.status = 'approved_purchase_responsible'
@@ -73,9 +115,8 @@ class PortalHrExpensiveRequest(models.Model):
             self._send_purchase_request_mail('approved_by_boss_group', user_to_notify, self.user_id.name, self.project.name)
             return self.show_notificacion("¡Aprobación registrada!", "La solicitud ha sido aprobada y enviada al responsable de compras para su revisión.", "success")
         elif self.env.user.has_group('portal_requests.group_purchase_responsible') and self.status == 'approved_purchase_responsible':
-            #si no supera los 10k y el saldo del equipo es mayor a 0:
-            balance_group = self._get_balance_work_group()
-            if self.is_more:
+            #si no supera los 10k o el saldo del equipo es inferior a 0, o el saldo del pryecto es inferior a 0:
+            if self.is_more or self.project_credit <= 0 or self.group_credit <= 0:
                 self.status = 'approved_director'
                 user_to_notify = self.env['res.users'].search(
                     [('work_group_ids', 'in', self.env.ref('portal_requests.group_director_manager').id)])
@@ -84,15 +125,15 @@ class PortalHrExpensiveRequest(models.Model):
                 return self.show_notificacion("¡Aprobación registrada!",
                                               "La solicitud ha sido aprobada y enviada al director gerente para su revisión.",
                                               "success")
-            elif balance_group <= 0:
-                self.status = 'approved_director'
-                user_to_notify = self.env['res.users'].search(
-                    [('work_group_ids', 'in', self.env.ref('portal_requests.group_director_manager').id)])
-                self._send_purchase_request_mail('approved_purchase_responsible', user_to_notify, self.user_id.name,
-                                                 self.project.name)
-                return self.show_notificacion("¡Aprobación registrada!",
-                                              "La solicitud ha sido aprobada y enviada al director gerente para su revisión.",
-                                              "success")
+            # elif balance_group <= 0:
+            #     self.status = 'approved_director'
+            #     user_to_notify = self.env['res.users'].search(
+            #         [('work_group_ids', 'in', self.env.ref('portal_requests.group_director_manager').id)])
+            #     self._send_purchase_request_mail('approved_purchase_responsible', user_to_notify, self.user_id.name,
+            #                                      self.project.name)
+            #     return self.show_notificacion("¡Aprobación registrada!",
+            #                                   "La solicitud ha sido aprobada y enviada al director gerente para su revisión.",
+            #                                   "success")
             else:
                 self.status = 'approve'
                 self._create_purchase_invoice()
