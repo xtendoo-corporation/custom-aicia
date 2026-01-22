@@ -50,6 +50,9 @@ class PortalHrExpensiveRequestController(Controller):
             'is_more': is_more,
         })
         attachments = request.httprequest.files.getlist('file')
+
+        print("/"*50)
+        print("attachments:", attachments)
         for attachment in attachments:
             attachment_data = {
                 'name': attachment.filename,
@@ -59,6 +62,18 @@ class PortalHrExpensiveRequestController(Controller):
                 'type': 'binary',
             }
             request.env['ir.attachment'].create(attachment_data)
+        inventory_attachment = request.httprequest.files.get('inventory_file')
+        if inventory_attachment:
+            name=inventory_attachment.filename
+            name="inventario_" + name
+            inventory_attachment_data = {
+                'name': name,
+                'res_model': 'portal.hr.expensive.request',
+                'res_id': expensive.id,
+                'datas': base64.b64encode(inventory_attachment.read()),
+                'type': 'binary',
+            }
+            request.env['ir.attachment'].create(inventory_attachment_data)
         self.send_request_email(user_to_notify,user_name, company_name, expensive)
 
         return request.redirect('/contactus-thank-you')

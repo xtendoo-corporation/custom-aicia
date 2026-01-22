@@ -116,7 +116,16 @@ class PortalHrExpensiveRequest(models.Model):
             return self.show_notificacion("¡Aprobación registrada!", "La solicitud ha sido aprobada y enviada al responsable de compras para su revisión.", "success")
         elif self.env.user.has_group('portal_requests.group_purchase_responsible') and self.status == 'approved_purchase_responsible':
             #si no supera los 10k o el saldo del equipo es inferior a 0, o el saldo del pryecto es inferior a 0:
-            if self.is_more or self.project_credit <= 0 or self.group_credit <= 0:
+            if self.is_more:
+                self.status = 'approved_director'
+                user_to_notify = self.env['res.users'].search(
+                    [('work_group_ids', 'in', self.env.ref('portal_requests.group_director_manager').id)])
+                self._send_purchase_request_mail('approved_purchase_responsible', user_to_notify, self.user_id.name,
+                                                 self.project.name)
+                return self.show_notificacion("¡Aprobación registrada!",
+                                              "La solicitud ha sido aprobada y enviada al director gerente para su revisión.",
+                                              "success")
+            if self.project_credit <= 0:
                 self.status = 'approved_director'
                 user_to_notify = self.env['res.users'].search(
                     [('work_group_ids', 'in', self.env.ref('portal_requests.group_director_manager').id)])
@@ -190,20 +199,48 @@ class PortalHrExpensiveRequest(models.Model):
 
         }
         invoice = self.env['account.move'].create(invoice_vals)
+        for attachment in attachments:
+            invoice_attachment = False
+            print("-" * 50)
+            print("Attachment name:", attachment.name)
+            if attachment.name.startswith("inventario_"):
+                print("Es un archivo de inventario, se omite.")
+                print(attachment.name)
+                print(attachment.id)
+            else:
+                print("Es un archivo de factura, se selecciona.")
+                print(attachment.name)
+                print(attachment.id)
+                invoice_attachment = attachment.id
         #añadimos el adjunto de la solicitud a la factura
-        attachments = self.env['ir.attachment'].search([('res_model', '=', 'portal.hr.expensive.request'), ('res_id', '=', self.id)])
+        attachments = self.env['ir.attachment'].search([('id', '=', invoice_attachment)])
         for attachment in attachments:
             attachment.write({
                 'res_model': 'account.move',
                 'res_id': invoice.id,
             })
         self.invoice_created = invoice.id
-
+        # Supongamos que attachments es una lista de objetos con 'filename' e 'id'
+        # Queremos el primero cuyo filename NO empiece por "inventario_"
+        # Elegir el primer attachment que no empiece por "inventario_"
         invoice.gemini_attachment_id = attachments.ids[0] if attachments else False
         print("*"*50)
         print("invoice.gemini_attachment_id:", invoice.gemini_attachment_id)
         print("*"*50)
         invoice._auto_scan_if_configured()
+        if self.type == 'material_inventariable':
+            attachments = self.env['ir.attachment'].search(
+                [('res_model', '=', 'portal.hr.expensive.request'), ('res_id', '=', self.id)])
+            for attachment in attachments:
+                attachment.write({
+                    'res_model': 'account.move',
+                    'res_id': invoice.id,
+                })
+            print("*"*50)
+            print("entra en el post_create")
+            print("*"*50)
+            for line in invoice.invoice_line_ids:
+                line.account_id = self.inmovilizado_account_id.id
 
     def action_reject(self):
         self.ensure_one()

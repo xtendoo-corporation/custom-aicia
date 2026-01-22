@@ -89,6 +89,23 @@
                                                     </div>
                                                 </div>
                                             </div>
+                                            <!--FILE REQUIRED-->
+                                            <div
+                                                class="mb-0 py-2 col-12 s_website_form_field s_website_form_required s_website_form_model_required"
+                                                data-type="binary" data-name="Field" id="inventory_file_div" style="display: none;">
+                                                <div class="row s_col_no_resize s_col_no_bgcolor">
+                                                    <label
+                                                        class="col-form-label col-sm-auto s_website_form_label"
+                                                        style="width: 200px" for="inventory_file">
+                                                        <span class="s_website_form_label_content">Documento de inventario
+                                                        </span>
+                                                        <span class="s_website_form_mark">*</span>
+                                                    </label>
+                                                    <div class="col-sm">
+                                                        <input type="file" class="form-control" name="inventory_file" accept=".pdf,.doc,.docx" id="inventory_file"/>
+                                                    </div>
+                                                </div>
+                                            </div>
                                             <!--COMPANY SIGNED?-->
                                             <div
                                                 class="mb-0 py-2 col-12 s_website_form_field s_website_form_required s_website_form_model_required"
@@ -97,7 +114,7 @@
                                                     <label
                                                         class="col-form-label col-sm-auto s_website_form_label"
                                                         style="width: 200px" for="is_more">
-                                                        <span class="s_website_form_label_content">¿Es mas de 10000€?</span>
+                                                        <span class="s_website_form_label_content">¿Es mas de 10.000€?</span>
                                                         <span class="s_website_form_mark">*</span>
                                                     </label>
                                                     <div class="col-sm">
@@ -167,6 +184,19 @@
                                         }
                                         });
                                         }
+                                        //PARTE DE MOSTRAR EL CAMPO DE REASON Y FACTURA CUANDO SE SELECCIONA UNA TIPO FACTURA
+                                        document.getElementById("expensive_type").addEventListener("change", function() {
+                                        var expensive_type = document.getElementById("expensive_type").value;
+                                        var inventory_file_div = document.getElementById("inventory_file_div");
+                                        var inventory_file = document.getElementById("inventory_file");
+                                        if (expensive_type === "material_inventariable") {
+                                            inventory_file_div.style.display = "block";
+                                            inventory_file.setAttribute("required", "required");
+                                        } else {
+                                            inventory_file_div.style.display = "none";
+                                            inventory_file.removeAttribute("required");
+                                        }
+                                    });
                                     </script>
                                     <script type="text/javascript" src="/custom-aicia/static/src/js/reason_codes.js"/>
                                     <script type="text/javascript" src="/custom-aicia/static/src/js/hide_field.js"/>
