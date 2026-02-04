@@ -1,0 +1,53 @@
+<?xml version="1.0" ?>
+<!-- Copyright 2024 Xtendoo - https://www.xtendoo.es/
+     License AGPL-3.0 or later (http://www.gnu.org/licenses/agpl). -->
+<odoo>
+    <!-- Menú AICIA en Compras (Proveedores) -->
+    <menuitem
+        id="aicia_menu_purchase"
+        name="AICIA"
+        parent="purchase.menu_purchase_root"
+        sequence="100"
+    />
+
+    <menuitem
+        id="aicia_importer_suppliers_menu"
+        name="Importar Proveedores"
+        parent="aicia_menu_purchase"
+        action="aicia_importer_suppliers_action"
+        sequence="10"
+    />
+
+    <!-- Menú AICIA en Ventas (Clientes) -->
+    <menuitem
+        id="aicia_menu_sales"
+        name="AICIA"
+        parent="sale.sale_menu_root"
+        sequence="100"
+    />
+
+    <menuitem
+        id="aicia_importer_customers_menu"
+        name="Importar Clientes"
+        parent="aicia_menu_sales"
+        action="aicia_importer_customers_action"
+        sequence="10"
+    />
+
+    <!-- Menú AICIA en Empleados (Personal) -->
+    <menuitem
+        id="aicia_menu_hr"
+        name="AICIA"
+        parent="hr.menu_hr_root"
+        sequence="100"
+    />
+
+    <menuitem
+        id="aicia_importer_employees_menu"
+        name="Importar Personal"
+        parent="aicia_menu_hr"
+        action="aicia_importer_employees_action"
+        sequence="10"
+    />
+</odoo>
+

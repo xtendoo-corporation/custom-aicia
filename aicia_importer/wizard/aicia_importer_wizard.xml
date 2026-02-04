@@ -1,0 +1,222 @@
+<?xml version="1.0" ?>
+<odoo>
+    <!-- Vista para PROVEEDORES -->
+    <record id="aicia_importer_suppliers_view" model="ir.ui.view">
+        <field name="name">AICIA - Importador de Proveedores</field>
+        <field name="model">aicia.importer.wizard</field>
+        <field name="priority">10</field>
+        <field name="arch" type="xml">
+            <form string="Importador de Proveedores AICIA">
+                <field name="state" invisible="1"/>
+                <!-- Mostrar formulario de carga cuando state='draft' -->
+                <group invisible="state == 'done'">
+                    <field name="data_file_suppliers" filename="filename_suppliers" widget="binary"/>
+                    <field name="filename_suppliers" invisible="1"/>
+                    <field name="data_file_customers" invisible="1"/>
+                    <field name="filename_customers" invisible="1"/>
+                    <field name="data_file_employees" invisible="1"/>
+                    <field name="filename_employees" invisible="1"/>
+                </group>
+                <group invisible="state == 'done'">
+                    <field name="update_existing"/>
+                </group>
+
+                <!-- Mostrar log cuando state='done' -->
+                <group invisible="state == 'draft'">
+                    <field name="import_log" nolabel="1" colspan="2"/>
+                </group>
+
+                <notebook invisible="state == 'done'">
+                    <page string="Información">
+                        <group>
+                            <p>
+                                Este asistente permite importar proveedores desde archivos Excel (.xlsx).
+                            </p>
+                            <p>
+                                <b>Formato esperado:</b>
+                                <ul>
+                                    <li>Primera fila: encabezados de columnas</li>
+                                    <li><b>Columnas:</b> ID_Proveedor, Nombre, Nombre2, CIF, Telefono,
+                                        TelefonoMovil, Direccion, Direccion2, Localidad, Cod_Postal,
+                                        Correo_Electronico, Persona_Contacto, Observaciones, etc.</li>
+                                    <li><b>Provincias:</b> Se mapean automáticamente desde el código postal.</li>
+                                </ul>
+                            </p>
+                            <p>
+                                <b>Actualizar existentes:</b> Si está marcado, actualiza los proveedores
+                                existentes (busca por referencia interna o CIF).
+                            </p>
+                        </group>
+                    </page>
+                </notebook>
+                <footer>
+                    <button
+                        name="import_suppliers"
+                        string="Importar"
+                        type="object"
+                        class="btn-primary"
+                        invisible="state == 'done'"
+                    />
+                    <button string="Cerrar" class="btn-primary" special="cancel" invisible="state == 'draft'"/>
+                    <button string="Cancelar" class="btn-secondary" special="cancel" invisible="state == 'done'"/>
+                </footer>
+            </form>
+        </field>
+    </record>
+
+    <!-- Vista para CLIENTES -->
+    <record id="aicia_importer_customers_view" model="ir.ui.view">
+        <field name="name">AICIA - Importador de Clientes</field>
+        <field name="model">aicia.importer.wizard</field>
+        <field name="priority">10</field>
+        <field name="arch" type="xml">
+            <form string="Importador de Clientes AICIA">
+                <field name="state" invisible="1"/>
+                <!-- Mostrar formulario de carga cuando state='draft' -->
+                <group invisible="state == 'done'">
+                    <field name="data_file_customers" filename="filename_customers" widget="binary"/>
+                    <field name="filename_customers" invisible="1"/>
+                    <field name="data_file_suppliers" invisible="1"/>
+                    <field name="filename_suppliers" invisible="1"/>
+                    <field name="data_file_employees" invisible="1"/>
+                    <field name="filename_employees" invisible="1"/>
+                </group>
+                <group invisible="state == 'done'">
+                    <field name="update_existing"/>
+                </group>
+
+                <!-- Mostrar log cuando state='done' -->
+                <group invisible="state == 'draft'">
+                    <field name="import_log" nolabel="1" colspan="2"/>
+                </group>
+
+                <notebook invisible="state == 'done'">
+                    <page string="Información">
+                        <group>
+                            <p>
+                                Este asistente permite importar clientes desde archivos Excel (.xlsx).
+                            </p>
+                            <p>
+                                <b>Formato esperado:</b>
+                                <ul>
+                                    <li>Primera fila: encabezados de columnas</li>
+                                    <li><b>Columnas:</b> ID_Cliente, Nombre, Nombre2, CIF, Telefono,
+                                        TelefonoMovil, Direccion, Direccion2, Localidad, Cod_Postal,
+                                        Correo_Electronico, Persona_Contacto, Observaciones, etc.</li>
+                                    <li><b>Provincias:</b> Se mapean automáticamente desde el código postal.</li>
+                                    <li><b>Referencia:</b> Se añade prefijo 'C' al ID_Cliente (ej: C1, C2, C3)</li>
+                                </ul>
+                            </p>
+                            <p>
+                                <b>Actualizar existentes:</b> Si está marcado, actualiza los clientes
+                                existentes (busca por referencia interna con prefijo 'C' o CIF).
+                            </p>
+                        </group>
+                    </page>
+                </notebook>
+                <footer>
+                    <button
+                        name="import_suppliers"
+                        string="Importar"
+                        type="object"
+                        class="btn-primary"
+                        invisible="state == 'done'"
+                    />
+                    <button string="Cerrar" class="btn-primary" special="cancel" invisible="state == 'draft'"/>
+                    <button string="Cancelar" class="btn-secondary" special="cancel" invisible="state == 'done'"/>
+                </footer>
+            </form>
+        </field>
+    </record>
+
+    <!-- Vista para EMPLEADOS/PERSONAL -->
+    <record id="aicia_importer_employees_view" model="ir.ui.view">
+        <field name="name">AICIA - Importador de Personal</field>
+        <field name="model">aicia.importer.wizard</field>
+        <field name="priority">10</field>
+        <field name="arch" type="xml">
+            <form string="Importador de Personal AICIA">
+                <field name="state" invisible="1"/>
+                <!-- Mostrar formulario de carga cuando state='draft' -->
+                <group invisible="state == 'done'">
+                    <field name="data_file_employees" filename="filename_employees" widget="binary"/>
+                    <field name="filename_employees" invisible="1"/>
+                    <field name="data_file_suppliers" invisible="1"/>
+                    <field name="filename_suppliers" invisible="1"/>
+                    <field name="data_file_customers" invisible="1"/>
+                    <field name="filename_customers" invisible="1"/>
+                </group>
+                <group invisible="state == 'done'">
+                    <field name="update_existing"/>
+                </group>
+
+                <!-- Mostrar log cuando state='done' -->
+                <group invisible="state == 'draft'">
+                    <field name="import_log" nolabel="1" colspan="2"/>
+                </group>
+
+                <notebook invisible="state == 'done'">
+                    <page string="Información">
+                        <group>
+                            <p>
+                                Este asistente permite importar personal/empleados desde archivos Excel (.xlsx).
+                            </p>
+                            <p>
+                                <b>Formato esperado:</b>
+                                <ul>
+                                    <li>Primera fila: encabezados de columnas</li>
+                                    <li><b>Columnas:</b> Código Personal, Nombre, Apellido1, Apellido2, NIF,
+                                        Direccion, Cod_Postal, Población, Teléfono, Movil, Email, NSS,
+                                        Fecha Antiguedad, Cuenta Bancaria, Tipo de contrato, etc.</li>
+                                </ul>
+                            </p>
+                            <p>
+                                <b>Actualizar existentes:</b> Si está marcado, actualiza los empleados
+                                existentes (busca por código de personal).
+                            </p>
+                        </group>
+                    </page>
+                </notebook>
+                <footer>
+                    <button
+                        name="import_suppliers"
+                        string="Importar"
+                        type="object"
+                        class="btn-primary"
+                        invisible="state == 'done'"
+                    />
+                    <button string="Cerrar" class="btn-primary" special="cancel" invisible="state == 'draft'"/>
+                    <button string="Cancelar" class="btn-secondary" special="cancel" invisible="state == 'done'"/>
+                </footer>
+            </form>
+        </field>
+    </record>
+
+    <!-- Acción para PROVEEDORES -->
+    <record id="aicia_importer_suppliers_action" model="ir.actions.act_window">
+        <field name="name">Importar Proveedores</field>
+        <field name="res_model">aicia.importer.wizard</field>
+        <field name="view_mode">form</field>
+        <field name="view_id" ref="aicia_importer_suppliers_view"/>
+        <field name="target">new</field>
+    </record>
+
+    <!-- Acción para CLIENTES -->
+    <record id="aicia_importer_customers_action" model="ir.actions.act_window">
+        <field name="name">Importar Clientes</field>
+        <field name="res_model">aicia.importer.wizard</field>
+        <field name="view_mode">form</field>
+        <field name="view_id" ref="aicia_importer_customers_view"/>
+        <field name="target">new</field>
+    </record>
+
+    <!-- Acción para EMPLEADOS -->
+    <record id="aicia_importer_employees_action" model="ir.actions.act_window">
+        <field name="name">Importar Personal</field>
+        <field name="res_model">aicia.importer.wizard</field>
+        <field name="view_mode">form</field>
+        <field name="view_id" ref="aicia_importer_employees_view"/>
+        <field name="target">new</field>
+    </record>
+</odoo>
+

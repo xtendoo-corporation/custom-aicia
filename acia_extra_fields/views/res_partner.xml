@@ -1,0 +1,28 @@
+<?xml version="1.0" encoding="utf-8"?>
+<odoo>
+    <!-- Vista de formulario de res.partner heredada -->
+    <record id="view_partner_form_protecter" model="ir.ui.view">
+        <field name="name">res.partner.form.protecter</field>
+        <field name="model">res.partner</field>
+        <field name="inherit_id" ref="base.view_partner_form"/>
+        <field name="arch" type="xml">
+            <!-- Añadir el campo Socio Protector después del campo 'ref' -->
+            <field name="ref" position="after">
+                <field name="protecter_partner" widget="boolean_toggle"/>
+            </field>
+        </field>
+    </record>
+
+    <!-- Vista de lista de res.partner heredada -->
+    <record id="view_partner_tree_protecter" model="ir.ui.view">
+        <field name="name">res.partner.tree.protecter</field>
+        <field name="model">res.partner</field>
+        <field name="inherit_id" ref="base.view_partner_tree"/>
+        <field name="arch" type="xml">
+            <!-- Añadir el campo Socio Protector en la vista de lista -->
+            <field name="vat" position="after">
+                <field name="protecter_partner" optional="hide" widget="boolean_toggle"/>
+            </field>
+        </field>
+    </record>
+</odoo>
