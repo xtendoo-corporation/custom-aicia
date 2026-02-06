@@ -998,7 +998,7 @@ class AiciaImporterWizard(models.TransientModel):
                     else:
                         print("//")
                         partner_work = self.env['res.partner'].with_context(import_file=True,check_vies=False).create(partner_vals)
-                    movil = None
+                    # movil = None
 
                     if movil:
                         movil = re.sub(r"[^\d]", "", movil)
