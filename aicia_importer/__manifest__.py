@@ -1,17 +1,18 @@
 {
-    "name": "AICIA - Importador de Clientes, Proveedores y Empleados",
+    "name": "AICIA - Importador de Clientes, Proveedores, Empleados y Proyectos",
     "category": "Extra Tools",
-    "version": "19.0.1.0.4",
+    "version": "19.0.1.0.5",
     "depends": [
         "base",
         "purchase",
         "sale",
         "hr",
+        "analytic",
     ],
     "license": "AGPL-3",
     "application": True,
     "description": """
-        Wizard para importar clientes, proveedores y empleados desde archivos Excel.
+        Wizard para importar clientes, proveedores, empleados y proyectos desde archivos Excel.
         """,
     "data": [
         "security/ir.model.access.csv",

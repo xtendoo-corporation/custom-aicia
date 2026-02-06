@@ -218,5 +218,84 @@
         <field name="view_id" ref="aicia_importer_employees_view"/>
         <field name="target">new</field>
     </record>
+
+    <!-- Vista para PROYECTOS -->
+    <record id="aicia_importer_projects_view" model="ir.ui.view">
+        <field name="name">AICIA - Importador de Proyectos</field>
+        <field name="model">aicia.importer.wizard</field>
+        <field name="priority">10</field>
+        <field name="arch" type="xml">
+            <form string="Importador de Proyectos AICIA">
+                <field name="state" invisible="1"/>
+                <!-- Mostrar formulario de carga cuando state='draft' -->
+                <group invisible="state == 'done'">
+                    <field name="data_file_projects" filename="filename_projects" widget="binary"/>
+                    <field name="filename_projects" invisible="1"/>
+                    <field name="data_file_suppliers" invisible="1"/>
+                    <field name="filename_suppliers" invisible="1"/>
+                    <field name="data_file_customers" invisible="1"/>
+                    <field name="filename_customers" invisible="1"/>
+                    <field name="data_file_employees" invisible="1"/>
+                    <field name="filename_employees" invisible="1"/>
+                </group>
+                <group invisible="state == 'done'">
+                    <field name="update_existing"/>
+                </group>
+
+                <!-- Mostrar log cuando state='done' -->
+                <group invisible="state == 'draft'">
+                    <field name="import_log" nolabel="1" colspan="2"/>
+                </group>
+
+                <notebook invisible="state == 'done'">
+                    <page string="Información">
+                        <group>
+                            <p>
+                                Este asistente permite importar proyectos desde archivos Excel (.xlsx).
+                            </p>
+                            <p>
+                                <b>Formato esperado:</b>
+                                <ul>
+                                    <li>Primera fila: encabezados de columnas</li>
+                                    <li><b>Columnas:</b> Codigo (o ID_Proyecto), Nombre, Cliente, Activo</li>
+                                    <li><b>Codigo:</b> Código único del proyecto (opcional)</li>
+                                    <li><b>Nombre:</b> Nombre del proyecto (obligatorio)</li>
+                                    <li><b>Cliente:</b> Nombre o referencia del cliente asociado (opcional)</li>
+                                    <li><b>Activo:</b> TRUE/FALSE o 1/0 para indicar si está activo (opcional, por defecto TRUE)</li>
+                                </ul>
+                            </p>
+                            <p>
+                                <b>Actualizar existentes:</b> Si está marcado, actualiza los proyectos
+                                existentes (busca por código o nombre).
+                            </p>
+                            <p>
+                                <b>Nota:</b> Los proyectos se almacenan internamente como cuentas analíticas en Odoo.
+                            </p>
+                        </group>
+                    </page>
+                </notebook>
+                <footer>
+                    <button
+                        name="import_suppliers"
+                        string="Importar"
+                        type="object"
+                        class="btn-primary"
+                        invisible="state == 'done'"
+                    />
+                    <button string="Cerrar" class="btn-primary" special="cancel" invisible="state == 'draft'"/>
+                    <button string="Cancelar" class="btn-secondary" special="cancel" invisible="state == 'done'"/>
+                </footer>
+            </form>
+        </field>
+    </record>
+
+    <!-- Acción para PROYECTOS -->
+    <record id="aicia_importer_projects_action" model="ir.actions.act_window">
+        <field name="name">Importar Proyectos</field>
+        <field name="res_model">aicia.importer.wizard</field>
+        <field name="view_mode">form</field>
+        <field name="view_id" ref="aicia_importer_projects_view"/>
+        <field name="target">new</field>
+    </record>
 </odoo>
 

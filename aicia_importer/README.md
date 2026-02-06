@@ -1,18 +1,18 @@
-# AICIA - Importador de Proveedores y Clientes
+# AICIA - Importador de Clientes, Proveedores, Empleados y Proyectos
 
 ## Descripción
 
-Este módulo permite importar proveedores y clientes a Odoo 19.0 desde archivos Excel (.xlsx).
+Este módulo permite importar proveedores, clientes, empleados y proyectos a Odoo 19.0 desde archivos Excel (.xlsx).
 
 ## Características
 
-- Importación masiva de proveedores y/o clientes desde archivos Excel
-- Opción para actualizar contactos existentes
+- Importación masiva de proveedores, clientes, empleados y proyectos desde archivos Excel
+- Opción para actualizar contactos/proyectos existentes
 - Importación de datos de contacto (teléfono, email, dirección)
 - Creación de personas de contacto asociadas
 - Validación de NIF/CIF con código de país
 - Registro detallado de resultados de importación
-- Importar solo proveedores, solo clientes, o ambos en la misma operación
+- Importación de proyectos (cuentas analíticas) con asociación a clientes
 
 ## Instalación
 
@@ -32,9 +32,28 @@ pip install openpyxl
 
 ## Uso
 
-1. Ir al menú: **Compras > AICIA > Importar Proveedores y Clientes**
-2. Seleccionar el archivo Excel (.xlsx) de proveedores y/o clientes
+### Importar Proveedores
+1. Ir al menú: **Compras > AICIA > Importar Proveedores**
+2. Seleccionar el archivo Excel (.xlsx) de proveedores
 3. Marcar la opción "Actualizar existentes" si desea actualizar contactos que ya existen
+4. Hacer clic en "Importar"
+
+### Importar Clientes
+1. Ir al menú: **Ventas > AICIA > Importar Clientes**
+2. Seleccionar el archivo Excel (.xlsx) de clientes
+3. Marcar la opción "Actualizar existentes" si desea actualizar contactos que ya existen
+4. Hacer clic en "Importar"
+
+### Importar Personal
+1. Ir al menú: **Empleados > AICIA > Importar Personal**
+2. Seleccionar el archivo Excel (.xlsx) de personal
+3. Marcar la opción "Actualizar existentes" si desea actualizar empleados que ya existen
+4. Hacer clic en "Importar"
+
+### Importar Proyectos
+1. Ir al menú: **Contabilidad > AICIA > Importar Proyectos**
+2. Seleccionar el archivo Excel (.xlsx) de proyectos
+3. Marcar la opción "Actualizar existentes" si desea actualizar proyectos que ya existen
 4. Hacer clic en "Importar"
 
 ## Formato del archivo Excel
@@ -75,6 +94,21 @@ El formato es similar al de proveedores, pero usa **ID_Cliente** en lugar de **I
 - **Nombre2**: Segundo nombre o razón social adicional
 - **CIF**: NIF/CIF del cliente
 - Y todos los demás campos como en proveedores...
+
+### Archivo de Proyectos
+
+#### Primera fila: Encabezados
+
+- **Codigo** (o **ID_Proyecto**): Código único del proyecto (opcional)
+- **Nombre**: Nombre del proyecto (obligatorio)
+- **Cliente**: Nombre o referencia del cliente asociado (opcional)
+- **Activo**: TRUE/FALSE o 1/0 para indicar si el proyecto está activo (opcional, por defecto TRUE)
+
+#### Filas siguientes: Datos de proyectos
+
+Cada fila representa un proyecto a importar.
+
+**Nota:** Los proyectos se almacenan internamente como cuentas analíticas en Odoo, pero se muestran como "Proyectos" en la interfaz.
 
 ## Lógica de importación
 

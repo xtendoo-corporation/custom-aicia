@@ -1,6 +1,7 @@
 import logging
 from base64 import b64decode
 from io import BytesIO
+import re
 
 from odoo import _, fields, models
 from odoo.exceptions import UserError
@@ -92,6 +93,12 @@ class AiciaImporterWizard(models.TransientModel):
     )
     filename_employees = fields.Char(string="Nombre del archivo de personal")
 
+    data_file_projects = fields.Binary(
+        string="Archivo de Proyectos",
+        help="Seleccione el archivo Excel con los proyectos a importar.",
+    )
+    filename_projects = fields.Char(string="Nombre del archivo de proyectos")
+
     update_existing = fields.Boolean(
         string="Actualizar existentes",
         default=False,
@@ -122,7 +129,7 @@ class AiciaImporterWizard(models.TransientModel):
                   "Por favor, instálela con: pip install openpyxl")
             )
 
-        if not self.data_file_suppliers and not self.data_file_customers and not self.data_file_employees:
+        if not self.data_file_suppliers and not self.data_file_customers and not self.data_file_employees and not self.data_file_projects:
             raise UserError(_("Por favor, seleccione al menos un archivo para importar."))
 
         _logger.info("=" * 80)
@@ -172,6 +179,17 @@ class AiciaImporterWizard(models.TransientModel):
             all_errors.extend([f"[Personal] {e}" for e in result['error_list']])
             import_types.append('employees')
             _logger.info(f">>> PERSONAL: {result['created']} creados, {result['updated']} actualizados, {result['errors']} errores")
+
+        # Importar proyectos si se proporciona el archivo
+        if self.data_file_projects:
+            _logger.info(">>> Iniciando importación de PROYECTOS")
+            result = self._import_projects(self.data_file_projects)
+            total_created += result['created']
+            total_updated += result['updated']
+            total_errors += result['errors']
+            all_errors.extend([f"[Proyectos] {e}" for e in result['error_list']])
+            import_types.append('projects')
+            _logger.info(f">>> PROYECTOS: {result['created']} creados, {result['updated']} actualizados, {result['errors']} errores")
 
         _logger.info("=" * 80)
         _logger.info(f"FIN DE IMPORTACIÓN - Total: {total_created} creados, {total_updated} actualizados, {total_errors} errores")
@@ -920,6 +938,7 @@ class AiciaImporterWizard(models.TransientModel):
                     apply_retention = data.get('Aplica_Retencion', False)
                     permision_to_desplace = data.get('Permiso_Desplazamiento', False)
                     observaciones = str(data.get('Observaciones', '')).strip() if data.get('Observaciones') else ''
+                    departamento = str(data.get('ID_Departamento', '')).strip() if data.get('ID_Departamento') else ''
 
                     # Validaciones básicas
                     if not nombre:
@@ -929,7 +948,7 @@ class AiciaImporterWizard(models.TransientModel):
                     # Construir nombre completo
                     full_name = nombre
                     ref = False
-                    if codigo:
+                    if codigo is not None:
                         ref = ref = f"E{codigo}"
                     # Buscar empleado existente por codigo de empleado , nif o nombre completo
                     employee, partner_work = self._get_employee_and_partner(ref, nif, full_name)
@@ -979,7 +998,41 @@ class AiciaImporterWizard(models.TransientModel):
                     else:
                         print("//")
                         partner_work = self.env['res.partner'].with_context(import_file=True,check_vies=False).create(partner_vals)
-                # Preparar valores para el empleado
+                    movil = None
+
+                    if movil:
+                        movil = re.sub(r"[^\d]", "", movil)
+
+                    elif telefono:
+                        tel_limpio = re.sub(r"[^\d]", "", telefono)
+                        if tel_limpio and tel_limpio[0] in "67":
+                            movil = tel_limpio
+
+                    if movil:
+                        if movil.startswith("34"):
+                            movil = movil[2:]
+
+                        if len(movil) != 9:
+                            movil = False
+                        else:
+                            movil = f"+34 {movil[:3]} {movil[3:5]} {movil[5:7]} {movil[7:]}"
+
+                    #BUscamos del departamento
+                    department_id = False
+                    if departamento is not None:
+                        dep_code = str(departamento).zfill(2)  # asegura 2 dígitos: 1 -> "01"
+                        department = self.env['hr.department'].search([
+                            ('name', 'ilike', f'{dep_code}-')
+                        ], limit=1)
+
+                        if department:
+                            department_id = department.id
+                        else:
+                            _logger.warning(
+                                f"Departamento no encontrado: '{dep_code}-*' para empleado {full_name}"
+                            )
+
+                    # Preparar valores para el empleado
                     employee_vals = {
                         'name': full_name,
                         'work_contact_id': partner_work.id,
@@ -998,6 +1051,7 @@ class AiciaImporterWizard(models.TransientModel):
                         'private_city': poblacion if poblacion else False,
                         'private_zip': cod_postal if cod_postal else False,
                         'private_country_id': self.env.ref('base.es').id,  # España
+                        'department_id': department_id,
                     }
                     # Añadir provincia privada si existe
                     if province_map and cod_postal and len(str(cod_postal)) >= 2:
@@ -1197,4 +1251,116 @@ class AiciaImporterWizard(models.TransientModel):
 
         except Exception as e:
             _logger.warning(f"✗ Error creando/actualizando contrato para {employee.name}: {str(e)}")
+
+
+    def _import_projects(self, file_data):
+        """Importa proyectos (cuentas analíticas) desde un archivo Excel."""
+        result = {
+            'created': 0,
+            'updated': 0,
+            'errors': 0,
+            'error_list': []
+        }
+
+        try:
+            # Decodificar y cargar el archivo Excel
+            file_content = b64decode(file_data)
+            workbook = openpyxl.load_workbook(BytesIO(file_content))
+            sheet = workbook.active
+
+            # Obtener los encabezados de las columnas
+            headers = {}
+            for col_idx, cell in enumerate(sheet[1], start=1):
+                if cell.value:
+                    headers[cell.value.strip()] = col_idx
+
+            _logger.info(f">>> Columnas encontradas: {list(headers.keys())}")
+
+            # Procesar las filas de datos (desde la fila 2)
+            total_rows = sheet.max_row - 1
+            _logger.info(f">>> Total de filas a procesar: {total_rows}")
+
+            for row_idx, row in enumerate(sheet.iter_rows(min_row=2, values_only=True), start=2):
+                try:
+                    # Mostrar progreso cada 10 registros
+                    if (row_idx - 1) % 10 == 0:
+                        _logger.info(f">>> Procesando proyecto {row_idx - 1}/{total_rows}")
+
+                    # Mapear los datos de la fila
+                    data = dict(zip(headers.keys(), row))
+
+                    # Obtener valores de las celdas
+                    codigo = str(data.get('Codigo', '') or data.get('ID_Proyecto', '')).strip()
+                    nombre = str(data.get('Nombre', '')).strip() if data.get('Nombre') else ''
+                    cliente = str(data.get('Cliente', '')).strip() if data.get('Cliente') else ''
+                    activo = data.get('Activo', True)
+
+                    # Validaciones básicas
+                    if not nombre:
+                        _logger.warning(f"Fila {row_idx}: Sin nombre de proyecto, saltando...")
+                        result['errors'] += 1
+                        result['error_list'].append(f"Fila {row_idx}: Sin nombre de proyecto")
+                        continue
+
+                    # Preparar valores para el proyecto (cuenta analítica)
+                    project_vals = {
+                        'name': nombre,
+                        'active': bool(activo) if activo != '' else True,
+                    }
+
+                    # Agregar código de referencia si existe
+                    if codigo:
+                        project_vals['code'] = codigo
+
+                    # Buscar cliente si se proporciona
+                    if cliente:
+                        partner = self.env['res.partner'].search([
+                            '|',
+                            ('name', '=ilike', cliente),
+                            ('ref', '=', cliente),
+                        ], limit=1)
+                        if partner:
+                            project_vals['partner_id'] = partner.id
+                            _logger.debug(f"✓ Cliente encontrado: {partner.name}")
+                        else:
+                            _logger.warning(f"✗ Cliente no encontrado: {cliente}")
+
+                    # Buscar proyecto existente por código o nombre
+                    existing_project = None
+                    if codigo:
+                        existing_project = self.env['account.analytic.account'].search([
+                            ('code', '=', codigo)
+                        ], limit=1)
+
+                    if not existing_project:
+                        existing_project = self.env['account.analytic.account'].search([
+                            ('name', '=', nombre)
+                        ], limit=1)
+
+                    # Crear o actualizar proyecto
+                    if existing_project:
+                        if self.update_existing:
+                            existing_project.write(project_vals)
+                            result['updated'] += 1
+                            _logger.info(f"✓ Proyecto actualizado: {nombre}")
+                        else:
+                            _logger.info(f"→ Proyecto ya existe (no actualizado): {nombre}")
+                    else:
+                        self.env['account.analytic.account'].create(project_vals)
+                        result['created'] += 1
+                        _logger.info(f"✓ Proyecto creado: {nombre}")
+
+                except Exception as e:
+                    result['errors'] += 1
+                    error_msg = f"Fila {row_idx}: {str(e)}"
+                    result['error_list'].append(error_msg)
+                    _logger.error(f"✗ Error procesando fila {row_idx}: {str(e)}")
+
+        except Exception as e:
+            result['errors'] += 1
+            error_msg = f"Error general al procesar archivo: {str(e)}"
+            result['error_list'].append(error_msg)
+            _logger.error(f"✗ {error_msg}")
+
+        return result
 
