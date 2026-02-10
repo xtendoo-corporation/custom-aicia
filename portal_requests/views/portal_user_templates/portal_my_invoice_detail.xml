@@ -34,6 +34,12 @@
                                 <div class="d-flex justify-content-between align-items-center mb-3">
                                     <h3>Solicitud de Factura #<span t-esc="invoice_request.id"/></h3>
                                     <div>
+                                        <!-- Botón Ver Factura Creada -->
+                                        <a t-if="invoice_request.status == 'approve' and invoice_request.invoice_created"
+                                           t-attf-href="/my/invoices/#{invoice_request.id}/view_invoice"
+                                           class="btn btn-success me-2">
+                                            <i class="fa fa-file-text me-1"/> Ver Factura Creada
+                                        </a>
                                         <!-- Botón Solicitar Revisión -->
                                         <form t-if="invoice_request.show_solicitar_revision"
                                               method="POST"
@@ -80,7 +86,7 @@
                                             </div>
                                             <div class="col-md-6">
                                                 <strong>Importe:</strong>
-                                                <p><span t-field="invoice_request.amount" t-options='{"widget": "monetary"}'/></p>
+                                                <p><span t-field="invoice_request.amount"/></p>
                                             </div>
                                         </div>
                                         <div class="row mb-3">

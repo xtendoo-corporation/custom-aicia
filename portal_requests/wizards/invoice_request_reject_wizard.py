@@ -18,6 +18,12 @@ class InvoiceResquestRejectWizard(models.TransientModel):
         return {'type': 'ir.actions.act_window_close'}
 
     def action_accept(self):
+        print("/"*100)
+        print("/"*100)
+        print("/"*100)
+        print("/"*100)
+        print("/"*100)
+        print("/"*100)
         self.ensure_one()
         if not self.request_id:
             raise models.ValidationError(_('No hay solicitud seleccionada.'))

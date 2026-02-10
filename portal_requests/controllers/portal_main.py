@@ -211,3 +211,67 @@ class PortalRequestsCustomerPortal(CustomerPortal):
 
         # Redirigir de vuelta al detalle
         return request.redirect(f'/my/invoices/{invoice_request_id}?success=message_posted')
+
+    @http.route(['/my/invoices/<int:invoice_request_id>/view_invoice'], type='http', auth="user", website=True)
+    def portal_invoice_view_created_invoice(self, invoice_request_id, success=None, **kw):
+        """Muestra la factura creada desde la solicitud (aunque no esté a nombre del usuario)"""
+        invoice_request = request.env['portal.invoice.request'].browse(invoice_request_id)
+
+        # Verificar que la solicitud pertenece al usuario actual
+        if invoice_request.user_id != request.env.user:
+            return request.redirect('/my')
+
+        # Verificar que existe una factura creada
+        if not invoice_request.invoice_created:
+            return request.redirect(f'/my/invoices/{invoice_request_id}')
+
+        # Obtener la factura con sudo() ya que no está a nombre del usuario portal
+        invoice = invoice_request.invoice_created.sudo()
+
+        # Obtener TODOS los mensajes del chatter de la factura usando sudo
+        messages = request.env['mail.message'].sudo().search([
+            ('model', '=', 'account.move'),
+            ('res_id', '=', invoice.id)
+        ], order='date desc')
+
+        # Renderizar una vista personalizada de la factura
+        values = {
+            'invoice': invoice,
+            'invoice_request': invoice_request,
+            'messages': messages,
+            'page_name': 'invoice_view',
+            'success_message': success,
+        }
+
+        return request.render("portal_requests.portal_invoice_view", values)
+
+    @http.route(['/my/invoices/<int:invoice_request_id>/view_invoice/post_message'], type='http', auth="user", website=True, methods=['POST'], csrf=True)
+    def portal_invoice_view_post_message(self, invoice_request_id, message, **kw):
+        """Permite al usuario portal enviar un mensaje en la factura creada"""
+        invoice_request = request.env['portal.invoice.request'].browse(invoice_request_id)
+
+        # Verificar que la solicitud pertenece al usuario actual
+        if invoice_request.user_id != request.env.user:
+            return request.redirect('/my')
+
+        # Verificar que existe una factura creada
+        if not invoice_request.invoice_created:
+            return request.redirect(f'/my/invoices/{invoice_request_id}')
+
+        # Publicar el mensaje en la factura usando sudo()
+        if message and message.strip():
+            invoice_request.invoice_created.sudo().message_post(
+                body=message,
+                message_type='comment',
+                subtype_xmlid='mail.mt_comment',
+                author_id=request.env.user.partner_id.id
+            )
+
+        # Redirigir de vuelta a la vista de la factura con mensaje de éxito
+        return request.redirect(f'/my/invoices/{invoice_request_id}/view_invoice?success=message_posted')
+
+    @http.route(['/my/invoices/thank-you'], type='http', auth="public", website=True)
+    def portal_invoice_thank_you(self, **kw):
+        """Página de confirmación después de enviar una solicitud de factura"""
+        return request.render("portal_requests.invoice_request_thank_you")
+

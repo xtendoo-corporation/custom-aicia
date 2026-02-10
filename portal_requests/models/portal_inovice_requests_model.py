@@ -146,7 +146,8 @@ class PortalInvoiceRequest(models.Model):
             self.status = 'approved_by_boss_group'
             user_to_send = self.env['res.users'].search([('id', '=', self.equip_boss.id)])
             move_text = self.computed_name
-            self._send_invoice_request_mail(type,user_to_send,move_text, self.user_id.name, self.analytic_id.name, self.partner_id.name)
+            # Usar sudo() para acceder a partner_id.name para evitar errores de permisos
+            self._send_invoice_request_mail(type, user_to_send, move_text, self.user_id.name, self.analytic_id.name, self.partner_id.sudo().name)
             return self.show_notificacion("¡Solicitud enviada!", "La solicitud ha sido enviada al jefe de equipo para su revisión.", "success")
 
         if self.status=='approved_by_boss_group':
@@ -156,9 +157,10 @@ class PortalInvoiceRequest(models.Model):
                 if self.responsible_id != boss:
                     self.message_subscribe(partner_ids=[boss.partner_id.id])
             self.status = 'approved_by_client_responsible'
-            user_to_send = self.env['res.users'].search([('groups_id', 'in', self.env.ref('portal_requests.group_partner_responsible').id)])
+            user_to_send = self.env['res.users'].search([('work_group_ids', 'in', self.env.ref('portal_requests.group_partner_responsible').id)])
             move_text = "factura" if self.move_type == 'out_invoice' else "factura rectificativa"
-            self._send_invoice_request_mail(type,user_to_send,move_text, self.user_id.name, self.analytic_id.name, self.partner_id.name)
+            # Usar sudo() para acceder a partner_id.name para evitar errores de permisos
+            self._send_invoice_request_mail(type, user_to_send, move_text, self.user_id.name, self.analytic_id.name, self.partner_id.sudo().name)
             return self.show_notificacion("¡Aprobación registrada!", "La solicitud ha sido aprobada y enviada al responsable de clientes para su revisión.", "success")
 
         if self.status=='approved_by_client_responsible':

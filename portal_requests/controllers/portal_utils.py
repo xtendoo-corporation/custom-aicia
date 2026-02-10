@@ -37,12 +37,12 @@ class PortalUtils(http.Controller):
         company_id = kwargs.get('company_id')
 
         # Buscar cuentas analíticas de la empresa
-        analytic_accounts = request.env['account.analytic.account'].search([
+        analytic_accounts = request.env['account.analytic.account'].sudo().search([
             ('id', '=', int(company_id))
         ])
 
         # Recopilar clientes del campo partner_id y clientes_asociados
-        all_clients = request.env['res.partner']
+        all_clients = request.env['res.partner'].sudo()
 
         for account in analytic_accounts:
             # Añadir el cliente principal (partner_id)
@@ -53,7 +53,7 @@ class PortalUtils(http.Controller):
             if account.clientes_asociados:
                 all_clients |= account.clientes_asociados
 
-        # Crear respuesta JSON con clientes únicos
+        # Crear respuesta JSON con clientes únicos - usar sudo() para evitar problemas de permisos
         clients_json = {'clients': [{'id': client.id, 'name': client.name} for client in all_clients]}
 
         return request.make_response(json.dumps({'partners': clients_json}),

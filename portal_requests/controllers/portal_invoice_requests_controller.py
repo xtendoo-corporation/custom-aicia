@@ -83,7 +83,7 @@ class PortalInvoiceController(Controller):
             to_notify_users = [work_group_id.equip_boss]
 
             self.send_request_email(to_notify_users,move_text,invoice_request.user_id.name,invoice_request.analytic_id.name,invoice_request.partner_id.name, invoice_request.notes, invoice_request.invoice_to_refund, invoice_request)
-        return request.redirect('/contactus-thank-you')
+        return request.redirect('/my/invoices/thank-you')
 
     def send_request_email(self,to_notify_users, move_text, user_name,company_name, partner_name, notes, invoice_to_refund, invoice_request):
         invoice_request_link = f"/web#id={invoice_request.id}&cids=1-24-28-29-32-25-30-31&menu_id=899&active_id=1&model=portal.invoice.request&view_type=form"

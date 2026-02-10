@@ -1,0 +1,45 @@
+<?xml version="1.0" encoding="utf-8"?>
+<odoo>
+    <data>
+        <!-- Página de confirmación después de enviar una solicitud de factura -->
+        <template id="invoice_request_thank_you" name="Solicitud de Factura Enviada">
+            <t t-call="portal.portal_layout">
+                <div id="wrap" class="oe_structure">
+                    <div class="container mt-5">
+                        <div class="row justify-content-center">
+                            <div class="col-lg-8">
+                                <div class="card shadow-sm">
+                                    <div class="card-body text-center p-5">
+                                        <div class="mb-4">
+                                            <i class="fa fa-check-circle text-success" style="font-size: 80px;"></i>
+                                        </div>
+                                        <h1 class="mb-4">¡Solicitud Enviada Correctamente!</h1>
+                                        <p class="lead mb-4">
+                                            Tu solicitud de factura ha sido registrada y enviada para su revisión.
+                                        </p>
+                                        <p class="text-muted mb-5">
+                                            Recibirás una notificación por correo electrónico cuando la solicitud sea procesada.
+                                            Puedes consultar el estado de tus solicitudes en cualquier momento desde el portal.
+                                        </p>
+                                        <div class="d-flex gap-3 justify-content-center flex-wrap">
+                                            <a href="/my/invoices" class="btn btn-primary btn-lg">
+                                                <i class="fa fa-list me-2"></i>Ver Mis Solicitudes
+                                            </a>
+                                            <a href="/portal/invoice_request" class="btn btn-outline-primary btn-lg">
+                                                <i class="fa fa-plus me-2"></i>Nueva Solicitud
+                                            </a>
+                                            <a href="/my" class="btn btn-outline-secondary btn-lg">
+                                                <i class="fa fa-home me-2"></i>Volver al Portal
+                                            </a>
+                                        </div>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </t>
+        </template>
+    </data>
+</odoo>
+

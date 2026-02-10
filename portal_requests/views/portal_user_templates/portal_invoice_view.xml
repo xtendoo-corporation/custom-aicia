@@ -1,0 +1,275 @@
+<?xml version="1.0" encoding="utf-8"?>
+<odoo>
+    <data>
+        <!-- Breadcrumb para la vista de factura -->
+        <template id="portal_invoice_view_breadcrumb" name="Portal: Vista de Factura"
+                  inherit_id="portal.portal_breadcrumbs" priority="48">
+            <xpath expr="//ol[hasclass('o_portal_submenu')]" position="inside">
+                <li t-if="page_name == 'invoice_view' and invoice" class="breadcrumb-item">
+                    <a t-attf-href="/my/invoices">Solicitudes de Facturas</a>
+                </li>
+                <li t-if="page_name == 'invoice_view' and invoice_request" class="breadcrumb-item">
+                    <a t-attf-href="/my/invoices/#{invoice_request.id}">Solicitud #<span t-esc="invoice_request.id"/></a>
+                </li>
+                <li t-if="page_name == 'invoice_view' and invoice" class="breadcrumb-item active">
+                    Factura <span t-esc="invoice.name"/>
+                </li>
+            </xpath>
+        </template>
+
+        <!-- Vista de la factura creada -->
+        <template id="portal_invoice_view" name="Vista de Factura Creada">
+            <t t-call="portal.portal_layout">
+                <div id="wrap" class="o_portal_wrap">
+                    <div class="container mt-3">
+                        <!-- Mensaje de éxito -->
+                        <div t-if="success_message == 'message_posted'" class="alert alert-success alert-dismissible fade show" role="alert">
+                            <strong>¡Mensaje enviado!</strong> Tu comentario ha sido publicado correctamente en la factura.
+                            <button type="button" class="btn-close" data-bs-dismiss="alert" aria-label="Close"></button>
+                        </div>
+
+                        <div class="row">
+                            <div class="col-12">
+                                <div class="d-flex justify-content-between align-items-center mb-3">
+                                    <h3>Factura <span t-esc="invoice.name"/></h3>
+                                    <div>
+                                        <a t-attf-href="/my/invoices/#{invoice_request.id}" class="btn btn-secondary">
+                                            <i class="fa fa-arrow-left"/> Volver a la Solicitud
+                                        </a>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+
+                        <div class="row">
+                            <div class="col-lg-8">
+                                <div class="card mb-3">
+                                    <div class="card-header">
+                                        <h5 class="mb-0">Información de la Factura</h5>
+                                    </div>
+                                    <div class="card-body">
+                                        <div class="row mb-3">
+                                            <div class="col-md-6">
+                                                <strong>Número de Factura:</strong>
+                                                <p><span t-field="invoice.name"/></p>
+                                            </div>
+                                            <div class="col-md-6">
+                                                <strong>Fecha:</strong>
+                                                <p><span t-field="invoice.invoice_date"/></p>
+                                            </div>
+                                        </div>
+                                        <div class="row mb-3">
+                                            <div class="col-md-6">
+                                                <strong>Cliente:</strong>
+                                                <p><span t-field="invoice.partner_id"/></p>
+                                            </div>
+                                            <div class="col-md-6">
+                                                <strong>Estado:</strong>
+                                                <p>
+                                                    <span t-if="invoice.state == 'draft'" class="badge bg-secondary">Borrador</span>
+                                                    <span t-elif="invoice.state == 'posted'" class="badge bg-success">Publicada</span>
+                                                    <span t-elif="invoice.state == 'cancel'" class="badge bg-danger">Cancelada</span>
+                                                    <span t-else="" class="badge bg-info"><t t-esc="invoice.state"/></span>
+                                                </p>
+                                            </div>
+                                        </div>
+                                        <div class="row mb-3">
+                                            <div class="col-12">
+                                                <strong>Importe Total:</strong>
+                                                <p class="h4 text-primary"><span t-field="invoice.amount_total"/></p>
+                                            </div>
+                                        </div>
+                                    </div>
+                                </div>
+
+                                <!-- Líneas de factura -->
+                                <div class="card mb-3">
+                                    <div class="card-header">
+                                        <h5 class="mb-0">Líneas de Factura</h5>
+                                    </div>
+                                    <div class="card-body p-0">
+                                        <div class="table-responsive">
+                                            <table class="table table-sm mb-0">
+                                                <thead>
+                                                    <tr>
+                                                        <th>Descripción</th>
+                                                        <th class="text-end">Cantidad</th>
+                                                        <th class="text-end">Precio Unitario</th>
+                                                        <th class="text-end">Impuestos</th>
+                                                        <th class="text-end">Subtotal</th>
+                                                    </tr>
+                                                </thead>
+                                                <tbody>
+                                                    <t t-foreach="invoice.invoice_line_ids" t-as="line">
+                                                        <tr>
+                                                            <td><span t-field="line.name"/></td>
+                                                            <td class="text-end"><span t-field="line.quantity"/></td>
+                                                            <td class="text-end"><span t-field="line.price_unit"/></td>
+                                                            <td class="text-end">
+                                                                <t t-foreach="line.tax_ids" t-as="tax">
+                                                                    <span t-field="tax.name"/>
+                                                                    <t t-if="not tax_last">, </t>
+                                                                </t>
+                                                            </td>
+                                                            <td class="text-end"><span t-field="line.price_subtotal"/></td>
+                                                        </tr>
+                                                    </t>
+                                                </tbody>
+                                                <tfoot>
+                                                    <tr>
+                                                        <td colspan="4" class="text-end"><strong>Base Imponible:</strong></td>
+                                                        <td class="text-end"><strong><span t-field="invoice.amount_untaxed"/></strong></td>
+                                                    </tr>
+                                                    <tr>
+                                                        <td colspan="4" class="text-end"><strong>Impuestos:</strong></td>
+                                                        <td class="text-end"><strong><span t-field="invoice.amount_tax"/></strong></td>
+                                                    </tr>
+                                                    <tr class="table-active">
+                                                        <td colspan="4" class="text-end"><strong>Total:</strong></td>
+                                                        <td class="text-end"><strong class="h5 mb-0"><span t-field="invoice.amount_total"/></strong></td>
+                                                    </tr>
+                                                </tfoot>
+                                            </table>
+                                        </div>
+                                    </div>
+                                </div>
+                            </div>
+
+                            <!-- Sidebar -->
+                            <div class="col-lg-4">
+                                <div class="card mb-3">
+                                    <div class="card-header">
+                                        <h5 class="mb-0">Información Adicional</h5>
+                                    </div>
+                                    <div class="card-body">
+                                        <p><strong>Referencia de Solicitud:</strong><br/>
+                                        <a t-attf-href="/my/invoices/#{invoice_request.id}">
+                                            Solicitud #<span t-esc="invoice_request.id"/>
+                                        </a></p>
+
+                                        <p t-if="invoice.invoice_date_due">
+                                            <strong>Fecha de Vencimiento:</strong><br/>
+                                            <span t-field="invoice.invoice_date_due"/>
+                                        </p>
+
+                                        <p t-if="invoice.payment_reference">
+                                            <strong>Referencia de Pago:</strong><br/>
+                                            <span t-field="invoice.payment_reference"/>
+                                        </p>
+
+                                        <p t-if="invoice.narration">
+                                            <strong>Notas:</strong><br/>
+                                            <span t-field="invoice.narration"/>
+                                        </p>
+                                    </div>
+                                </div>
+
+                                <!-- Estado de pago -->
+                                <div class="card">
+                                    <div class="card-header">
+                                        <h5 class="mb-0">Estado de Pago</h5>
+                                    </div>
+                                    <div class="card-body">
+                                        <p>
+                                            <span t-if="invoice.payment_state == 'not_paid'" class="badge bg-warning">No Pagada</span>
+                                            <span t-elif="invoice.payment_state == 'paid'" class="badge bg-success">Pagada</span>
+                                            <span t-elif="invoice.payment_state == 'partial'" class="badge bg-info">Parcialmente Pagada</span>
+                                            <span t-elif="invoice.payment_state == 'in_payment'" class="badge bg-primary">En Proceso de Pago</span>
+                                            <span t-else="" class="badge bg-secondary"><t t-esc="invoice.payment_state"/></span>
+                                        </p>
+
+                                        <p t-if="invoice.amount_residual > 0">
+                                            <strong>Pendiente de Pago:</strong><br/>
+                                            <span t-field="invoice.amount_residual" class="text-danger"/>
+                                        </p>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+
+                        <!-- Sección del Chatter (Historial de Mensajes) -->
+                        <div class="row mt-4">
+                            <div class="col-12">
+                                <div class="card">
+                                    <div class="card-header">
+                                        <h5 class="mb-0">
+                                            <i class="fa fa-comments me-2"/>Historial de la Factura
+                                        </h5>
+                                    </div>
+                                    <div class="card-body">
+                                        <!-- Formulario para enviar nuevos mensajes -->
+                                        <div class="o_portal_chatter_composer mb-4 pb-4 border-bottom">
+                                            <h6 class="mb-3">
+                                                <i class="fa fa-pencil me-2"/>Enviar un mensaje
+                                            </h6>
+                                            <form method="POST" t-attf-action="/my/invoices/#{invoice_request.id}/view_invoice/post_message">
+                                                <input type="hidden" name="csrf_token" t-att-value="request.csrf_token()"/>
+                                                <div class="mb-3">
+                                                    <textarea name="message"
+                                                              class="form-control"
+                                                              rows="4"
+                                                              placeholder="Escribe tu mensaje o consulta sobre la factura aquí..."
+                                                              required="required"></textarea>
+                                                </div>
+                                                <button type="submit" class="btn btn-primary">
+                                                    <i class="fa fa-paper-plane me-1"/> Enviar Mensaje
+                                                </button>
+                                            </form>
+                                        </div>
+
+                                        <!-- Mostrar mensajes existentes -->
+                                        <h6 class="mb-3">
+                                            <i class="fa fa-history me-2"/>Historial de Mensajes
+                                        </h6>
+                                        <t t-if="messages">
+                                            <div class="o_portal_chatter_messages">
+                                                <t t-foreach="messages" t-as="message">
+                                                    <div class="o_portal_chatter_message mb-3 pb-3 border-bottom">
+                                                        <div class="d-flex">
+                                                            <div class="flex-shrink-0 me-3">
+                                                                <img t-if="message.author_id and message.author_id.id"
+                                                                     t-attf-src="/web/image/res.partner/#{message.author_id.id}/avatar_128"
+                                                                     class="rounded-circle"
+                                                                     style="width: 45px; height: 45px;"
+                                                                     alt="Avatar"/>
+                                                                <i t-else="" class="fa fa-user-circle fa-3x text-muted"/>
+                                                            </div>
+                                                            <div class="flex-grow-1">
+                                                                <div class="d-flex justify-content-between align-items-start mb-2">
+                                                                    <div>
+                                                                        <strong t-if="message.author_id" t-field="message.author_id"/>
+                                                                        <strong t-else="">Sistema</strong>
+                                                                        <span class="text-muted small ms-2">
+                                                                            <t t-esc="message.date" t-options='{"widget": "datetime"}'/>
+                                                                        </span>
+                                                                    </div>
+                                                                    <t t-if="message.message_type == 'notification'">
+                                                                        <span class="badge bg-info">Notificación</span>
+                                                                    </t>
+                                                                    <t t-elif="message.message_type == 'comment'">
+                                                                        <span class="badge bg-primary">Comentario</span>
+                                                                    </t>
+                                                                </div>
+                                                                <div class="o_portal_chatter_message_body" t-raw="message.body"/>
+                                                            </div>
+                                                        </div>
+                                                    </div>
+                                                </t>
+                                            </div>
+                                        </t>
+                                        <t t-else="">
+                                            <div class="alert alert-info" role="alert">
+                                                <i class="fa fa-info-circle me-2"/>No hay mensajes en el historial de esta factura.
+                                            </div>
+                                        </t>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </t>
+        </template>
+    </data>
+</odoo>
+
