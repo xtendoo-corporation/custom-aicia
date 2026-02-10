@@ -11,9 +11,11 @@
             </xpath>
             <xpath expr="//field[@name='partner_id']" position="replace">
                 <field name="partner_id" readonly="not user_can_edit"/>
+                <field name="sujeto_convenio" readonly="not user_can_edit"/>
             </xpath>
             <xpath expr="//field[@name='code']" position="replace">
                 <field name="code" readonly="not user_can_edit"/>
+                <field name="observaciones" readonly="not user_can_edit"/>
             </xpath>
             <xpath expr="//field[@name='plan_id']" position="replace">
                 <field name="plan_id" readonly="not user_can_edit"/>

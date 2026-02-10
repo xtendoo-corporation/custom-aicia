@@ -1,0 +1,47 @@
+<?xml version="1.0" encoding="utf-8"?>
+<odoo>
+    <data>
+        <!-- Añadir tarjetas de Solicitudes al portal -->
+        <template id="portal_my_home_requests" name="Portal My Home: Solicitudes"
+                  customize_show="True" inherit_id="portal_requests.portal_my_home_inherit" priority="45">
+
+            <!-- Crear una nueva categoría para solicitudes antes de portal_common_category -->
+            <xpath expr="//div[@id='portal_common_category']" position="before">
+                <div class="o_portal_category row g-2 mt-3" id="portal_requests_category">
+                     <t t-call="portal.portal_docs_entry">
+                            <t t-set="icon" t-value="'/portal_requests/static/description/invoicing.png'"/>
+                            <t t-set="title">Solicitudes de Facturas</t>
+                            <t t-set="text">Consulta tus solicitudes de facturas</t>
+                            <t t-set="url" t-value="'/my/invoices'"/>
+                            <t t-set="config_card" t-value="True"/>
+                        </t>
+                    <t t-call="portal.portal_docs_entry">
+                            <t t-set="icon" t-value="'/portal_requests/static/description/expensive.png'"/>
+                            <t t-set="title">Solicitudes de Gastos</t>
+                            <t t-set="text">Consulta tus solicitudes de gastos</t>
+                            <t t-set="url" t-value="'/my/expenses'"/>
+                            <t t-set="config_card" t-value="True"/>
+                        </t>
+<!--                    <t t-call="portal.portal_docs_entry">-->
+<!--                        <t t-set="icon" t-value="'/account/static/src/img/bill.svg'"/>-->
+<!--                        <t t-set="title">Solicitudes de Facturas</t>-->
+<!--                        <t t-set="text">Consulta tus solicitudes de facturas</t>-->
+<!--                        <t t-set="url" t-value="'/my/invoices'"/>-->
+<!--                        <t t-set="show_count" t-value="True"/>-->
+<!--                        <t t-set="count" t-value="invoice_request_count"/>-->
+<!--                    </t>-->
+<!--                    <t t-call="portal.portal_docs_entry">-->
+<!--                        <t t-set="icon" t-value="'/hr_expense/static/description/icon.png'"/>-->
+<!--                        <t t-set="title">Solicitudes de Gastos</t>-->
+<!--                        <t t-set="text">Consulta tus solicitudes de gastos</t>-->
+<!--                        <t t-set="url" t-value="'/my/expenses'"/>-->
+<!--                        <t t-set="show_count" t-value="True"/>-->
+<!--                        <t t-set="count" t-value="expense_count"/>-->
+<!--                    </t>-->
+                </div>
+            </xpath>
+        </template>
+    </data>
+</odoo>
+
+

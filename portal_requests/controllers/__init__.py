@@ -1,3 +1,4 @@
+from . import portal_main
 from . import portal_approval_request_controller
 from . import portal_hr_employee_request_controller
 from . import portal_hr_employee_intern_request_controller

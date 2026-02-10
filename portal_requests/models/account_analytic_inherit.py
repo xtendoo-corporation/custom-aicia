@@ -3,9 +3,12 @@ from odoo import models, fields, api
 class AccountAnalyticAccountInherit(models.Model):
     _inherit = 'account.analytic.account'
 
+    sujeto_convenio = fields.Boolean(string='Sujeto a Convenio', tracking=True)
+
     clientes_asociados = fields.Many2many('res.partner', 'account_analytic_partner_rel', 'account_id', 'partner_id',
                                         string='Clientes Asociados',
                                         domain="[('id', 'not in', clientes_asociados_domain)]")
+    observaciones = fields.Text(string='Observaciones', tracking=True)
 
     @api.depends('partner_id', 'clientes_asociados')
     def _compute_clientes_asociados_domain(self):

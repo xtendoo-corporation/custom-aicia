@@ -1,0 +1,74 @@
+<?xml version="1.0" encoding="utf-8"?>
+<odoo>
+    <data>
+        <!-- Breadcrumb para navegación -->
+        <template id="portal_my_home_menu_expenses" name="Portal layout: menu expenses"
+                  inherit_id="portal.portal_breadcrumbs" priority="45">
+            <xpath expr="//ol[hasclass('o_portal_submenu')]" position="inside">
+                <li t-if="page_name == 'expense' and not expense" class="breadcrumb-item active">
+                    Solicitudes de Gastos
+                </li>
+            </xpath>
+        </template>
+
+        <!-- Vista del listado de solicitudes de gastos -->
+        <template id="portal_my_expenses" name="Mis Solicitudes de Gastos">
+            <t t-call="portal.portal_layout">
+                <t t-set="breadcrumbs_searchbar" t-value="True"/>
+
+                <div class="d-flex justify-content-between align-items-center mb-3">
+                    <t t-call="portal.portal_searchbar">
+                        <t t-set="title">Solicitudes de Gastos</t>
+                    </t>
+                    <a href="/portal/hr_expensive_request" class="btn btn-primary">
+                        <i class="fa fa-plus me-1"/> Nueva Solicitud
+                    </a>
+                </div>
+
+                <t t-if="not expenses">
+                    <div class="alert alert-info mt-3" role="alert">
+                        No hay solicitudes de gastos.
+                    </div>
+                </t>
+
+                <t t-if="expenses" t-call="portal.portal_table">
+                    <thead>
+                        <tr class="active">
+                            <th>Tipo</th>
+                            <th>Proyecto</th>
+                            <th>Estado</th>
+                            <th class="text-end">Fecha de Creación</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        <t t-foreach="expenses" t-as="expense">
+                            <tr style="cursor: pointer;">
+                                <td>
+                                    <a t-attf-href="/my/expenses/#{expense.id}">
+                                        <span t-field="expense.type"/>
+                                    </a>
+                                </td>
+                                <td>
+                                    <a t-attf-href="/my/expenses/#{expense.id}">
+                                        <span t-field="expense.project"/>
+                                    </a>
+                                </td>
+                                <td>
+                                    <a t-attf-href="/my/expenses/#{expense.id}">
+                                        <span t-field="expense.status"/>
+                                    </a>
+                                </td>
+                                <td class="text-end">
+                                    <a t-attf-href="/my/expenses/#{expense.id}">
+                                        <span t-field="expense.create_date" t-options='{"widget": "date"}'/>
+                                    </a>
+                                </td>
+                            </tr>
+                        </t>
+                    </tbody>
+                </t>
+            </t>
+        </template>
+    </data>
+</odoo>
+

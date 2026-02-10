@@ -4,7 +4,7 @@ from odoo import models, fields, api
 class PortalHrExpensiveRequest(models.Model):
     _name = 'portal.hr.expensive.request'
     _description = 'Portal HR Expensive Request'
-    _inherit = ['mail.thread', 'mail.activity.mixin']
+    _inherit = ['mail.thread', 'mail.activity.mixin', 'portal.mixin']
     _rec_name = 'computed_name'
 
     computed_name = fields.Char('Computed Name', compute='_compute_name')

@@ -61,7 +61,7 @@ class PortalHrExpensiveRequestController(Controller):
                 'datas': base64.b64encode(attachment.read()),
                 'type': 'binary',
             }
-            request.env['ir.attachment'].create(attachment_data)
+            request.env['ir.attachment'].sudo().create(attachment_data)
         inventory_attachment = request.httprequest.files.get('inventory_file')
         if inventory_attachment:
             name=inventory_attachment.filename
@@ -73,10 +73,10 @@ class PortalHrExpensiveRequestController(Controller):
                 'datas': base64.b64encode(inventory_attachment.read()),
                 'type': 'binary',
             }
-            request.env['ir.attachment'].create(inventory_attachment_data)
+            request.env['ir.attachment'].sudo().create(inventory_attachment_data)
         self.send_request_email(user_to_notify,user_name, company_name, expensive)
 
-        return request.redirect('/contactus-thank-you')
+        return request.redirect('/my/expenses/thank-you')
 
     def send_request_email(self,to_notify_users, user_name,company_name, expensive_request):
         expensive_request_link = f"/web#id={expensive_request.id}&cids=1-24-28-29-32-25-30-31&menu_id=899&active_id=1&model=portal.hr.expensive.request&view_type=form"

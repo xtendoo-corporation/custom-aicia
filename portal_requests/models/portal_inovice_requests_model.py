@@ -4,7 +4,7 @@ from odoo import models, fields, api, _
 class PortalInvoiceRequest(models.Model):
     _name = 'portal.invoice.request'
     _description = 'Portal Invoice Request'
-    _inherit = ['mail.thread', 'mail.activity.mixin']
+    _inherit = ['mail.thread', 'mail.activity.mixin', 'portal.mixin']
     _rec_name = 'computed_name'
 
     user_id = fields.Many2one('res.users', string='User', required=True)
