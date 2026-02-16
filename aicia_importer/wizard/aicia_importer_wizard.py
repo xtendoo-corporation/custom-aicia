@@ -1128,11 +1128,9 @@ class AiciaImporterWizard(models.TransientModel):
                     # para asegurar que employee.work_contact_id existe
                     if not portal_email:
                         portal_email = ref
-                    if not employee.user_id:
-                        _logger.info(f">>> Llamando a _create_portal_user_for_employee para {full_name} con email {portal_email}")
-                        self._create_portal_user_for_employee(employee, portal_email, full_name, result)
-                    else:
-                        _logger.debug(f">>> Empleado {full_name} ya tiene usuario asociado, omitiendo creación")
+                    # SIEMPRE llamar al método para crear O actualizar el usuario portal
+                    _logger.info(f">>> Llamando a _create_portal_user_for_employee para {full_name} con email {portal_email}")
+                    self._create_portal_user_for_employee(employee, portal_email, full_name, result)
 
                     # Crear cuenta bancaria si existe
                     if cuenta_bancaria and cuenta_bancaria != '0':
@@ -1321,9 +1319,7 @@ class AiciaImporterWizard(models.TransientModel):
                 error_msg = f"Usuario portal - {full_name}: email inválido o vacío"
                 result['error_list'].append(error_msg)
                 _logger.warning(f"✗ {error_msg}")
-            else:
-                email = f"{employee.codigo_empleado}@aicia.es"
-                print("Email generado para portal:",email)
+                return
 
             # Verificar que el empleado tenga un partner asociado
             if not employee.work_contact_id:
@@ -1339,10 +1335,66 @@ class AiciaImporterWizard(models.TransientModel):
             if partner.user_ids:
                 existing_user = partner.user_ids[0]
                 _logger.info(f">>> Partner ya tiene usuario asociado: {existing_user.login}")
-                # Si el usuario existe, asociarlo al empleado
-                if not employee.user_id:
+
+                # Actualizar datos del usuario existente
+                user_vals_to_update = {}
+                partner_vals_to_update = {}
+                login_changed = False
+
+                # Actualizar email y login si cambió
+                new_login = email.lower()
+                if existing_user.login != new_login or existing_user.email != email:
+                    user_vals_to_update['login'] = new_login
+                    user_vals_to_update['email'] = email
+                    partner_vals_to_update['email'] = email
+                    login_changed = True
+                    _logger.info(f">>> Actualizando login y email de '{existing_user.login}' a '{new_login}'")
+
+                # Actualizar nombre del partner si cambió
+                if partner.name != full_name:
+                    partner_vals_to_update['name'] = full_name
+                    _logger.info(f">>> Actualizando nombre de partner de '{partner.name}' a '{full_name}'")
+
+                # Asegurar que el idioma sea español
+                if existing_user.lang != 'es_ES':
+                    user_vals_to_update['lang'] = 'es_ES'
+                    _logger.info(f">>> Actualizando idioma a español")
+
+                # Aplicar actualizaciones si hay cambios
+                if user_vals_to_update:
+                    try:
+                        existing_user.sudo().write(user_vals_to_update)
+                        _logger.info(f"✓ Usuario actualizado con write(): {email}")
+                    except Exception as e:
+                        # Si falla el write(), intentar actualizar el login directamente con SQL
+                        if login_changed:
+                            _logger.warning(f"Write falló, usando SQL para actualizar login: {str(e)}")
+                            self.env.cr.execute(
+                                "UPDATE res_users SET login = %s WHERE id = %s",
+                                (new_login, existing_user.id)
+                            )
+                            # Actualizar otros campos sin login
+                            user_vals_without_login = {k: v for k, v in user_vals_to_update.items() if k != 'login'}
+                            if user_vals_without_login:
+                                existing_user.sudo().write(user_vals_without_login)
+                            _logger.info(f"✓ Usuario actualizado con SQL: {email}")
+                        else:
+                            raise
+
+                if partner_vals_to_update:
+                    partner.sudo().write(partner_vals_to_update)
+                    _logger.info(f"✓ Partner actualizado: {full_name}")
+
+                # Asociar al empleado si no lo estaba
+                if not employee.user_id or employee.user_id.id != existing_user.id:
                     employee.write({'user_id': existing_user.id})
                     _logger.info(f"✓ Usuario existente '{email}' asociado al empleado {full_name}")
+
+                if user_vals_to_update or partner_vals_to_update:
+                    _logger.info(f"✓ Usuario portal actualizado para {full_name} (login: {email})")
+                else:
+                    _logger.info(f"✓ Usuario portal ya estaba correcto para {full_name} (login: {email})")
+
                 return
 
             # Verificar si ya existe otro usuario con ese email (pero no asociado al partner)
