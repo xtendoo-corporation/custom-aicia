@@ -970,7 +970,11 @@ class AiciaImporterWizard(models.TransientModel):
                         ref = f"E{codigo}"
                     # Buscar empleado existente por codigo de empleado , nif o nombre completo
                     employee, partner_work = self._get_employee_and_partner(ref, nif, full_name)
-                    if not email:
+                    if email is None:
+                        print("!*"*50)
+                        print("Email encontrado:",email)
+                        print("No hay email, se asignará uno genérico")
+                        print("!*" * 50)
                         email =f"{ref}@aicia.es"
 
                     partner_vals = {
@@ -1014,6 +1018,7 @@ class AiciaImporterWizard(models.TransientModel):
                     if partner_work:
                         if self.update_existing:
                             print("/")
+                            print("partner_vals a escribir:",partner_vals)
                             partner_work.with_context(import_file=True,check_vies=False).write(partner_vals)
                     else:
                         print("//")
