@@ -882,7 +882,24 @@ class AiciaImporterWizard(models.TransientModel):
         print("Finalizada busqueda")
         print("!"*100)
 
+    def _colaborator_mapping(self, colaborator):
+        mapping = {
+            1: 'PROFESOR',
+            2: 'TÉCNICO',
+            3: 'BECARIO AICIA',
+            4: 'ADMINISTRATIVO',
+            5: 'PTGAS',
+        }
 
+        if not colaborator:
+            return ''
+
+        try:
+            colaborator = int(colaborator)
+        except (ValueError, TypeError):
+            return ''
+
+        return mapping.get(colaborator, '')
 
     def _import_employees(self, file_data, province_map):
         """Importa empleados desde un archivo Excel."""
@@ -939,6 +956,7 @@ class AiciaImporterWizard(models.TransientModel):
                     permision_to_desplace = data.get('Permiso_Desplazamiento', False)
                     observaciones = str(data.get('Observaciones', '')).strip() if data.get('Observaciones') else ''
                     departamento = str(data.get('ID_Departamento', '')).strip() if data.get('ID_Departamento') else ''
+                    colaborador = str(data.get('Colaborador', '')).strip() if data.get('Colaborador') else ''
 
                     # Validaciones básicas
                     if not nombre:
@@ -949,9 +967,11 @@ class AiciaImporterWizard(models.TransientModel):
                     full_name = nombre
                     ref = False
                     if codigo is not None:
-                        ref = ref = f"E{codigo}"
+                        ref = f"E{codigo}"
                     # Buscar empleado existente por codigo de empleado , nif o nombre completo
                     employee, partner_work = self._get_employee_and_partner(ref, nif, full_name)
+                    if not email:
+                        email =f"{ref}@aicia.es"
 
                     partner_vals = {
                         'name': full_name,
@@ -998,6 +1018,7 @@ class AiciaImporterWizard(models.TransientModel):
                     else:
                         print("//")
                         partner_work = self.env['res.partner'].with_context(import_file=True,check_vies=False).create(partner_vals)
+
                     # movil = None
 
                     if movil:
@@ -1032,6 +1053,8 @@ class AiciaImporterWizard(models.TransientModel):
                                 f"Departamento no encontrado: '{dep_code}-*' para empleado {full_name}"
                             )
 
+
+
                     # Preparar valores para el empleado
                     employee_vals = {
                         'name': full_name,
@@ -1053,6 +1076,24 @@ class AiciaImporterWizard(models.TransientModel):
                         'private_country_id': self.env.ref('base.es').id,  # España
                         'department_id': department_id,
                     }
+                    if colaborador:
+                        print("/*"*50)
+                        print("Valor de colaborador:",colaborador)
+
+                        colaborator_value = self._colaborator_mapping(colaborador)
+                        print("Valor mapeado de colaborador:",colaborator_value)
+                        print("/*" * 50)
+                        if colaborator_value:
+                            colaborator_job = self.env['hr.job'].search([('name', '=', colaborator_value)], limit=1)
+                            if colaborator_job:
+                                employee_vals['job_id'] = colaborator_job.id
+                        else:
+                            _logger.warning(
+                                f"Valor de colaborador no reconocido: '{colaborador}' para empleado {full_name}"
+                            )
+                    # Guardar el email original antes de cualquier procesamiento
+                    portal_email = email if email else False
+
                     # Añadir provincia privada si existe
                     if province_map and cod_postal and len(str(cod_postal)) >= 2:
                         try:
@@ -1077,6 +1118,16 @@ class AiciaImporterWizard(models.TransientModel):
                         employee = self.env['hr.employee'].create(employee_vals)
                         result['created'] += 1
                         _logger.info(f"✓ Empleado creado: {full_name}")
+
+                    # Verificar si necesita crear usuario portal (DESPUÉS de crear/actualizar el empleado)
+                    # para asegurar que employee.work_contact_id existe
+                    if not portal_email:
+                        portal_email = ref
+                    if not employee.user_id:
+                        _logger.info(f">>> Llamando a _create_portal_user_for_employee para {full_name} con email {portal_email}")
+                        self._create_portal_user_for_employee(employee, portal_email, full_name, result)
+                    else:
+                        _logger.debug(f">>> Empleado {full_name} ya tiene usuario asociado, omitiendo creación")
 
                     # Crear cuenta bancaria si existe
                     if cuenta_bancaria and cuenta_bancaria != '0':
@@ -1252,16 +1303,114 @@ class AiciaImporterWizard(models.TransientModel):
         except Exception as e:
             _logger.warning(f"✗ Error creando/actualizando contrato para {employee.name}: {str(e)}")
 
+    def _create_portal_user_for_employee(self, employee, email, full_name, result):
+        """
+        Crea un usuario tipo portal para el empleado usando el wizard estándar de Odoo.
+        Los errores se agregan al diccionario result para mostrarse en el resumen del wizard.
+        """
+        try:
+            _logger.info(f">>> Iniciando creación de usuario portal para: {full_name} ({email})")
+
+            # Validar que el email sea válido
+            if not email or '@' not in email:
+                error_msg = f"Usuario portal - {full_name}: email inválido o vacío"
+                result['error_list'].append(error_msg)
+                _logger.warning(f"✗ {error_msg}")
+            else:
+                email = f"{employee.codigo_empleado}@aicia.es"
+                print("Email generado para portal:",email)
+
+            # Verificar que el empleado tenga un partner asociado
+            if not employee.work_contact_id:
+                error_msg = f"Usuario portal - {full_name}: no tiene contacto de trabajo asociado"
+                result['error_list'].append(error_msg)
+                _logger.warning(f"✗ {error_msg}")
+                return
+
+            partner = employee.work_contact_id
+            _logger.info(f">>> Partner encontrado: {partner.name} (ID: {partner.id})")
+
+            # Verificar si el partner ya tiene un usuario asociado
+            if partner.user_ids:
+                existing_user = partner.user_ids[0]
+                _logger.info(f">>> Partner ya tiene usuario asociado: {existing_user.login}")
+                # Si el usuario existe, asociarlo al empleado
+                if not employee.user_id:
+                    employee.write({'user_id': existing_user.id})
+                    _logger.info(f"✓ Usuario existente '{email}' asociado al empleado {full_name}")
+                return
+
+            # Verificar si ya existe otro usuario con ese email (pero no asociado al partner)
+            existing_user_by_email = self.env['res.users'].sudo().search([
+                ('login', '=', email.lower())
+            ], limit=1)
+
+            if existing_user_by_email:
+                error_msg = f"Usuario portal - {full_name}: ya existe un usuario con el email {email}"
+                result['error_list'].append(error_msg)
+                _logger.warning(f"✗ {error_msg}")
+                return
+
+            # Asegurarnos de que el partner tiene el email correcto
+            if partner.email != email:
+                _logger.info(f">>> Actualizando email del partner de '{partner.email}' a '{email}'")
+                partner.write({'email': email})
+
+            # Crear el wizard de portal usando el contexto estándar de Odoo
+            _logger.info(f">>> Creando wizard de portal para {partner.name}")
+            portal_wizard = self.env['portal.wizard'].sudo().with_context(
+                active_ids=[partner.id],
+                lang='es_ES'
+            ).create({})
+
+            # Verificar que se creó el user en el wizard
+            if not portal_wizard.user_ids:
+                error_msg = f"Usuario portal - {full_name}: no se pudo crear el wizard de portal"
+                result['error_list'].append(error_msg)
+                _logger.warning(f"✗ {error_msg}")
+                return
+
+            portal_user = portal_wizard.user_ids[0]
+            _logger.info(f">>> Portal wizard user creado")
+
+            # Asegurarnos de que el email está configurado correctamente
+            if portal_user.email != email:
+                portal_user.email = email
+
+            # Otorgar acceso al portal usando el método estándar de Odoo (envía invitación)
+            _logger.info(f">>> Otorgando acceso al portal y enviando invitación")
+            portal_user.sudo().action_grant_access()
+
+            # Obtener el usuario creado y asociarlo al empleado
+            if partner.user_ids:
+                new_user = partner.user_ids[0]
+                # Establecer el idioma español al usuario
+                new_user.sudo().write({'lang': 'es_ES'})
+                employee.write({'user_id': new_user.id})
+                _logger.info(f"✓ Usuario portal creado con idioma español y asociado al empleado {full_name} (login: {email})")
+            else:
+                error_msg = f"Usuario portal - {full_name}: no se pudo obtener el usuario creado"
+                result['error_list'].append(error_msg)
+                _logger.warning(f"✗ {error_msg}")
+
+        except Exception as e:
+            error_msg = f"Usuario portal - {full_name}: {str(e)}"
+            result['error_list'].append(error_msg)
+            _logger.error(f"✗✗✗ ERROR creando usuario portal para {full_name}: {str(e)}")
+            import traceback
+            _logger.error(f"Stack trace completo:\n{traceback.format_exc()}")
+
 
     def _import_projects(self, file_data):
-        """Importa proyectos (cuentas analíticas) desde un archivo Excel."""
+        # """Importa proyectos (cuentas analíticas) desde un archivo Excel."""
         result = {
             'created': 0,
             'updated': 0,
             'errors': 0,
             'error_list': []
         }
-
+        #
+        cliente_not_found_count = 0
         try:
             # Decodificar y cargar el archivo Excel
             file_content = b64decode(file_data)
@@ -1292,8 +1441,24 @@ class AiciaImporterWizard(models.TransientModel):
                     # Obtener valores de las celdas
                     codigo = str(data.get('Codigo', '') or data.get('ID_Proyecto', '')).strip()
                     nombre = str(data.get('Nombre', '')).strip() if data.get('Nombre') else ''
-                    cliente = str(data.get('Cliente', '')).strip() if data.get('Cliente') else ''
-                    activo = data.get('Activo', True)
+                    cliente = str(data.get('ID_Cliente', '')).strip() if data.get('ID_Cliente') else ''
+                    sujeto_convenio = data.get('Sujeto_Convenio', True)
+                    departamento = str(data.get('ID_Departamento', '')).strip() if data.get('ID_Departamento') else ''
+                    observaciones = str(data.get('Observaciones', '')).strip() if data.get('Observaciones') else ''
+                    jefe_proyecto = str(data.get('Jefe_Proyecto', '')).strip() if data.get('Jefe_Proyecto') else ''
+                    presupuesto = data.get('Presupuesto', 0)
+
+                    print("*"*50)
+                    print("Datos del proyecto:", data)
+                    print("Código:", codigo)
+                    print("Nombre:", nombre)
+                    print("Cliente:", cliente)
+                    print("sujeto_convenio:", sujeto_convenio)
+                    print("departamento:", departamento)
+                    print("observaciones:", observaciones)
+                    print("jefe_proyecto:", jefe_proyecto)
+                    print("presupuesto:", presupuesto)
+                    print("*"*50)
 
                     # Validaciones básicas
                     if not nombre:
@@ -1302,28 +1467,83 @@ class AiciaImporterWizard(models.TransientModel):
                         result['error_list'].append(f"Fila {row_idx}: Sin nombre de proyecto")
                         continue
 
+                    # Buscar cliente
+                    partner_id = False
+                    if cliente:
+                        cliente = f"C{cliente}"
+                        partner = self.env['res.partner'].search([
+                            ('codigo_cliente', '=', cliente)
+                        ], limit=1)
+                        if partner:
+                            partner_id = partner.id
+                            print("Cliente encontrado por codigo_cliente:", partner.name)
+                        else:
+                            print("No se encontró cliente con codigo_cliente:", cliente)
+                            cliente_not_found_count += 1
+                    else:
+                        print("No se proporcionó cliente para este proyecto")
+                        cliente_not_found_count += 1
+
+                    # Buscar departamento
+                    department_id = False
+                    if departamento is not None and departamento != '':
+                        dep_code = str(departamento).zfill(2)
+                        department = self.env['hr.department'].search([
+                            ('name', 'ilike', f'{dep_code}-')
+                        ], limit=1)
+                        if department:
+                            department_id = department.id
+                            print("Departamento encontrado:", department.name)
+                        else:
+                            print("Departamento no encontrado:", departamento)
+
+                    # Buscar empleado responsable por jefe_proyecto
+                    responsible_user_id = False
+                    if jefe_proyecto:
+                        # Añadir "E" delante del código
+                        codigo_empleado = f"E{jefe_proyecto}"
+                        print(f"Buscando empleado con código: {codigo_empleado}")
+
+                        # Buscar el empleado por codigo_empleado
+                        employee = self.env['hr.employee'].search([
+                            ('codigo_empleado', '=', codigo_empleado)
+                        ], limit=1)
+
+                        if employee:
+                            print(f"Empleado encontrado: {employee.name}")
+                            # Verificar si el empleado tiene usuario asociado
+                            if employee.user_id:
+                                responsible_user_id = employee.user_id.id
+                                print(f"Usuario responsable asignado: {employee.user_id.name}")
+                            else:
+                                print(f"El empleado {employee.name} no tiene usuario asociado")
+                                _logger.warning(f"El empleado {employee.name} (código {codigo_empleado}) no tiene usuario asociado para el proyecto {nombre}")
+                        else:
+                            print(f"No se encontró empleado con código: {codigo_empleado}")
+                            _logger.warning(f"No se encontró empleado con código {codigo_empleado} para el proyecto {nombre}")
+
                     # Preparar valores para el proyecto (cuenta analítica)
                     project_vals = {
                         'name': nombre,
-                        'active': bool(activo) if activo != '' else True,
+                        'sujeto_convenio': sujeto_convenio if sujeto_convenio is not None else False,
+                        'plan_id': 1,  # Account Analytic Plan
                     }
 
-                    # Agregar código de referencia si existe
+                    # Añadir código si existe
                     if codigo:
                         project_vals['code'] = codigo
 
-                    # Buscar cliente si se proporciona
-                    if cliente:
-                        partner = self.env['res.partner'].search([
-                            '|',
-                            ('name', '=ilike', cliente),
-                            ('ref', '=', cliente),
-                        ], limit=1)
-                        if partner:
-                            project_vals['partner_id'] = partner.id
-                            _logger.debug(f"✓ Cliente encontrado: {partner.name}")
-                        else:
-                            _logger.warning(f"✗ Cliente no encontrado: {cliente}")
+                    # Añadir partner si se encontró
+                    if partner_id:
+                        project_vals['partner_id'] = partner_id
+
+                    # Añadir observaciones si existen
+                    if observaciones:
+                        project_vals['observaciones'] = observaciones
+
+                    # Añadir responsable si se encontró
+                    if responsible_user_id:
+                        project_vals['responsible_id'] = responsible_user_id
 
                     # Buscar proyecto existente por código o nombre
                     existing_project = None
@@ -1344,12 +1564,11 @@ class AiciaImporterWizard(models.TransientModel):
                             result['updated'] += 1
                             _logger.info(f"✓ Proyecto actualizado: {nombre}")
                         else:
-                            _logger.info(f"→ Proyecto ya existe (no actualizado): {nombre}")
+                            _logger.debug(f"◷ Proyecto ya existe (no actualizado): {nombre}")
                     else:
                         self.env['account.analytic.account'].create(project_vals)
                         result['created'] += 1
                         _logger.info(f"✓ Proyecto creado: {nombre}")
-
                 except Exception as e:
                     result['errors'] += 1
                     error_msg = f"Fila {row_idx}: {str(e)}"
@@ -1361,6 +1580,10 @@ class AiciaImporterWizard(models.TransientModel):
             error_msg = f"Error general al procesar archivo: {str(e)}"
             result['error_list'].append(error_msg)
             _logger.error(f"✗ {error_msg}")
+
+        print("/"*50)
+        print("cliente_not_found_count:", cliente_not_found_count)
+        print("/"*50)
 
         return result
 
