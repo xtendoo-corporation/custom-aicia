@@ -1,21 +1,9 @@
-import base64
-import io
-import os
-import pdfplumber
-
-from PyPDF2 import PdfFileReader, PdfFileWriter
-from reportlab.pdfgen import canvas
-from reportlab.lib.pagesizes import letter
 from odoo import models, fields, api, _
 from odoo.exceptions import UserError
-from PIL import Image
-import tempfile
-from contextlib import closing
 import logging
-import os
-os.environ['_JAVA_OPTIONS'] = '-Xmx256m -Xms128m'
 
 _logger = logging.getLogger(__name__)
+
 
 class DocumentApproval(models.Model):
     _name = 'document.approval'
@@ -23,14 +11,11 @@ class DocumentApproval(models.Model):
     _description = 'Solicitud Documentos'
     _inherit = ['mail.thread', 'mail.activity.mixin', 'portal.mixin']
 
-    type_id = fields.Many2one('type.approval', string='Tipo', required=True ,tracking=True)
+    type_id = fields.Many2one('type.approval', string='Tipo', required=True, tracking=True)
     computed_name = fields.Char('Computed Name', compute='_compute_name')
     description = fields.Text(string='Descripción', tracking=True)
-    # approved = fields.Boolean(string='Aprobado', default=False, tracking=True)
-    # approved_by_director_i_d = fields.Boolean(string='Aprobación Director I+D', default=False, tracking=True)
-    # approved_by_director_gerente = fields.Boolean(string='Aprobación Director Gerente ', default=False, tracking=True)
-    # is_revised = fields.Boolean(string='Está revisado', default=False, store=True, tracking=True)
-    company_id = fields.Many2one('res.company', string='Grupo de trabajo',tracking=True)
+    company_id = fields.Many2one('res.company', string='Grupo de trabajo', tracking=True)
+
     def _get_work_group_id(self):
         for record in self:
             work_group = self.env['portal.work.group'].search([
@@ -38,31 +23,38 @@ class DocumentApproval(models.Model):
             ], limit=1)
             record.work_group_id = work_group.id if work_group else False
 
-    work_group_id = fields.Many2one('portal.work.group', string='Grupo de Trabajo',
-                                    store=True)
+    work_group_id = fields.Many2one('portal.work.group', string='Grupo de Trabajo', store=True)
     user_id = fields.Many2one('res.users', string='Solicitante', tracking=True)
-    status = fields.Selection([('approved_by_director_i_d', 'Aprobación del DIrector I+D'), ('approved_by_director_gerente', 'Aprobación del DIrector Gerente'), ('sign_company', 'Esperando firma de empresa'),('final_revision','Revisión final'), ("approve", 'Aprobada'), ("rejected", 'Rechazada')], 'Estado', default='approved_by_director_i_d' ,tracking=True)
-    financial_signature = fields.Binary(string="Firma Director Gerente")
+    status = fields.Selection([
+        ('approved_by_director_i_d', 'Aprobación del Director I+D'),
+        ('approved_by_director_gerente', 'Aprobación del Director Gerente'),
+        ('sign_company', 'Esperando firma de empresa'),
+        ('final_revision', 'Revisión final'),
+        ('approve', 'Aprobada'),
+        ('rejected', 'Rechazada'),
+    ], string='Estado', default='approved_by_director_i_d', tracking=True)
+
     is_company_signed = fields.Boolean(string='Firmado por la empresa', default=False, tracking=True)
-    attachment_check = fields.Integer(
-        compute='_compute_attachment_check',
-        store=False
+
+    # Enlace a la solicitud de firma del módulo sign de Odoo 19 Enterprise
+    sign_request_id = fields.Many2one(
+        'sign.request',
+        string='Solicitud de Firma',
+        copy=False,
+        tracking=True,
+        ondelete='set null',
     )
-    signature_position = fields.Selection([
-        ('bottom_left', 'Abajo Izquierda'),
-        ('bottom_center', 'Abajo Centro'),
-        ('bottom_right', 'Abajo Derecha'),
-    ], string="Posición de Firma", default='bottom_right', tracking=True)
-    signature_page = fields.Selection([
-        ('last', 'Última Página'),
-        ('all', 'Todas las paginas'),
-    ], string="Firmar en", default='last', tracking=True)
+    sign_request_state = fields.Selection(
+        related='sign_request_id.state',
+        string='Estado de Firma',
+        store=False,
+    )
 
     # Campo computed para mostrar botón de solicitar revisión en el portal
     show_solicitar_revision_final = fields.Boolean(
         string='Mostrar Solicitar Revisión Final',
         compute='_compute_show_solicitar_revision_final',
-        store=False
+        store=False,
     )
 
     @api.depends('status')
@@ -70,285 +62,160 @@ class DocumentApproval(models.Model):
         for record in self:
             record.show_solicitar_revision_final = record.status == 'sign_company'
 
-    @api.depends()
-    def _compute_attachment_check(self):
-        for record in self:
-            attachments = self.env['ir.attachment'].search_count([
-                ('res_model', '=', 'document.approval'),
-                ('res_id', '=', record.id),
-                ('name', 'ilike', '%_firmado%')
-            ])
-            record.attachment_check = attachments
-
-    # Modifica el campo is_digital_signed para que dependa del campo auxiliar
-    is_digital_signed = fields.Boolean(
-        string='Firmado digitalmente',
-        compute='_compute_is_digital_signed',
-        tracking=True,
-        store=False
-    )
-
-    @api.depends('attachment_check')
-    def _compute_is_digital_signed(self):
-        for record in self:
-            if record.attachment_check > 0:
-                record.is_digital_signed = True
-            else:
-                record.is_digital_signed = False
-                if not record.financial_signature and not record.is_company_signed:
-                    # Verificar si el valor de attachment_check era mayor a 0 antes de ser 0
-                    previous_attachment_count = self.env['ir.attachment'].search_count([
-                        ('res_model', '=', 'document.approval'),
-                        ('res_id', '=', record.id),
-                        ('name', 'ilike', '%_firmado%')
-                    ])
-                    if previous_attachment_count > 0:
-                        # Verificar si ya existe un mensaje similar en el historial
-                        mensaje_existe = any(
-                            "El documento firmado digitalmente ha sido eliminado por" in mensaje.body
-                            for mensaje in record.message_ids
-                        )
-
-                        # Solo enviar el mensaje si no existe uno similar
-                        if not mensaje_existe:
-                            record.sudo().message_post(
-                                body=_(
-                                    "El documento firmado digitalmente ha sido eliminado por %s") % self.env.user.name,
-                                subtype_id=record.env.ref('mail.mt_note').id
-                            )
-
-
-                    # self.sudo().message_post(
-                    #     body=_("El documento firmado ha sido eliminado por %s") % self.env.user.name,
-                    #     subtype_id=self.env.ref('mail.mt_note').id,
-                    # )
-
-
-    def pdf_signer(self):
-        #buscamos el adjunto para firmar
-        attachment_ids = self.env['ir.attachment'].search([
-            ('res_model', '=', 'document.approval'),
-            ('res_id', '=', self.id)
-        ], limit=1)
-        #buscamos el certificado usando el usario logueado
-        user = self.env.user
-        certificate = self.env['report.certificate'].search([
-            ('company_id', '=', user.company_id.id),
-            ('model_id.model', '=', 'document.approval'),
-            ('user_ids', 'in', user.id),
-        ], limit=1)
-        if not certificate:
-            raise UserError("No se encontró un certificado para firmar el documento.")
-        #verificamos que el adjunto existe
-        if not attachment_ids:
-            raise UserError("Falta el PDF adjunto o la firma")
-        pdf_fd, pdf_path = tempfile.mkstemp(suffix=".pdf", prefix="document.tmp.")
-        pdf_signed_path= ""
-        try:
-            # Obtenemos el contenido del PDF del attachment y lo escribimos en el archivo temporal
-            with closing(os.fdopen(pdf_fd, "wb")) as pdf_file:
-                pdf_file.write(base64.b64decode(attachment_ids.datas))
-
-            # Firmamos el PDF
-            pdf_signed_path = self.env['ir.actions.report'].pdf_sign(pdf_path, certificate)
-
-            # Leemos el PDF firmado
-            with open(pdf_signed_path, "rb") as signed_file:
-                signed_content = signed_file.read()
-
-            # Creamos un nuevo adjunto con el PDF firmado
-            attachment_create = self.env['ir.attachment'].create({
-                'name': f"{attachment_ids.name}_firmado",
-                'res_model': 'document.approval',
-                'res_id': self.id,
-                'datas': base64.b64encode(signed_content),
-                'type': 'binary',
-            })
-            # Actualizamos el estado del documento
-            self.is_digital_signed = True
-            # Registramos en el chatter que el documento ha sido firmado digitalmente
-            self.sudo().message_post(
-                body=_("El documento ha sido firmado digitalmente por %s") % self.env.user.name,
-                subtype_id=self.env.ref('mail.mt_note').id,  # Usar subtipo 'nota' que no envía correos
-                attachment_ids=[attachment_create.id]
-            )
-
-        finally:
-            # Limpieza de archivos temporales
-            for fname in [pdf_path, pdf_signed_path]:
-                try:
-                    if os.path.exists(fname):
-                        os.unlink(fname)
-                except OSError:
-                    _logger.error("Error al intentar eliminar el archivo %s", fname)
-
-        return True
-
-    def add_signature_to_pdf(self):
-        """Añade la firma al PDF según la configuración del documento y guarda el nuevo PDF en Odoo"""
-        if not self.financial_signature:
-            return False
-
-        # Buscar el adjunto del PDF
-        attachment = self.env['ir.attachment'].search([
-            ('res_model', '=', 'document.approval'),
-            ('res_id', '=', self.id)
-        ], limit=1)
-
-        if not attachment:
-            raise ValueError("Falta el PDF adjunto o la firma")
-
-        # Decodificar PDF
-        pdf_data = base64.b64decode(attachment.datas)
-        pdf_reader = PdfFileReader(io.BytesIO(pdf_data))
-        num_pages = pdf_reader.getNumPages()
-
-        # Medidas de la primera página para referencia
-        page0 = pdf_reader.getPage(0)
-        media_box = page0.mediaBox
-        ancho = float(media_box.getUpperRight_x()) - float(media_box.getLowerLeft_x())
-        alto = float(media_box.getUpperRight_y()) - float(media_box.getLowerLeft_y())
-
-        pdf_writer = PdfFileWriter()
-
-        # Procesar la firma: mantener transparencia
-        signature_data = base64.b64decode(self.financial_signature)
-        signature_path = "/tmp/temp_signature.png"
-        with open(signature_path, "wb") as f:
-            f.write(signature_data)
-
-        signature_image = Image.open(signature_path).convert("RGBA")
-        width, height = signature_image.size
-
-        # Crear imagen transparente
-        new_image = Image.new('RGBA', (width, height), (0, 0, 0, 0))
-        new_image.paste(signature_image, (0, 0), signature_image)
-        signature_with_background_path = "/tmp/temp_signature_with_background.png"
-        new_image.save(signature_with_background_path)
-
-        # Configuración tamaño máximo de la firma en PDF
-        max_width = 200
-        max_height = 100
-        ratio = min(max_width / width, max_height / height)
-        draw_width = width * ratio
-        draw_height = height * ratio
-
-        # Iterar páginas y añadir firma según configuración
-        last_page_index = num_pages - 1
-        for i in range(num_pages):
-            page = pdf_reader.getPage(i)
-
-            if self.signature_page == 'all' or (self.signature_page == 'last' and i == last_page_index):
-                packet = io.BytesIO()
-                can = canvas.Canvas(packet, pagesize=(ancho, alto))
-
-                # Posición según configuración
-                if self.signature_position == 'bottom_left':
-                    x_position = 20
-                elif self.signature_position == 'bottom_center':
-                    x_position = (ancho - draw_width) / 2
-                elif self.signature_position == 'bottom_right':
-                    x_position = ancho - draw_width - 20
-                else:
-                    x_position = 20  # Default left
-
-                y_position = 20  # Margen inferior
-
-                # Dibujar la firma escalada
-                can.drawImage(signature_with_background_path, x_position, y_position,
-                              width=draw_width, height=draw_height, mask='auto')
-
-                # Dibujar texto debajo
-                text_y_position = y_position - 12
-                can.setFont("Helvetica", 12)
-                can.drawString(x_position, text_y_position, "FDO.: Director Gerente")
-
-                can.save()
-                packet.seek(0)
-                signature_pdf = PdfFileReader(packet)
-                page.mergePage(signature_pdf.getPage(0))
-
-            pdf_writer.addPage(page)
-
-        # Guardar PDF firmado
-        output_pdf = io.BytesIO()
-        pdf_writer.write(output_pdf)
-        output_pdf.seek(0)
-
-        new_pdf_data = base64.b64encode(output_pdf.read()).decode('utf-8')
-        signed_attachment_data = {
-            'name': f"firmado_director_gerente_{attachment.name}",
-            'res_model': 'document.approval',
-            'res_id': self.id,
-            'datas': new_pdf_data,
-            'type': 'binary',
-        }
-
-        signed_attachment = self.env['ir.attachment'].create(signed_attachment_data)
-
-        # Limpiar archivos temporales
-        os.remove(signature_path)
-        os.remove(signature_with_background_path)
-
-        return signed_attachment
-
     def _compute_name(self):
         for record in self:
             record.computed_name = f"{record.type_id.name} - {record.description}"
 
-    # def request_partner_sign(self):
-    #     print("*"*100)
-    #     print("solicitar firmar cliente")
-    #     print("*"*100)
+    # ─────────────────────────────────────────────
+    # Integración con módulo sign de Odoo 19 Enterprise
+    # ─────────────────────────────────────────────
 
+    def action_send_to_sign(self):
+        """Crea una sign.template a partir del adjunto del documento y lanza
+        un sign.request para que el Director Gerente firme digitalmente."""
+        self.ensure_one()
+
+        # Verificar que hay un adjunto PDF
+        attachment = self.env['ir.attachment'].search([
+            ('res_model', '=', 'document.approval'),
+            ('res_id', '=', self.id),
+        ], limit=1)
+
+        if not attachment:
+            raise UserError(_(
+                "No se encontró ningún adjunto en este documento. "
+                "Suba el PDF antes de enviarlo a firmar."
+            ))
+
+        # Cancelar solicitud de firma anterior si existe y no está firmada
+        if self.sign_request_id and self.sign_request_id.state != 'signed':
+            self.sign_request_id.cancel()
+            # Desactivar la template efímera anterior
+            old_template = self.sign_request_id.template_id
+            self.sign_request_id = False
+            if old_template:
+                old_template.active = False
+
+        # Obtener el rol por defecto del módulo sign
+        default_role = self.env.ref('sign.sign_item_role_default', raise_if_not_found=False)
+        if not default_role:
+            default_role = self.env['sign.item.role'].search([('default', '=', True)], limit=1)
+        if not default_role:
+            raise UserError(_("No se encontró un rol de firma por defecto. Verifique la configuración del módulo Sign."))
+
+        # Obtener el tipo de firma 'signature' del módulo sign
+        sign_type = self.env['sign.item.type'].search([('item_type', '=', 'signature')], limit=1)
+        if not sign_type:
+            raise UserError(_("No se encontró el tipo de campo 'Firma' en el módulo Sign. Verifique la configuración."))
+
+        # Crear sign.template dinámica con el adjunto del documento
+        sign_template = self.env['sign.template'].create({
+            'name': self.computed_name or _('Documento para firmar'),
+            'document_ids': [(0, 0, {
+                'attachment_id': attachment.id,
+            })],
+        })
+
+        # Obtener el sign.document creado y calcular la última página
+        sign_document = sign_template.document_ids[:1]
+        last_page = sign_document.num_pages or 1
+
+        # Añadir campo de firma en la parte inferior derecha de la última página
+        self.env['sign.item'].create({
+            'document_id': sign_document.id,
+            'type_id': sign_type.id,
+            'responsible_id': default_role.id,
+            'required': True,
+            'name': sign_type.placeholder or sign_type.name or 'Firma',
+            'page': last_page,
+            'posX': 0.65,
+            'posY': 0.85,
+            'width': sign_type.default_width,
+            'height': sign_type.default_height,
+        })
+
+        # El firmante es el usuario actual (Director Gerente)
+        signer_partner = self.env.user.partner_id
+        if not signer_partner.email:
+            raise UserError(_(
+                "El usuario %s no tiene email configurado. "
+                "Es necesario para enviar la solicitud de firma."
+            ) % self.env.user.name)
+
+        # Crear sign.request con context no_sign_mail=True para controlar el envío
+        sign_request = self.env['sign.request'].with_context(no_sign_mail=True).create({
+            'template_id': sign_template.id,
+            'reference': self.computed_name or _('Documento para firmar'),
+            'reference_doc': f'{self._name},{self.id}',
+            'request_item_ids': [(0, 0, {
+                'partner_id': signer_partner.id,
+                'role_id': default_role.id,
+            })],
+        })
+
+        self.sign_request_id = sign_request.id
+
+        # Registrar en el chatter
+        self.sudo().message_post(
+            body=_("Se ha enviado una solicitud de firma electrónica a %s.") % signer_partner.name,
+            subtype_id=self.env.ref('mail.mt_note').id,
+        )
+
+        # Abrir el documento de firma directamente para que el Director Gerente firme
+        return sign_request.go_to_signable_document()
+
+    def action_view_sign_request(self):
+        """Abre la solicitud de firma asociada."""
+        self.ensure_one()
+        if not self.sign_request_id:
+            raise UserError(_("No hay ninguna solicitud de firma asociada a este documento."))
+        return self.sign_request_id.go_to_document()
+
+    # ─────────────────────────────────────────────
+    # Flujo de aprobación
+    # ─────────────────────────────────────────────
 
     def action_solicite_final_revision(self):
         self.ensure_one()
         if self.status == 'sign_company' and self.env.user.has_group("portal_requests.group_equip_boss"):
-            print("Solicitante solicita revisión final")
             self.status = 'final_revision'
             self.is_company_signed = True
             group = self.env.ref('portal_requests.group_director_manager')
             user_to_send = group.user_ids
-            self.send_request_email(self.type_id.name,user_to_send, "final_revision")
+            self.send_request_email(self.type_id.name, user_to_send, "final_revision")
 
     def action_approve(self):
         self.ensure_one()
-        if self.status == 'approved_by_director_i_d' and self.env.user.has_group("portal_requests.group_director_investigation_and_development"):
-            print("Director I+D aprueba")
+        if self.status == 'approved_by_director_i_d' and self.env.user.has_group(
+                "portal_requests.group_director_investigation_and_development"):
             self.status = 'approved_by_director_gerente'
             group = self.env.ref('portal_requests.group_director_manager')
             user_to_send = group.user_ids
-            self.send_request_email(self.type_id.name,user_to_send, "approved_by_director_i_d")
-        if self.status == 'approved_by_director_gerente' and self.env.user.has_group("portal_requests.group_director_manager"):
-            if not self.financial_signature and self.is_digital_signed == False:
-                raise UserError("Por favor, añada la firma del director gerente o firme mediante el certificado digital.")
-            print("Gerente aprueba")
-            if self.financial_signature:
-                self.add_signature_to_pdf()
+            self.send_request_email(self.type_id.name, user_to_send, "approved_by_director_i_d")
+
+        if self.status == 'approved_by_director_gerente' and self.env.user.has_group(
+                "portal_requests.group_director_manager"):
+            # Verificar que el Director Gerente ha firmado mediante sign
+            if not self.sign_request_id or self.sign_request_id.state != 'signed':
+                raise UserError(_(
+                    "El Director Gerente debe firmar digitalmente el documento antes de aprobar. "
+                    "Use el botón 'Firmar digitalmente' y complete la firma."
+                ))
             if self.is_company_signed:
                 group = self.env.ref('portal_requests.group_director_investigation_and_development')
                 user_to_send = group.user_ids
-                print("esta ya firmado por la empresa")
                 self.status = 'final_revision'
                 self.send_request_email(self.type_id.name, user_to_send, "final_revision")
-
             else:
-                print("no esta firmado")
                 user_to_send = self.user_id
                 self.status = 'sign_company'
-                # self.add_signature_to_pdf()
                 self.send_request_email(self.type_id.name, user_to_send, "sign_director_manager")
-            # self.send_request_email(self.type_id.name,user_to_send, "sign_director_accounting")
-        # if self.status == 'sign_company' and self.env.user.has_group("portal_requests.group_director_manager"):
-        #     print("Director Gerente aprueba")
-        #     self.status = 'approve'
-        #     self.send_request_email(self.type_id.name,self.user_id, "sign_company")
-        if self.status == 'final_revision' and self.env.user.has_group("portal_requests.group_director_investigation_and_development"):
-            print("Jefe de equipo aprueba")
+
+        if self.status == 'final_revision' and self.env.user.has_group(
+                "portal_requests.group_director_investigation_and_development"):
             self.status = 'approve'
             user_to_send = self.user_id
-            self.send_request_email(self.type_id.name,user_to_send, "final_revision")
+            self.send_request_email(self.type_id.name, user_to_send, "final_revision")
 
     def action_reject(self):
         for record in self:
@@ -359,74 +226,74 @@ class DocumentApproval(models.Model):
         if self.env.user.has_group("portal_requests.group_director_manager"):
             self.status = 'sign_company'
         else:
-            raise UserError("Solo el director gerente puede enviar a revisión.")
+            raise UserError(_("Solo el director gerente puede enviar a revisión."))
 
+    # ─────────────────────────────────────────────
+    # Envío de emails
+    # ─────────────────────────────────────────────
 
-    def send_request_email(self, move_text,user_to_send,type):
-        print("*"*100)
-        print("senf_request_email")
-        document_request_link = f"/web#id={self.id}&cids=1-24-28-29-32-25-30-31&menu_id=899&active_id=1&model=document.approval&view_type=form"
+    def send_request_email(self, move_text, user_to_send, type):
+        document_request_link = (
+            f"/web#id={self.id}&cids=1-24-28-29-32-25-30-31"
+            f"&menu_id=899&active_id=1&model=document.approval&view_type=form"
+        )
         user = self.user_id
 
         if not user_to_send:
-            raise UserError("No se encontraron directores en el grupo especificado.")
+            raise UserError(_("No se encontraron usuarios a los que enviar el correo."))
 
         for admin_user in user_to_send:
             if not admin_user.email:
-                continue  # Evita enviar correos a usuarios sin email
+                continue
             user_for_send = self.env.user.name
-            if type=="approved_by_director_i_d":
-                print("approved_by_director_i_d")
-                admin_name = admin_user.name
+            admin_name = admin_user.name
+
+            if type == "approved_by_director_i_d":
                 body_html = f"""
-                       <p>Estimado/a {admin_name},</p>
-                       <p>El Director de I+D,{user_for_send}, ya ha dado su aprobación para la siguiente solicitud:</p>
-                       <ul>
-                           <li><strong>Solicitante:</strong> {user.name}</li>
-                           <li><strong>Tipo:</strong> {move_text}</li>
-                           <li><strong>Enlace:</strong> <a href="{document_request_link}">Solicitud</a></li>
-                       </ul>
-                       <p>Saludos cordiales, Odoo</p>
-                   """
-            elif type=="sign_director_manager":
-                print("sign_director_manager")
-                admin_name = admin_user.name
+                    <p>Estimado/a {admin_name},</p>
+                    <p>El Director de I+D, {user_for_send}, ya ha dado su aprobación para la siguiente solicitud:</p>
+                    <ul>
+                        <li><strong>Solicitante:</strong> {user.name}</li>
+                        <li><strong>Tipo:</strong> {move_text}</li>
+                        <li><strong>Enlace:</strong> <a href="{document_request_link}">Solicitud</a></li>
+                    </ul>
+                    <p>Saludos cordiales, Odoo</p>
+                """
+            elif type == "sign_director_manager":
                 body_html = f"""
-                                      <p>Estimado/a {admin_name},</p>
-                                      <p>El Director Gerente,{user_for_send}, ya ha firmado la siguiente solicitud:</p>
-                                      <p>Es necesario que la empresa firme el documento para continuar con el proceso.</p>
-                                      <ul>
-                                          <li><strong>Solicitante:</strong> {user.name}</li>
-                                          <li><strong>Tipo:</strong> {move_text}</li>
-                                          <li><strong>Enlace:</strong> <a href="{document_request_link}">Solicitud</a></li>
-                                      </ul>
-                                      <p>Saludos cordiales, Odoo</p>
-                                  """
-            elif type=="sign_company":
-                print("sign_company")
-                admin_name = admin_user.name
+                    <p>Estimado/a {admin_name},</p>
+                    <p>El Director Gerente, {user_for_send}, ya ha firmado digitalmente la siguiente solicitud:</p>
+                    <p>Es necesario que la empresa firme el documento para continuar con el proceso.</p>
+                    <ul>
+                        <li><strong>Solicitante:</strong> {user.name}</li>
+                        <li><strong>Tipo:</strong> {move_text}</li>
+                        <li><strong>Enlace:</strong> <a href="{document_request_link}">Solicitud</a></li>
+                    </ul>
+                    <p>Saludos cordiales, Odoo</p>
+                """
+            elif type == "sign_company":
                 body_html = f"""
-                                      <p>Estimado/a {admin_name},</p>
-                                      <p>El jefe de equipo,{user_for_send}, ha añadido la firma de la empresa a la solicitud:</p>
-                                      <ul>
-                                          <li><strong>Solicitante:</strong> {user.name}</li>
-                                          <li><strong>Tipo:</strong> {move_text}</li>
-                                          <li><strong>Enlace:</strong> <a href="{document_request_link}">Solicitud</a></li>
-                                      </ul>
-                                      <p>Saludos cordiales, Odoo</p>
-                                  """
+                    <p>Estimado/a {admin_name},</p>
+                    <p>El jefe de equipo, {user_for_send}, ha confirmado la firma de la empresa en la solicitud:</p>
+                    <ul>
+                        <li><strong>Solicitante:</strong> {user.name}</li>
+                        <li><strong>Tipo:</strong> {move_text}</li>
+                        <li><strong>Enlace:</strong> <a href="{document_request_link}">Solicitud</a></li>
+                    </ul>
+                    <p>Saludos cordiales, Odoo</p>
+                """
             else:
-                admin_name = admin_user.name
                 body_html = f"""
-                                       <p>Estimado/a {admin_name},</p>
-                                       <p>El Director Gerente ya ha dado su aprobación para la siguiente solicitud:</p>
-                                       <ul>
-                                           <li><strong>Solicitante:</strong> {user.name}</li>
-                                           <li><strong>Tipo:</strong> {move_text}</li>
-                                           <li><strong>Enlace:</strong> <a href="{document_request_link}">Solicitud</a></li>
-                                       </ul>
-                                       <p>Saludos cordiales, Odoo</p>
-                                   """
+                    <p>Estimado/a {admin_name},</p>
+                    <p>El Director Gerente ya ha dado su aprobación para la siguiente solicitud:</p>
+                    <ul>
+                        <li><strong>Solicitante:</strong> {user.name}</li>
+                        <li><strong>Tipo:</strong> {move_text}</li>
+                        <li><strong>Enlace:</strong> <a href="{document_request_link}">Solicitud</a></li>
+                    </ul>
+                    <p>Saludos cordiales, Odoo</p>
+                """
+
             mail_values = {
                 'subject': 'Solicitud de documento',
                 'email_from': 'no-reply@aicia.com',
@@ -435,44 +302,3 @@ class DocumentApproval(models.Model):
             }
             mail = self.env['mail.mail'].create(mail_values)
             mail.send()
-
-    def send_applied_email(self, move_text):
-        admin_users = self.env['res.users'].search([
-            ('id', '=', self.user_id.id)
-        ])
-        print("*" * 100)
-        print("senf_applied_email")
-        print("admin_users", admin_users)
-
-        print("self.user_id", self.user_id)
-
-        # document_request_link = f"/web#id={self.id}&cids=1-24-28-29-32-25-30-31&menu_id=899&active_id=1&model=document.approval&view_type=form"
-        # user = self.user_id
-        #
-        # if not admin_users:
-        #     raise UserError("No se encontraron directores en el grupo especificado.")
-        #
-        # for admin_user in admin_users:
-        #     if not admin_user.email:
-        #         continue  # Evita enviar correos a usuarios sin email
-        #
-        #     admin_name = admin_user.name
-        #     body_html = f"""
-        #            <p>Estimado/a {admin_name},</p>
-        #            <p>El Director de I+D ya ha dado su aprobación para la siguiente solicitud:</p>
-        #            <ul>
-        #                <li><strong>Solicitante:</strong> {user.name}</li>
-        #                <li><strong>Tipo:</strong> {move_text}</li>
-        #                <li><strong>Enlace:</strong> <a href="{document_request_link}">Solicitud</a></li>
-        #            </ul>
-        #            <p>Saludos cordiales, Odoo</p>
-        #        """
-        #
-        #     mail_values = {
-        #         'subject': 'Solicitud de documento',
-        #         'email_from': user.email or 'no-reply@example.com',
-        #         'email_to': admin_user.email,
-        #         'body_html': body_html,
-        #     }
-        #     mail = self.env['mail.mail'].create(mail_values)
-        #     mail.send()

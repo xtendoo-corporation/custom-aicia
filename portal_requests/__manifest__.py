@@ -16,7 +16,7 @@
         "hr",
         "hr_expense",
         "web",
-        "report_qweb_signer",
+        "sign",
         "project",
         "send_draft_invoices",
         "xtendoo_invoice_import_gemini_ai"
@@ -36,7 +36,6 @@
         'views/portal_project_requests_template.xml',
         'views/portal_purchase_order_requests_template.xml',
         'views/interface/menu.xml',
-        'views/interface/certificate_views.xml',
         'views/interface/portal_project_request.xml',
         'views/interface/aicia_approval_documents.xml',
         'views/interface/aicia_type_approval.xml',

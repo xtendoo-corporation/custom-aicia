@@ -1,6 +1,15 @@
 <?xml version="1.0" encoding="utf-8"?>
 <odoo>
     <data noupdate="0">
+
+        <!-- Corregir acción con domain inválido guardada en BD -->
+        <record id="action_approved" model="ir.actions.act_window">
+            <field name="name">Documentos Aprobados</field>
+            <field name="res_model">document.approval</field>
+            <field name="view_mode">list,form</field>
+            <field name="domain">[('status', '=', 'approve')]</field>
+        </record>
+
         <record id="dashboard_documents" model="portal.request.dashboard">
             <field name="name">Documentos</field>
             <field name="image" type="base64" file="portal_requests/static/description/document.png"/>

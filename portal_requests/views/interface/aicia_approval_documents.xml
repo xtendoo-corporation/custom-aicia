@@ -7,12 +7,11 @@
             <list>
                 <field name="type_id"/>
                 <field name="description"/>
-                <field name="status" />
+                <field name="status"/>
                 <field name="work_group_id" invisible="0"/>
                 <field name="is_company_signed"/>
                 <field name="user_id" invisible="0"/>
-
-
+                <field name="sign_request_state" optional="show"/>
             </list>
         </field>
     </record>
@@ -24,101 +23,76 @@
             <form>
                 <header>
                     <field name="status" widget="statusbar"/>
-                    <!-- Botonera del I+D -->
-                         <button name="action_approve"
-                                string="Aprobar"
-                                type="object"
-                                class="btn-primary"
-                                 groups="portal_requests.group_director_investigation_and_development"
-                                 invisible="status in ('approved_by_director_gerente','sign_company','approve', 'rejected')"
-                                />
-                        <button name="action_reject"
-                                string="Rechazar"
-                                type="object"
-                                class="btn-secondary"
-                                groups="portal_requests.group_director_investigation_and_development"
-                                invisible="status in ('approved_by_director_gerente','sign_company','approve', 'rejected')"
-                                />
-                    <!-- Fin Botonera del I+D -->
-                    <!-- Botonera De solicitante -->
-                    <button name="action_solicite_final_revision"
-                                string="Solicitar revision final"
-                                type="object"
-                                class="btn-secondary"
-                                groups="portal_requests.group_equip_boss"
-                                invisible="status not in ('sign_company')"
-                                />
-                    <!-- Fin botonera de solicitante -->
-                    <!-- Botonera director financiero -->
-<!--                    <button name="action_approve"-->
-<!--                                string="Aprobar"-->
-<!--                                type="object"-->
-<!--                                class="btn-primary"-->
-<!--                                 groups="portal_requests.group_financial_director"-->
-<!--                                 invisible="status not in ('sign_director_accounting')"-->
-<!--                                />-->
-<!--                        <button name="action_reject"-->
-<!--                                string="Rechazar"-->
-<!--                                type="object"-->
-<!--                                class="btn-secondary"-->
-<!--                                groups="portal_requests.group_financial_director"-->
-<!--                                invisible="status not in ('sign_director_accounting')"-->
-<!--                                />-->
-                    <!-- Fin Botonera director financiero -->
-                     <!-- Botonera del Director Gerente -->
-<!--                                <button name="request_partner_sign"-->
-<!--                                    string="Solicitar firma empresa"-->
-<!--                                    type="object"-->
-<!--                                    class="btn-primary"-->
-<!--                                     groups="portal_requests.group_director_manager"-->
-<!--                                        invisible="status not in ('sign_company')"-->
-<!--                                    />-->
-                                 <button name="action_approve"
-                                        string="Aprobar"
-                                        type="object"
-                                        class="btn-primary"
-                                         groups="portal_requests.group_director_manager"
-                                         invisible="status not in ('approved_by_director_gerente')"
-                                        />
-                                <button name="action_reject"
-                                        string="Rechazar"
-                                        type="object"
-                                        class="btn-secondary"
-                                        groups="portal_requests.group_director_manager"
-                                        invisible="status not in ('approved_by_director_gerente')"
-                                        />
-                                <button name="action_to_revise"
-                                        string="Para Revisar"
-                                        type="object"
-                                        class="btn-secondary"
-                                        groups="portal_requests.group_director_manager"
-                                        invisible="status not in ('rejected','approve')"
-                                        />
-                                <button name="pdf_signer"
-                                        string="Firma digital"
-                                        type="object"
-                                        class="oe_highlight"
-                                        groups="portal_requests.group_director_manager"
-                                        invisible="status != 'approved_by_director_gerente' or is_digital_signed == True"/>
-                    <!-- Fin Botonera del Director Gerente -->
 
-                    </header>
+                    <!-- Botonera del I+D -->
+                    <button name="action_approve"
+                            string="Aprobar"
+                            type="object"
+                            class="btn-primary"
+                            groups="portal_requests.group_director_investigation_and_development"
+                            invisible="status in ('approved_by_director_gerente','sign_company','approve','rejected')"/>
+                    <button name="action_reject"
+                            string="Rechazar"
+                            type="object"
+                            class="btn-secondary"
+                            groups="portal_requests.group_director_investigation_and_development"
+                            invisible="status in ('approved_by_director_gerente','sign_company','approve','rejected')"/>
+
+                    <!-- Botonera del Solicitante -->
+                    <button name="action_solicite_final_revision"
+                            string="Solicitar revisión final"
+                            type="object"
+                            class="btn-secondary"
+                            groups="portal_requests.group_equip_boss"
+                            invisible="status != 'sign_company'"/>
+
+                    <!-- Botonera del Director Gerente -->
+                    <!-- Firmar digitalmente: visible cuando está en aprobación del gerente y aún no tiene sign_request firmado -->
+                    <button name="action_send_to_sign"
+                            string="Firmar digitalmente"
+                            type="object"
+                            class="oe_highlight"
+                            groups="portal_requests.group_director_manager"
+                            invisible="status != 'approved_by_director_gerente' or sign_request_state == 'signed'"/>
+
+                    <!-- Ver solicitud de firma en curso -->
+                    <button name="action_view_sign_request"
+                            string="Ver solicitud de firma"
+                            type="object"
+                            class="btn-info"
+                            groups="portal_requests.group_director_manager"
+                            invisible="not sign_request_id or sign_request_state == 'signed'"/>
+
+                    <!-- Aprobar: solo visible cuando ya está firmado -->
+                    <button name="action_approve"
+                            string="Aprobar"
+                            type="object"
+                            class="btn-primary"
+                            groups="portal_requests.group_director_manager"
+                            invisible="status != 'approved_by_director_gerente' or sign_request_state != 'signed'"/>
+                    <button name="action_reject"
+                            string="Rechazar"
+                            type="object"
+                            class="btn-secondary"
+                            groups="portal_requests.group_director_manager"
+                            invisible="status != 'approved_by_director_gerente'"/>
+                    <button name="action_to_revise"
+                            string="Para Revisar"
+                            type="object"
+                            class="btn-secondary"
+                            groups="portal_requests.group_director_manager"
+                            invisible="status not in ('rejected','approve')"/>
+                </header>
                 <sheet>
                     <group>
                         <field name="type_id" readonly="1"/>
                         <field name="description" readonly="1"/>
-                        <field name="work_group_id" invisible="0" />
+                        <field name="work_group_id" invisible="0"/>
                         <field name="is_company_signed" readonly="1"/>
-                        <field name="is_digital_signed" invisble="1"/>
-                        <field name="attachment_check" invisible="1"/>
-                        <field name="signature_page"/>
-                        <field name="signature_position"/>
-                    </group>
-                    <group>
-                        <group>
-                            <field name="financial_signature" widget="signature" readonly="1" groups="!portal_requests.group_director_manager"/>
-                            <field name="financial_signature" widget="signature" readonly="0" groups="portal_requests.group_director_manager"/>
-                        </group>
+                        <!-- Campo de firma digital: enlace a la solicitud de sign -->
+                        <field name="sign_request_id" readonly="1"
+                               invisible="not sign_request_id"/>
+                        <field name="sign_request_state" invisible="1"/>
                     </group>
                 </sheet>
                 <chatter/>
@@ -127,19 +101,18 @@
     </record>
 
     <record id="view_document_approval_search" model="ir.ui.view">
-            <field name="name">document.approval.search</field>
-            <field name="model">document.approval</field>
-            <field name="arch" type="xml">
-                <search string="Facturas">
-                    <field name="status"/>
-                    <filter string="Aprobación Director I+D" name="approved_filter" domain="[('status', '=', 'approved_by_director_i_d')]"/>
-                    <filter string="Firma de director Financiero" name="approved_filter" domain="[('status', '=', 'sign_director_accounting')]"/>
-                    <filter string="Esperando firma de la empresa" name="approved_filter" domain="[('status', '=', 'sign_company')]"/>
-                    <filter string="Aprobadas" name="approved_filter" domain="[('status', '=', 'approve')]"/>
-                    <filter string="Rechazadas" name="rejected_filter" domain="[('status', '=', 'rejected')]"/>
-                </search>
-            </field>
-        </record>
+        <field name="name">document.approval.search</field>
+        <field name="model">document.approval</field>
+        <field name="arch" type="xml">
+            <search string="Documentos">
+                <field name="status"/>
+                <filter string="Aprobación Director I+D" name="filter_i_d" domain="[('status','=','approved_by_director_i_d')]"/>
+                <filter string="Esperando firma de la empresa" name="filter_sign_company" domain="[('status','=','sign_company')]"/>
+                <filter string="Aprobadas" name="filter_approved" domain="[('status','=','approve')]"/>
+                <filter string="Rechazadas" name="filter_rejected" domain="[('status','=','rejected')]"/>
+            </search>
+        </field>
+    </record>
 
     <record id="action_document_approval_all" model="ir.actions.act_window">
         <field name="name">Documentos</field>

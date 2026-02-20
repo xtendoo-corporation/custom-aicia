@@ -34,21 +34,19 @@ class PortalApprovalRequestController(Controller):
             return request.redirect('/portal/approval_request')
 
         # Buscar el tipo de aprobación correspondiente en `type.approval`
-        approval_type_record = request.env['type.approval'].search([('name', '=', approval_type)], limit=1)
+        approval_type_record = request.env['type.approval'].sudo().search([('name', '=', approval_type)], limit=1)
 
         if not approval_type_record:
             return request.redirect(
                 '/error-page')  # Redirige a una página de error si no se encuentra el tipo de aprobación
 
         # Crear un nuevo registro en `document.approval`
-        new_document_approval = request.env['document.approval'].create({
+        new_document_approval = request.env['document.approval'].sudo().create({
             'type_id': approval_type_record.id,
             'description': description,
             'company_id': request.env.user.company_id.id,
             'user_id': request.env.user.id,
             'is_company_signed': is_company_signed,
-            'signature_page': 'last',
-            'signature_position': 'bottom_left',
             'work_group_id': work_group_id,
         })
 
@@ -72,7 +70,7 @@ class PortalApprovalRequestController(Controller):
 
         env = request.env
 
-        group = request.env.ref('portal_requests.group_director_investigation_and_development')
+        group = request.env.ref('portal_requests.group_director_investigation_and_development').sudo()
         admin_users = group.user_ids
 
         document_request_link = (

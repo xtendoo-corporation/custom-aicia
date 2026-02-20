@@ -11,7 +11,6 @@ from . import type_approval
 from . import document_approval
 from . import portal_request_dashboard
 from . import res_users
-from . import report_certificate
 from . import account_analytic_inherit
 from . import etiqueta_categoria
 from . import ir_attachment
