@@ -1,0 +1,25 @@
+<?xml version="1.0" encoding="utf-8"?>
+<odoo>
+    <data>
+
+        <!-- ============================================================ -->
+        <!-- WIZARD REGISTRAR PAGO - campo plantilla de reparto           -->
+        <!-- ============================================================ -->
+
+        <record id="view_account_payment_register_form_inherit_split" model="ir.ui.view">
+            <field name="name">account.payment.register.form.inherit.split</field>
+            <field name="model">account.payment.register</field>
+            <field name="inherit_id" ref="account.view_account_payment_register_form" />
+            <field name="arch" type="xml">
+
+                <!-- Añadir campo split_template_id al final del group2 -->
+                <xpath expr="//group[@name='group2']" position="inside">
+                    <field name="split_template_id"
+                        options="{'no_create': True}" />
+                </xpath>
+
+            </field>
+        </record>
+
+    </data>
+</odoo>
