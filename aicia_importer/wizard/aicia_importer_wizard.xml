@@ -297,5 +297,90 @@
         <field name="view_id" ref="aicia_importer_projects_view"/>
         <field name="target">new</field>
     </record>
+
+    <!-- Vista para ASIGNACIONES DE PROYECTOS -->
+    <record id="aicia_importer_project_assignments_view" model="ir.ui.view">
+        <field name="name">AICIA - Importador de Asignaciones de Proyectos</field>
+        <field name="model">aicia.importer.wizard</field>
+        <field name="priority">10</field>
+        <field name="arch" type="xml">
+            <form string="Importador de Asignaciones de Proyectos AICIA">
+                <field name="state" invisible="1"/>
+                <!-- Mostrar formulario de carga cuando state='draft' -->
+                <group invisible="state == 'done'">
+                    <field name="data_file_project_assignments" filename="filename_project_assignments" widget="binary"/>
+                    <field name="filename_project_assignments" invisible="1"/>
+                    <field name="data_file_suppliers" invisible="1"/>
+                    <field name="filename_suppliers" invisible="1"/>
+                    <field name="data_file_customers" invisible="1"/>
+                    <field name="filename_customers" invisible="1"/>
+                    <field name="data_file_employees" invisible="1"/>
+                    <field name="filename_employees" invisible="1"/>
+                    <field name="data_file_projects" invisible="1"/>
+                    <field name="filename_projects" invisible="1"/>
+                </group>
+                <group invisible="state == 'done'">
+                    <field name="update_existing"/>
+                </group>
+
+                <!-- Mostrar log cuando state='done' -->
+                <group invisible="state == 'draft'">
+                    <field name="import_log" nolabel="1" colspan="2"/>
+                </group>
+
+                <notebook invisible="state == 'done'">
+                    <page string="Información">
+                        <group>
+                            <p>
+                                Este asistente permite importar la relación entre proyectos y empleados desde archivos Excel (.xlsx).
+                            </p>
+                            <p>
+                                <b>Formato esperado:</b>
+                                <ul>
+                                    <li>Primera fila: encabezados de columnas</li>
+                                    <li><b>Columnas requeridas:</b> ID_Proyecto, ID_Personal</li>
+                                    <li><b>Columnas opcionales:</b> ID_Departamento, Jefe_Proyecto</li>
+                                    <li><b>ID_Proyecto:</b> Código del proyecto (debe existir previamente)</li>
+                                    <li><b>ID_Personal:</b> Código del empleado sin la "E" inicial (debe existir previamente)</li>
+                                </ul>
+                            </p>
+                            <p>
+                                <b>Funcionamiento:</b>
+                                <ul>
+                                    <li>Busca el proyecto por su código</li>
+                                    <li>Busca el empleado añadiendo "E" al ID_Personal</li>
+                                    <li>Asocia el empleado al proyecto</li>
+                                    <li>Si el empleado ya está asociado, no se duplica</li>
+                                </ul>
+                            </p>
+                            <p>
+                                <b>Nota:</b> Tanto los proyectos como los empleados deben haber sido importados previamente.
+                            </p>
+                        </group>
+                    </page>
+                </notebook>
+                <footer>
+                    <button
+                        name="import_suppliers"
+                        string="Importar"
+                        type="object"
+                        class="btn-primary"
+                        invisible="state == 'done'"
+                    />
+                    <button string="Cerrar" class="btn-primary" special="cancel" invisible="state == 'draft'"/>
+                    <button string="Cancelar" class="btn-secondary" special="cancel" invisible="state == 'done'"/>
+                </footer>
+            </form>
+        </field>
+    </record>
+
+    <!-- Acción para ASIGNACIONES DE PROYECTOS -->
+    <record id="aicia_importer_project_assignments_action" model="ir.actions.act_window">
+        <field name="name">Importar Asignación de Proyectos</field>
+        <field name="res_model">aicia.importer.wizard</field>
+        <field name="view_mode">form</field>
+        <field name="view_id" ref="aicia_importer_project_assignments_view"/>
+        <field name="target">new</field>
+    </record>
 </odoo>
 

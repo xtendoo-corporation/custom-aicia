@@ -21,7 +21,7 @@ class DocumentApproval(models.Model):
     _name = 'document.approval'
     _rec_name = 'computed_name'
     _description = 'Solicitud Documentos'
-    _inherit = ['mail.thread', 'mail.activity.mixin']
+    _inherit = ['mail.thread', 'mail.activity.mixin', 'portal.mixin']
 
     type_id = fields.Many2one('type.approval', string='Tipo', required=True ,tracking=True)
     computed_name = fields.Char('Computed Name', compute='_compute_name')
@@ -57,6 +57,18 @@ class DocumentApproval(models.Model):
         ('last', 'Última Página'),
         ('all', 'Todas las paginas'),
     ], string="Firmar en", default='last', tracking=True)
+
+    # Campo computed para mostrar botón de solicitar revisión en el portal
+    show_solicitar_revision_final = fields.Boolean(
+        string='Mostrar Solicitar Revisión Final',
+        compute='_compute_show_solicitar_revision_final',
+        store=False
+    )
+
+    @api.depends('status')
+    def _compute_show_solicitar_revision_final(self):
+        for record in self:
+            record.show_solicitar_revision_final = record.status == 'sign_company'
 
     @api.depends()
     def _compute_attachment_check(self):

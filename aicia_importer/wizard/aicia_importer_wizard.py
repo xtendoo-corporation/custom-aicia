@@ -99,6 +99,12 @@ class AiciaImporterWizard(models.TransientModel):
     )
     filename_projects = fields.Char(string="Nombre del archivo de proyectos")
 
+    data_file_project_assignments = fields.Binary(
+        string="Archivo de Asignación de Proyectos",
+        help="Seleccione el archivo Excel con la relación entre proyectos y empleados.",
+    )
+    filename_project_assignments = fields.Char(string="Nombre del archivo de asignaciones")
+
     update_existing = fields.Boolean(
         string="Actualizar existentes",
         default=False,
@@ -129,7 +135,7 @@ class AiciaImporterWizard(models.TransientModel):
                   "Por favor, instálela con: pip install openpyxl")
             )
 
-        if not self.data_file_suppliers and not self.data_file_customers and not self.data_file_employees and not self.data_file_projects:
+        if not self.data_file_suppliers and not self.data_file_customers and not self.data_file_employees and not self.data_file_projects and not self.data_file_project_assignments:
             raise UserError(_("Por favor, seleccione al menos un archivo para importar."))
 
         _logger.info("=" * 80)
@@ -191,6 +197,17 @@ class AiciaImporterWizard(models.TransientModel):
             import_types.append('projects')
             _logger.info(f">>> PROYECTOS: {result['created']} creados, {result['updated']} actualizados, {result['errors']} errores")
 
+        # Importar asignaciones de proyectos si se proporciona el archivo
+        if self.data_file_project_assignments:
+            _logger.info(">>> Iniciando importación de ASIGNACIONES DE PROYECTOS")
+            result = self._import_project_assignments(self.data_file_project_assignments)
+            total_created += result['created']
+            total_updated += result['updated']
+            total_errors += result['errors']
+            all_errors.extend([f"[Asignaciones] {e}" for e in result['error_list']])
+            import_types.append('project_assignments')
+            _logger.info(f">>> ASIGNACIONES: {result['created']} creadas, {result['updated']} actualizadas, {result['errors']} errores")
+
         _logger.info("=" * 80)
         _logger.info(f"FIN DE IMPORTACIÓN - Total: {total_created} creados, {total_updated} actualizados, {total_errors} errores")
         _logger.info("=" * 80)
@@ -229,6 +246,10 @@ class AiciaImporterWizard(models.TransientModel):
                 entity_text = 'Clientes'
             elif import_types[0] == 'employees':
                 entity_text = 'Empleados'
+            elif import_types[0] == 'projects':
+                entity_text = 'Proyectos'
+            elif import_types[0] == 'project_assignments':
+                entity_text = 'Asignaciones de Proyectos'
             else:
                 entity_text = 'Contactos'
         else:
@@ -1126,11 +1147,16 @@ class AiciaImporterWizard(models.TransientModel):
 
                     # Verificar si necesita crear usuario portal (DESPUÉS de crear/actualizar el empleado)
                     # para asegurar que employee.work_contact_id existe
-                    if not portal_email:
-                        portal_email = ref
+                    if not portal_email and ref:
+                        # Generar email genérico basado en el código de empleado
+                        portal_email = f"{ref}@aicia.es"
+                        _logger.info(f">>> Generando email genérico para {full_name}: {portal_email}")
                     # SIEMPRE llamar al método para crear O actualizar el usuario portal
-                    _logger.info(f">>> Llamando a _create_portal_user_for_employee para {full_name} con email {portal_email}")
-                    self._create_portal_user_for_employee(employee, portal_email, full_name, result)
+                    if portal_email:
+                        _logger.info(f">>> Llamando a _create_portal_user_for_employee para {full_name} con email {portal_email}")
+                        self._create_portal_user_for_employee(employee, portal_email, full_name, result)
+                    else:
+                        _logger.warning(f"✗ No se puede crear usuario portal para {full_name}: sin email ni código de empleado")
 
                     # Crear cuenta bancaria si existe
                     if cuenta_bancaria and cuenta_bancaria != '0':
@@ -1343,12 +1369,14 @@ class AiciaImporterWizard(models.TransientModel):
 
                 # Actualizar email y login si cambió
                 new_login = email.lower()
+                _logger.info(f">>> Comparando login actual '{existing_user.login}' con nuevo '{new_login}'")
+                _logger.info(f">>> Comparando email actual '{existing_user.email}' con nuevo '{email}'")
                 if existing_user.login != new_login or existing_user.email != email:
                     user_vals_to_update['login'] = new_login
                     user_vals_to_update['email'] = email
                     partner_vals_to_update['email'] = email
                     login_changed = True
-                    _logger.info(f">>> Actualizando login y email de '{existing_user.login}' a '{new_login}'")
+                    _logger.info(f">>> ACTUALIZANDO login de '{existing_user.login}' a '{new_login}' y email a '{email}'")
 
                 # Actualizar nombre del partner si cambió
                 if partner.name != full_name:
@@ -1364,20 +1392,20 @@ class AiciaImporterWizard(models.TransientModel):
                 if user_vals_to_update:
                     try:
                         existing_user.sudo().write(user_vals_to_update)
-                        _logger.info(f"✓ Usuario actualizado con write(): {email}")
+                        _logger.info(f"✓ Usuario actualizado correctamente con write() - login: {new_login}, email: {email}")
                     except Exception as e:
-                        # Si falla el write(), intentar actualizar el login directamente con SQL
+                        # Si falla el write(), intentar actualizar el login y email directamente con SQL
                         if login_changed:
-                            _logger.warning(f"Write falló, usando SQL para actualizar login: {str(e)}")
+                            _logger.warning(f"Write falló, usando SQL para actualizar login y email: {str(e)}")
                             self.env.cr.execute(
-                                "UPDATE res_users SET login = %s WHERE id = %s",
-                                (new_login, existing_user.id)
+                                "UPDATE res_users SET login = %s, email = %s WHERE id = %s",
+                                (new_login, email, existing_user.id)
                             )
-                            # Actualizar otros campos sin login
-                            user_vals_without_login = {k: v for k, v in user_vals_to_update.items() if k != 'login'}
-                            if user_vals_without_login:
-                                existing_user.sudo().write(user_vals_without_login)
-                            _logger.info(f"✓ Usuario actualizado con SQL: {email}")
+                            # Actualizar otros campos sin login ni email
+                            user_vals_without_login_email = {k: v for k, v in user_vals_to_update.items() if k not in ['login', 'email']}
+                            if user_vals_without_login_email:
+                                existing_user.sudo().write(user_vals_without_login_email)
+                            _logger.info(f"✓ Usuario actualizado con SQL - login: {new_login}, email: {email}")
                         else:
                             raise
 
@@ -1391,9 +1419,9 @@ class AiciaImporterWizard(models.TransientModel):
                     _logger.info(f"✓ Usuario existente '{email}' asociado al empleado {full_name}")
 
                 if user_vals_to_update or partner_vals_to_update:
-                    _logger.info(f"✓ Usuario portal actualizado para {full_name} (login: {email})")
+                    _logger.info(f"✓ Usuario portal actualizado para {full_name} (login: {new_login}, email: {email})")
                 else:
-                    _logger.info(f"✓ Usuario portal ya estaba correcto para {full_name} (login: {email})")
+                    _logger.info(f"✓ Usuario portal ya estaba correcto para {full_name} (login: {existing_user.login}, email: {existing_user.email})")
 
                 return
 
@@ -1403,10 +1431,19 @@ class AiciaImporterWizard(models.TransientModel):
             ], limit=1)
 
             if existing_user_by_email:
-                error_msg = f"Usuario portal - {full_name}: ya existe un usuario con el email {email}"
-                result['error_list'].append(error_msg)
-                _logger.warning(f"✗ {error_msg}")
-                return
+                # Añadir un "2" al final del email
+                original_email = email
+                email_parts = email.split('@')
+                if len(email_parts) == 2:
+                    email_base = email_parts[0]
+                    email_domain = email_parts[1]
+                    email = f"{email_base}2@{email_domain}"
+                    _logger.info(f">>> Email {original_email} ya existe, usando {email} en su lugar")
+                else:
+                    error_msg = f"Usuario portal - {full_name}: formato de email inválido {email}"
+                    result['error_list'].append(error_msg)
+                    _logger.warning(f"✗ {error_msg}")
+                    return
 
             # Asegurarnos de que el partner tiene el email correcto
             if partner.email != email:
@@ -1609,6 +1646,7 @@ class AiciaImporterWizard(models.TransientModel):
                             ('code', '=', codigo)
                         ], limit=1)
 
+
                     if not existing_project:
                         existing_project = self.env['account.analytic.account'].search([
                             ('name', '=', nombre)
@@ -1641,6 +1679,188 @@ class AiciaImporterWizard(models.TransientModel):
         print("/"*50)
         print("cliente_not_found_count:", cliente_not_found_count)
         print("/"*50)
+
+        return result
+
+    def _import_project_assignments(self, file_data):
+        """Importa la relación entre proyectos y empleados desde un archivo Excel."""
+        result = {
+            'created': 0,
+            'updated': 0,
+            'errors': 0,
+            'error_list': []
+        }
+
+        try:
+            # Decodificar y cargar el archivo Excel
+            file_content = b64decode(file_data)
+            workbook = openpyxl.load_workbook(BytesIO(file_content))
+            sheet = workbook.active
+
+            # Obtener los encabezados de las columnas
+            headers = {}
+            for col_idx, cell in enumerate(sheet[1], start=1):
+                if cell.value:
+                    headers[cell.value.strip()] = col_idx
+
+            _logger.info(f">>> Columnas encontradas: {list(headers.keys())}")
+
+            # Validar que existen las columnas requeridas
+            required_columns = ['ID_Proyecto', 'ID_Personal']
+            missing_columns = [col for col in required_columns if col not in headers]
+            if missing_columns:
+                error_msg = f"Faltan columnas requeridas: {', '.join(missing_columns)}"
+                result['errors'] += 1
+                result['error_list'].append(error_msg)
+                _logger.error(f"✗ {error_msg}")
+                return result
+
+            # Procesar las filas de datos (desde la fila 2)
+            total_rows = sheet.max_row - 1
+            _logger.info(f">>> Total de filas a procesar: {total_rows}")
+
+            # Diccionario para agrupar empleados por proyecto
+            project_employees = {}
+
+            for row_idx, row in enumerate(sheet.iter_rows(min_row=2, values_only=True), start=2):
+                try:
+                    # Mostrar progreso cada 10 registros
+                    if (row_idx - 1) % 10 == 0:
+                        _logger.info(f">>> Procesando asignación {row_idx - 1}/{total_rows}")
+
+                    # Mapear los datos de la fila
+                    data = dict(zip(headers.keys(), row))
+
+                    # Obtener valores de las celdas
+                    id_proyecto = str(data.get('ID_Proyecto', '')).strip()
+                    id_personal = str(data.get('ID_Personal', '')).strip()
+                    id_departamento = str(data.get('ID_Departamento', '')).strip() if data.get('ID_Departamento') else ''
+                    jefe_proyecto = str(data.get('Jefe_Proyecto', '')).strip() if data.get('Jefe_Proyecto') else ''
+
+                    # Validaciones básicas
+                    if not id_proyecto:
+                        _logger.warning(f"Fila {row_idx}: Sin ID de proyecto, saltando...")
+                        continue
+
+                    if not id_personal:
+                        _logger.warning(f"Fila {row_idx}: Sin ID de personal, saltando...")
+                        continue
+
+                    # Buscar el proyecto por código
+                    project = self.env['account.analytic.account'].search([
+                        ('code', '=', id_proyecto)
+                    ], limit=1)
+
+                    if not project:
+                        error_msg = f"Fila {row_idx}: Proyecto con código '{id_proyecto}' no encontrado"
+                        result['error_list'].append(error_msg)
+                        _logger.warning(f"✗ {error_msg}")
+                        continue
+
+                    # Buscar el empleado por código (añadiendo "E" delante)
+                    codigo_empleado = f"E{id_personal}"
+                    employee = self.env['hr.employee'].search([
+                        ('codigo_empleado', '=', codigo_empleado)
+                    ], limit=1)
+
+                    if not employee:
+                        error_msg = f"Fila {row_idx}: Empleado con código '{codigo_empleado}' no encontrado"
+                        result['error_list'].append(error_msg)
+                        _logger.warning(f"✗ {error_msg}")
+                        continue
+
+                    # Agrupar proyectos con su jefe
+                    if project.id not in project_employees:
+                        project_employees[project.id] = {
+                            'project': project,
+                            'jefe_proyecto': None
+                        }
+
+                    # Actualizar el jefe_proyecto si viene en esta fila (el último prevalece)
+                    if jefe_proyecto:
+                        project_employees[project.id]['jefe_proyecto'] = jefe_proyecto
+
+                    result['created'] += 1
+
+                except Exception as e:
+                    result['errors'] += 1
+                    error_msg = f"Fila {row_idx}: Error procesando asignación: {str(e)}"
+                    result['error_list'].append(error_msg)
+                    _logger.error(f"✗ {error_msg}")
+
+            # Ahora actualizar los proyectos con el responsable (jefe)
+            for project_id, data in project_employees.items():
+                try:
+                    project = data['project']
+                    jefe_proyecto = data.get('jefe_proyecto')
+
+                    # Buscar y asignar el jefe de proyecto como responsable
+                    if jefe_proyecto:
+                        # Añadir "E" delante del código del jefe
+                        codigo_jefe = f"E{jefe_proyecto}"
+                        _logger.info(f">>> Buscando jefe de proyecto con código: {codigo_jefe}")
+
+                        # Buscar el empleado jefe
+                        jefe_employee = self.env['hr.employee'].search([
+                            ('codigo_empleado', '=', codigo_jefe)
+                        ], limit=1)
+
+                        if jefe_employee:
+                            # Verificar si el empleado tiene usuario asociado
+                            if jefe_employee.user_id:
+                                project.write({
+                                    'responsible_id': jefe_employee.user_id.id
+                                })
+
+                                # Añadir el usuario al grupo "Jefe de Proyecto"
+                                try:
+                                    _logger.info(f">>> Intentando añadir usuario '{jefe_employee.user_id.name}' (ID: {jefe_employee.user_id.id}) al grupo 'Jefe de Proyecto'")
+
+                                    group_project_boss = self.env.ref('portal_requests.group_project_boss', raise_if_not_found=False)
+
+                                    if not group_project_boss:
+                                        _logger.error(f"✗ No se encontró el grupo 'portal_requests.group_project_boss'")
+                                    else:
+                                        _logger.info(f">>> Grupo encontrado: {group_project_boss.name} (ID: {group_project_boss.id})")
+                                        _logger.info(f">>> Grupos actuales del usuario: {jefe_employee.user_id.group_ids.mapped('name')}")
+
+                                        if group_project_boss.id not in jefe_employee.user_id.group_ids.ids:
+                                            _logger.info(f">>> El usuario NO tiene el grupo, añadiendo...")
+                                            # Usar sudo() para asegurar permisos de escritura
+                                            jefe_employee.user_id.sudo().write({
+                                                'group_ids': [(4, group_project_boss.id)]
+                                            })
+                                            _logger.info(f"✓ Usuario '{jefe_employee.user_id.name}' añadido al grupo 'Jefe de Proyecto'")
+                                            _logger.info(f">>> Grupos después de añadir: {jefe_employee.user_id.group_ids.mapped('name')}")
+                                        else:
+                                            _logger.info(f">>> El usuario YA tiene el grupo 'Jefe de Proyecto', no es necesario añadirlo")
+
+                                except Exception as e:
+                                    _logger.error(f"✗ Error al añadir usuario '{jefe_employee.user_id.name}' al grupo 'Jefe de Proyecto': {str(e)}")
+                                    import traceback
+                                    _logger.error(f"Stack trace: {traceback.format_exc()}")
+
+                                result['updated'] += 1
+                                _logger.info(f"✓ Proyecto '{project.name}': Jefe '{jefe_employee.name}' asignado como responsable (usuario: {jefe_employee.user_id.name})")
+                            else:
+                                _logger.warning(f"⚠ Proyecto '{project.name}': El empleado jefe '{jefe_employee.name}' (código {codigo_jefe}) no tiene usuario asociado")
+                        else:
+                            _logger.warning(f"⚠ Proyecto '{project.name}': No se encontró empleado jefe con código {codigo_jefe}")
+
+                except Exception as e:
+                    result['errors'] += 1
+                    project_name = data['project'].name if 'project' in data and data['project'] else 'Desconocido'
+                    error_msg = f"Error actualizando proyecto {project_name}: {str(e)}"
+                    result['error_list'].append(error_msg)
+                    _logger.error(f"✗ {error_msg}")
+
+        except Exception as e:
+            result['errors'] += 1
+            error_msg = f"Error general al procesar archivo: {str(e)}"
+            result['error_list'].append(error_msg)
+            _logger.error(f"✗ {error_msg}")
+            import traceback
+            _logger.error(f"Stack trace: {traceback.format_exc()}")
 
         return result
 

@@ -65,5 +65,13 @@
         action="aicia_importer_projects_action"
         sequence="10"
     />
+
+    <menuitem
+        id="aicia_importer_project_assignments_menu"
+        name="Importar Asignación de Proyectos"
+        parent="aicia_menu_accounting"
+        action="aicia_importer_project_assignments_action"
+        sequence="20"
+    />
 </odoo>
 

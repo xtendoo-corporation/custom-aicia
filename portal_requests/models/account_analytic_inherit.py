@@ -1,7 +1,8 @@
 from odoo import models, fields, api
 
 class AccountAnalyticAccountInherit(models.Model):
-    _inherit = 'account.analytic.account'
+    _inherit = ['account.analytic.account', 'portal.mixin']
+    _name = 'account.analytic.account'
 
     sujeto_convenio = fields.Boolean(string='Sujeto a Convenio', tracking=True)
 
@@ -9,6 +10,7 @@ class AccountAnalyticAccountInherit(models.Model):
                                         string='Clientes Asociados',
                                         domain="[('id', 'not in', clientes_asociados_domain)]")
     observaciones = fields.Text(string='Observaciones', tracking=True)
+
 
     @api.depends('partner_id', 'clientes_asociados')
     def _compute_clientes_asociados_domain(self):
@@ -58,6 +60,64 @@ class AccountAnalyticAccountInherit(models.Model):
             record.attachment_count = attachment_count
 
     attachment_count = fields.Integer(string='Attachment Count', compute='_compute_attachment_count')
+
+    def _compute_invoice_count(self):
+        """Cuenta las facturas asociadas a esta cuenta analítica"""
+        for record in self:
+            # Buscar facturas que tengan líneas con distribución analítica para este proyecto
+            invoice_lines = self.env['account.move.line'].search([
+                ('analytic_distribution', '!=', False),
+                ('move_id.move_type', 'in', ['out_invoice', 'out_refund', 'in_invoice', 'in_refund']),
+                ('move_id.state', '!=', 'cancel')
+            ])
+
+            # Filtrar las que contienen este analytic account en su distribución
+            # analytic_distribution es un JSON como: {"42": 100.0} o {"42,43": 50.0}
+            invoice_ids = set()
+            for line in invoice_lines:
+                if line.analytic_distribution:
+                    for key in line.analytic_distribution.keys():
+                        # Las claves pueden ser "42" o "42,43" (múltiples IDs separados por coma)
+                        analytic_ids = [int(id_str) for id_str in key.split(',')]
+                        if record.id in analytic_ids:
+                            invoice_ids.add(line.move_id.id)
+                            break
+
+            record.invoice_count = len(invoice_ids)
+
+    invoice_count = fields.Integer(string='Facturas Asociadas', compute='_compute_invoice_count')
+
+    def action_view_invoices(self):
+        """Abre las facturas asociadas a esta cuenta analítica"""
+        # Buscar facturas que tengan líneas con distribución analítica para este proyecto
+        invoice_lines = self.env['account.move.line'].search([
+            ('analytic_distribution', '!=', False),
+            ('move_id.move_type', 'in', ['out_invoice', 'out_refund', 'in_invoice', 'in_refund']),
+            ('move_id.state', '!=', 'cancel')
+        ])
+
+        # Filtrar las que contienen este analytic account en su distribución
+        # analytic_distribution es un JSON como: {"42": 100.0} o {"42,43": 50.0}
+        invoice_ids = []
+        for line in invoice_lines:
+            if line.analytic_distribution:
+                for key in line.analytic_distribution.keys():
+                    # Las claves pueden ser "42" o "42,43" (múltiples IDs separados por coma)
+                    analytic_ids = [int(id_str) for id_str in key.split(',')]
+                    if self.id in analytic_ids:
+                        if line.move_id.id not in invoice_ids:
+                            invoice_ids.append(line.move_id.id)
+                        break
+
+        return {
+            'name': 'Facturas del Proyecto',
+            'type': 'ir.actions.act_window',
+            'res_model': 'account.move',
+            'view_mode': 'tree,form',
+            'domain': [('id', 'in', invoice_ids)],
+            'context': {'create': False},
+            'target': 'current',
+        }
 
     def action_open_attachments(self):
         return {

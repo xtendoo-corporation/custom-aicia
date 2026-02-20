@@ -1,0 +1,559 @@
+<?xml version="1.0" encoding="utf-8"?>
+<odoo>
+    <data>
+        <!-- Listado de Proyectos (Cuentas Analíticas) -->
+        <template id="portal_my_projects" name="Mis Proyectos">
+            <t t-call="portal.portal_layout">
+                <t t-set="breadcrumbs_searchbar" t-value="True"/>
+
+                <t t-call="portal.portal_searchbar">
+                    <t t-set="title">Mis Proyectos</t>
+                </t>
+
+                <t t-if="not projects">
+                    <div class="alert alert-info" role="alert">
+                        No tienes proyectos asignados como responsable.
+                    </div>
+                </t>
+                <t t-if="projects" t-call="portal.portal_table">
+                    <thead>
+                        <tr class="active">
+                            <th>Código</th>
+                            <th>Nombre del Proyecto</th>
+                            <th>Cliente</th>
+                            <th>Compañía</th>
+                            <th>Estado</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        <t t-foreach="projects" t-as="project">
+                            <tr>
+                                <td>
+                                    <a t-attf-href="/my/analytic_projects/#{project.id}">
+                                        <span t-esc="project.code"/>
+                                    </a>
+                                </td>
+                                <td>
+                                    <a t-attf-href="/my/analytic_projects/#{project.id}">
+                                        <span t-esc="project.name"/>
+                                    </a>
+                                </td>
+                                <td>
+                                    <span t-esc="project.partner_id.name if project.partner_id else '-'"/>
+                                </td>
+                                <td>
+                                    <span t-esc="project.company_id.name if project.company_id else '-'"/>
+                                </td>
+                                <td>
+                                    <span t-if="project.active" class="badge bg-success">Activo</span>
+                                    <span t-else="" class="badge bg-secondary">Inactivo</span>
+                                </td>
+                            </tr>
+                        </t>
+                    </tbody>
+                </t>
+            </t>
+        </template>
+
+        <!-- Detalle de Proyecto (Cuenta Analítica) -->
+        <template id="portal_my_project_detail" name="Detalle de Proyecto">
+            <t t-call="portal.portal_layout">
+                <!-- Deshabilitar breadcrumbs automáticos del portal -->
+                <t t-set="no_breadcrumbs" t-value="True"/>
+
+                <t t-set="o_portal_fullwidth_alert" groups="base.group_user">
+                    <t t-call="portal.portal_back_in_edit_mode">
+                        <t t-set="backend_url" t-value="'/web#model=account.analytic.account&amp;id=%s&amp;action=analytic.account_analytic_account_action&amp;view_type=form' % (project.id)"/>
+                    </t>
+                </t>
+
+                <div class="container">
+                    <div class="row mt-3">
+                        <div class="col-12">
+                            <ol class="breadcrumb">
+                                <li class="breadcrumb-item"><a href="/my">Mi Portal</a></li>
+                                <li class="breadcrumb-item"><a href="/my/analytic_projects">Mis Proyectos</a></li>
+                                <li class="breadcrumb-item active" aria-current="page">
+                                    <span t-esc="project.name"/>
+                                </li>
+                            </ol>
+                        </div>
+                    </div>
+
+                    <div class="row">
+                        <div class="col-12">
+                            <div class="card mb-4">
+                                <div class="card-header bg-primary text-white d-flex justify-content-between align-items-center">
+                                    <h4 class="mb-0">
+                                        <i class="fa fa-project-diagram me-2"></i>
+                                        <span t-esc="project.name"/>
+                                    </h4>
+                                    <a t-attf-href="/my/analytic_projects/#{project.id}/invoices_list" class="btn btn-light btn-sm">
+                                        <i class="fa fa-file-invoice me-1"></i>
+                                        Ver Facturas Asociadas
+                                    </a>
+                                </div>
+                                <div class="card-body">
+                                    <div class="row">
+                                        <div class="col-md-6">
+                                            <div class="mb-3">
+                                                <strong>Código del Proyecto:</strong>
+                                                <p><span t-esc="project.code or '-'"/></p>
+                                            </div>
+                                            <div class="mb-3">
+                                                <strong>Cliente:</strong>
+                                                <p><span t-esc="project.partner_id.name if project.partner_id else '-'"/></p>
+                                            </div>
+                                            <div class="mb-3">
+                                                <strong>Compañía:</strong>
+                                                <p><span t-esc="project.company_id.name if project.company_id else '-'"/></p>
+                                            </div>
+                                        </div>
+                                        <div class="col-md-6">
+                                            <div class="mb-3">
+                                                <strong>Responsable:</strong>
+                                                <p><span t-esc="project.responsible_id.name if project.responsible_id else '-'"/></p>
+                                            </div>
+                                            <div class="mb-3">
+                                                <strong>Grupo de Trabajo:</strong>
+                                                <p><span t-esc="project.work_group_id.name if project.work_group_id else '-'"/></p>
+                                            </div>
+                                            <div class="mb-3">
+                                                <strong>Estado:</strong>
+                                                <p>
+                                                    <span t-if="project.active" class="badge bg-success">Activo</span>
+                                                    <span t-else="" class="badge bg-secondary">Inactivo</span>
+                                                </p>
+                                            </div>
+                                        </div>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- Chatter -->
+                    <div class="row mt-4" t-if="messages or True">
+                        <div class="col-12">
+                            <div class="card">
+                                <div class="card-header bg-light">
+                                    <h5 class="mb-0">
+                                        <i class="fa fa-comments me-2"></i>
+                                        Comunicaciones
+                                    </h5>
+                                </div>
+                                <div class="card-body">
+                                    <t t-if="messages">
+                                        <t t-foreach="messages" t-as="message">
+                                            <div class="card mb-3">
+                                                <div class="card-body">
+                                                    <div class="d-flex align-items-start">
+                                                        <div class="flex-shrink-0 me-3">
+                                                            <t t-if="message.author_id and message.author_id.image_128">
+                                                                <img t-attf-src="data:image/png;base64,#{message.author_id.image_128}"
+                                                                     class="rounded-circle"
+                                                                     style="width: 50px; height: 50px;"
+                                                                     alt="Avatar"/>
+                                                            </t>
+                                                            <t t-else="">
+                                                                <i class="fa fa-user-circle fa-3x text-muted"></i>
+                                                            </t>
+                                                        </div>
+                                                        <div class="flex-grow-1">
+                                                            <div class="d-flex justify-content-between align-items-start mb-2">
+                                                                <div>
+                                                                    <strong t-if="message.author_id" t-esc="message.author_id.name"/>
+                                                                    <strong t-else="">Sistema</strong>
+                                                                    <br/>
+                                                                    <small class="text-muted">
+                                                                        <i class="fa fa-clock-o me-1"></i>
+                                                                        <span t-field="message.date"/>
+                                                                    </small>
+                                                                </div>
+                                                            </div>
+                                                            <div class="message-content">
+                                                                <t t-raw="message.body"/>
+                                                            </div>
+                                                        </div>
+                                                    </div>
+                                                </div>
+                                            </div>
+                                        </t>
+                                    </t>
+                                    <t t-else="">
+                                        <p class="text-muted text-center py-3">No hay mensajes todavía</p>
+                                    </t>
+
+                                    <!-- Formulario para enviar mensajes -->
+                                    <div class="card mt-3">
+                                        <div class="card-header bg-light">
+                                            <strong>Enviar un mensaje</strong>
+                                        </div>
+                                        <div class="card-body">
+                                            <form t-attf-action="/my/analytic_projects/#{project.id}/post_message" method="post" enctype="multipart/form-data">
+                                                <input type="hidden" name="csrf_token" t-att-value="request.csrf_token()"/>
+                                                <div class="mb-3">
+                                                    <textarea name="message" class="form-control" rows="4"
+                                                              placeholder="Escribe tu mensaje aquí..." required="required"></textarea>
+                                                </div>
+                                                <button type="submit" class="btn btn-primary">
+                                                    <i class="fa fa-paper-plane me-2"></i>
+                                                    Enviar Mensaje
+                                                </button>
+                                            </form>
+                                        </div>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </t>
+        </template>
+
+        <!-- Listado de Facturas Asociadas a un Proyecto -->
+        <template id="portal_project_invoices" name="Facturas del Proyecto">
+            <t t-call="portal.portal_layout">
+                <!-- Deshabilitar breadcrumbs automáticos del portal -->
+                <t t-set="no_breadcrumbs" t-value="True"/>
+
+                <div class="container">
+                    <div class="row mt-3">
+                        <div class="col-12">
+                            <ol class="breadcrumb">
+                                <li class="breadcrumb-item"><a href="/my">Mi Portal</a></li>
+                                <li class="breadcrumb-item"><a href="/my/analytic_projects">Mis Proyectos</a></li>
+                                <li class="breadcrumb-item"><a t-attf-href="/my/analytic_projects/#{project.id}"><span t-esc="project.name"/></a></li>
+                                <li class="breadcrumb-item active" aria-current="page">Facturas Asociadas</li>
+                            </ol>
+                        </div>
+                    </div>
+
+                    <div class="row">
+                        <div class="col-12">
+                            <div class="card mb-4">
+                                <div class="card-header bg-primary text-white">
+                                    <h4 class="mb-0">
+                                        <i class="fa fa-file-invoice me-2"></i>
+                                        Facturas del Proyecto: <span t-esc="project.name"/>
+                                    </h4>
+                                </div>
+                                <div class="card-body">
+                                    <t t-if="not invoices">
+                                        <div class="alert alert-info" role="alert">
+                                            No hay facturas asociadas a este proyecto.
+                                        </div>
+                                    </t>
+                                    <t t-if="invoices">
+                                        <div class="table-responsive">
+                                            <table class="table table-hover">
+                                                <thead class="table-light">
+                                                    <tr>
+                                                        <th>Número</th>
+                                                        <th>Tipo</th>
+                                                        <th>Cliente/Proveedor</th>
+                                                        <th>Fecha</th>
+                                                        <th>Importe Total</th>
+                                                        <th>Estado</th>
+                                                    </tr>
+                                                </thead>
+                                                <tbody>
+                                                    <t t-foreach="invoices" t-as="invoice">
+                                                        <tr>
+                                                            <td>
+                                                                <a t-attf-href="/my/analytic_projects/#{project.id}/invoices_list/#{invoice.id}">
+                                                                    <span t-esc="invoice.name"/>
+                                                                </a>
+                                                            </td>
+                                                            <td>
+                                                                <span t-if="invoice.move_type == 'out_invoice'">Factura Cliente</span>
+                                                                <span t-elif="invoice.move_type == 'out_refund'">Nota Crédito Cliente</span>
+                                                                <span t-elif="invoice.move_type == 'in_invoice'">Factura Proveedor</span>
+                                                                <span t-elif="invoice.move_type == 'in_refund'">Nota Crédito Proveedor</span>
+                                                            </td>
+                                                            <td>
+                                                                <span t-esc="invoice.partner_id.name"/>
+                                                            </td>
+                                                            <td>
+                                                                <span t-field="invoice.invoice_date"/>
+                                                            </td>
+                                                            <td>
+                                                                <span t-field="invoice.amount_total"
+                                                                      t-options='{"widget": "monetary", "display_currency": invoice.currency_id}'/>
+                                                            </td>
+                                                            <td>
+                                                                <span t-if="invoice.payment_state == 'paid'" class="badge bg-success">Pagada</span>
+                                                                <span t-elif="invoice.payment_state == 'partial'" class="badge bg-warning">Pago Parcial</span>
+                                                                <span t-elif="invoice.state == 'posted'" class="badge bg-info">Publicada</span>
+                                                                <span t-elif="invoice.state == 'draft'" class="badge bg-secondary">Borrador</span>
+                                                                <span t-else="" class="badge bg-secondary" t-esc="invoice.state"/>
+                                                            </td>
+                                                        </tr>
+                                                    </t>
+                                                </tbody>
+                                            </table>
+                                        </div>
+                                    </t>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+
+                    <div class="row mt-3">
+                        <div class="col-12">
+                            <a t-attf-href="/my/analytic_projects/#{project.id}" class="btn btn-secondary">
+                                <i class="fa fa-arrow-left me-2"></i>
+                                Volver al Proyecto
+                            </a>
+                        </div>
+                    </div>
+                </div>
+            </t>
+        </template>
+
+        <!-- Detalle de Factura Asociada a un Proyecto -->
+        <template id="portal_project_invoice_detail" name="Detalle de Factura del Proyecto">
+            <t t-call="portal.portal_layout">
+                <!-- Deshabilitar breadcrumbs automáticos del portal -->
+                <t t-set="no_breadcrumbs" t-value="True"/>
+
+                <div class="container">
+                    <div class="row mt-3">
+                        <div class="col-12">
+                            <ol class="breadcrumb">
+                                <li class="breadcrumb-item"><a href="/my">Mi Portal</a></li>
+                                <li class="breadcrumb-item"><a href="/my/analytic_projects">Mis Proyectos</a></li>
+                                <li class="breadcrumb-item"><a t-attf-href="/my/analytic_projects/#{project.id}"><span t-esc="project.name"/></a></li>
+                                <li class="breadcrumb-item"><a t-attf-href="/my/analytic_projects/#{project.id}/invoices_list">Facturas</a></li>
+                                <li class="breadcrumb-item active" aria-current="page">
+                                    <span t-esc="invoice.name"/>
+                                </li>
+                            </ol>
+                        </div>
+                    </div>
+
+                    <!-- Mensaje de éxito -->
+                    <t t-if="success_message">
+                        <div class="alert alert-success alert-dismissible fade show" role="alert">
+                            <strong>¡Éxito!</strong>
+                            <span t-if="success_message == 'message_posted'">Tu mensaje ha sido enviado correctamente.</span>
+                            <button type="button" class="btn-close" data-bs-dismiss="alert" aria-label="Close"></button>
+                        </div>
+                    </t>
+
+                    <div class="row">
+                        <div class="col-12">
+                            <div class="card mb-4">
+                                <div class="card-header bg-primary text-white">
+                                    <h4 class="mb-0">
+                                        <i class="fa fa-file-invoice me-2"></i>
+                                        Factura: <span t-esc="invoice.name"/>
+                                    </h4>
+                                </div>
+                                <div class="card-body">
+                                    <div class="row">
+                                        <div class="col-md-6">
+                                            <div class="mb-3">
+                                                <strong>Tipo de Documento:</strong>
+                                                <p>
+                                                    <span t-if="invoice.move_type == 'out_invoice'" class="badge bg-primary">Factura Cliente</span>
+                                                    <span t-elif="invoice.move_type == 'out_refund'" class="badge bg-warning">Nota Crédito Cliente</span>
+                                                    <span t-elif="invoice.move_type == 'in_invoice'" class="badge bg-info">Factura Proveedor</span>
+                                                    <span t-elif="invoice.move_type == 'in_refund'" class="badge bg-secondary">Nota Crédito Proveedor</span>
+                                                </p>
+                                            </div>
+                                            <div class="mb-3">
+                                                <strong>Cliente/Proveedor:</strong>
+                                                <p><span t-esc="invoice.partner_id.name"/></p>
+                                            </div>
+                                            <div class="mb-3">
+                                                <strong>Fecha de Factura:</strong>
+                                                <p><span t-field="invoice.invoice_date"/></p>
+                                            </div>
+                                            <div class="mb-3">
+                                                <strong>Fecha de Vencimiento:</strong>
+                                                <p>
+                                                    <span t-if="invoice.invoice_date_due" t-field="invoice.invoice_date_due"/>
+                                                    <span t-else="">-</span>
+                                                </p>
+                                            </div>
+                                        </div>
+                                        <div class="col-md-6">
+                                            <div class="mb-3">
+                                                <strong>Estado:</strong>
+                                                <p>
+                                                    <span t-if="invoice.state == 'draft'" class="badge bg-secondary">Borrador</span>
+                                                    <span t-elif="invoice.state == 'posted'" class="badge bg-success">Publicada</span>
+                                                    <span t-elif="invoice.state == 'cancel'" class="badge bg-danger">Cancelada</span>
+                                                    <span t-else="" class="badge bg-info" t-esc="invoice.state"/>
+                                                </p>
+                                            </div>
+                                            <div class="mb-3">
+                                                <strong>Estado de Pago:</strong>
+                                                <p>
+                                                    <span t-if="invoice.payment_state == 'paid'" class="badge bg-success">Pagada</span>
+                                                    <span t-elif="invoice.payment_state == 'partial'" class="badge bg-warning">Pago Parcial</span>
+                                                    <span t-elif="invoice.payment_state == 'not_paid'" class="badge bg-danger">No Pagada</span>
+                                                    <span t-else="" class="badge bg-secondary" t-esc="invoice.payment_state"/>
+                                                </p>
+                                            </div>
+                                            <div class="mb-3">
+                                                <strong>Base Imponible:</strong>
+                                                <p>
+                                                    <span t-field="invoice.amount_untaxed"
+                                                          t-options='{"widget": "monetary", "display_currency": invoice.currency_id}'/>
+                                                </p>
+                                            </div>
+                                            <div class="mb-3">
+                                                <strong>Impuestos:</strong>
+                                                <p>
+                                                    <span t-field="invoice.amount_tax"
+                                                          t-options='{"widget": "monetary", "display_currency": invoice.currency_id}'/>
+                                                </p>
+                                            </div>
+                                            <div class="mb-3">
+                                                <strong>Total:</strong>
+                                                <p>
+                                                    <strong>
+                                                        <span t-field="invoice.amount_total"
+                                                              t-options='{"widget": "monetary", "display_currency": invoice.currency_id}'/>
+                                                    </strong>
+                                                </p>
+                                            </div>
+                                        </div>
+                                    </div>
+
+                                    <!-- Líneas de Factura -->
+                                    <hr/>
+                                    <h5 class="mb-3">Líneas de Factura</h5>
+                                    <div class="table-responsive">
+                                        <table class="table table-sm table-striped">
+                                            <thead class="table-light">
+                                                <tr>
+                                                    <th>Descripción</th>
+                                                    <th class="text-end">Cantidad</th>
+                                                    <th class="text-end">Precio Unitario</th>
+                                                    <th class="text-end">Impuestos</th>
+                                                    <th class="text-end">Subtotal</th>
+                                                </tr>
+                                            </thead>
+                                            <tbody>
+                                                <t t-foreach="invoice.invoice_line_ids" t-as="line">
+                                                    <tr t-if="line.display_type == 'product'">
+                                                        <td><span t-esc="line.name"/></td>
+                                                        <td class="text-end"><span t-esc="line.quantity"/></td>
+                                                        <td class="text-end">
+                                                            <span t-field="line.price_unit"
+                                                                  t-options='{"widget": "monetary", "display_currency": invoice.currency_id}'/>
+                                                        </td>
+                                                        <td class="text-end">
+                                                            <span t-esc="', '.join(line.tax_ids.mapped('name')) if line.tax_ids else '-'"/>
+                                                        </td>
+                                                        <td class="text-end">
+                                                            <span t-field="line.price_subtotal"
+                                                                  t-options='{"widget": "monetary", "display_currency": invoice.currency_id}'/>
+                                                        </td>
+                                                    </tr>
+                                                </t>
+                                            </tbody>
+                                        </table>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- Chatter -->
+                    <div class="row mt-4">
+                        <div class="col-12">
+                            <div class="card">
+                                <div class="card-header bg-light">
+                                    <h5 class="mb-0">
+                                        <i class="fa fa-comments me-2"></i>
+                                        Comunicaciones
+                                    </h5>
+                                </div>
+                                <div class="card-body">
+                                    <t t-if="messages">
+                                        <t t-foreach="messages" t-as="message">
+                                            <div class="card mb-3">
+                                                <div class="card-body">
+                                                    <div class="d-flex align-items-start">
+                                                        <div class="flex-shrink-0 me-3">
+                                                            <t t-if="message.author_id and message.author_id.image_128">
+                                                                <img t-attf-src="data:image/png;base64,#{message.author_id.image_128}"
+                                                                     class="rounded-circle"
+                                                                     style="width: 50px; height: 50px;"
+                                                                     alt="Avatar"/>
+                                                            </t>
+                                                            <t t-else="">
+                                                                <i class="fa fa-user-circle fa-3x text-muted"></i>
+                                                            </t>
+                                                        </div>
+                                                        <div class="flex-grow-1">
+                                                            <div class="d-flex justify-content-between align-items-start mb-2">
+                                                                <div>
+                                                                    <strong t-if="message.author_id" t-esc="message.author_id.name"/>
+                                                                    <strong t-else="">Sistema</strong>
+                                                                    <br/>
+                                                                    <small class="text-muted">
+                                                                        <i class="fa fa-clock-o me-1"></i>
+                                                                        <span t-field="message.date"/>
+                                                                    </small>
+                                                                </div>
+                                                            </div>
+                                                            <div class="message-content">
+                                                                <t t-raw="message.body"/>
+                                                            </div>
+                                                        </div>
+                                                    </div>
+                                                </div>
+                                            </div>
+                                        </t>
+                                    </t>
+                                    <t t-else="">
+                                        <p class="text-muted text-center py-3">No hay mensajes todavía</p>
+                                    </t>
+
+                                    <!-- Formulario para enviar mensajes -->
+                                    <div class="card mt-3">
+                                        <div class="card-header bg-light">
+                                            <strong>Enviar un mensaje</strong>
+                                        </div>
+                                        <div class="card-body">
+                                            <form t-attf-action="/my/analytic_projects/#{project.id}/invoices_list/#{invoice.id}/post_message" method="post">
+                                                <input type="hidden" name="csrf_token" t-att-value="request.csrf_token()"/>
+                                                <div class="mb-3">
+                                                    <textarea name="message" class="form-control" rows="4"
+                                                              placeholder="Escribe tu mensaje aquí..." required="required"></textarea>
+                                                </div>
+                                                <button type="submit" class="btn btn-primary">
+                                                    <i class="fa fa-paper-plane me-2"></i>
+                                                    Enviar Mensaje
+                                                </button>
+                                            </form>
+                                        </div>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+
+                    <div class="row mt-3">
+                        <div class="col-12">
+                            <a t-attf-href="/my/analytic_projects/#{project.id}/invoices_list" class="btn btn-secondary">
+                                <i class="fa fa-arrow-left me-2"></i>
+                                Volver a Facturas
+                            </a>
+                        </div>
+                    </div>
+                </div>
+            </t>
+        </template>
+    </data>
+</odoo>
+
+
+
+
+
