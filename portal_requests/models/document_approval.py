@@ -36,6 +36,15 @@ class DocumentApproval(models.Model):
 
     is_company_signed = fields.Boolean(string='Firmado por la empresa', default=False, tracking=True)
 
+    # Plantilla efímera de Sign: se crea al pulsar "Firmar digitalmente" y se abre
+    # en el editor visual (panel lateral con campos arrastrables). El sign.request
+    # lo genera el propio editor al pulsar "Firmar ahora".
+    sign_template_id = fields.Many2one(
+        'sign.template',
+        string='Plantilla de Firma',
+        copy=False,
+        ondelete='set null',
+    )
     # Enlace a la solicitud de firma del módulo sign de Odoo 19 Enterprise
     sign_request_id = fields.Many2one(
         'sign.request',
@@ -71,8 +80,10 @@ class DocumentApproval(models.Model):
     # ─────────────────────────────────────────────
 
     def action_send_to_sign(self):
-        """Crea una sign.template a partir del adjunto del documento y lanza
-        un sign.request para que el Director Gerente firme digitalmente."""
+        """Crea una sign.template a partir del adjunto del documento y abre
+        el editor visual de Sign (panel lateral con campos arrastrables).
+        El Director Gerente coloca los campos y pulsa 'Firmar ahora' para
+        firmar directamente sin envío por email."""
         self.ensure_one()
 
         # Verificar que hay un adjunto PDF
@@ -90,86 +101,73 @@ class DocumentApproval(models.Model):
         # Cancelar solicitud de firma anterior si existe y no está firmada
         if self.sign_request_id and self.sign_request_id.state != 'signed':
             self.sign_request_id.cancel()
-            # Desactivar la template efímera anterior
-            old_template = self.sign_request_id.template_id
             self.sign_request_id = False
-            if old_template:
-                old_template.active = False
 
-        # Obtener el rol por defecto del módulo sign
-        default_role = self.env.ref('sign.sign_item_role_default', raise_if_not_found=False)
-        if not default_role:
-            default_role = self.env['sign.item.role'].search([('default', '=', True)], limit=1)
-        if not default_role:
-            raise UserError(_("No se encontró un rol de firma por defecto. Verifique la configuración del módulo Sign."))
+        # Desactivar la template efímera anterior si existe
+        if self.sign_template_id:
+            self.sign_template_id.active = False
+            self.sign_template_id = False
 
-        # Obtener el tipo de firma 'signature' del módulo sign
-        sign_type = self.env['sign.item.type'].search([('item_type', '=', 'signature')], limit=1)
-        if not sign_type:
-            raise UserError(_("No se encontró el tipo de campo 'Firma' en el módulo Sign. Verifique la configuración."))
-
-        # Crear sign.template dinámica con el adjunto del documento
+        # Crear sign.template dinámica con el adjunto del documento.
+        # Se crea con active=False para que no aparezca en el listado de plantillas
+        # del módulo Sign. El editor la activará automáticamente al abrirla.
         sign_template = self.env['sign.template'].create({
             'name': self.computed_name or _('Documento para firmar'),
+            'active': True,
             'document_ids': [(0, 0, {
                 'attachment_id': attachment.id,
             })],
         })
 
-        # Obtener el sign.document creado y calcular la última página
-        sign_document = sign_template.document_ids[:1]
-        last_page = sign_document.num_pages or 1
-
-        # Añadir campo de firma en la parte inferior derecha de la última página
-        self.env['sign.item'].create({
-            'document_id': sign_document.id,
-            'type_id': sign_type.id,
-            'responsible_id': default_role.id,
-            'required': True,
-            'name': sign_type.placeholder or sign_type.name or 'Firma',
-            'page': last_page,
-            'posX': 0.65,
-            'posY': 0.85,
-            'width': sign_type.default_width,
-            'height': sign_type.default_height,
-        })
-
-        # El firmante es el usuario actual (Director Gerente)
-        signer_partner = self.env.user.partner_id
-        if not signer_partner.email:
-            raise UserError(_(
-                "El usuario %s no tiene email configurado. "
-                "Es necesario para enviar la solicitud de firma."
-            ) % self.env.user.name)
-
-        # Crear sign.request con context no_sign_mail=True para controlar el envío
-        sign_request = self.env['sign.request'].with_context(no_sign_mail=True).create({
-            'template_id': sign_template.id,
-            'reference': self.computed_name or _('Documento para firmar'),
-            'reference_doc': f'{self._name},{self.id}',
-            'request_item_ids': [(0, 0, {
-                'partner_id': signer_partner.id,
-                'role_id': default_role.id,
-            })],
-        })
-
-        self.sign_request_id = sign_request.id
+        # Guardar la referencia a la template para poder recuperar el sign.request
+        # que el editor crea al pulsar "Firmar ahora"
+        self.sign_template_id = sign_template.id
 
         # Registrar en el chatter
         self.sudo().message_post(
-            body=_("Se ha enviado una solicitud de firma electrónica a %s.") % signer_partner.name,
+            body=_("Se ha abierto el editor de firma digital. Coloque los campos y pulse 'Firmar ahora'."),
             subtype_id=self.env.ref('mail.mt_note').id,
         )
 
-        # Abrir el documento de firma directamente para que el Director Gerente firme
-        return sign_request.go_to_signable_document()
+        # Abrir el editor visual de Sign con el panel lateral de campos arrastrables.
+        # sign_directly_without_mail=True → el botón "Firmar ahora" firma sin diálogo de email.
+        return sign_template.go_to_custom_template(sign_directly_without_mail=True)
+
+    def _sync_sign_request(self):
+        """Busca el sign.request creado desde el editor visual y lo vincula
+        a este documento si aún no está guardado en sign_request_id."""
+        self.ensure_one()
+        if self.sign_request_id:
+            return
+        if not self.sign_template_id:
+            return
+        # El editor crea el sign.request vinculado a la template
+        sign_request = self.env['sign.request'].search([
+            ('template_id', '=', self.sign_template_id.id),
+            ('state', '!=', 'canceled'),
+        ], order='id desc', limit=1)
+        if sign_request:
+            self.sign_request_id = sign_request.id
 
     def action_view_sign_request(self):
-        """Abre la solicitud de firma asociada."""
+        """Abre la solicitud de firma asociada, o el editor de plantilla si
+        el usuario aún no ha pulsado 'Firmar ahora' desde el editor."""
         self.ensure_one()
-        if not self.sign_request_id:
-            raise UserError(_("No hay ninguna solicitud de firma asociada a este documento."))
-        return self.sign_request_id.go_to_document()
+        # Intentar sincronizar por si el request ya fue creado desde el editor
+        self._sync_sign_request()
+        if self.sign_request_id:
+            return {
+                'type': 'ir.actions.act_window',
+                'name': _('Solicitud de Firma'),
+                'res_model': 'sign.request',
+                'res_id': self.sign_request_id.id,
+                'views': [[False, 'form']],
+                'target': 'current',
+            }
+        if self.sign_template_id:
+            # El editor aún no ha generado el request: reabrir el editor
+            return self.sign_template_id.go_to_custom_template(sign_directly_without_mail=True)
+        raise UserError(_("No hay ninguna solicitud de firma asociada a este documento."))
 
     # ─────────────────────────────────────────────
     # Flujo de aprobación
@@ -195,6 +193,8 @@ class DocumentApproval(models.Model):
 
         if self.status == 'approved_by_director_gerente' and self.env.user.has_group(
                 "portal_requests.group_director_manager"):
+            # Sincronizar el sign.request si fue creado desde el editor visual
+            self._sync_sign_request()
             # Verificar que el Director Gerente ha firmado mediante sign
             if not self.sign_request_id or self.sign_request_id.state != 'signed':
                 raise UserError(_(

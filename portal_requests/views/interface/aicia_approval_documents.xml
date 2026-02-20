@@ -47,7 +47,7 @@
                             invisible="status != 'sign_company'"/>
 
                     <!-- Botonera del Director Gerente -->
-                    <!-- Firmar digitalmente: visible cuando está en aprobación del gerente y aún no tiene sign_request firmado -->
+                    <!-- Firmar digitalmente: visible cuando está en aprobación del gerente y aún no tiene sign firmado -->
                     <button name="action_send_to_sign"
                             string="Firmar digitalmente"
                             type="object"
@@ -55,13 +55,13 @@
                             groups="portal_requests.group_director_manager"
                             invisible="status != 'approved_by_director_gerente' or sign_request_state == 'signed'"/>
 
-                    <!-- Ver solicitud de firma en curso -->
+                    <!-- Ver solicitud de firma en curso: visible si hay template o request sin firmar -->
                     <button name="action_view_sign_request"
                             string="Ver solicitud de firma"
                             type="object"
                             class="btn-info"
                             groups="portal_requests.group_director_manager"
-                            invisible="not sign_request_id or sign_request_state == 'signed'"/>
+                            invisible="(not sign_request_id and not sign_template_id) or sign_request_state == 'signed'"/>
 
                     <!-- Aprobar: solo visible cuando ya está firmado -->
                     <button name="action_approve"
@@ -89,9 +89,11 @@
                         <field name="description" readonly="1"/>
                         <field name="work_group_id" invisible="0"/>
                         <field name="is_company_signed" readonly="1"/>
-                        <!-- Campo de firma digital: enlace a la solicitud de sign -->
+                    <!-- Campo de firma digital: enlace a la solicitud de sign -->
                         <field name="sign_request_id" readonly="1"
                                invisible="not sign_request_id"/>
+                        <!-- Template de firma efímera: necesaria para el botón Ver solicitud -->
+                        <field name="sign_template_id" readonly="1" invisible="1"/>
                         <field name="sign_request_state" invisible="1"/>
                     </group>
                 </sheet>
