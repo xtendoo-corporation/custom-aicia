@@ -1,0 +1,27 @@
+<?xml version="1.0" encoding="utf-8"?>
+<odoo>
+    <data noupdate="1">
+
+        <!-- Regla multi-company para plantillas de reparto -->
+        <record id="split_template_company_rule" model="ir.rule">
+            <field name="name">Plantilla de Reparto: Multi-Company</field>
+            <field name="model_id" ref="model_account_payment_split_template"/>
+            <field name="domain_force">[('company_id', 'in', company_ids)]</field>
+        </record>
+
+        <!-- Regla multi-company para líneas de plantilla -->
+        <record id="split_template_line_company_rule" model="ir.rule">
+            <field name="name">Línea Plantilla Reparto: Multi-Company</field>
+            <field name="model_id" ref="model_account_payment_split_template_line"/>
+            <field name="domain_force">[('company_id', 'in', company_ids)]</field>
+        </record>
+
+        <!-- Regla multi-company para logs de reparto -->
+        <record id="split_log_company_rule" model="ir.rule">
+            <field name="name">Log de Reparto: Multi-Company</field>
+            <field name="model_id" ref="model_account_payment_split_log"/>
+            <field name="domain_force">[('company_id', 'in', company_ids)]</field>
+        </record>
+
+    </data>
+</odoo>

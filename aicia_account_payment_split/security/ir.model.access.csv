@@ -1,0 +1,7 @@
+id,name,model_id:id,group_id:id,perm_read,perm_write,perm_create,perm_unlink
+access_split_template_manager,account.payment.split.template manager,model_account_payment_split_template,account.group_account_manager,1,1,1,1
+access_split_template_user,account.payment.split.template user,model_account_payment_split_template,account.group_account_user,1,0,0,0
+access_split_template_line_manager,account.payment.split.template.line manager,model_account_payment_split_template_line,account.group_account_manager,1,1,1,1
+access_split_template_line_user,account.payment.split.template.line user,model_account_payment_split_template_line,account.group_account_user,1,0,0,0
+access_split_log_manager,account.payment.split.log manager,model_account_payment_split_log,account.group_account_manager,1,1,1,1
+access_split_log_user,account.payment.split.log user,model_account_payment_split_log,account.group_account_user,1,0,0,0
