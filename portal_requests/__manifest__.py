@@ -60,6 +60,7 @@
         'views/portal_user_templates/portal_my_documents_list.xml',
         'views/portal_user_templates/portal_my_document_detail.xml',
         'views/portal_user_templates/portal_my_projects.xml',
+        'views/portal_user_templates/portal_my_project_requests_list.xml',
         'security/dashboard_permision.xml',
         'wizards/purchase_request_reject_wizard.xml',
         'wizards/invoice_request_reject_wizard.xml',

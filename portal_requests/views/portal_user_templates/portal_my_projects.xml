@@ -18,7 +18,7 @@
                 <t t-if="projects" t-call="portal.portal_table">
                     <thead>
                         <tr class="active">
-                            <th>Código</th>
+<!--                            <th>Código</th>-->
                             <th>Nombre del Proyecto</th>
                             <th>Cliente</th>
                             <th>Compañía</th>
@@ -28,11 +28,11 @@
                     <tbody>
                         <t t-foreach="projects" t-as="project">
                             <tr>
-                                <td>
-                                    <a t-attf-href="/my/analytic_projects/#{project.id}">
-                                        <span t-esc="project.code"/>
-                                    </a>
-                                </td>
+<!--                                <td>-->
+<!--                                    <a t-attf-href="/my/analytic_projects/#{project.id}">-->
+<!--                                        <span t-esc="project.code"/>-->
+<!--                                    </a>-->
+<!--                                </td>-->
                                 <td>
                                     <a t-attf-href="/my/analytic_projects/#{project.id}">
                                         <span t-esc="project.name"/>
@@ -96,10 +96,10 @@
                                 <div class="card-body">
                                     <div class="row">
                                         <div class="col-md-6">
-                                            <div class="mb-3">
-                                                <strong>Código del Proyecto:</strong>
-                                                <p><span t-esc="project.code or '-'"/></p>
-                                            </div>
+<!--                                            <div class="mb-3">-->
+<!--                                                <strong>Código del Proyecto:</strong>-->
+<!--                                                <p><span t-esc="project.code or '-'"/></p>-->
+<!--                                            </div>-->
                                             <div class="mb-3">
                                                 <strong>Cliente:</strong>
                                                 <p><span t-esc="project.partner_id.name if project.partner_id else '-'"/></p>

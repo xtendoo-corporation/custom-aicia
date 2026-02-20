@@ -394,8 +394,11 @@ class PortalRequestDashboard(models.Model):
     def _compute_count_to_revise(self):
         for record in self:
             if record.model == 'portal.project.request':
+                print("*"*100)
                 record.count_to_revise = self.env['portal.project.request'].search_count(
                     [('is_revised', '=', False)])
+                print("count_to_revise_project:", record.count_to_revise)
+                print("*"*100)
             elif record.model == 'portal.invoice.request':
                 if record.type == 'out_invoice':
                     record.count_to_revise = self._compute_count_to_revise_out_invoice()

@@ -34,6 +34,12 @@ class PortalRequestsCustomerPortal(CustomerPortal):
             ])
             values['analytic_project_count'] = analytic_project_count
 
+        # Contador de solicitudes de proyectos - siempre se calcula para que la tarjeta se muestre
+        # project_request_count = request.env['portal.project.request'].search_count([
+        #     ('user_id', '=', request.env.user.id)
+        # ])
+        # values['project_request_count'] = project_request_count
+
         return values
 
     @http.route(['/my/expenses', '/my/expenses/page/<int:page>'], type='http', auth="user", website=True)
@@ -580,5 +586,78 @@ class PortalRequestsCustomerPortal(CustomerPortal):
 
         # Redirigir de vuelta al detalle
         return request.redirect(f'/my/analytic_projects/{project_id}/invoices_list/{invoice_id}?success=message_posted')
+
+    # Rutas para Solicitudes de Proyectos
+    # =====================================
+
+    @http.route(['/my/project_requests', '/my/project_requests/page/<int:page>'], type='http', auth="user", website=True)
+    def portal_my_project_requests(self, page=1, sortby=None, **kw):
+        """Muestra el listado de solicitudes de proyectos del usuario"""
+        user = request.env.user
+
+        # Buscar solicitudes de proyectos del usuario
+        project_requests = request.env['portal.project.request'].search([
+            ('user_id', '=', user.id)
+        ], order='create_date desc')
+
+        values = {
+            'project_requests': project_requests,
+            'page_name': 'project_request',
+        }
+
+        return request.render("portal_requests.portal_my_project_requests", values)
+
+    @http.route(['/my/project_requests/<int:request_id>'], type='http', auth="user", website=True)
+    def portal_my_project_request_detail(self, request_id, success=None, **kw):
+        """Muestra el detalle de una solicitud de proyecto"""
+        # Buscar la solicitud del usuario
+        project_request = request.env['portal.project.request'].search([
+            ('id', '=', request_id),
+            ('user_id', '=', request.env.user.id)
+        ], limit=1)
+
+        # Si no existe o no es del usuario, redirigir
+        if not project_request:
+            return request.redirect('/my')
+
+        # Obtener los mensajes del chatter
+        messages = request.env['mail.message'].sudo().search([
+            ('model', '=', 'portal.project.request'),
+            ('res_id', '=', request_id)
+        ], order='date desc')
+
+        values = {
+            'project_request': project_request.sudo(),
+            'messages': messages,
+            'page_name': 'project_request_detail',
+            'success_message': success,
+        }
+
+        return request.render("portal_requests.portal_my_project_request_detail", values)
+
+    @http.route(['/my/project_requests/<int:request_id>/post_message'], type='http', auth="user", website=True, methods=['POST'], csrf=True)
+    def portal_project_request_post_message(self, request_id, message, **kw):
+        """Permite enviar un mensaje en el chatter de una solicitud de proyecto"""
+        # Buscar la solicitud del usuario
+        project_request = request.env['portal.project.request'].search([
+            ('id', '=', request_id),
+            ('user_id', '=', request.env.user.id)
+        ], limit=1)
+
+        # Si no existe o no es del usuario, redirigir
+        if not project_request:
+            return request.redirect('/my')
+
+        # Publicar el mensaje
+        if message and message.strip():
+            project_request.sudo().message_post(
+                body=message,
+                message_type='comment',
+                subtype_xmlid='mail.mt_comment',
+                author_id=request.env.user.partner_id.id
+            )
+
+        # Redirigir de vuelta al detalle
+        return request.redirect(f'/my/project_requests/{request_id}?success=message_posted')
 
 

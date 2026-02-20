@@ -184,8 +184,8 @@ class PortalInvoiceController(Controller):
     #     return request.redirect('/contactus-thank-you')
 
     # Método para enviar el correo electrónico
-    def send_project_email(self, project ):
-        group = self.env.ref('portal_requests.group_director_investigation_and_development')
+    def send_project_email(self, project):
+        group = request.env.ref('portal_requests.group_director_investigation_and_development').sudo()
         admin_users = group.user_ids
         # admin_users = request.env['res.users'].search(
         #     [('groups_id', 'in', request.env.ref('portal_requests.group_director_investigation_and_development').id)])
@@ -215,7 +215,7 @@ class PortalInvoiceController(Controller):
                     'email_to': email,
                     'body_html': body_html,
                 }
-                mail = request.env['mail.mail'].create(mail_values)
+                mail = request.env['mail.mail'].sudo().create(mail_values)
                 mail.send()
         else:
             for admin_user in admin_users:
@@ -241,6 +241,6 @@ class PortalInvoiceController(Controller):
                     'email_to': email,
                     'body_html': body_html,
                 }
-                mail = request.env['mail.mail'].create(mail_values)
+                mail = request.env['mail.mail'].sudo().create(mail_values)
                 mail.send()
             return request.render("portal.email_sent_confirmation")

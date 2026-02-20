@@ -1,0 +1,314 @@
+<?xml version="1.0" encoding="utf-8"?>
+<odoo>
+    <data>
+        <!-- Listado de Solicitudes de Proyectos -->
+        <template id="portal_my_project_requests" name="Mis Solicitudes de Proyectos">
+            <t t-call="portal.portal_layout">
+                <!-- Deshabilitar breadcrumbs automáticos del portal -->
+                <t t-set="no_breadcrumbs" t-value="True"/>
+
+                <div class="container">
+                    <div class="row mt-3">
+                        <div class="col-12">
+                            <ol class="breadcrumb">
+                                <li class="breadcrumb-item"><a href="/my">Mi Portal</a></li>
+                                <li class="breadcrumb-item active" aria-current="page">Solicitudes de Proyectos</li>
+                            </ol>
+                        </div>
+                    </div>
+
+                    <div class="row">
+                        <div class="col-12">
+                            <div class="d-flex justify-content-between align-items-center mb-3">
+                                <h3>Mis Solicitudes de Proyectos</h3>
+                                <a href="/portal/project_request" class="btn btn-primary">
+                                    <i class="fa fa-plus me-2"></i>Nueva Solicitud
+                                </a>
+                            </div>
+                        </div>
+                    </div>
+
+                    <t t-if="not project_requests">
+                        <div class="alert alert-info" role="alert">
+                            No tienes solicitudes de proyectos. Puedes crear una nueva haciendo clic en el botón "Nueva Solicitud".
+                        </div>
+                    </t>
+
+                    <t t-if="project_requests" t-call="portal.portal_table">
+                        <thead class="table-light">
+                            <tr>
+                                <th>Solicitud</th>
+                                <th>Tipo</th>
+                                <th>Compañía</th>
+                                <th>Grupo de Trabajo</th>
+                                <th>Estado</th>
+                                <th>Fecha Creación</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            <t t-foreach="project_requests" t-as="project_request">
+                                <tr>
+                                    <td>
+                                        <a t-attf-href="/my/project_requests/#{project_request.id}">
+                                            <span t-esc="project_request.project_name"/>
+                                        </a>
+                                    </td>
+                                    <td>
+                                        <span t-if="project_request.type == 'new'" class="badge bg-primary">Nuevo Proyecto</span>
+                                        <span t-elif="project_request.type == 'end'" class="badge bg-warning">Finalizar Proyecto</span>
+                                    </td>
+                                    <td><span t-esc="project_request.company_id.name"/></td>
+                                    <td>
+                                        <span t-if="project_request.work_group_id" t-esc="project_request.work_group_id.name"/>
+                                        <span t-else="">-</span>
+                                    </td>
+                                    <td>
+                                        <t t-if="project_request.approved and project_request.is_revised">
+                                            <span class="badge bg-success">Aprobada</span>
+                                        </t>
+                                        <t t-elif="not project_request.approved and project_request.is_revised">
+                                            <span class="badge bg-danger">Rechazada</span>
+                                        </t>
+                                        <t t-else="">
+                                            <span class="badge bg-warning">Pendiente</span>
+                                        </t>
+                                    </td>
+                                    <td>
+                                        <span t-field="project_request.create_date" t-options='{"widget": "date"}'/>
+                                    </td>
+                                </tr>
+                            </t>
+                        </tbody>
+                    </t>
+                </div>
+            </t>
+        </template>
+
+        <!-- Detalle de Solicitud de Proyecto -->
+        <template id="portal_my_project_request_detail" name="Detalle de Solicitud de Proyecto">
+            <t t-call="portal.portal_layout">
+                <!-- Deshabilitar breadcrumbs automáticos del portal -->
+                <t t-set="no_breadcrumbs" t-value="True"/>
+
+                <div class="container">
+                    <div class="row mt-3">
+                        <div class="col-12">
+                            <ol class="breadcrumb">
+                                <li class="breadcrumb-item"><a href="/my">Mi Portal</a></li>
+                                <li class="breadcrumb-item"><a href="/my/project_requests">Solicitudes de Proyectos</a></li>
+                                <li class="breadcrumb-item active" aria-current="page">
+                                    <span t-esc="project_request.project_name"/>
+                                </li>
+                            </ol>
+                        </div>
+                    </div>
+
+                    <!-- Mensaje de éxito -->
+                    <t t-if="success_message">
+                        <div class="alert alert-success alert-dismissible fade show" role="alert">
+                            <strong>¡Éxito!</strong>
+                            <span t-if="success_message == 'message_posted'">Tu mensaje ha sido enviado correctamente.</span>
+                            <button type="button" class="btn-close" data-bs-dismiss="alert" aria-label="Close"></button>
+                        </div>
+                    </t>
+
+                    <div class="row">
+                        <div class="col-12">
+                            <div class="card mb-4">
+                                <div class="card-header bg-primary text-white">
+                                    <h4 class="mb-0">
+                                        <i class="fa fa-folder-open me-2"></i>
+                                        Solicitud: <span t-esc="project_request.project_name"/>
+                                    </h4>
+                                </div>
+                                <div class="card-body">
+                                    <div class="row">
+                                        <div class="col-md-6">
+                                            <div class="mb-3">
+                                                <strong>Tipo de Solicitud:</strong>
+                                                <p>
+                                                    <span t-if="project_request.type == 'new'" class="badge bg-primary">Nuevo Proyecto</span>
+                                                    <span t-elif="project_request.type == 'end'" class="badge bg-warning">Finalizar Proyecto</span>
+                                                </p>
+                                            </div>
+                                            <div class="mb-3">
+                                                <strong>Compañía:</strong>
+                                                <p><span t-esc="project_request.company_id.name"/></p>
+                                            </div>
+                                            <div class="mb-3" t-if="project_request.work_group_id">
+                                                <strong>Grupo de Trabajo:</strong>
+                                                <p><span t-esc="project_request.work_group_id.name"/></p>
+                                            </div>
+                                            <div class="mb-3" t-if="project_request.partner_id">
+                                                <strong>Cliente:</strong>
+                                                <p><span t-esc="project_request.partner_id.name"/></p>
+                                            </div>
+                                            <div class="mb-3" t-if="project_request.partner_id_char">
+                                                <strong>Cliente:</strong>
+                                                <p><span t-esc="project_request.partner_id_char"/></p>
+                                            </div>
+                                        </div>
+                                        <div class="col-md-6">
+                                            <div class="mb-3">
+                                                <strong>Estado:</strong>
+                                                <p>
+                                                    <t t-if="project_request.approved and project_request.is_revised">
+                                                        <span class="badge bg-success">Aprobada</span>
+                                                    </t>
+                                                    <t t-elif="not project_request.approved and project_request.is_revised">
+                                                        <span class="badge bg-danger">Rechazada</span>
+                                                    </t>
+                                                    <t t-else="">
+                                                        <span class="badge bg-warning">Pendiente de Revisión</span>
+                                                    </t>
+                                                </p>
+                                            </div>
+                                            <div class="mb-3" t-if="project_request.date_start">
+                                                <strong>Fecha de Inicio:</strong>
+                                                <p><span t-field="project_request.date_start"/></p>
+                                            </div>
+                                            <div class="mb-3" t-if="project_request.date_end">
+                                                <strong>Fecha de Fin:</strong>
+                                                <p><span t-field="project_request.date_end"/></p>
+                                            </div>
+                                            <div class="mb-3">
+                                                <strong>Fecha de Creación:</strong>
+                                                <p><span t-field="project_request.create_date" t-options='{"widget": "datetime"}'/></p>
+                                            </div>
+                                        </div>
+                                    </div>
+
+                                    <!-- Concepto (para finalizar proyecto) -->
+                                    <t t-if="project_request.concept">
+                                        <hr/>
+                                        <div class="mb-3">
+                                            <strong>Concepto:</strong>
+                                            <p><span t-esc="project_request.concept"/></p>
+                                        </div>
+                                    </t>
+
+                                    <!-- Adjuntos -->
+                                    <t t-if="project_request.signed_contract or project_request.budget_file">
+                                        <hr/>
+                                        <h5 class="mb-3">Archivos Adjuntos</h5>
+                                        <div class="list-group">
+                                            <t t-if="project_request.signed_contract">
+                                                <a t-attf-href="/web/content/portal.project.request/#{project_request.id}/signed_contract/#{project_request.signed_contract_filename}?download=true"
+                                                   class="list-group-item list-group-item-action">
+                                                    <i class="fa fa-file-pdf-o me-2"></i>
+                                                    <span t-esc="project_request.signed_contract_filename or 'Contrato Firmado'"/>
+                                                </a>
+                                            </t>
+                                            <t t-if="project_request.budget_file">
+                                                <a t-attf-href="/web/content/portal.project.request/#{project_request.id}/budget_file/#{project_request.budget_file_filename}?download=true"
+                                                   class="list-group-item list-group-item-action">
+                                                    <i class="fa fa-file-pdf-o me-2"></i>
+                                                    <span t-esc="project_request.budget_file_filename or 'Presupuesto'"/>
+                                                </a>
+                                            </t>
+                                        </div>
+                                    </t>
+
+                                    <!-- Enlace al proyecto creado -->
+                                    <t t-if="project_request.created_analytic_id">
+                                        <hr/>
+                                        <div class="alert alert-success" role="alert">
+                                            <strong>Proyecto Creado:</strong>
+                                            <span t-esc="project_request.created_analytic_id.name"/>
+                                        </div>
+                                    </t>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- Chatter -->
+                    <div class="row mt-4">
+                        <div class="col-12">
+                            <div class="card">
+                                <div class="card-header bg-light">
+                                    <h5 class="mb-0">
+                                        <i class="fa fa-comments me-2"></i>
+                                        Comunicaciones
+                                    </h5>
+                                </div>
+                                <div class="card-body">
+                                    <t t-if="messages">
+                                        <t t-foreach="messages" t-as="message">
+                                            <div class="card mb-3">
+                                                <div class="card-body">
+                                                    <div class="d-flex align-items-start">
+                                                        <div class="flex-shrink-0 me-3">
+                                                            <t t-if="message.author_id and message.author_id.image_128">
+                                                                <img t-attf-src="data:image/png;base64,#{message.author_id.image_128}"
+                                                                     class="rounded-circle"
+                                                                     style="width: 50px; height: 50px;"
+                                                                     alt="Avatar"/>
+                                                            </t>
+                                                            <t t-else="">
+                                                                <i class="fa fa-user-circle fa-3x text-muted"></i>
+                                                            </t>
+                                                        </div>
+                                                        <div class="flex-grow-1">
+                                                            <div class="d-flex justify-content-between align-items-start mb-2">
+                                                                <div>
+                                                                    <strong t-if="message.author_id" t-esc="message.author_id.name"/>
+                                                                    <strong t-else="">Sistema</strong>
+                                                                    <br/>
+                                                                    <small class="text-muted">
+                                                                        <i class="fa fa-clock-o me-1"></i>
+                                                                        <span t-field="message.date"/>
+                                                                    </small>
+                                                                </div>
+                                                            </div>
+                                                            <div class="message-content">
+                                                                <t t-raw="message.body"/>
+                                                            </div>
+                                                        </div>
+                                                    </div>
+                                                </div>
+                                            </div>
+                                        </t>
+                                    </t>
+                                    <t t-else="">
+                                        <p class="text-muted text-center py-3">No hay mensajes todavía</p>
+                                    </t>
+
+                                    <!-- Formulario para enviar mensajes -->
+                                    <div class="card mt-3">
+                                        <div class="card-header bg-light">
+                                            <strong>Enviar un mensaje</strong>
+                                        </div>
+                                        <div class="card-body">
+                                            <form t-attf-action="/my/project_requests/#{project_request.id}/post_message" method="post">
+                                                <input type="hidden" name="csrf_token" t-att-value="request.csrf_token()"/>
+                                                <div class="mb-3">
+                                                    <textarea name="message" class="form-control" rows="4"
+                                                              placeholder="Escribe tu mensaje aquí..." required="required"></textarea>
+                                                </div>
+                                                <button type="submit" class="btn btn-primary">
+                                                    <i class="fa fa-paper-plane me-2"></i>
+                                                    Enviar Mensaje
+                                                </button>
+                                            </form>
+                                        </div>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+
+                    <div class="row mt-3">
+                        <div class="col-12">
+                            <a href="/my/project_requests" class="btn btn-secondary">
+                                <i class="fa fa-arrow-left me-2"></i>
+                                Volver a Solicitudes
+                            </a>
+                        </div>
+                    </div>
+                </div>
+            </t>
+        </template>
+    </data>
+</odoo>
+

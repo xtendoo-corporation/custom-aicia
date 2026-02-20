@@ -5,7 +5,7 @@ class PortalProjectRequest(models.Model):
     _name = 'portal.project.request'
     _description = 'Portal Project Request'
     _rec_name = 'computed_name'
-    _inherit = ['mail.thread', 'mail.activity.mixin']
+    _inherit = ['mail.thread', 'mail.activity.mixin', 'portal.mixin']
 
     user_id = fields.Many2one('res.users', string='User', required=True)
     company_id = fields.Many2one('res.company', string='Compañía', required=True, tracking=True)
@@ -38,6 +38,11 @@ class PortalProjectRequest(models.Model):
     def _compute_analytic_count(self):
         for record in self:
             record.project_count = 1 if record.created_analytic_id else 0
+
+    def _compute_access_url(self):
+        """Genera la URL del portal para cada solicitud"""
+        for record in self:
+            record.access_url = f'/my/project_requests/{record.id}'
 
     def show_notificacion(self, title_char, text, type_char):
         return {
@@ -92,6 +97,7 @@ class PortalProjectRequest(models.Model):
             'company_id': self.company_id.id,
             'plan_id': plan.id,
             'work_group_id': self.work_group_id.id if self.work_group_id else False,
+            'responsible_id': self.user_id.id,
         })
 
         # Adjuntar el contrato firmado si existe
