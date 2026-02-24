@@ -71,7 +71,7 @@
                     <div class="row mt-3">
                         <div class="col-12">
                             <ol class="breadcrumb">
-                                <li class="breadcrumb-item"><a href="/my">Mi Portal</a></li>
+                                <li class="breadcrumb-item"><a href="/my"><i class="fa fa-home"/></a></li>
                                 <li class="breadcrumb-item"><a href="/my/analytic_projects">Mis Proyectos</a></li>
                                 <li class="breadcrumb-item active" aria-current="page">
                                     <span t-esc="project.name"/>
@@ -269,7 +269,7 @@
                     <div class="row mt-3">
                         <div class="col-12">
                             <ol class="breadcrumb">
-                                <li class="breadcrumb-item"><a href="/my">Mi Portal</a></li>
+                                <li class="breadcrumb-item"><a href="/my"><i class="fa fa-home"/></a></li>
                                 <li class="breadcrumb-item"><a href="/my/analytic_projects">Mis Proyectos</a></li>
                                 <li class="breadcrumb-item"><a t-attf-href="/my/analytic_projects/#{project.id}"><span t-esc="project.name"/></a></li>
                                 <li class="breadcrumb-item active" aria-current="page">Facturas Asociadas</li>
@@ -369,7 +369,7 @@
                     <div class="row mt-3">
                         <div class="col-12">
                             <ol class="breadcrumb">
-                                <li class="breadcrumb-item"><a href="/my">Mi Portal</a></li>
+                                <li class="breadcrumb-item"><a href="/my"><i class="fa fa-home"/></a></li>
                                 <li class="breadcrumb-item"><a href="/my/analytic_projects">Mis Proyectos</a></li>
                                 <li class="breadcrumb-item"><a t-attf-href="/my/analytic_projects/#{project.id}"><span t-esc="project.name"/></a></li>
                                 <li class="breadcrumb-item"><a t-attf-href="/my/analytic_projects/#{project.id}/invoices_list">Facturas</a></li>

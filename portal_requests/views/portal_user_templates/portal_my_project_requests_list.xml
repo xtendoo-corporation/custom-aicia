@@ -11,7 +11,7 @@
                     <div class="row mt-3">
                         <div class="col-12">
                             <ol class="breadcrumb">
-                                <li class="breadcrumb-item"><a href="/my">Mi Portal</a></li>
+                                <li class="breadcrumb-item"><a href="/my"><i class="fa fa-home"/></a></li>
                                 <li class="breadcrumb-item active" aria-current="page">Solicitudes de Proyectos</li>
                             </ol>
                         </div>
@@ -94,7 +94,7 @@
                     <div class="row mt-3">
                         <div class="col-12">
                             <ol class="breadcrumb">
-                                <li class="breadcrumb-item"><a href="/my">Mi Portal</a></li>
+                                <li class="breadcrumb-item"><a href="/my"><i class="fa fa-home"/></a></li>
                                 <li class="breadcrumb-item"><a href="/my/project_requests">Solicitudes de Proyectos</a></li>
                                 <li class="breadcrumb-item active" aria-current="page">
                                     <span t-esc="project_request.project_name"/>
