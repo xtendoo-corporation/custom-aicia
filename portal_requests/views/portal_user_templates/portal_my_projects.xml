@@ -195,8 +195,8 @@
                                                 <div class="card-body">
                                                     <div class="d-flex align-items-start">
                                                         <div class="flex-shrink-0 me-3">
-                                                            <t t-if="message['author_id'] and message['author_id'].image_128">
-                                                                <img t-attf-src="data:image/png;base64,#{message['author_id'].image_128}"
+                                                            <t t-if="message['author_id'] and message['author_id']['id']">
+                                                                <img t-attf-src="/web/image/res.partner/#{message['author_id']['id']}/avatar_128"
                                                                      class="rounded-circle"
                                                                      style="width: 50px; height: 50px;"
                                                                      alt="Avatar"/>
@@ -208,7 +208,7 @@
                                                         <div class="flex-grow-1">
                                                             <div class="d-flex justify-content-between align-items-start mb-2">
                                                                 <div>
-                                                                    <strong t-if="message['author_id']" t-esc="message['author_id'].name"/>
+                                                                    <strong t-if="message['author_id']" t-esc="message['author_id']['name']"/>
                                                                     <strong t-else="">Sistema</strong>
                                                                     <br/>
                                                                     <small class="text-muted">
@@ -217,10 +217,10 @@
                                                                     </small>
                                                                 </div>
                                                             </div>
-                                            <!-- body puede contener HTML de tracking, t-raw lo renderiza sin escapar -->
-                                            <div class="message-content">
-                                                <t t-raw="message['body']"/>
-                                            </div>
+                                                            <!-- body puede contener HTML de tracking, t-raw lo renderiza sin escapar -->
+                                                            <div class="message-content">
+                                                                <t t-raw="message['body']"/>
+                                                            </div>
                                                         </div>
                                                     </div>
                                                 </div>
@@ -528,8 +528,8 @@
                                                 <div class="card-body">
                                                     <div class="d-flex align-items-start">
                                                         <div class="flex-shrink-0 me-3">
-                                                            <t t-if="message.author_id and message.author_id.image_128">
-                                                                <img t-attf-src="data:image/png;base64,#{message.author_id.image_128}"
+                                                            <t t-if="message['author_id'] and message['author_id']['id']">
+                                                                <img t-attf-src="/web/image/res.partner/#{message['author_id']['id']}/avatar_128"
                                                                      class="rounded-circle"
                                                                      style="width: 50px; height: 50px;"
                                                                      alt="Avatar"/>
@@ -541,17 +541,17 @@
                                                         <div class="flex-grow-1">
                                                             <div class="d-flex justify-content-between align-items-start mb-2">
                                                                 <div>
-                                                                    <strong t-if="message.author_id" t-esc="message.author_id.name"/>
+                                                                    <strong t-if="message['author_id']" t-esc="message['author_id']['name']"/>
                                                                     <strong t-else="">Sistema</strong>
                                                                     <br/>
                                                                     <small class="text-muted">
                                                                         <i class="fa fa-clock-o me-1"></i>
-                                                                        <span t-field="message.date"/>
+                                                                        <span t-esc="message['date']"/>
                                                                     </small>
                                                                 </div>
                                                             </div>
                                                             <div class="message-content">
-                                                                <t t-raw="message.body"/>
+                                                                <t t-raw="message['body']"/>
                                                             </div>
                                                         </div>
                                                     </div>

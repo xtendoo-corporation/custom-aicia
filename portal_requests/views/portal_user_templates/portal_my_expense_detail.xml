@@ -177,8 +177,8 @@
                                                     <div class="o_portal_chatter_message mb-3 pb-3 border-bottom">
                                                         <div class="d-flex">
                                                             <div class="flex-shrink-0 me-3">
-                                                                <img t-if="message.author_id and message.author_id.id"
-                                                                     t-attf-src="/web/image/res.partner/#{message.author_id.id}/avatar_128"
+                                                                <img t-if="message['author_id'] and message['author_id']['id']"
+                                                                     t-attf-src="/web/image/res.partner/#{message['author_id']['id']}/avatar_128"
                                                                      class="rounded-circle"
                                                                      style="width: 45px; height: 45px;"
                                                                      alt="Avatar"/>
@@ -187,20 +187,20 @@
                                                             <div class="flex-grow-1">
                                                                 <div class="d-flex justify-content-between align-items-start mb-2">
                                                                     <div>
-                                                                        <strong t-if="message.author_id" t-field="message.author_id"/>
+                                                                        <strong t-if="message['author_id']" t-esc="message['author_id']['name']"/>
                                                                         <strong t-else="">Sistema</strong>
                                                                         <span class="text-muted small ms-2">
-                                                                            <t t-esc="message.date" t-options='{"widget": "datetime"}'/>
+                                                                            <t t-esc="message['date']"/>
                                                                         </span>
                                                                     </div>
-                                                                    <t t-if="message.message_type == 'notification'">
+                                                                    <t t-if="message['message_type'] == 'notification'">
                                                                         <span class="badge bg-info">Notificación</span>
                                                                     </t>
-                                                                    <t t-elif="message.message_type == 'comment'">
+                                                                    <t t-elif="message['message_type'] == 'comment'">
                                                                         <span class="badge bg-primary">Comentario</span>
                                                                     </t>
                                                                 </div>
-                                                                <div class="o_portal_chatter_message_body" t-raw="message.body"/>
+                                                                <div class="o_portal_chatter_message_body" t-raw="message['body']"/>
                                                             </div>
                                                         </div>
                                                     </div>

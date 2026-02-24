@@ -29,7 +29,7 @@ class PortalProjectEndRequestController(Controller):
         # Pasar el objeto usuario completo
         self.send_project_end_email(project_to_finished, user)
 
-        return request.redirect('/contactus-thank-you')
+        return request.redirect('/my/project_requests/thank-you')
 
     # Enviar correo electrónico con los detalles de la solicitud de fin de proyecto
     def send_project_end_email(self, project_to_finished, user):

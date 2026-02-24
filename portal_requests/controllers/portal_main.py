@@ -5,6 +5,43 @@ from odoo.addons.portal.controllers.portal import CustomerPortal
 
 class PortalRequestsCustomerPortal(CustomerPortal):
 
+    def _enrich_messages(self, raw_messages):
+        """Convierte un recordset de mail.message en lista de dicts,
+        construyendo el body desde tracking_value_ids cuando está vacío."""
+        messages = []
+        for msg in raw_messages:
+            body = msg.body or ''
+            plain_body = body.replace('<p>', '').replace('</p>', '').replace('<br>', '').replace('<br/>', '').strip()
+            if not plain_body and msg.tracking_value_ids:
+                tracking_lines = []
+                for tracking in msg.tracking_value_ids:
+                    if tracking.field_id:
+                        field_label = tracking.field_id.field_description
+                    elif tracking.field_info:
+                        field_label = tracking.field_info.get('desc', '')
+                    else:
+                        field_label = ''
+                    old_val = tracking.old_value_char or (str(tracking.old_value_integer) if tracking.old_value_integer else 'Ninguno')
+                    new_val = tracking.new_value_char or (str(tracking.new_value_integer) if tracking.new_value_integer else 'Ninguno')
+                    if old_val != new_val:
+                        tracking_lines.append(f"<strong>{field_label}:</strong> {old_val} → {new_val}")
+                    else:
+                        tracking_lines.append(f"<strong>{field_label}:</strong> {new_val}")
+                body = '<br/>'.join(tracking_lines)
+            # Guardar author como dict simple para evitar problemas de acceso en portal
+            author = msg.author_id.sudo()
+            author_data = {
+                'id': author.id,
+                'name': author.name or '',
+            } if author else None
+            messages.append({
+                'author_id': author_data,
+                'date': msg.date,
+                'body': body,
+                'message_type': msg.message_type,
+            })
+        return messages
+
     def _prepare_home_portal_values(self, counters):
         """Añade contadores personalizados al portal"""
         values = super()._prepare_home_portal_values(counters)
@@ -79,10 +116,11 @@ class PortalRequestsCustomerPortal(CustomerPortal):
         ])
 
         # Obtener TODOS los mensajes del chatter usando sudo para tener acceso completo
-        messages = request.env['mail.message'].sudo().search([
+        raw_messages = request.env['mail.message'].sudo().search([
             ('model', '=', 'portal.hr.expensive.request'),
             ('res_id', '=', expense_id)
         ], order='date desc')
+        messages = self._enrich_messages(raw_messages)
 
         values = {
             'expense': expense,
@@ -178,10 +216,11 @@ class PortalRequestsCustomerPortal(CustomerPortal):
         ])
 
         # Obtener TODOS los mensajes del chatter usando sudo
-        messages = request.env['mail.message'].sudo().search([
+        raw_messages = request.env['mail.message'].sudo().search([
             ('model', '=', 'portal.invoice.request'),
             ('res_id', '=', invoice_request_id)
         ], order='date desc')
+        messages = self._enrich_messages(raw_messages)
 
         values = {
             'invoice_request': invoice_request,
@@ -294,6 +333,16 @@ class PortalRequestsCustomerPortal(CustomerPortal):
         """Página de confirmación después de enviar una solicitud de factura"""
         return request.render("portal_requests.invoice_request_thank_you")
 
+    @http.route(['/my/documents/thank-you'], type='http', auth="public", website=True)
+    def portal_document_thank_you(self, **kw):
+        """Página de confirmación después de enviar una solicitud de documento"""
+        return request.render("portal_requests.document_request_thank_you")
+
+    @http.route(['/my/project_requests/thank-you'], type='http', auth="public", website=True)
+    def portal_project_request_thank_you(self, **kw):
+        """Página de confirmación después de enviar una solicitud de proyecto"""
+        return request.render("portal_requests.project_request_thank_you")
+
     # ==========================================
     # Rutas para Solicitudes de Documentos
     # ==========================================
@@ -335,10 +384,11 @@ class PortalRequestsCustomerPortal(CustomerPortal):
         ])
 
         # Obtener TODOS los mensajes del chatter usando sudo
-        messages = request.env['mail.message'].sudo().search([
+        raw_messages = request.env['mail.message'].sudo().search([
             ('model', '=', 'document.approval'),
             ('res_id', '=', document_id)
         ], order='date desc')
+        messages = self._enrich_messages(raw_messages)
 
         values = {
             'document': document,
@@ -580,10 +630,11 @@ class PortalRequestsCustomerPortal(CustomerPortal):
             return request.redirect(f'/my/analytic_projects/{project_id}/invoices_list')
 
         # Obtener los mensajes del chatter de la factura
-        messages = request.env['mail.message'].sudo().search([
+        raw_messages = request.env['mail.message'].sudo().search([
             ('model', '=', 'account.move'),
             ('res_id', '=', invoice_id)
         ], order='date desc')
+        messages = self._enrich_messages(raw_messages)
 
         values = {
             'project': project.sudo(),
@@ -657,10 +708,11 @@ class PortalRequestsCustomerPortal(CustomerPortal):
             return request.redirect('/my')
 
         # Obtener los mensajes del chatter
-        messages = request.env['mail.message'].sudo().search([
+        raw_messages = request.env['mail.message'].sudo().search([
             ('model', '=', 'portal.project.request'),
             ('res_id', '=', request_id)
         ], order='date desc')
+        messages = self._enrich_messages(raw_messages)
 
         values = {
             'project_request': project_request.sudo(),

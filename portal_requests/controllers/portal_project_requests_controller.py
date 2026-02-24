@@ -107,7 +107,7 @@ class PortalInvoiceController(Controller):
             })
             self.send_project_email(project)
 
-        return request.redirect('/contactus-thank-you')
+        return request.redirect('/my/project_requests/thank-you')
 
     # @route('/portal/project_request/submit', type='http', auth='user', website=True, methods=['POST'])
     # def project_request_submit(self, **post):

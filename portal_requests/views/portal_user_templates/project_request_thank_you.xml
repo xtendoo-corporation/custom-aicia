@@ -1,8 +1,8 @@
 <?xml version="1.0" encoding="utf-8"?>
 <odoo>
     <data>
-        <!-- Página de confirmación para solicitudes de facturas -->
-        <template id="invoice_request_thank_you" name="Solicitud de Factura Enviada">
+        <!-- Página de confirmación para solicitudes de proyectos -->
+        <template id="project_request_thank_you" name="Solicitud de Proyecto Enviada">
             <t t-call="portal.portal_layout">
                 <div class="container mt-5">
                     <div class="row justify-content-center">
@@ -13,7 +13,7 @@
                                 </h1>
                                 <h2>¡Solicitud Enviada con Éxito!</h2>
                                 <p class="lead mt-3">
-                                    Tu solicitud de factura ha sido enviada correctamente y está siendo revisada.
+                                    Tu solicitud de proyecto ha sido enviada correctamente y está siendo revisada.
                                 </p>
                                 <p>
                                     Recibirás una notificación cuando el estado de tu solicitud cambie.
@@ -21,7 +21,7 @@
                             </div>
 
                             <div class="mt-4">
-                                <a href="/my/invoices" class="btn btn-primary btn-lg me-2">
+                                <a href="/my/project_requests" class="btn btn-primary btn-lg me-2">
                                     <i class="fa fa-list"/> Ver Mis Solicitudes
                                 </a>
                                 <a href="/my/home" class="btn btn-secondary btn-lg">

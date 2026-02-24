@@ -64,7 +64,7 @@ class PortalApprovalRequestController(Controller):
         self.send_request_email(approval_type, new_document_approval)
 
 
-        return request.redirect('/contactus-thank-you')
+        return request.redirect('/my/documents/thank-you')
 
     def send_request_email(self, move_text, document_id):
 
