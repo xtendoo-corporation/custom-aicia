@@ -1623,6 +1623,13 @@ class AiciaImporterWizard(models.TransientModel):
                         'plan_id': 1,  # Account Analytic Plan
                     }
 
+                    if presupuesto:
+                        try:
+                            project_vals['presupuesto'] = float(presupuesto)
+                        except ValueError:
+                            _logger.warning(f"Presupuesto no válido para el proyecto {nombre}: '{presupuesto}'")
+
+
                     # Añadir código si existe
                     if codigo:
                         project_vals['code'] = codigo
@@ -1731,11 +1738,20 @@ class AiciaImporterWizard(models.TransientModel):
                     # Mapear los datos de la fila
                     data = dict(zip(headers.keys(), row))
 
-                    # Obtener valores de las celdas
-                    id_proyecto = str(data.get('ID_Proyecto', '')).strip()
-                    id_personal = str(data.get('ID_Personal', '')).strip()
-                    id_departamento = str(data.get('ID_Departamento', '')).strip() if data.get('ID_Departamento') else ''
-                    jefe_proyecto = str(data.get('Jefe_Proyecto', '')).strip() if data.get('Jefe_Proyecto') else ''
+                    # Obtener valores — float->int->str para evitar "123.0", preservando ceros a la izquierda si ya es str
+                    def _to_str(v):
+                        if v in (None, '', False):
+                            return ''
+                        if isinstance(v, float):
+                            return str(int(v)).strip()
+                        return str(v).strip()
+
+                    id_proyecto = _to_str(data.get('ID_Proyecto'))
+                    id_personal = _to_str(data.get('ID_Personal'))
+                    id_departamento = _to_str(data.get('ID_Departamento'))
+                    jefe_proyecto = _to_str(data.get('Jefe_Proyecto'))
+
+                    _logger.info(f">>> Fila {row_idx}: ID_Proyecto={repr(data.get('ID_Proyecto'))} -> '{id_proyecto}' | ID_Personal={repr(data.get('ID_Personal'))} -> '{id_personal}' | Jefe_Proyecto={repr(data.get('Jefe_Proyecto'))} -> '{jefe_proyecto}'")
 
                     # Validaciones básicas
                     if not id_proyecto:
@@ -1776,9 +1792,10 @@ class AiciaImporterWizard(models.TransientModel):
                             'jefe_proyecto': None
                         }
 
-                    # Actualizar el jefe_proyecto si viene en esta fila (el último prevalece)
-                    if jefe_proyecto:
-                        project_employees[project.id]['jefe_proyecto'] = jefe_proyecto
+                    # Jefe_Proyecto es un FLAG (0/1): si es '1', este ID_Personal es el jefe del proyecto
+                    if jefe_proyecto == '1':
+                        project_employees[project.id]['jefe_proyecto'] = id_personal
+                        _logger.info(f">>> Fila {row_idx}: Empleado '{id_personal}' marcado como jefe del proyecto '{id_proyecto}'")
 
                     result['created'] += 1
 
@@ -1835,6 +1852,17 @@ class AiciaImporterWizard(models.TransientModel):
                                         else:
                                             _logger.info(f">>> El usuario YA tiene el grupo 'Jefe de Proyecto', no es necesario añadirlo")
 
+                                        # Añadir SIEMPRE al grupo "Jefe de Equipo" (group_equip_boss)
+                                        # El comando (4, id) no duplica de forma nativa en Odoo
+                                        group_equip_boss = self.env.ref('portal_requests.group_equip_boss', raise_if_not_found=False)
+                                        if not group_equip_boss:
+                                            _logger.error(f"✗ No se encontró el grupo 'portal_requests.group_equip_boss'")
+                                        else:
+                                            jefe_employee.user_id.sudo().write({
+                                                'group_ids': [(4, group_equip_boss.id)]
+                                            })
+                                            _logger.info(f"✓ Usuario '{jefe_employee.user_id.name}' asignado al grupo 'Jefe de Equipo'")
+
                                 except Exception as e:
                                     _logger.error(f"✗ Error al añadir usuario '{jefe_employee.user_id.name}' al grupo 'Jefe de Proyecto': {str(e)}")
                                     import traceback
@@ -1863,4 +1891,352 @@ class AiciaImporterWizard(models.TransientModel):
             _logger.error(f"Stack trace: {traceback.format_exc()}")
 
         return result
+
+    def action_update_work_groups(self):
+        """
+        Recorre todos los empleados activos, toma el nombre de su departamento
+        (quitando el '0' inicial si lo tuviera), busca el portal.work.group con
+        ese nombre exacto y añade el user_id del empleado al campo user_ids del grupo.
+        Muestra un resumen detallado en el log del wizard.
+        """
+        self.ensure_one()
+
+        _logger.info("=" * 80)
+        _logger.info("INICIO DE ACTUALIZACIÓN DE GRUPOS DE TRABAJO")
+        _logger.info("=" * 80)
+
+        employees = self.env['hr.employee'].search([('active', '=', True)])
+
+        # Contadores por grupo: {group_name: [employee_names]}
+        groups_updated = {}
+        # Errores: lista de (employee_name, motivo)
+        not_processed = []
+
+        for employee in employees:
+            emp_name = employee.name or ''
+
+            # 1. Verificar que tiene departamento
+            if not employee.department_id:
+                motivo = "sin departamento asignado"
+                not_processed.append((emp_name, motivo))
+                _logger.warning(f"✗ {emp_name}: {motivo}")
+                continue
+
+            # 2. Normalizar nombre del departamento quitando '0' inicial
+            dept_name = employee.department_id.name or ''
+            search_name = dept_name.lstrip('0') if dept_name.startswith('0') else dept_name
+
+            # 3. Buscar el grupo de trabajo con ese nombre exacto
+            group = self.env['portal.work.group'].search([('name', '=', search_name)], limit=1)
+            if not group:
+                motivo = f"grupo no encontrado para departamento '{dept_name}'"
+                not_processed.append((emp_name, motivo))
+                _logger.warning(f"✗ {emp_name}: {motivo}")
+                continue
+
+            # 4. Verificar que el empleado tiene usuario en Odoo
+            if not employee.user_id:
+                motivo = f"empleado sin usuario Odoo (departamento: '{dept_name}')"
+                not_processed.append((emp_name, motivo))
+                _logger.warning(f"✗ {emp_name}: {motivo}")
+                continue
+
+            # 5. Añadir el usuario al grupo (el comando (4, id) no duplica)
+            group.write({'user_ids': [(4, employee.user_id.id)]})
+            if group.name not in groups_updated:
+                groups_updated[group.name] = []
+            groups_updated[group.name].append(emp_name)
+            _logger.info(f"✓ {emp_name} → grupo '{group.name}'")
+
+        # Construir el log HTML con el resumen
+        lines = []
+        lines.append("<h3>✅ Grupos actualizados</h3>")
+        if groups_updated:
+            for gname, emp_list in sorted(groups_updated.items()):
+                lines.append(f"<b>{gname}</b> — {len(emp_list)} empleado(s) añadido(s):")
+                lines.append("<ul>")
+                for e in emp_list:
+                    lines.append(f"<li>{e}</li>")
+                lines.append("</ul>")
+        else:
+            lines.append("<p>Ningún empleado fue añadido a ningún grupo.</p>")
+
+        lines.append("<h3>❌ No procesados</h3>")
+        if not_processed:
+            lines.append("<ul>")
+            for emp_name, motivo in not_processed:
+                lines.append(f"<li><b>{emp_name}</b>: {motivo}</li>")
+            lines.append("</ul>")
+        else:
+            lines.append("<p>Todos los empleados han sido procesados correctamente.</p>")
+
+        total_added = sum(len(v) for v in groups_updated.values())
+        lines.append(
+            f"<hr/><p><b>Resumen:</b> {total_added} empleado(s) añadido(s) a "
+            f"{len(groups_updated)} grupo(s). {len(not_processed)} no procesado(s).</p>"
+        )
+
+        self.write({
+            'import_log': '\n'.join(lines),
+            'state': 'done',
+        })
+        _logger.info("FIN DE ACTUALIZACIÓN DE GRUPOS DE TRABAJO")
+        _logger.info("=" * 80)
+
+    def action_update_project_bosses(self):
+        """
+        Recorre todos los proyectos (account.analytic.account) con responsible_id
+        y añade ese usuario al grupo 'Jefe de Equipo' (portal_requests.group_equip_boss).
+        Muestra un resumen detallado en el log del wizard.
+        """
+        self.ensure_one()
+
+        _logger.info("=" * 80)
+        _logger.info("INICIO DE ACTUALIZACIÓN DE JEFES DE EQUIPO POR PROYECTO")
+        _logger.info("=" * 80)
+
+        # Obtener el grupo "Jefe de Equipo"
+        group_equip_boss = self.env.ref('portal_requests.group_equip_boss', raise_if_not_found=False)
+        if not group_equip_boss:
+            self.write({
+                'import_log': '<p style="color:red;">❌ No se encontró el grupo '
+                              '<b>portal_requests.group_equip_boss</b>. '
+                              'Verifica que el módulo portal_requests está instalado correctamente.</p>',
+                'state': 'done',
+            })
+            return
+
+        # Buscar todos los proyectos con responsible_id asignado
+        projects = self.env['account.analytic.account'].search([
+            ('responsible_id', '!=', False)
+        ])
+
+        _logger.info(f">>> Proyectos con responsable encontrados: {len(projects)}")
+
+        updated = []        # [(project_name, user_name)] — usuarios nuevos en el grupo
+        already_had = []    # [(project_name, user_name)] — ya tenían el grupo
+        no_group = []       # [(project_name, user_name, motivo)] — sin grupo de trabajo
+        group_assigned = [] # [(project_name, user_name, group_name)] — equip_boss asignado
+
+        for project in projects:
+            user = project.responsible_id
+            # Comprobar si ya tenía el grupo (solo para el informe)
+            already = group_equip_boss.id in user.group_ids.ids
+            # Asignar siempre — el comando (4, id) no duplica de forma nativa en Odoo
+            user.sudo().write({'group_ids': [(4, group_equip_boss.id)]})
+            if already:
+                already_had.append((project.name, user.name))
+                _logger.info(f"→ Proyecto '{project.name}': '{user.name}' ya tenía el grupo")
+            else:
+                updated.append((project.name, user.name))
+                _logger.info(f"✓ Proyecto '{project.name}': '{user.name}' añadido al grupo 'Jefe de Equipo'")
+
+            # Buscar el empleado ligado a este usuario para obtener su departamento
+            employee = self.env['hr.employee'].search([
+                ('user_id', '=', user.id),
+                ('active', '=', True),
+            ], limit=1)
+
+            if not employee or not employee.department_id:
+                no_group.append((project.name, user.name, "empleado sin departamento o no encontrado"))
+                _logger.warning(f"⚠ Proyecto '{project.name}': '{user.name}' sin departamento, no se asigna equip_boss")
+                continue
+
+            # Normalizar nombre del departamento quitando '0' inicial
+            dept_name = employee.department_id.name or ''
+            search_name = dept_name.lstrip('0') if dept_name.startswith('0') else dept_name
+
+            # Buscar el grupo de trabajo por nombre exacto
+            work_group = self.env['portal.work.group'].search([('name', '=', search_name)], limit=1)
+            if not work_group:
+                no_group.append((project.name, user.name, f"grupo de trabajo '{search_name}' no encontrado"))
+                _logger.warning(f"⚠ Proyecto '{project.name}': grupo '{search_name}' no encontrado")
+                continue
+
+            # Asignar como equip_boss del grupo
+            work_group.write({'equip_boss': user.id})
+            group_assigned.append((project.name, user.name, work_group.name))
+            _logger.info(f"✓ Proyecto '{project.name}': '{user.name}' asignado como equip_boss en grupo '{work_group.name}'")
+
+        # Construir el log HTML con el resumen
+        lines = []
+        lines.append("<h3>✅ Usuarios añadidos al grupo 'Jefe de Equipo'</h3>")
+        if updated:
+            lines.append("<ul>")
+            for pname, uname in updated:
+                lines.append(f"<li><b>{pname}</b> → {uname}</li>")
+            lines.append("</ul>")
+        else:
+            lines.append("<p>Ningún usuario nuevo fue añadido al grupo.</p>")
+
+        if already_had:
+            lines.append("<h3>ℹ️ Ya tenían el grupo</h3>")
+            lines.append("<ul>")
+            for pname, uname in already_had:
+                lines.append(f"<li><b>{pname}</b> → {uname}</li>")
+            lines.append("</ul>")
+
+        if no_group:
+            lines.append("<h3>⚠️ Sin asignación de equip_boss</h3>")
+            lines.append("<ul>")
+            for pname, uname, motivo in no_group:
+                lines.append(f"<li><b>{pname}</b> → {uname}: {motivo}</li>")
+            lines.append("</ul>")
+
+        if group_assigned:
+            lines.append("<h3>👑 Asignados como equip_boss en su grupo de trabajo</h3>")
+            lines.append("<ul>")
+            for pname, uname, gname in group_assigned:
+                lines.append(f"<li><b>{pname}</b> → {uname} → grupo <b>{gname}</b></li>")
+            lines.append("</ul>")
+
+        lines.append(
+            f"<hr/><p><b>Resumen:</b> {len(updated)} usuario(s) añadido(s) al grupo Jefe de Equipo, "
+            f"{len(already_had)} ya lo tenían, {len(group_assigned)} asignado(s) como equip_boss, "
+            f"{len(no_group)} sin asignación de grupo. Total proyectos: {len(projects)}.</p>"
+        )
+
+        self.write({
+            'import_log': '\n'.join(lines),
+            'state': 'done',
+        })
+        _logger.info("FIN DE ACTUALIZACIÓN DE JEFES DE EQUIPO POR PROYECTO")
+        _logger.info("=" * 80)
+
+    def action_assign_project_work_groups(self):
+        """
+        Recorre todos los proyectos (account.analytic.account) que tienen
+        responsible_id asignado pero NO tienen work_group_id establecido.
+        Para cada uno busca el empleado vinculado al usuario responsable,
+        toma su departamento (quitando el '0' inicial si lo tuviera),
+        busca el portal.work.group con ese nombre exacto y escribe
+        work_group_id en la cuenta analítica.
+        Muestra un resumen detallado en el log del wizard.
+        """
+        self.ensure_one()
+
+        _logger.info("=" * 80)
+        _logger.info("INICIO DE ASIGNACIÓN DE GRUPOS DE TRABAJO A PROYECTOS")
+        _logger.info("=" * 80)
+
+        # Solo proyectos con responsable y SIN grupo de trabajo asignado
+        projects = self.env['account.analytic.account'].search([
+            ('responsible_id', '!=', False),
+            ('work_group_id', '=', False),
+        ])
+
+        _logger.info(f">>> Proyectos con responsable y sin grupo encontrados: {len(projects)}")
+
+        assigned = []       # [(project_name, user_name, group_name)]
+        no_employee = []    # [(project_name, user_name)]
+        no_department = []  # [(project_name, user_name)]
+        no_group = []       # [(project_name, user_name, dept_name)]
+
+        for project in projects:
+            user = project.responsible_id
+            pname = project.name or ''
+            uname = user.name or ''
+
+            # 1. Buscar el empleado activo vinculado al usuario responsable
+            employee = self.env['hr.employee'].search([
+                ('user_id', '=', user.id),
+                ('active', '=', True),
+            ], limit=1)
+
+            if not employee:
+                no_employee.append((pname, uname))
+                _logger.warning(
+                    f"✗ Proyecto '{pname}': responsable '{uname}' "
+                    f"no tiene empleado activo asociado"
+                )
+                continue
+
+            # 2. Verificar que el empleado tiene departamento
+            if not employee.department_id:
+                no_department.append((pname, uname))
+                _logger.warning(
+                    f"✗ Proyecto '{pname}': empleado '{employee.name}' "
+                    f"sin departamento asignado"
+                )
+                continue
+
+            # 3. Normalizar nombre del departamento quitando '0' inicial
+            dept_name = employee.department_id.name or ''
+            search_name = dept_name.lstrip('0') if dept_name.startswith('0') else dept_name
+
+            # 4. Buscar el grupo de trabajo por nombre exacto
+            work_group = self.env['portal.work.group'].search([
+                ('name', '=', search_name)
+            ], limit=1)
+
+            if not work_group:
+                no_group.append((pname, uname, dept_name))
+                _logger.warning(
+                    f"✗ Proyecto '{pname}': grupo de trabajo '{search_name}' "
+                    f"(departamento '{dept_name}') no encontrado"
+                )
+                continue
+
+            # 5. Asignar el grupo al proyecto
+            project.write({'work_group_id': work_group.id})
+            assigned.append((pname, uname, work_group.name))
+            _logger.info(
+                f"✓ Proyecto '{pname}': responsable '{uname}' → "
+                f"grupo '{work_group.name}' asignado"
+            )
+
+        # Construir el log HTML con el resumen
+        lines = []
+        lines.append("<h3>✅ Proyectos con grupo asignado</h3>")
+        if assigned:
+            lines.append("<ul>")
+            for pname, uname, gname in assigned:
+                lines.append(
+                    f"<li><b>{pname}</b> → responsable: {uname} "
+                    f"→ grupo: <b>{gname}</b></li>"
+                )
+            lines.append("</ul>")
+        else:
+            lines.append("<p>Ningún proyecto fue actualizado.</p>")
+
+        if no_employee:
+            lines.append("<h3>⚠️ Sin empleado asociado al responsable</h3>")
+            lines.append("<ul>")
+            for pname, uname in no_employee:
+                lines.append(f"<li><b>{pname}</b> → responsable: {uname}</li>")
+            lines.append("</ul>")
+
+        if no_department:
+            lines.append("<h3>⚠️ Empleado sin departamento</h3>")
+            lines.append("<ul>")
+            for pname, uname in no_department:
+                lines.append(f"<li><b>{pname}</b> → responsable: {uname}</li>")
+            lines.append("</ul>")
+
+        if no_group:
+            lines.append("<h3>⚠️ Grupo de trabajo no encontrado</h3>")
+            lines.append("<ul>")
+            for pname, uname, dname in no_group:
+                lines.append(
+                    f"<li><b>{pname}</b> → responsable: {uname} "
+                    f"→ departamento: {dname}</li>"
+                )
+            lines.append("</ul>")
+
+        lines.append(
+            f"<hr/><p><b>Resumen:</b> {len(assigned)} proyecto(s) con grupo asignado. "
+            f"{len(no_employee)} sin empleado, {len(no_department)} sin departamento, "
+            f"{len(no_group)} sin grupo encontrado. "
+            f"Total proyectos procesados: {len(projects)}.</p>"
+        )
+
+        self.write({
+            'import_log': '\n'.join(lines),
+            'state': 'done',
+        })
+        _logger.info(
+            f"FIN DE ASIGNACIÓN DE GRUPOS A PROYECTOS — "
+            f"{len(assigned)} asignados, {len(no_employee) + len(no_department) + len(no_group)} sin asignar"
+        )
+        _logger.info("=" * 80)
 

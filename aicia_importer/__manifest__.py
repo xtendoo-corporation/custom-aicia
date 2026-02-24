@@ -8,6 +8,7 @@
         "sale",
         "hr",
         "analytic",
+        "portal_requests",
     ],
     "license": "AGPL-3",
     "application": True,

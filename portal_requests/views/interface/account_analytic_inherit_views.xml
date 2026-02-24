@@ -25,6 +25,7 @@
             </xpath>
             <xpath expr="//field[@name='currency_id']" position="replace">
                 <field name="currency_id" options="{'no_create': True}" groups="base.group_multi_currency" readonly="not user_can_edit"/>
+                <field name="presupuesto" readonly="not user_can_edit"/>
             </xpath>
             <xpath expr="//field[@name='partner_id']" position="after">
                 <field name="clientes_asociados_domain" invisible="1"/>
@@ -53,6 +54,9 @@
         <field name="arch" type="xml">
             <xpath expr="//field[@name='name']" position="after">
                 <field name="work_group_id"/>
+            </xpath>
+            <xpath expr="//field[@name='debit']" position="before">
+                <field name="presupuesto"/>
             </xpath>
         </field>
     </record>

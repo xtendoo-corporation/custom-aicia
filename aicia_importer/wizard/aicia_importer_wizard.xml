@@ -382,5 +382,196 @@
         <field name="view_id" ref="aicia_importer_project_assignments_view"/>
         <field name="target">new</field>
     </record>
+
+    <!-- Vista para ACTUALIZAR GRUPOS DE TRABAJO -->
+    <record id="aicia_update_work_groups_view" model="ir.ui.view">
+        <field name="name">AICIA - Actualizar Grupos de Trabajo</field>
+        <field name="model">aicia.importer.wizard</field>
+        <field name="priority">10</field>
+        <field name="arch" type="xml">
+            <form string="Actualizar Grupos de Trabajo">
+                <field name="state" invisible="1"/>
+
+                <!-- Mostrar log cuando state='done' -->
+                <group invisible="state == 'draft'">
+                    <field name="import_log" nolabel="1" colspan="2"/>
+                </group>
+
+                <notebook invisible="state == 'done'">
+                    <page string="Información">
+                        <group>
+                            <p>
+                                Este asistente recorre todos los empleados activos y los añade
+                                al grupo de trabajo correspondiente según su departamento.
+                            </p>
+                            <p>
+                                <b>Funcionamiento:</b>
+                            </p>
+                            <ul>
+                                <li>Toma el nombre del departamento de cada empleado.</li>
+                                <li>Si el nombre del departamento empieza por <b>0</b>, se elimina ese 0 inicial antes de buscar.</li>
+                                <li>Busca el grupo de trabajo (<b>portal.work.group</b>) con ese nombre exacto.</li>
+                                <li>Añade el usuario Odoo del empleado al campo <b>Usuarios</b> del grupo.</li>
+                                <li>Si el usuario ya pertenece al grupo, no se duplica.</li>
+                            </ul>
+                            <p>
+                                <b>Motivos por los que un empleado puede no ser procesado:</b>
+                            </p>
+                            <ul>
+                                <li>Sin departamento asignado.</li>
+                                <li>No existe ningún grupo de trabajo con ese nombre.</li>
+                                <li>El empleado no tiene usuario Odoo asociado.</li>
+                            </ul>
+                        </group>
+                    </page>
+                </notebook>
+
+                <footer>
+                    <button
+                        name="action_update_work_groups"
+                        string="Actualizar Grupos"
+                        type="object"
+                        class="btn-primary"
+                        invisible="state == 'done'"
+                    />
+                    <button string="Cerrar" class="btn-primary" special="cancel" invisible="state == 'draft'"/>
+                    <button string="Cancelar" class="btn-secondary" special="cancel" invisible="state == 'done'"/>
+                </footer>
+            </form>
+        </field>
+    </record>
+
+    <!-- Acción para ACTUALIZAR GRUPOS DE TRABAJO -->
+    <record id="aicia_update_work_groups_action" model="ir.actions.act_window">
+        <field name="name">Actualizar Grupos</field>
+        <field name="res_model">aicia.importer.wizard</field>
+        <field name="view_mode">form</field>
+        <field name="view_id" ref="aicia_update_work_groups_view"/>
+        <field name="target">new</field>
+    </record>
+
+    <!-- Vista para ACTUALIZAR JEFES DE EQUIPO POR PROYECTO -->
+    <record id="aicia_update_project_bosses_view" model="ir.ui.view">
+        <field name="name">AICIA - Actualizar Jefes de Equipo por Proyecto</field>
+        <field name="model">aicia.importer.wizard</field>
+        <field name="priority">10</field>
+        <field name="arch" type="xml">
+            <form string="Actualizar Jefes de Equipo por Proyecto">
+                <field name="state" invisible="1"/>
+
+                <!-- Mostrar log cuando state='done' -->
+                <group invisible="state == 'draft'">
+                    <field name="import_log" nolabel="1" colspan="2"/>
+                </group>
+
+                <notebook invisible="state == 'done'">
+                    <page string="Información">
+                        <group>
+                            <p>
+                                Este asistente recorre todos los proyectos que tienen un
+                                <b>Responsable</b> asignado y añade ese usuario al grupo
+                                <b>Jefe de Equipo</b>.
+                            </p>
+                            <p><b>Funcionamiento:</b></p>
+                            <ul>
+                                <li>Busca todos los proyectos con responsable asignado.</li>
+                                <li>Añade el usuario responsable al grupo <b>Jefe de Equipo</b>.</li>
+                                <li>Si el usuario ya tiene el grupo, no se duplica.</li>
+                                <li>Se puede ejecutar varias veces sin efectos secundarios.</li>
+                            </ul>
+                        </group>
+                    </page>
+                </notebook>
+
+                <footer>
+                    <button
+                        name="action_update_project_bosses"
+                        string="Actualizar Jefes de Equipo"
+                        type="object"
+                        class="btn-primary"
+                        invisible="state == 'done'"
+                    />
+                    <button string="Cerrar" class="btn-primary" special="cancel" invisible="state == 'draft'"/>
+                    <button string="Cancelar" class="btn-secondary" special="cancel" invisible="state == 'done'"/>
+                </footer>
+            </form>
+        </field>
+    </record>
+
+    <!-- Acción para ACTUALIZAR JEFES DE EQUIPO POR PROYECTO -->
+    <record id="aicia_update_project_bosses_action" model="ir.actions.act_window">
+        <field name="name">Actualizar Jefes de Equipo</field>
+        <field name="res_model">aicia.importer.wizard</field>
+        <field name="view_mode">form</field>
+        <field name="view_id" ref="aicia_update_project_bosses_view"/>
+        <field name="target">new</field>
+    </record>
+
+    <!-- Vista para ASIGNAR GRUPO DE TRABAJO A PROYECTOS -->
+    <record id="aicia_assign_project_work_groups_view" model="ir.ui.view">
+        <field name="name">AICIA - Asignar Grupo de Trabajo a Proyectos</field>
+        <field name="model">aicia.importer.wizard</field>
+        <field name="priority">10</field>
+        <field name="arch" type="xml">
+            <form string="Asignar Grupo de Trabajo a Proyectos">
+                <field name="state" invisible="1"/>
+
+                <!-- Mostrar log cuando state='done' -->
+                <group invisible="state == 'draft'">
+                    <field name="import_log" nolabel="1" colspan="2"/>
+                </group>
+
+                <notebook invisible="state == 'done'">
+                    <page string="Información">
+                        <group>
+                            <p>
+                                Este asistente recorre todos los proyectos (cuentas analíticas) que
+                                tienen un <b>Responsable</b> asignado pero <b>no tienen aún</b> un
+                                grupo de trabajo asignado, y les asocia automáticamente el
+                                <b>Grupo de Trabajo</b> correspondiente al departamento de su responsable.
+                            </p>
+                            <p><b>Funcionamiento:</b></p>
+                            <ul>
+                                <li>Busca proyectos con responsable asignado y sin grupo de trabajo.</li>
+                                <li>Localiza el empleado activo vinculado al usuario responsable.</li>
+                                <li>Toma el departamento de ese empleado.</li>
+                                <li>Si el nombre del departamento empieza por <b>0</b>, se elimina ese 0 inicial antes de buscar.</li>
+                                <li>Busca el grupo de trabajo (<b>portal.work.group</b>) con ese nombre exacto.</li>
+                                <li>Asigna ese grupo al campo <b>Grupo de Trabajo</b> del proyecto.</li>
+                                <li>Los proyectos que ya tienen grupo asignado no se modifican.</li>
+                            </ul>
+                            <p><b>Motivos por los que un proyecto puede no ser procesado:</b></p>
+                            <ul>
+                                <li>El responsable no tiene empleado activo asociado en Odoo.</li>
+                                <li>El empleado no tiene departamento asignado.</li>
+                                <li>No existe ningún grupo de trabajo con el nombre del departamento.</li>
+                            </ul>
+                        </group>
+                    </page>
+                </notebook>
+
+                <footer>
+                    <button
+                        name="action_assign_project_work_groups"
+                        string="Asignar Grupos a Proyectos"
+                        type="object"
+                        class="btn-primary"
+                        invisible="state == 'done'"
+                    />
+                    <button string="Cerrar" class="btn-primary" special="cancel" invisible="state == 'draft'"/>
+                    <button string="Cancelar" class="btn-secondary" special="cancel" invisible="state == 'done'"/>
+                </footer>
+            </form>
+        </field>
+    </record>
+
+    <!-- Acción para ASIGNAR GRUPO DE TRABAJO A PROYECTOS -->
+    <record id="aicia_assign_project_work_groups_action" model="ir.actions.act_window">
+        <field name="name">Asignar Grupos a Proyectos</field>
+        <field name="res_model">aicia.importer.wizard</field>
+        <field name="view_mode">form</field>
+        <field name="view_id" ref="aicia_assign_project_work_groups_view"/>
+        <field name="target">new</field>
+    </record>
 </odoo>
 

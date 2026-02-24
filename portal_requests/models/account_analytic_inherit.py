@@ -38,6 +38,7 @@ class AccountAnalyticAccountInherit(models.Model):
                                      domain="[('id', 'in', responsible_domain)]")
 
     user_can_edit = fields.Boolean(string='User Can Edit', compute='_compute_user_can_edit')
+    presupuesto = fields.Float(string='Presupuesto', tracking=True)
 
     @api.depends('work_group_id', 'responsible_id')
     def _compute_user_can_edit(self):

@@ -108,6 +108,14 @@
                                                 <strong>Compañía:</strong>
                                                 <p><span t-esc="project.company_id.name if project.company_id else '-'"/></p>
                                             </div>
+                                            <div class="mb-3">
+                                                <strong>Balance:</strong>
+                                                <p><span t-esc="project.balance"/>€</p>
+                                            </div>
+                                            <div class="mb-3">
+                                                <strong>Presupuesto:</strong>
+                                                <p><span t-esc="project.presupuesto"/>€</p>
+                                            </div>
                                         </div>
                                         <div class="col-md-6">
                                             <div class="mb-3">
