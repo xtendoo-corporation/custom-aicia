@@ -441,14 +441,50 @@ class PortalRequestsCustomerPortal(CustomerPortal):
         project._portal_ensure_token()
 
         # Obtener TODOS los mensajes del chatter usando sudo para tener acceso completo
-        messages = request.env['mail.message'].sudo().search([
+        raw_messages = request.env['mail.message'].sudo().search([
             ('model', '=', 'account.analytic.account'),
             ('res_id', '=', project_id)
         ], order='date desc')
 
+        # Enriquecer mensajes: si el body está vacío, construirlo desde tracking_value_ids
+        messages = []
+        for msg in raw_messages:
+            body = msg.body or ''
+            # Detectar body vacío o con solo etiquetas HTML vacías
+            plain_body = body.replace('<p>', '').replace('</p>', '').replace('<br>', '').replace('<br/>', '').strip()
+            if not plain_body and msg.tracking_value_ids:
+                tracking_lines = []
+                for tracking in msg.tracking_value_ids:
+                    if tracking.field_id:
+                        field_label = tracking.field_id.field_description
+                    elif tracking.field_info:
+                        field_label = tracking.field_info.get('desc', '')
+                    else:
+                        field_label = ''
+                    old_val = tracking.old_value_char or (str(tracking.old_value_integer) if tracking.old_value_integer else 'Ninguno')
+                    new_val = tracking.new_value_char or (str(tracking.new_value_integer) if tracking.new_value_integer else 'Ninguno')
+                    if old_val != new_val:
+                        tracking_lines.append(f"<strong>{field_label}:</strong> {old_val} → {new_val}")
+                    else:
+                        tracking_lines.append(f"<strong>{field_label}:</strong> {new_val}")
+                body = '<br/>'.join(tracking_lines)
+            messages.append({
+                'author_id': msg.author_id,
+                'date': msg.date,
+                'body': body,
+                'message_type': msg.message_type,
+            })
+
+        # Obtener los adjuntos relacionados con este proyecto (cuenta analítica)
+        attachments = request.env['ir.attachment'].sudo().search([
+            ('res_model', '=', 'account.analytic.account'),
+            ('res_id', '=', project_id)
+        ])
+
         values = {
             'project': project,
             'messages': messages,
+            'attachments': attachments,
             'page_name': 'analytic_project',
             'success_message': success,
         }
@@ -659,5 +695,3 @@ class PortalRequestsCustomerPortal(CustomerPortal):
 
         # Redirigir de vuelta al detalle
         return request.redirect(f'/my/project_requests/{request_id}?success=message_posted')
-
-

@@ -140,6 +140,44 @@
                         </div>
                     </div>
 
+                    <!-- Archivos Adjuntos -->
+                    <div class="row">
+                        <div class="col-12">
+                            <div class="card mb-4">
+                                <div class="card-header bg-light">
+                                    <h5 class="mb-0">
+                                        <i class="fa fa-paperclip me-2"></i>
+                                        Archivos Adjuntos
+                                    </h5>
+                                </div>
+                                <div class="card-body">
+                                    <t t-if="attachments">
+                                        <div class="list-group">
+                                            <t t-foreach="attachments" t-as="attachment">
+                                                <a t-attf-href="/web/content/#{attachment.id}?download=true"
+                                                   class="list-group-item list-group-item-action d-flex justify-content-between align-items-center">
+                                                    <div>
+                                                        <i class="fa fa-file-o me-2"/>
+                                                        <span t-esc="attachment.name"/>
+                                                    </div>
+                                                    <span class="badge bg-primary rounded-pill">
+                                                        <i class="fa fa-download"/>
+                                                    </span>
+                                                </a>
+                                            </t>
+                                        </div>
+                                    </t>
+                                    <t t-else="">
+                                        <div class="alert alert-info mb-0" role="alert">
+                                            <i class="fa fa-info-circle me-2"/>
+                                            No hay archivos adjuntos en este proyecto.
+                                        </div>
+                                    </t>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+
                     <!-- Chatter -->
                     <div class="row mt-4" t-if="messages or True">
                         <div class="col-12">
@@ -157,8 +195,8 @@
                                                 <div class="card-body">
                                                     <div class="d-flex align-items-start">
                                                         <div class="flex-shrink-0 me-3">
-                                                            <t t-if="message.author_id and message.author_id.image_128">
-                                                                <img t-attf-src="data:image/png;base64,#{message.author_id.image_128}"
+                                                            <t t-if="message['author_id'] and message['author_id'].image_128">
+                                                                <img t-attf-src="data:image/png;base64,#{message['author_id'].image_128}"
                                                                      class="rounded-circle"
                                                                      style="width: 50px; height: 50px;"
                                                                      alt="Avatar"/>
@@ -170,18 +208,19 @@
                                                         <div class="flex-grow-1">
                                                             <div class="d-flex justify-content-between align-items-start mb-2">
                                                                 <div>
-                                                                    <strong t-if="message.author_id" t-esc="message.author_id.name"/>
+                                                                    <strong t-if="message['author_id']" t-esc="message['author_id'].name"/>
                                                                     <strong t-else="">Sistema</strong>
                                                                     <br/>
                                                                     <small class="text-muted">
                                                                         <i class="fa fa-clock-o me-1"></i>
-                                                                        <span t-field="message.date"/>
+                                                                        <span t-esc="message['date']"/>
                                                                     </small>
                                                                 </div>
                                                             </div>
-                                                            <div class="message-content">
-                                                                <t t-raw="message.body"/>
-                                                            </div>
+                                            <!-- body puede contener HTML de tracking, t-raw lo renderiza sin escapar -->
+                                            <div class="message-content">
+                                                <t t-raw="message['body']"/>
+                                            </div>
                                                         </div>
                                                     </div>
                                                 </div>
@@ -215,6 +254,7 @@
                             </div>
                         </div>
                     </div>
+
                 </div>
             </t>
         </template>
@@ -560,6 +600,8 @@
         </template>
     </data>
 </odoo>
+
+
 
 
 
