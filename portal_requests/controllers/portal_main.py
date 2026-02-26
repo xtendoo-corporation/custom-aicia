@@ -89,6 +89,9 @@ class PortalRequestsCustomerPortal(CustomerPortal):
         # ])
         # values['project_request_count'] = project_request_count
 
+        # Indica si el usuario es Jefe de Equipo (controla visibilidad de la tarjeta en el home)
+        values['is_equip_boss'] = request.env.user.has_group('portal_requests.group_equip_boss')
+
         return values
 
     @http.route(['/my/expenses', '/my/expenses/page/<int:page>'], type='http', auth="user", website=True)
@@ -709,6 +712,10 @@ class PortalRequestsCustomerPortal(CustomerPortal):
     @http.route(['/my/project_requests', '/my/project_requests/page/<int:page>'], type='http', auth="user", website=True)
     def portal_my_project_requests(self, page=1, sortby=None, **kw):
         """Muestra el listado de solicitudes de proyectos del usuario"""
+        # Solo los jefes de equipo pueden acceder
+        if not request.env.user.has_group('portal_requests.group_equip_boss'):
+            return request.redirect('/my')
+
         user = request.env.user
 
         # Buscar solicitudes de proyectos del usuario
@@ -726,6 +733,10 @@ class PortalRequestsCustomerPortal(CustomerPortal):
     @http.route(['/my/project_requests/<int:request_id>'], type='http', auth="user", website=True)
     def portal_my_project_request_detail(self, request_id, success=None, **kw):
         """Muestra el detalle de una solicitud de proyecto"""
+        # Solo los jefes de equipo pueden acceder
+        if not request.env.user.has_group('portal_requests.group_equip_boss'):
+            return request.redirect('/my')
+
         # Buscar la solicitud del usuario
         project_request = request.env['portal.project.request'].search([
             ('id', '=', request_id),
@@ -755,6 +766,10 @@ class PortalRequestsCustomerPortal(CustomerPortal):
     @http.route(['/my/project_requests/<int:request_id>/post_message'], type='http', auth="user", website=True, methods=['POST'], csrf=True)
     def portal_project_request_post_message(self, request_id, message, **kw):
         """Permite enviar un mensaje en el chatter de una solicitud de proyecto"""
+        # Solo los jefes de equipo pueden acceder
+        if not request.env.user.has_group('portal_requests.group_equip_boss'):
+            return request.redirect('/my')
+
         # Buscar la solicitud del usuario
         project_request = request.env['portal.project.request'].search([
             ('id', '=', request_id),

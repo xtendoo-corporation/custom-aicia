@@ -8,13 +8,15 @@
             <!-- Crear una nueva categoría para solicitudes antes de portal_common_category -->
             <xpath expr="//div[@id='portal_common_category']" position="before">
                 <div class="o_portal_category row g-2 mt-3" id="portal_requests_category">
-                          <!-- Tarjeta de Solicitudes de Proyectos -->
-                    <t t-call="portal.portal_docs_entry">
-                        <t t-set="icon" t-value="'/portal_requests/static/description/project.png'"/>
-                        <t t-set="title">Solicitudes de Proyectos</t>
-                        <t t-set="text">Consulta tus solicitudes de proyectos</t>
-                        <t t-set="url" t-value="'/my/project_requests'"/>
-                        <t t-set="config_card" t-value="True"/>
+                          <!-- Tarjeta de Solicitudes de Proyectos: solo visible para Jefes de Equipo -->
+                    <t t-if="is_equip_boss">
+                        <t t-call="portal.portal_docs_entry">
+                            <t t-set="icon" t-value="'/portal_requests/static/description/project.png'"/>
+                            <t t-set="title">Solicitudes de Proyectos</t>
+                            <t t-set="text">Consulta tus solicitudes de proyectos</t>
+                            <t t-set="url" t-value="'/my/project_requests'"/>
+                            <t t-set="config_card" t-value="True"/>
+                        </t>
                     </t>
                      <t t-call="portal.portal_docs_entry">
                             <t t-set="icon" t-value="'/portal_requests/static/description/document.png'"/>
