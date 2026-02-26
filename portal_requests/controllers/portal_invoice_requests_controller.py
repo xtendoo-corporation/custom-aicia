@@ -11,7 +11,7 @@ class PortalInvoiceController(Controller):
             ('responsible_id', '=', user.id)
         ])
 
-        if allowed_work_groups and user.has_group('portal_requests.group_equip_boss'):
+        if allowed_work_groups and user.sudo().has_group('portal_requests.group_equip_boss'):
             wg_companies = request.env['account.analytic.account'].search(
                 [('work_group_id', 'in', allowed_work_groups.ids)]
             )
@@ -67,8 +67,7 @@ class PortalInvoiceController(Controller):
             invoice_name = request.env['account.move'].sudo().search([('id', '=', invoice_to_refund)]).name
             move_text = "factura rectificativa para la factura " + invoice_name
         if work_group_id.equip_boss.id == invoice_request.user_id.id:
-            print("Es el jefe de equipo)")
-            group = request.env.ref('portal_requests.group_partner_responsible')
+            group = request.env.ref('portal_requests.group_partner_responsible').sudo()
             to_notify_users = group.user_ids
             # to_notify_users = request.env['res.users'].search(
             #     [('groups_id', 'in', request.env.ref('portal_requests.group_partner_responsible').id)])
@@ -78,8 +77,6 @@ class PortalInvoiceController(Controller):
                                         invoice_request.partner_id.name, invoice_request.notes,
                                         invoice_request.invoice_to_refund, invoice_request)
         else:
-            #Se notifica al jefe de equipo
-            print("Es el jefe de responsable")
             to_notify_users = [work_group_id.equip_boss]
 
             self.send_request_email(to_notify_users,move_text,invoice_request.user_id.name,invoice_request.analytic_id.name,invoice_request.partner_id.name, invoice_request.notes, invoice_request.invoice_to_refund, invoice_request)

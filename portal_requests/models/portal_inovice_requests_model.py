@@ -47,20 +47,38 @@ class PortalInvoiceRequest(models.Model):
         for record in self:
             record.computed_name = F"Solicitud de Factura para {record.analytic_id.name}"
 
+    @api.model_create_multi
+    def create(self, vals_list):
+        records = super().create(vals_list)
+        for record in records:
+            if record.user_id and record.user_id.partner_id:
+                record.message_subscribe(partner_ids=[record.user_id.partner_id.id])
+        return records
+
     show_solicitar_revision = fields.Boolean(
         string='Mostrar Solicitar Revisión',
         compute='_compute_show_solicitar_revision',
         store=False,
     )
 
+    show_approve_button = fields.Boolean(
+        string='Mostrar Botón Aprobar',
+        compute='_compute_show_approve_button',
+        store=False,
+    )
+
+    @api.depends('status', 'equip_boss')
+    def _compute_show_approve_button(self):
+        user = self.env.user
+        for rec in self:
+            rec.show_approve_button = (
+                rec.status == 'approved_by_boss_group' and
+                rec.equip_boss == user
+            )
+
     @api.depends('status')
     def _compute_show_solicitar_revision(self):
-        is_boss = self.env.user.has_group('portal_requests.group_equip_boss') or self.env.user.has_group('portal_requests.group_partner_responsible')
-        print("*"*100)
-        print("is_boss:", is_boss)
-        print("rec.status:", self.status)
-        print("status:",(self.status == 'to_revise') and (not is_boss))
-        print("*"*100)
+        is_boss = self.env.user.sudo().has_group('portal_requests.group_equip_boss') or self.env.user.sudo().has_group('portal_requests.group_partner_responsible')
         for rec in self:
             rec.show_solicitar_revision = (rec.status == 'to_revise') and (not is_boss)
 
@@ -151,11 +169,8 @@ class PortalInvoiceRequest(models.Model):
             return self.show_notificacion("¡Solicitud enviada!", "La solicitud ha sido enviada al jefe de equipo para su revisión.", "success")
 
         if self.status=='approved_by_boss_group':
-            group = self.analytic_id.work_group_id
-            if group:
-                boss = group.user_ids.filtered(lambda u: u.has_group('portal_requests.group_equip_boss'))
-                if self.responsible_id != boss:
-                    self.message_subscribe(partner_ids=[boss.partner_id.id])
+            if self.equip_boss and self.equip_boss.partner_id:
+                self.message_subscribe(partner_ids=[self.equip_boss.partner_id.id])
             self.status = 'approved_by_client_responsible'
             user_to_send = self.env['res.users'].search([('work_group_ids', 'in', self.env.ref('portal_requests.group_partner_responsible').id)])
             move_text = "factura" if self.move_type == 'out_invoice' else "factura rectificativa"
@@ -290,4 +305,3 @@ class PortalInvoiceRequest(models.Model):
         if not self.partner_id:
             return
         self.message_subscribe(partner_ids=[self.partner_id.id])
-

@@ -42,6 +42,18 @@ class PortalRequestsCustomerPortal(CustomerPortal):
             })
         return messages
 
+    def _can_access_invoice_request(self, invoice_request):
+        """Devuelve True si el usuario actual puede acceder a la solicitud de factura:
+        - Es el creador de la solicitud, O
+        - Es el jefe de equipo del grupo de trabajo asociado a la solicitud.
+        """
+        user = request.env.user
+        if invoice_request.user_id == user:
+            return True
+        if invoice_request.equip_boss == user:
+            return True
+        return False
+
     def _prepare_home_portal_values(self, counters):
         """Añade contadores personalizados al portal"""
         values = super()._prepare_home_portal_values(counters)
@@ -184,9 +196,11 @@ class PortalRequestsCustomerPortal(CustomerPortal):
         """Muestra el listado de solicitudes de facturas del usuario"""
         user = request.env.user
 
-        # Búsqueda de solicitudes de facturas del usuario
-        invoice_requests = request.env['portal.invoice.request'].search([
-            ('user_id', '=', user.id)
+        # Búsqueda de solicitudes de facturas: propias + las del equipo si es jefe
+        invoice_requests = request.env['portal.invoice.request'].sudo().search([
+            '|',
+            ('user_id', '=', user.id),
+            ('equip_boss', '=', user.id),
         ], order='create_date desc')
 
         values = {
@@ -200,10 +214,10 @@ class PortalRequestsCustomerPortal(CustomerPortal):
     @http.route(['/my/invoices/<int:invoice_request_id>'], type='http', auth="user", website=True)
     def portal_my_invoice_detail(self, invoice_request_id, success=None, **kw):
         """Muestra el detalle de una solicitud de factura"""
-        invoice_request = request.env['portal.invoice.request'].browse(invoice_request_id)
+        invoice_request = request.env['portal.invoice.request'].sudo().browse(invoice_request_id)
 
-        # Verificar que la solicitud pertenece al usuario actual
-        if invoice_request.user_id != request.env.user:
+        # Verificar acceso: creador o jefe de equipo del grupo de la solicitud
+        if not self._can_access_invoice_request(invoice_request):
             return request.redirect('/my')
 
         # Generar access_token si no existe
@@ -232,13 +246,28 @@ class PortalRequestsCustomerPortal(CustomerPortal):
 
         return request.render("portal_requests.portal_my_invoice_detail", values)
 
+    @http.route(['/my/invoices/<int:invoice_request_id>/approve'], type='http', auth="user", website=True, methods=['POST'], csrf=True)
+    def portal_invoice_approve(self, invoice_request_id, **kw):
+        """Permite al jefe de equipo aprobar una solicitud de factura desde el portal"""
+        invoice_request = request.env['portal.invoice.request'].sudo().browse(invoice_request_id)
+
+        # Solo el jefe de equipo puede usar esta acción
+        if invoice_request.equip_boss != request.env.user:
+            return request.redirect('/my')
+
+        # Solo se puede aprobar cuando está pendiente de aprobación del jefe de equipo
+        if invoice_request.status == 'approved_by_boss_group':
+            invoice_request.action_approve()
+
+        return request.redirect(f'/my/invoices/{invoice_request_id}?success=approved')
+
     @http.route(['/my/invoices/<int:invoice_request_id>/request_revision'], type='http', auth="user", website=True, methods=['POST'], csrf=True)
     def portal_invoice_request_revision(self, invoice_request_id, **kw):
         """Solicita una nueva revisión de la solicitud de factura"""
-        invoice_request = request.env['portal.invoice.request'].browse(invoice_request_id)
+        invoice_request = request.env['portal.invoice.request'].sudo().browse(invoice_request_id)
 
-        # Verificar que la solicitud pertenece al usuario actual
-        if invoice_request.user_id != request.env.user:
+        # Verificar acceso: creador o jefe de equipo del grupo de la solicitud
+        if not self._can_access_invoice_request(invoice_request):
             return request.redirect('/my')
 
         # Verificar que el estado es 'to_revise'
@@ -252,10 +281,10 @@ class PortalRequestsCustomerPortal(CustomerPortal):
     @http.route(['/my/invoices/<int:invoice_request_id>/post_message'], type='http', auth="user", website=True, methods=['POST'], csrf=True)
     def portal_invoice_post_message(self, invoice_request_id, message, **kw):
         """Permite al usuario portal enviar un mensaje en la solicitud de factura"""
-        invoice_request = request.env['portal.invoice.request'].browse(invoice_request_id)
+        invoice_request = request.env['portal.invoice.request'].sudo().browse(invoice_request_id)
 
-        # Verificar que la solicitud pertenece al usuario actual
-        if invoice_request.user_id != request.env.user:
+        # Verificar acceso: creador o jefe de equipo del grupo de la solicitud
+        if not self._can_access_invoice_request(invoice_request):
             return request.redirect('/my')
 
         # Publicar el mensaje
@@ -273,10 +302,10 @@ class PortalRequestsCustomerPortal(CustomerPortal):
     @http.route(['/my/invoices/<int:invoice_request_id>/view_invoice'], type='http', auth="user", website=True)
     def portal_invoice_view_created_invoice(self, invoice_request_id, success=None, **kw):
         """Muestra la factura creada desde la solicitud (aunque no esté a nombre del usuario)"""
-        invoice_request = request.env['portal.invoice.request'].browse(invoice_request_id)
+        invoice_request = request.env['portal.invoice.request'].sudo().browse(invoice_request_id)
 
-        # Verificar que la solicitud pertenece al usuario actual
-        if invoice_request.user_id != request.env.user:
+        # Verificar acceso: creador o jefe de equipo del grupo de la solicitud
+        if not self._can_access_invoice_request(invoice_request):
             return request.redirect('/my')
 
         # Verificar que existe una factura creada
@@ -306,10 +335,10 @@ class PortalRequestsCustomerPortal(CustomerPortal):
     @http.route(['/my/invoices/<int:invoice_request_id>/view_invoice/post_message'], type='http', auth="user", website=True, methods=['POST'], csrf=True)
     def portal_invoice_view_post_message(self, invoice_request_id, message, **kw):
         """Permite al usuario portal enviar un mensaje en la factura creada"""
-        invoice_request = request.env['portal.invoice.request'].browse(invoice_request_id)
+        invoice_request = request.env['portal.invoice.request'].sudo().browse(invoice_request_id)
 
-        # Verificar que la solicitud pertenece al usuario actual
-        if invoice_request.user_id != request.env.user:
+        # Verificar acceso: creador o jefe de equipo del grupo de la solicitud
+        if not self._can_access_invoice_request(invoice_request):
             return request.redirect('/my')
 
         # Verificar que existe una factura creada
