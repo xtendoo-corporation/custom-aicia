@@ -62,7 +62,7 @@ class PortalRequestDashboard(models.Model):
                 'domain': [('status', 'in', ('approved_by_boss_group', 'approved_purchase_responsible', 'approved_director'))],
                 'context': {'group_by': 'project'},
             }
-        if self.env.user.has_group('portal_requests.group_purchase_responsible'):
+        if self.env.user.has_group('portal_requests.group_personnel_purchase_responsible'):
             return {
                 'name': _('Gastos para revisar'),
                 'type': 'ir.actions.act_window',
@@ -148,7 +148,7 @@ class PortalRequestDashboard(models.Model):
                 'domain': [('status', 'in', ('approved_by_boss_group','approved_by_client_responsible')), ('move_type', '=', 'out_invoice')],
                 'context': {'group_by': 'analytic_id'},
             }
-        if self.env.user.has_group('portal_requests.group_partner_responsible'):
+        if self.env.user.has_group('portal_requests.group_intern_partner_responsible'):
             return {
                 'name': _('Facturas para revisar'),
                 'type': 'ir.actions.act_window',
@@ -423,7 +423,7 @@ class PortalRequestDashboard(models.Model):
             return self.env['portal.hr.expensive.request'].search_count([('status', 'in', ('approved_by_boss_group','approved_purchase_responsible', 'approved_director'))])
         if self.env.user.has_group('portal_requests.group_director_manager'):
             return self.env['portal.hr.expensive.request'].search_count([('status', 'in', ('approved_by_boss_group','approved_purchase_responsible', 'approved_director'))])
-        if self.env.user.has_group('portal_requests.group_purchase_responsible'):
+        if self.env.user.has_group('portal_requests.group_personnel_purchase_responsible'):
             return self.env['portal.hr.expensive.request'].search_count([('status', '=','approved_purchase_responsible')])
         if self.env.user.has_group('portal_requests.group_equip_boss'):
             return self.env['portal.hr.expensive.request'].search_count([('status', '=', 'approved_by_boss_group'),('equip_boss','=',self.env.user.id)])
@@ -443,7 +443,7 @@ class PortalRequestDashboard(models.Model):
             return self.env['portal.invoice.request'].search_count([('status', 'in', ('approved_by_boss_group','approved_by_client_responsible'))])
         if self.env.user.has_group('portal_requests.group_director_manager'):
             return self.env['portal.invoice.request'].search_count([('status', 'in', ('approved_by_boss_group','approved_by_client_responsible'))])
-        if self.env.user.has_group('portal_requests.group_partner_responsible'):
+        if self.env.user.has_group('portal_requests.group_intern_partner_responsible'):
             return self.env['portal.invoice.request'].search_count([('status', '=','approved_by_client_responsible')])
         if self.env.user.has_group('portal_requests.group_equip_boss'):
             return self.env['portal.invoice.request'].search_count([('status', '=', 'approved_by_boss_group'),('equip_boss','=',self.env.user.id)])
@@ -496,7 +496,7 @@ class PortalRequestDashboard(models.Model):
             return self.env['portal.hr.expensive.request'].search_count([('status', '=', 'approve')])
         if self.env.user.has_group('portal_requests.group_director_manager'):
             return self.env['portal.hr.expensive.request'].search_count([('status', '=', 'approve')])
-        if self.env.user.has_group('portal_requests.group_purchase_responsible'):
+        if self.env.user.has_group('portal_requests.group_personnel_purchase_responsible'):
             return self.env['portal.hr.expensive.request'].search_count([('status', '=', 'approve')])
         if self.env.user.has_group('portal_requests.group_equip_boss'):
             return self.env['portal.hr.expensive.request'].search_count([('status', '=', 'approve'),('equip_boss','=',self.env.user.id)])
@@ -508,7 +508,7 @@ class PortalRequestDashboard(models.Model):
             return self.env['portal.invoice.request'].search_count([('status', '=', 'approve')])
         if self.env.user.has_group('portal_requests.group_director_manager'):
             return self.env['portal.invoice.request'].search_count([('status', '=', 'approve')])
-        if self.env.user.has_group('portal_requests.group_partner_responsible'):
+        if self.env.user.has_group('portal_requests.group_intern_partner_responsible'):
             return self.env['portal.invoice.request'].search_count([('status', '=', 'approve')])
         if self.env.user.has_group('portal_requests.group_equip_boss'):
             return self.env['portal.invoice.request'].search_count([('status', '=', 'approve'),('equip_boss','=',self.env.user.id)])

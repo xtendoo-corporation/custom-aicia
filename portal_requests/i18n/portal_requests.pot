@@ -942,13 +942,13 @@ msgid "Resource Calendar"
 msgstr ""
 
 #. module: portal_requests
-#: model:res.groups,name:portal_requests.group_partner_responsible
-msgid "Responsable de Clientes"
+#: model:res.groups,name:portal_requests.group_intern_partner_responsible
+msgid "Responsable de Clientes y Becarios"
 msgstr ""
 
 #. module: portal_requests
-#: model:res.groups,name:portal_requests.group_personnel_responsible
-msgid "Responsable de Personal"
+#: model:res.groups,name:portal_requests.group_personnel_purchase_responsible
+msgid "Responsable de Personal y Compras"
 msgstr ""
 
 #. module: portal_requests

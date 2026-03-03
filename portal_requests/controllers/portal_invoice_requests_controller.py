@@ -67,10 +67,10 @@ class PortalInvoiceController(Controller):
             invoice_name = request.env['account.move'].sudo().search([('id', '=', invoice_to_refund)]).name
             move_text = "factura rectificativa para la factura " + invoice_name
         if work_group_id.equip_boss.id == invoice_request.user_id.id:
-            group = request.env.ref('portal_requests.group_partner_responsible').sudo()
+            group = request.env.ref('portal_requests.group_intern_partner_responsible').sudo()
             to_notify_users = group.user_ids
             # to_notify_users = request.env['res.users'].search(
-            #     [('groups_id', 'in', request.env.ref('portal_requests.group_partner_responsible').id)])
+            #     [('groups_id', 'in', request.env.ref('portal_requests.group_intern_partner_responsible').id)])
             if to_notify_users:
                 #se ntifica al responsable de Clientes
                 self.send_request_email(to_notify_users,move_text, invoice_request.user_id.name, invoice_request.analytic_id.name,

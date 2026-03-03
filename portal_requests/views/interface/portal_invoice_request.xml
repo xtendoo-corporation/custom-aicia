@@ -52,22 +52,22 @@
                                 invisible="status in ('approved_by_client_responsible','approve','to_revise','rejected')"
                                 />
                         <!-- Fin botonera jefe de equipo -->
-                        <!-- Botonera Responsable clientes -->
+                        <!-- Botonera Responsable clientes y becarios -->
                         <button name="action_approve"
                                 string="Approve"
                                 type="object"
                                 class="btn-primary"
-                                groups="portal_requests.group_partner_responsible"
+                                groups="portal_requests.group_intern_partner_responsible"
                                 invisible="status in ('approved_by_boss_group','approve','to_revise','rejected')"
                                 />
                         <button name="action_reject"
                                 string="Reject"
                                 type="object"
                                 class="btn-secondary"
-                                groups="portal_requests.group_partner_responsible"
+                                groups="portal_requests.group_intern_partner_responsible"
                                 invisible="status in ('approved_by_boss_group','approve','to_revise','rejected')"
                                 />
-                        <!-- Fin botonera Responsable clientes -->
+                        <!-- Fin botonera Responsable clientes y becarios -->
 
 <!--                         <button name="action_approve"-->
 <!--                                string="Approve"-->
@@ -179,13 +179,13 @@
                   name="Facturas"
                   parent="portal_requests.portal_requests_menu"
                   action="action_portal_invoice_request_all_invoice"
-                  groups="portal_requests.group_partner_responsible"
+                  groups="portal_requests.group_intern_partner_responsible"
                   sequence="30"/>
         <menuitem id="menu_portal_invoice_request_all_refundd"
                   name="Facturas rectificativas"
                   parent="portal_requests.portal_requests_menu"
                   action="action_portal_invoice_request_all_refund"
-                  groups="portal_requests.group_partner_responsible"
+                  groups="portal_requests.group_intern_partner_responsible"
                   sequence="40"/>
 
 <!--        <menuitem id="menu_portal_invoice_request_toreview"-->

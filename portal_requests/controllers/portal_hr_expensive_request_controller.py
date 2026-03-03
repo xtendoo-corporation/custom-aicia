@@ -38,7 +38,7 @@ class PortalHrExpensiveRequestController(Controller):
             print("*"*50)
             print("ES JEFE DE EQUIPO")
             status = 'approved_purchase_responsible'
-            group = request.env.ref('portal_requests.group_purchase_responsible')
+            group = request.env.ref('portal_requests.group_personnel_purchase_responsible')
             user_to_notify = group.user_ids
             print("user_to_notify:", user_to_notify)
             print("*" * 50)

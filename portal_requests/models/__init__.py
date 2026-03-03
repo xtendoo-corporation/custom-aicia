@@ -15,4 +15,6 @@ from . import account_analytic_inherit
 from . import etiqueta_categoria
 from . import ir_attachment
 from . import account_move
+from . import sign_request_inherit
 
+from . import sign_send_request_inherit

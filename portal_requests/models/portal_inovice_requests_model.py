@@ -78,7 +78,7 @@ class PortalInvoiceRequest(models.Model):
 
     @api.depends('status')
     def _compute_show_solicitar_revision(self):
-        is_boss = self.env.user.sudo().has_group('portal_requests.group_equip_boss') or self.env.user.sudo().has_group('portal_requests.group_partner_responsible')
+        is_boss = self.env.user.sudo().has_group('portal_requests.group_equip_boss') or self.env.user.sudo().has_group('portal_requests.group_intern_partner_responsible')
         for rec in self:
             rec.show_solicitar_revision = (rec.status == 'to_revise') and (not is_boss)
 
@@ -172,7 +172,7 @@ class PortalInvoiceRequest(models.Model):
             if self.equip_boss and self.equip_boss.partner_id:
                 self.message_subscribe(partner_ids=[self.equip_boss.partner_id.id])
             self.status = 'approved_by_client_responsible'
-            user_to_send = self.env['res.users'].search([('work_group_ids', 'in', self.env.ref('portal_requests.group_partner_responsible').id)])
+            user_to_send = self.env['res.users'].search([('work_group_ids', 'in', self.env.ref('portal_requests.group_intern_partner_responsible').id)])
             move_text = "factura" if self.move_type == 'out_invoice' else "factura rectificativa"
             # Usar sudo() para acceder a partner_id.name para evitar errores de permisos
             self._send_invoice_request_mail(type, user_to_send, move_text, self.user_id.name, self.analytic_id.name, self.partner_id.sudo().name)

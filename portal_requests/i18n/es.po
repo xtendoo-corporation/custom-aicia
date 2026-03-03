@@ -1076,14 +1076,14 @@ msgid "Resource Calendar"
 msgstr "Calendario de recursos"
 
 #. module: portal_requests
-#: model:res.groups,name:portal_requests.group_partner_responsible
-msgid "Responsable de Clientes"
-msgstr "Responsable de Clientes"
+#: model:res.groups,name:portal_requests.group_intern_partner_responsible
+msgid "Responsable de Clientes y Becarios"
+msgstr "Responsable de Clientes y Becarios"
 
 #. module: portal_requests
-#: model:res.groups,name:portal_requests.group_personnel_responsible
-msgid "Responsable de Personal"
-msgstr "Responsable de Personal"
+#: model:res.groups,name:portal_requests.group_personnel_purchase_responsible
+msgid "Responsable de Personal y Compras"
+msgstr "Responsable de Personal y Compras"
 
 #. module: portal_requests
 #: model:ir.model.fields,field_description:portal_requests.field_document_approval__activity_user_id

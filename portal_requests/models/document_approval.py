@@ -131,7 +131,17 @@ class DocumentApproval(models.Model):
 
         # Abrir el editor visual de Sign con el panel lateral de campos arrastrables.
         # sign_directly_without_mail=True → el botón "Firmar ahora" firma sin diálogo de email.
-        return sign_template.go_to_custom_template(sign_directly_without_mail=True)
+        # default_reference_doc → al cerrar el diálogo "Gracias" de Sign, vuelve al
+        # formulario de este document.approval (sign.request.get_close_values lo usa).
+        action = sign_template.go_to_custom_template(sign_directly_without_mail=True)
+        # go_to_custom_template devuelve context como frozendict (inmutable),
+        # hay que crear un nuevo dict normal con dict().
+        action['context'] = dict(
+            action.get('context') or {},
+            default_reference_doc=f'document.approval,{self.id}',
+            default_signer_id=self.env.user.partner_id.id,
+        )
+        return action
 
     def _sync_sign_request(self):
         """Busca el sign.request creado desde el editor visual y lo vincula
@@ -166,7 +176,14 @@ class DocumentApproval(models.Model):
             }
         if self.sign_template_id:
             # El editor aún no ha generado el request: reabrir el editor
-            return self.sign_template_id.go_to_custom_template(sign_directly_without_mail=True)
+            # go_to_custom_template devuelve context como frozendict (inmutable).
+            action = self.sign_template_id.go_to_custom_template(sign_directly_without_mail=True)
+            action['context'] = dict(
+                action.get('context') or {},
+                default_reference_doc=f'document.approval,{self.id}',
+                default_signer_id=self.env.user.partner_id.id,
+            )
+            return action
         raise UserError(_("No hay ninguna solicitud de firma asociada a este documento."))
 
     # ─────────────────────────────────────────────
@@ -175,11 +192,11 @@ class DocumentApproval(models.Model):
 
     def action_solicite_final_revision(self):
         self.ensure_one()
-        if self.status == 'sign_company' and self.env.user.has_group("portal_requests.group_equip_boss"):
+        if self.status == 'sign_company':
             self.status = 'final_revision'
             self.is_company_signed = True
             group = self.env.ref('portal_requests.group_director_manager')
-            user_to_send = group.user_ids
+            user_to_send = group.sudo().user_ids
             self.send_request_email(self.type_id.name, user_to_send, "final_revision")
 
     def action_approve(self):
@@ -260,6 +277,9 @@ class DocumentApproval(models.Model):
                     <p>Saludos cordiales, Odoo</p>
                 """
             elif type == "sign_director_manager":
+                document_request_link = (
+                    f"/my/documents/{self.id}"
+                )
                 body_html = f"""
                     <p>Estimado/a {admin_name},</p>
                     <p>El Director Gerente, {user_for_send}, ya ha firmado digitalmente la siguiente solicitud:</p>

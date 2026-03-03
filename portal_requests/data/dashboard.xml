@@ -36,7 +36,7 @@
             <field name="allowed_group_ids" eval="[
                 (4, ref('portal_requests.group_director_investigation_and_development')),
                 (4, ref('portal_requests.group_director_manager')),
-                (4, ref('portal_requests.group_partner_responsible')),
+                (4, ref('portal_requests.group_intern_partner_responsible')),
                 (4, ref('portal_requests.group_equip_boss')),
                 (4, ref('portal_requests.group_project_boss')),
             ]"/>
@@ -47,21 +47,21 @@
             <field name="show_unapproved">False</field>
             <field name="model">portal.invoice.request</field>
             <field name="type">out_refund</field>
-             <field name="allowed_group_ids" eval="[(4, ref('portal_requests.group_partner_responsible'))]"/>
+             <field name="allowed_group_ids" eval="[(4, ref('portal_requests.group_intern_partner_responsible'))]"/>
         </record>
         <record id="dashboard_employee" model="portal.request.dashboard">
             <field name="name">Empleados</field>
             <field name="image" type="base64" file="portal_requests/static/description/employee.png"/>
             <field name="model">portal.hr.employee.request</field>
             <field name="type">employee</field>
-             <field name="allowed_group_ids" eval="[(4, ref('portal_requests.group_personnel_responsible'))]"/>
+             <field name="allowed_group_ids" eval="[(4, ref('portal_requests.group_personnel_purchase_responsible'))]"/>
         </record>
         <record id="dashboard_intern" model="portal.request.dashboard">
             <field name="name">Becarios</field>
             <field name="image" type="base64" file="portal_requests/static/description/employee.png"/>
             <field name="model">portal.hr.employee.intern.request</field>
             <field name="type">intern</field>
-             <field name="allowed_group_ids" eval="[(4, ref('portal_requests.group_intern_responsible'))]"/>
+             <field name="allowed_group_ids" eval="[(4, ref('portal_requests.group_intern_partner_responsible'))]"/>
         </record>
         <record id="dashboard_expensive" model="portal.request.dashboard">
             <field name="name">Gastos</field>
@@ -72,7 +72,7 @@
             <field name="allowed_group_ids" eval="[
                 (4, ref('portal_requests.group_director_investigation_and_development')),
                 (4, ref('portal_requests.group_director_manager')),
-                (4, ref('portal_requests.group_purchase_responsible')),
+                (4, ref('portal_requests.group_personnel_purchase_responsible')),
                 (4, ref('portal_requests.group_equip_boss')),
                 (4, ref('portal_requests.group_project_boss')),
             ]"/>

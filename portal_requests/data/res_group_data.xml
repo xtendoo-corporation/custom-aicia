@@ -1,6 +1,7 @@
 <?xml version='1.0' encoding='utf-8'?>
 <odoo>
     <data noupdate="0">
+
         <!-- Nueva categoría para Aicia -->
         <record id="module_category_aicia" model="ir.module.category">
             <field name="name">Solicitudes del Portal</field>
@@ -22,25 +23,25 @@
             <field name="name">Director Gerente</field>
             <field name="privilege_id" ref="privilege_aicia"/>
         </record>
-        <record id="group_personnel_responsible" model="res.groups">
-            <field name="name">Responsable de Personal</field>
+        <record id="group_personnel_purchase_responsible" model="res.groups">
+            <field name="name">Responsable de Personal y compras</field>
             <field name="privilege_id" ref="privilege_aicia"/>
         </record>
 
-         <record id="group_partner_responsible" model="res.groups">
-            <field name="name">Responsable de Clientes</field>
+         <record id="group_intern_partner_responsible" model="res.groups">
+            <field name="name">Responsable de Clientes y Becarios</field>
             <field name="privilege_id" ref="privilege_aicia"/>
         </record>
 
-         <record id="group_intern_responsible" model="res.groups">
-            <field name="name">Responsable de Becarios</field>
-            <field name="privilege_id" ref="privilege_aicia"/>
-        </record>
+<!--         <record id="group_intern_responsible" model="res.groups">-->
+<!--            <field name="name">Responsable de Becarios</field>-->
+<!--            <field name="privilege_id" ref="privilege_aicia"/>-->
+<!--        </record>-->
 
-         <record id="group_purchase_responsible" model="res.groups">
-            <field name="name">Responsable de Compras</field>
-            <field name="privilege_id" ref="privilege_aicia"/>
-        </record>
+<!--         <record id="group_purchase_responsible" model="res.groups">-->
+<!--            <field name="name">Responsable de Compras</field>-->
+<!--            <field name="privilege_id" ref="privilege_aicia"/>-->
+<!--        </record>-->
 
         <record id="group_project_boss" model="res.groups">
             <field name="name">Jefe de Proyecto</field>
@@ -167,25 +168,25 @@
             <field name="perm_unlink" eval="True"/>
         </record>
 
-           <!-- Record Rule: Director i+d puede ver/editar TODAS las cuentas analíticas -->
+           <!-- Record Rule: Responsable de Clientes y Becarios puede ver/editar TODAS las cuentas analíticas -->
         <record id="rule_analytic_account_work_group_client_responsible" model="ir.rule">
-            <field name="name">Analytic Account: Responsable clientes - Full Access</field>
+            <field name="name">Analytic Account: Responsable Clientes y Becarios - Full Access</field>
             <field name="model_id" ref="analytic.model_account_analytic_account"/>
             <field name="domain_force">[(1, '=', 1)]</field>
             <field name="global" eval="False"/>
-            <field name="groups" eval="[(4, ref('group_partner_responsible'))]"/>
+            <field name="groups" eval="[(4, ref('group_intern_partner_responsible'))]"/>
             <field name="perm_read" eval="True"/>
             <field name="perm_write" eval="True"/>
             <field name="perm_create" eval="True"/>
             <field name="perm_unlink" eval="True"/>
         </record>
-            <!-- Record Rule: Director i+d puede ver/editar TODAS las cuentas analíticas -->
+            <!-- Record Rule: Responsable de Personal y Compras puede ver/editar TODAS las cuentas analíticas -->
         <record id="rule_analytic_account_work_group_purchase_responsible" model="ir.rule">
-            <field name="name">Analytic Account: Responsable Compras - Full Access</field>
+            <field name="name">Analytic Account: Responsable Personal y Compras - Full Access</field>
             <field name="model_id" ref="analytic.model_account_analytic_account"/>
             <field name="domain_force">[(1, '=', 1)]</field>
             <field name="global" eval="False"/>
-            <field name="groups" eval="[(4, ref('group_purchase_responsible'))]"/>
+            <field name="groups" eval="[(4, ref('group_personnel_purchase_responsible'))]"/>
             <field name="perm_read" eval="True"/>
             <field name="perm_write" eval="True"/>
             <field name="perm_create" eval="True"/>

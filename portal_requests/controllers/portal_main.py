@@ -381,13 +381,25 @@ class PortalRequestsCustomerPortal(CustomerPortal):
 
     @http.route(['/my/documents', '/my/documents/page/<int:page>'], type='http', auth="user", website=True)
     def portal_my_documents(self, page=1, sortby=None, filterby=None, **kw):
-        """Muestra el listado de solicitudes de documentos del usuario"""
+        """Muestra el listado de solicitudes de documentos del usuario.
+        Si es jefe de equipo, también ve las solicitudes de los grupos que lidera."""
         user = request.env.user
 
-        # Búsqueda de solicitudes de documentos del usuario
-        documents = request.env['document.approval'].search([
-            ('user_id', '=', user.id)
-        ], order='create_date desc')
+        if user.has_group('portal_requests.group_equip_boss'):
+            # Grupos de los que este usuario es jefe
+            boss_groups = request.env['portal.work.group'].sudo().search([
+                ('equip_boss', '=', user.id)
+            ])
+            # IDs de usuarios miembros de esos grupos
+            member_ids = boss_groups.mapped('user_ids').ids
+            # Solicitudes propias + las de los miembros de sus grupos
+            documents = request.env['document.approval'].sudo().search([
+                ('user_id', 'in', member_ids + [user.id])
+            ], order='create_date desc')
+        else:
+            documents = request.env['document.approval'].search([
+                ('user_id', '=', user.id)
+            ], order='create_date desc')
 
         values = {
             'documents': documents,
@@ -400,10 +412,16 @@ class PortalRequestsCustomerPortal(CustomerPortal):
     @http.route(['/my/documents/<int:document_id>'], type='http', auth="user", website=True)
     def portal_my_document_detail(self, document_id, success=None, **kw):
         """Muestra el detalle de una solicitud de documento"""
-        document = request.env['document.approval'].browse(document_id)
+        user = request.env.user
+        document = request.env['document.approval'].sudo().browse(document_id)
 
-        # Verificar que la solicitud pertenece al usuario actual
-        if document.user_id != request.env.user:
+        # Verificar acceso: el creador O el jefe de equipo del grupo de trabajo
+        is_owner = document.user_id == user
+        is_boss_of_group = False
+        if user.has_group('portal_requests.group_equip_boss') and document.work_group_id:
+            is_boss_of_group = document.work_group_id.equip_boss == user
+
+        if not is_owner and not is_boss_of_group:
             return request.redirect('/my')
 
         # Generar access_token si no existe
@@ -428,26 +446,30 @@ class PortalRequestsCustomerPortal(CustomerPortal):
             'messages': messages,
             'page_name': 'document_approval',
             'success_message': success,
+            'is_equip_boss': is_boss_of_group,
         }
 
         return request.render("portal_requests.portal_my_document_detail", values)
 
     @http.route(['/my/documents/<int:document_id>/request_revision'], type='http', auth="user", website=True, methods=['POST'], csrf=True)
     def portal_document_request_revision(self, document_id, **kw):
-        """Solicita una nueva revisión de la solicitud de documento"""
-        document = request.env['document.approval'].browse(document_id)
+        """Solicita revision final: solo el jefe de equipo del grupo de trabajo puede ejecutarlo"""
+        user = request.env.user
+        document = request.env['document.approval'].sudo().browse(document_id)
 
-        # Verificar que la solicitud pertenece al usuario actual
-        if document.user_id != request.env.user:
+        # Solo el jefe de equipo del grupo de trabajo del documento puede ejecutar esto
+        is_boss_of_group = False
+        if user.has_group('portal_requests.group_equip_boss') and document.work_group_id:
+            is_boss_of_group = document.work_group_id.equip_boss == user
+
+        if not is_boss_of_group:
             return request.redirect('/my')
 
-        # Verificar que el estado permite solicitar revisión
-        if document.status in ['sign_company', 'final_revision']:
-            # Ejecutar la acción correspondiente según el estado
-            if document.status == 'sign_company':
-                document.action_solicite_final_revision()
+        # Verificar que el estado permite solicitar revision
+        if document.status == 'sign_company':
+            document.with_user(user).action_solicite_final_revision()
 
-        # Redirigir de vuelta al detalle de la solicitud con mensaje de éxito
+        # Redirigir de vuelta al detalle de la solicitud con mensaje de exito
         return request.redirect(f'/my/documents/{document_id}?success=revision_requested')
 
     @http.route(['/my/documents/<int:document_id>/post_message'], type='http', auth="user", website=True, methods=['POST'], csrf=True)

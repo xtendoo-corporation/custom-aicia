@@ -61,7 +61,7 @@ class PortalHrExpensiveRequest(models.Model):
     @api.depends('status')
     def _compute_show_solicitar_revision(self):
         is_boss = self.env.user.has_group('portal_requests.group_equip_boss') or self.env.user.has_group(
-            'portal_requests.group_partner_responsible')
+            'portal_requests.group_intern_partner_responsible')
         for rec in self:
             if rec.status == 'to_revise' and not is_boss:
                 print("Setting show_solicitar_revision to True for record ID:", rec.id)
@@ -78,7 +78,7 @@ class PortalHrExpensiveRequest(models.Model):
     @api.depends('user_id', 'project')
     def _compute_show_project_credit(self):
         for record in self:
-            if self.env.user.has_group('portal_requests.group_director_manager') or self.env.user.has_group('portal_requests.group_purchase_responsible') or self.env.user == record.equip_boss  or self.env.user == record.project.responsible_id:
+            if self.env.user.has_group('portal_requests.group_director_manager') or self.env.user.has_group('portal_requests.group_personnel_purchase_responsible') or self.env.user == record.equip_boss  or self.env.user == record.project.responsible_id:
                 record.show_project_credit = True
             else:
                 record.show_project_credit = False
@@ -88,7 +88,7 @@ class PortalHrExpensiveRequest(models.Model):
     @api.depends('user_id', 'project')
     def _compute_show_group_credit(self):
         for record in self:
-            if self.env.user.has_group('portal_requests.group_director_manager') or self.env.user.has_group('portal_requests.group_purchase_responsible') or self.env.user == record.equip_boss:
+            if self.env.user.has_group('portal_requests.group_director_manager') or self.env.user.has_group('portal_requests.group_personnel_purchase_responsible') or self.env.user == record.equip_boss:
                 record.show_group_credit = True
             else:
                 record.show_group_credit = False
@@ -111,10 +111,10 @@ class PortalHrExpensiveRequest(models.Model):
         if self.env.user.has_group('portal_requests.group_equip_boss') and self.status == 'approved_by_boss_group':
             self.status = 'approved_purchase_responsible'
             user_to_notify = self.env['res.users'].search(
-                [('work_group_ids', 'in', [self.env.ref('portal_requests.group_purchase_responsible').id])])
+                [('work_group_ids', 'in', [self.env.ref('portal_requests.group_personnel_purchase_responsible').id])])
             self._send_purchase_request_mail('approved_by_boss_group', user_to_notify, self.user_id.name, self.project.name)
-            return self.show_notificacion("¡Aprobación registrada!", "La solicitud ha sido aprobada y enviada al responsable de compras para su revisión.", "success")
-        elif self.env.user.has_group('portal_requests.group_purchase_responsible') and self.status == 'approved_purchase_responsible':
+            return self.show_notificacion("¡Aprobación registrada!", "La solicitud ha sido aprobada y enviada al responsable de personal y compras para su revisión.", "success")
+        elif self.env.user.has_group('portal_requests.group_personnel_purchase_responsible') and self.status == 'approved_purchase_responsible':
             #si no supera los 10k o el saldo del equipo es inferior a 0, o el saldo del pryecto es inferior a 0:
             if self.is_more:
                 self.status = 'approved_director'
@@ -160,7 +160,7 @@ class PortalHrExpensiveRequest(models.Model):
 
         elif self.status == 'to_revise':
             if self.equip_boss == self.user_id:
-                user_to_notify = self.env['res.users'].search([('groups_id', 'in', self.env.ref('portal_requests.group_purchase_responsible').id)])
+                user_to_notify = self.env['res.users'].search([('groups_id', 'in', self.env.ref('portal_requests.group_personnel_purchase_responsible').id)])
                 self.status = 'approved_purchase_responsible'
             else:
                 user_to_notify = [self.work_group_id.equip_boss]
