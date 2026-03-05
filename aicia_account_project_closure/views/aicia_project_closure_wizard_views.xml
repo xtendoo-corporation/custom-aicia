@@ -1,0 +1,143 @@
+<?xml version="1.0" encoding="utf-8"?>
+<odoo>
+    <data>
+
+        <!-- ============================================================ -->
+        <!-- WIZARD: Vista Form                                           -->
+        <!-- ============================================================ -->
+        <record id="view_aicia_project_closure_wizard_form" model="ir.ui.view">
+            <field name="name">aicia.project.closure.wizard.form</field>
+            <field name="model">aicia.project.closure.wizard</field>
+            <field name="arch" type="xml">
+                <form string="Cierre por Proyectos (AICIA)">
+                    <!-- Header con botones según estado -->
+                    <header>
+                        <button name="action_preview"
+                            string="Previsualizar"
+                            type="object"
+                            class="btn-primary"
+                            invisible="state != 'draft'" />
+                        <button name="action_generate"
+                            string="Generar Asientos"
+                            type="object"
+                            class="btn-primary"
+                            invisible="state != 'preview'"
+                            confirm="¿Está seguro de generar y postear los asientos de cierre? Esta acción creará asientos contables definitivos." />
+                        <button name="action_back"
+                            string="Volver"
+                            type="object"
+                            class="btn-secondary"
+                            invisible="state != 'preview'" />
+                        <button string="Cerrar"
+                            class="btn-secondary"
+                            special="cancel"
+                            invisible="state != 'done'" />
+                        <field name="state" widget="statusbar"
+                            statusbar_visible="draft,preview,done" />
+                    </header>
+
+                    <sheet>
+                        <!-- Botón smart para ver asientos creados -->
+                        <div class="oe_button_box" name="button_box">
+                            <button name="action_view_moves"
+                                type="object"
+                                class="oe_stat_button"
+                                icon="fa-book"
+                                invisible="created_move_count == 0">
+                                <field name="created_move_count" widget="statinfo"
+                                    string="Asientos" />
+                            </button>
+                        </div>
+
+                        <div class="oe_title">
+                            <h1>Cierre Contable por Proyectos (AICIA)</h1>
+                        </div>
+
+                        <!-- Parámetros de configuración -->
+                        <group invisible="state == 'done'" name="params">
+                            <group name="params_left" string="Periodo y Diario">
+                                <field name="company_id" groups="base.group_multi_company"
+                                    readonly="state != 'draft'" />
+                                <field name="currency_id" invisible="1" />
+                                <field name="date_from" readonly="state != 'draft'" />
+                                <field name="date_to" readonly="state != 'draft'" />
+                                <field name="journal_id" readonly="state != 'draft'" />
+                            </group>
+                            <group name="params_right" string="Cuentas Contables">
+                                <field name="account_profit_id" readonly="state != 'draft'" />
+                                <field name="account_loss_id" readonly="state != 'draft'" />
+                                <field name="account_provision_id" readonly="state != 'draft'" />
+                                <field name="include_accounts_prefixes" readonly="state != 'draft'" />
+                            </group>
+                        </group>
+
+                        <group invisible="state == 'done'" name="filter">
+                            <group name="filter_left" string="Filtro de Proyectos">
+                                <field name="analytic_account_ids" widget="many2many_tags"
+                                    readonly="state != 'draft'"
+                                    placeholder="Todos los proyectos con movimiento" />
+                            </group>
+                        </group>
+
+                        <!-- Información resumen en estado done -->
+                        <div invisible="state != 'done'" class="alert alert-success" role="alert">
+                            <h4>
+                                <i class="fa fa-check-circle" title="Completado" /> Cierre completado
+                            </h4>
+                            <p>
+                                Se han generado y publicado
+                                <strong><field name="created_move_count" readonly="1" /></strong>
+                                asiento(s) de cierre para el periodo
+                                <strong><field name="date_from" readonly="1" /></strong> -
+                                <strong><field name="date_to" readonly="1" /></strong>.
+                            </p>
+                            <p>
+                                Pulse el botón <em>"Asientos"</em> arriba para revisarlos,
+                                o pulse <em>"Cerrar"</em> para salir.
+                            </p>
+                        </div>
+
+                        <!-- Pestaña de previsualización -->
+                        <notebook invisible="state == 'draft'">
+                            <page string="Resultados por Proyecto" name="preview"
+                                invisible="state == 'done'">
+                                <field name="preview_line_ids" nolabel="1">
+                                    <list editable="bottom" create="false" delete="false" edit="false">
+                                        <field name="analytic_account_id" />
+                                        <field name="income" sum="Total Ingresos" />
+                                        <field name="expense" sum="Total Gastos" />
+                                        <field name="result" sum="Total Resultado"
+                                            decoration-success="result > 0"
+                                            decoration-danger="result &lt; 0" />
+                                        <field name="target_account_id" />
+                                        <field name="provision_amount" sum="Total Provisión" />
+                                        <field name="has_existing_entries" widget="boolean"
+                                            string="Duplicado" />
+                                        <field name="currency_id" column_invisible="True" />
+                                    </list>
+                                </field>
+
+                                <!-- Leyenda -->
+                                <div class="alert alert-info mt-3" role="alert">
+                                    <p class="mb-1">
+                                        <i class="fa fa-info-circle" title="Información" />
+                                        <strong> Leyenda:</strong>
+                                    </p>
+                                    <ul class="mb-0">
+                                        <li><strong>Resultado positivo</strong> (verde): beneficio → se contabiliza en la cuenta de beneficio (130) contra provisión (294).</li>
+                                        <li><strong>Resultado negativo</strong> (rojo): pérdida → se contabiliza en la cuenta de pérdida (131) contra provisión (294).</li>
+                                        <li><strong>Duplicado</strong>: ya existe un asiento de cierre para ese proyecto y periodo. No se generará de nuevo.</li>
+                                        <li>Proyectos con resultado cero no generarán asiento.</li>
+                                    </ul>
+                                </div>
+                            </page>
+                        </notebook>
+
+                    </sheet>
+                </form>
+            </field>
+        </record>
+
+    </data>
+</odoo>
+

@@ -1,0 +1,28 @@
+<?xml version="1.0" encoding="utf-8"?>
+<odoo>
+    <data>
+
+        <!-- ============================================================ -->
+        <!-- ACTION: Abrir wizard en modal                                -->
+        <!-- ============================================================ -->
+        <record id="action_aicia_project_closure_wizard" model="ir.actions.act_window">
+            <field name="name">Cierre por Proyectos (AICIA)</field>
+            <field name="res_model">aicia.project.closure.wizard</field>
+            <field name="view_mode">form</field>
+            <field name="view_id" ref="view_aicia_project_closure_wizard_form" />
+            <field name="target">new</field>
+        </record>
+
+        <!-- ============================================================ -->
+        <!-- MENÚ: Contabilidad > Contabilidad > Closing                  -->
+        <!-- Parent: account.account_closing_menu                         -->
+        <!-- ============================================================ -->
+        <menuitem id="menu_aicia_project_closure"
+            name="Cierre por Proyectos (AICIA)"
+            parent="account.account_closing_menu"
+            action="action_aicia_project_closure_wizard"
+            sequence="50" />
+
+    </data>
+</odoo>
+
