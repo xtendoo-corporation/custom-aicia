@@ -10,28 +10,8 @@
             <field name="model">aicia.project.closure.wizard</field>
             <field name="arch" type="xml">
                 <form string="Cierre por Proyectos (AICIA)">
-                    <!-- Header con botones según estado -->
+                    <!-- Header solo con statusbar -->
                     <header>
-                        <button name="action_preview"
-                            string="Previsualizar"
-                            type="object"
-                            class="btn-primary"
-                            invisible="state != 'draft'" />
-                        <button name="action_generate"
-                            string="Generar Asientos"
-                            type="object"
-                            class="btn-primary"
-                            invisible="state != 'preview'"
-                            confirm="¿Está seguro de generar y postear los asientos de cierre? Esta acción creará asientos contables definitivos." />
-                        <button name="action_back"
-                            string="Volver"
-                            type="object"
-                            class="btn-secondary"
-                            invisible="state != 'preview'" />
-                        <button string="Cerrar"
-                            class="btn-secondary"
-                            special="cancel"
-                            invisible="state != 'done'" />
                         <field name="state" widget="statusbar"
                             statusbar_visible="draft,preview,done" />
                     </header>
@@ -134,6 +114,34 @@
                         </notebook>
 
                     </sheet>
+
+                    <!-- Footer: botones de acción abajo del wizard -->
+                    <footer>
+                        <button name="action_preview"
+                            string="Previsualizar"
+                            type="object"
+                            class="btn-primary"
+                            invisible="state != 'draft'" />
+                        <button name="action_generate"
+                            string="Generar Asientos"
+                            type="object"
+                            class="btn-primary"
+                            invisible="state != 'preview'"
+                            confirm="¿Está seguro de generar y postear los asientos de cierre? Esta acción creará asientos contables definitivos." />
+                        <button name="action_back"
+                            string="Volver"
+                            type="object"
+                            class="btn-secondary"
+                            invisible="state != 'preview'" />
+                        <button string="Cancelar"
+                            class="btn-secondary"
+                            special="cancel"
+                            invisible="state == 'done'" />
+                        <button string="Cerrar"
+                            class="btn-secondary"
+                            special="cancel"
+                            invisible="state != 'done'" />
+                    </footer>
                 </form>
             </field>
         </record>
