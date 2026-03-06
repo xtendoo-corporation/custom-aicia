@@ -33,6 +33,7 @@ Características:
     "data": [
         "security/ir.model.access.csv",
         "views/aicia_project_closure_wizard_views.xml",
+        "views/account_analytic_account_views.xml",
         "views/menus.xml",
     ],
     "installable": True,

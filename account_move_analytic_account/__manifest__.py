@@ -16,6 +16,7 @@
     "license": "AGPL-3",
     "data": [
         "views/account_move_views.xml",
+        "views/account_analytic_account_views.xml",
     ],
     "installable": True,
 }
