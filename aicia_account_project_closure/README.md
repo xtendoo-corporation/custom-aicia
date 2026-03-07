@@ -16,6 +16,7 @@ Calcula el resultado contable de cada proyecto en un periodo determinado y gener
 - Detección de duplicados para evitar doble cierre
 - Un asiento por proyecto para auditoría clara
 - Trazabilidad completa con campos técnicos en `account.move`
+- Botón directo en la vista formulario de la cuenta analítica para iniciar el cierre pre-filtrado por dicho proyecto
 - Soporte multi-compañía
 
 ## Dependencias
@@ -31,6 +32,7 @@ Calcula el resultado contable de cada proyecto en un periodo determinado y gener
 
 ## Uso
 
+### Desde el menú general
 1. Ir a **Contabilidad → Contabilidad → Closing → Cierre por Proyectos (AICIA)**.
 2. Se abre el wizard en modal.
 3. Configurar:
@@ -43,6 +45,13 @@ Calcula el resultado contable de cada proyecto en un periodo determinado y gener
 5. Revisar la tabla de resultados. Los proyectos marcados como "Duplicado" se omitirán.
 6. Pulsar **"Generar Asientos"** para crear y publicar los asientos de cierre.
 7. Usar el botón **"Asientos"** para navegar a los asientos creados.
+
+### Desde la cuenta analítica
+1. Ir a **Contabilidad → Configuración → Contabilidad Analítica → Cuentas Analíticas**.
+2. Abrir la cuenta analítica que se desea cerrar.
+3. Pulsar el botón **"Cierre de Proyecto"** en la cabecera del formulario.
+4. Se abrirá el wizard pre-filtrado exclusivamente con el proyecto actual.
+5. Seguir los pasos de previsualización y generación explicados anteriormente.
 
 ## Estructura de los asientos generados
 
