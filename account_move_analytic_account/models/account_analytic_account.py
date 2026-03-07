@@ -54,7 +54,7 @@ class AccountAnalyticAccount(models.Model):
             'name': 'Apuntes Contables',
             'type': 'ir.actions.act_window',
             'res_model': 'account.move.line',
-            'view_mode': 'tree,form',
+            'view_mode': 'list,form',
             'domain': [('id', 'in', line_ids)],
             'context': {'create': False},
             'target': 'current',
