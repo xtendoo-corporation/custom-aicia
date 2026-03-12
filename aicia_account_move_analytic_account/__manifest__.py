@@ -1,7 +1,7 @@
 # License AGPL-3.0 or later (https://www.gnu.org/licenses/agpl).
 
 {
-    "name": "Account Move Analytic Account",
+    "name": "AICIA Account Move Analytic Account",
     "summary": """Añade campo de cuenta analítica en facturas""",
     "version": "19.0.1.0.0",
     "description": """Este módulo añade un campo relacionado con cuenta analítica en el modelo account.move""",

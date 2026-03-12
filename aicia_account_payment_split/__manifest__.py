@@ -25,7 +25,7 @@ Características:
         "account",
         "account_accountant",
         "analytic",
-        "account_move_analytic_account",
+        "aicia_account_move_analytic_account",
     ],
     "license": "AGPL-3",
     "data": [
