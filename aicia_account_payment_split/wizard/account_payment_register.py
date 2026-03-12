@@ -34,29 +34,11 @@ class AccountPaymentRegister(models.TransientModel):
             if not invoices:
                 continue
 
-            analytic_ids = set()
-            for inv in invoices:
-                main_analytic = self.env[
-                    "account.payment"
-                ]._get_main_analytic_from_invoice(inv)
-                if main_analytic:
-                    analytic_ids.add(main_analytic)
-                else:
-                    break
-            else:
-                if len(analytic_ids) == 1:
-                    analytic_id = analytic_ids.pop()
-                    template = self.env["account.payment.split.template"].search(
-                        [
-                            ("company_id", "=", wizard.company_id.id),
-                            ("active", "=", True),
-                            ("default_for_analytic_account_id", "=", analytic_id),
-                        ],
-                        order="priority desc, id",
-                        limit=1,
-                    )
-                    if template:
-                        wizard.split_template_id = template
+            template = self.env["account.payment"]._get_split_template_from_invoices(
+                invoices, company=wizard.company_id
+            )
+            if template:
+                wizard.split_template_id = template
         return res
 
     # ------------------------------------------------------------------

@@ -17,7 +17,9 @@ múltiples facturas.
 El reparto se ejecuta al postear el pago. En Odoo 19 Enterprise, la reconciliación con
 facturas ocurre dentro del flujo de posteo (cuando se crea desde el wizard de registro
 de pagos). El asiento de reparto se crea y se publica automáticamente tras el posteo
-exitoso.
+exitoso. Si las facturas del pago tienen `analytic_distribution`, esa distribución se
+propaga además al asiento del propio pago y se usa como fallback analítico del asiento
+de reparto cuando la plantilla no define una analítica explícita.
 
 ### 1.3 Sugerencia Automática de Plantilla
 

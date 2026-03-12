@@ -7,8 +7,10 @@ configurables. Al postear un pago que tenga una plantilla de reparto seleccionad
 genera un asiento contable adicional (tipo `entry`) que distribuye un porcentaje del
 importe cobrado según las líneas de la plantilla.
 
-**La factura queda pagada al 100%**: el módulo NO toca el asiento del pago ni la
-factura. Solo crea un asiento adicional en un diario configurable.
+**La factura queda pagada al 100%**: el módulo NO altera importes ni conciliación del
+asiento del pago ni de la factura. Además, cuando el pago proviene de facturas con
+`analytic_distribution`, esa distribución se propaga al asiento del pago y se usa como
+fallback en el asiento adicional de reparto.
 
 ## Instalación
 
@@ -74,6 +76,8 @@ concreto:
 4. Si hay plantilla seleccionada:
    - Se crea un asiento contable de reparto en el diario configurado.
    - El asiento se publica automáticamente.
+    - Si las líneas de la plantilla no traen analítica explícita, heredarán la
+      `analytic_distribution` de la factura pagada.
    - Aparece un **botón inteligente** "Asiento Reparto" en el pago.
 5. En la **factura**, aparece un botón "Repartos" que muestra los logs de reparto.
 
