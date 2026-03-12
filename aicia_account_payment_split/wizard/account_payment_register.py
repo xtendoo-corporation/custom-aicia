@@ -50,3 +50,16 @@ class AccountPaymentRegister(models.TransientModel):
         if self.split_template_id:
             vals["split_template_id"] = self.split_template_id.id
         return vals
+
+    def _reconcile_payments(self, to_process, edit_mode=False):
+        """Tras reconciliar, sincroniza la analítica desde las facturas pagadas."""
+        res = super()._reconcile_payments(to_process, edit_mode=edit_mode)
+        payments = self.env["account.payment"]
+        for vals in to_process:
+            payment = vals.get("payment")
+            if payment:
+                payments |= payment
+        for payment in payments:
+            payment._sync_invoice_analytic_distribution()
+        return res
+

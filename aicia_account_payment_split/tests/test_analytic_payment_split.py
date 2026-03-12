@@ -222,3 +222,52 @@ class TestAnalyticPaymentSplit(TransactionCase):
             "Split move lines without explicit analytic data should inherit the invoice distribution.",
         )
 
+    def test_wizard_action_create_payments_syncs_invoice_analytic_distribution(self):
+        """The real register payment wizard flow should sync the invoice analytic distribution."""
+        invoice_distribution = {str(self.analytic_account.id): 100.0}
+        invoice = self.env["account.move"].create({
+            "move_type": "out_invoice",
+            "partner_id": self.partner.id,
+            "journal_id": self.env["account.journal"].search([("type", "=", "sale")], limit=1).id,
+            "analytic_distribution": invoice_distribution,
+            "invoice_line_ids": [
+                (0, 0, {
+                    "name": "Wizard Payment Test Line",
+                    "quantity": 1,
+                    "price_unit": 181.5,
+                })
+            ],
+        })
+        invoice.action_post()
+
+        receivable_lines = invoice.line_ids.filtered(
+            lambda line: line.account_type == "asset_receivable" and not line.reconciled
+        )
+        payment_register = self.env["account.payment.register"].with_context(
+            active_model="account.move",
+            active_ids=invoice.ids,
+        ).create({
+            "line_ids": [(6, 0, receivable_lines.ids)],
+            "journal_id": self.bank_journal.id,
+        })
+
+        action = payment_register.action_create_payments()
+        payment = self.env["account.payment"].browse(action.get("res_id"))
+
+        self.assertTrue(payment, "The wizard should create a payment record.")
+        self.assertEqual(
+            payment.reconciled_invoice_ids,
+            invoice,
+            "The payment should be reconciled with the invoice after the wizard flow.",
+        )
+        self.assertEqual(
+            payment.move_id.analytic_distribution,
+            invoice_distribution,
+            "The payment journal entry should inherit the invoice analytic distribution after reconciliation.",
+        )
+        self.assertEqual(
+            payment.split_move_id.analytic_distribution,
+            invoice_distribution,
+            "The split move should inherit the invoice analytic distribution in the real wizard flow.",
+        )
+

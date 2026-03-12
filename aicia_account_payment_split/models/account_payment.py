@@ -328,6 +328,22 @@ class AccountPayment(models.Model):
             self.move_id.write({"analytic_distribution": analytic_distribution})
         return analytic_distribution
 
+    def _sync_invoice_analytic_distribution(self):
+        """Sincroniza la analítica de las facturas con el pago y su reparto.
+
+        Este método está pensado para ejecutarse después de la reconciliación,
+        cuando `reconciled_invoice_ids` ya está disponible en el pago.
+        """
+        self.ensure_one()
+        analytic_distribution = self._apply_invoice_analytic_distribution_to_payment_move()
+        if (
+            analytic_distribution
+            and self.split_move_id
+            and self.split_move_id.analytic_distribution != analytic_distribution
+        ):
+            self.split_move_id.write({"analytic_distribution": analytic_distribution})
+        return analytic_distribution
+
     def _get_main_analytic_from_invoice(self, invoice):
         """Devuelve el ID de la cuenta analítica 'principal' de una factura.
 
@@ -373,7 +389,7 @@ class AccountPayment(models.Model):
         """Override: tras postear, genera el asiento de reparto si aplica."""
         res = super().action_post()
         for payment in self:
-            payment._apply_invoice_analytic_distribution_to_payment_move()
+            payment._sync_invoice_analytic_distribution()
             if (
                 payment.split_template_id
                 and not payment.split_move_id
