@@ -25,6 +25,7 @@ Características:
         "account",
         "account_accountant",
         "analytic",
+        "account_move_analytic_account",
     ],
     "license": "AGPL-3",
     "data": [
@@ -35,6 +36,7 @@ Características:
         "views/account_move_views.xml",
         "views/account_payment_split_log_views.xml",
         "views/account_payment_register_views.xml",
+        "views/account_analytic_account_views.xml",
         "views/menus.xml",
     ],
     "installable": True,

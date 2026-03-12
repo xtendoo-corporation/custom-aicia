@@ -120,6 +120,11 @@ class AccountPayment(models.Model):
             return
 
         analytic_id = analytic_ids.pop()
+        analytic_account = self.env["account.analytic.account"].browse(analytic_id)
+        if analytic_account.payment_split_template_id:
+            self.split_template_id = analytic_account.payment_split_template_id
+            return
+
         template = self.env["account.payment.split.template"].search(
             [
                 ("company_id", "=", self.company_id.id),

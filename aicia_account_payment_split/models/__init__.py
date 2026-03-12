@@ -5,3 +5,4 @@ from . import account_payment_split_template_line
 from . import account_payment
 from . import account_move
 from . import account_payment_split_log
+from . import account_analytic_account
