@@ -1,7 +1,7 @@
 # License AGPL-3.0 or later (https://www.gnu.org/licenses/agpl).
 
 {
-    "name": "Custom Account Invoice",
+    "name": "AICIA Document Format",
     "summary": "Factura personalizada para AICIA",
     "version": "19.0.1.0.0",
     "author": "Xtendoo",
@@ -14,7 +14,6 @@
     "license": "AGPL-3",
     "data": [
         "views/account_move_view.xml",
-        "views/report_invoice.xml",
     ],
     "installable": True,
     "application": False,
