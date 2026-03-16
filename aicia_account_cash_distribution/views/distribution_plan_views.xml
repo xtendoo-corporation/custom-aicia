@@ -1,0 +1,108 @@
+<?xml version="1.0" encoding="utf-8"?>
+<odoo>
+    <!-- Vista lista para líneas (modelo hijo) -->
+    <record id="view_aicia_distribution_plan_line_tree" model="ir.ui.view">
+        <field name="name">aicia.distribution.plan.line.tree</field>
+        <field name="model">aicia.distribution.plan.line</field>
+        <field name="arch" type="xml">
+            <list string="Líneas" editable="bottom">
+                <field name="sequence" widget="handle"/>
+                <field name="name"/>
+                <field name="is_vat_line"/>
+                <field name="percentage"/>
+                <field name="debit_account_id"/>
+                <field name="debit_analytic_side"/>
+                <field name="credit_account_id"/>
+                <field name="credit_analytic_side"/>
+            </list>
+        </field>
+    </record>
+
+    <!-- Vista lista para planes -->
+    <record id="view_aicia_distribution_plan_tree" model="ir.ui.view">
+        <field name="name">aicia.distribution.plan.tree</field>
+        <field name="model">aicia.distribution.plan</field>
+        <field name="arch" type="xml">
+            <list string="Planes de Distribución">
+                <field name="sequence" widget="handle"/>
+                <field name="name"/>
+                <field name="source_analytic_account_ids" widget="many2many_tags" optional="show"/>
+                <field name="receiver_analytic_account_id" optional="hide"/>
+                <field name="line_count"/>
+                <field name="active" widget="boolean_toggle"/>
+                <field name="company_id" groups="base.group_multi_company" optional="hide"/>
+            </list>
+        </field>
+    </record>
+
+    <!-- Vista formulario para planes -->
+    <record id="view_aicia_distribution_plan_form" model="ir.ui.view">
+        <field name="name">aicia.distribution.plan.form</field>
+        <field name="model">aicia.distribution.plan</field>
+        <field name="arch" type="xml">
+            <form string="Plan de Distribución AICIA">
+                <sheet>
+                    <div class="oe_button_box" name="button_box">
+                        <button name="toggle_active" type="object" class="oe_stat_button" icon="fa-archive">
+                            <field name="active" widget="boolean_button" options='{"terminology": "archive"}'/>
+                        </button>
+                    </div>
+                    <div class="oe_title">
+                        <label for="name"/>
+                        <h1><field name="name" placeholder="ej: Plan IVA + 6% + 3% + 1%"/></h1>
+                    </div>
+                    <group>
+                        <group string="General">
+                            <field name="sequence"/>
+                            <field name="company_id" groups="base.group_multi_company"/>
+                        </group>
+                        <group string="Filtros y Destino">
+                            <field name="source_analytic_account_ids" widget="many2many_tags"/>
+                            <field name="receiver_analytic_account_id"/>
+                        </group>
+                    </group>
+                    <notebook>
+                        <page string="Líneas de Reparto" name="lines">
+                            <field name="line_ids" context="{'tree_view_ref': 'aicia_account_cash_distribution.view_aicia_distribution_plan_line_tree'}"/>
+                        </page>
+                    </notebook>
+                </sheet>
+            </form>
+        </field>
+    </record>
+
+    <!-- Vista de búsqueda para planes -->
+    <record id="view_aicia_distribution_plan_search" model="ir.ui.view">
+        <field name="name">aicia.distribution.plan.search</field>
+        <field name="model">aicia.distribution.plan</field>
+        <field name="arch" type="xml">
+            <search string="Buscar Planes de Distribución">
+                <field name="name" string="Plan" filter_domain="[('name', 'ilike', self)]"/>
+                <field name="source_analytic_account_ids" string="Analítica Origen"/>
+                <field name="receiver_analytic_account_id" string="Analítica Receptora"/>
+                <separator/>
+                <filter string="Activos" name="active" domain="[('active', '=', True)]"/>
+                <filter string="Archivados" name="inactive" domain="[('active', '=', False)]"/>
+                <separator/>
+                <filter string="Con Analítica Origen Específica" name="with_source_analytic"
+                        domain="[('source_analytic_account_ids', '!=', False)]"/>
+                <filter string="Sin Filtro de Analítica (Aplica a Todas)" name="without_source_analytic"
+                        domain="[('source_analytic_account_ids', '=', False)]"/>
+                <group expand="0" string="Agrupar Por">
+                    <filter string="Analítica Receptora" name="group_receiver_analytic"
+                            context="{'group_by': 'receiver_analytic_account_id'}"/>
+                    <filter string="Compañía" name="group_company"
+                            context="{'group_by': 'company_id'}" groups="base.group_multi_company"/>
+                </group>
+            </search>
+        </field>
+    </record>
+
+    <!-- Acción -->
+    <record id="action_aicia_distribution_plan" model="ir.actions.act_window">
+        <field name="name">Planes de Distribución</field>
+        <field name="res_model">aicia.distribution.plan</field>
+        <field name="view_mode">list,form</field>
+    </record>
+</odoo>
+

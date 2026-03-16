@@ -1,0 +1,50 @@
+<?xml version="1.0" encoding="utf-8"?>
+<odoo>
+    <!-- Vista formulario de cuenta analítica: añadir pestaña de planes de distribución -->
+    <record id="view_account_analytic_account_form_inherit_aicia" model="ir.ui.view">
+        <field name="name">account.analytic.account.form.inherit.aicia</field>
+        <field name="model">account.analytic.account</field>
+        <field name="inherit_id" ref="analytic.view_account_analytic_account_form"/>
+        <field name="arch" type="xml">
+            <xpath expr="//notebook" position="inside">
+                <page string="Planes de Distribución AICIA"
+                      invisible="distribution_plan_count == 0"
+                      groups="account.group_account_manager">
+                    <field name="distribution_plan_count" invisible="1"/>
+                    <field name="distribution_plan_ids">
+                        <list string="Planes de Distribución">
+                            <field name="sequence" widget="handle"/>
+                            <field name="name"/>
+                            <field name="active" widget="boolean_toggle"/>
+                            <field name="line_count" string="Líneas"/>
+                            <field name="receiver_analytic_account_id"/>
+                            <field name="company_id" groups="base.group_multi_company"/>
+                        </list>
+                    </field>
+                </page>
+            </xpath>
+        </field>
+    </record>
+
+    <!-- Añadir smart button en la vista de cuenta analítica -->
+    <record id="view_account_analytic_account_form_button_inherit_aicia" model="ir.ui.view">
+        <field name="name">account.analytic.account.form.button.inherit.aicia</field>
+        <field name="model">account.analytic.account</field>
+        <field name="inherit_id" ref="analytic.view_account_analytic_account_form"/>
+        <field name="arch" type="xml">
+            <xpath expr="//div[@name='button_box']" position="inside">
+                <button class="oe_stat_button"
+                        type="action"
+                        name="%(aicia_account_cash_distribution.action_aicia_distribution_plan)d"
+                        context="{'search_default_source_analytic_account_ids': active_id}"
+                        icon="fa-exchange"
+                        invisible="distribution_plan_count == 0"
+                        groups="account.group_account_manager">
+                    <field name="distribution_plan_count" widget="statinfo" string="Planes de Distribución"/>
+                </button>
+            </xpath>
+        </field>
+    </record>
+
+</odoo>
+
