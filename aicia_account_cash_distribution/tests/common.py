@@ -121,25 +121,43 @@ class AiciaCashDistributionCommon(TransactionCase):
         cls.company.write({
             'cash_distribution_active': True,
             'cash_distribution_journal_id': cls.misc_journal.id,
+            'cash_distribution_receiver_analytic_id': cls.analytic_account_dest.id,
         })
 
     # ── Helpers ───────────────────────────────────────────────────────────────
 
-    def _create_rule(self, name='Rule A', percentage=10.0,
+    def _create_rule(self, name='Plan A', percentage=10.0,
                      source_analytic_ids=None, dest_analytic=None,
                      debit_account=None, credit_account=None,
-                     rule_type='source', active=True):
-        return self.env['aicia.distribution.rule'].create({
+                     rule_type='source', active=True, is_vat_line=False):
+        """
+        Create a distribution plan with one line.
+        For compatibility with old tests, this creates a plan with a single line.
+        """
+        plan = self.env['aicia.distribution.plan'].create({
             'name': name,
             'company_id': self.company.id,
-            'percentage': percentage,
-            'type': rule_type,
             'source_analytic_account_ids': [(6, 0, source_analytic_ids or [])],
-            'destination_analytic_account_id': (dest_analytic or self.analytic_account_dest).id,
-            'debit_account_id': (debit_account or self.account_dist_debit).id,
-            'credit_account_id': (credit_account or self.account_dist_credit).id,
+            'receiver_analytic_account_id': (dest_analytic or self.analytic_account_dest).id,
             'active': active,
         })
+
+        # Create a single line for the plan
+        debit_analytic_side = 'receiver' if rule_type == 'dest' else 'source'
+        credit_analytic_side = 'source' if rule_type == 'dest' else 'receiver'
+
+        self.env['aicia.distribution.plan.line'].create({
+            'plan_id': plan.id,
+            'name': f'{name} Line',
+            'is_vat_line': is_vat_line,
+            'percentage': percentage,
+            'debit_account_id': (debit_account or self.account_dist_debit).id,
+            'debit_analytic_side': debit_analytic_side,
+            'credit_account_id': (credit_account or self.account_dist_credit).id,
+            'credit_analytic_side': credit_analytic_side,
+        })
+
+        return plan
 
     def _create_invoice(self, amount=1000.0, analytic_account=None,
                         analytic_on_header=False, move_type='out_invoice'):
