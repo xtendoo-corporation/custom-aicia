@@ -36,7 +36,7 @@
                 <button class="oe_stat_button"
                         type="action"
                         name="%(aicia_account_cash_distribution.action_aicia_distribution_plan)d"
-                        context="{'search_default_source_analytic_account_ids': active_id}"
+                        context="{'search_default_source_analytic_account_ids': id}"
                         icon="fa-exchange"
                         invisible="distribution_plan_count == 0"
                         groups="account.group_account_manager">
