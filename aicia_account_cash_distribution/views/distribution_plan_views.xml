@@ -77,23 +77,11 @@
         <field name="model">aicia.distribution.plan</field>
         <field name="arch" type="xml">
             <search string="Buscar Planes de Distribución">
-                <field name="name" string="Plan" filter_domain="[('name', 'ilike', self)]"/>
-                <field name="source_analytic_account_ids" string="Analítica Origen"/>
-                <field name="receiver_analytic_account_id" string="Analítica Receptora"/>
-                <separator/>
+                <field name="name" string="Plan"/>
+                <field name="source_analytic_account_ids"/>
+                <field name="receiver_analytic_account_id"/>
                 <filter string="Activos" name="active" domain="[('active', '=', True)]"/>
                 <filter string="Archivados" name="inactive" domain="[('active', '=', False)]"/>
-                <separator/>
-                <filter string="Con Analítica Origen Específica" name="with_source_analytic"
-                        domain="[('source_analytic_account_ids', '!=', False)]"/>
-                <filter string="Sin Filtro de Analítica (Aplica a Todas)" name="without_source_analytic"
-                        domain="[('source_analytic_account_ids', '=', False)]"/>
-                <group string="Agrupar Por">
-                    <filter string="Analítica Receptora" name="group_receiver_analytic"
-                            context="{'group_by': 'receiver_analytic_account_id'}"/>
-                    <filter string="Compañía" name="group_company"
-                            context="{'group_by': 'company_id'}" groups="base.group_multi_company"/>
-                </group>
             </search>
         </field>
     </record>
