@@ -88,7 +88,7 @@
                         domain="[('source_analytic_account_ids', '!=', False)]"/>
                 <filter string="Sin Filtro de Analítica (Aplica a Todas)" name="without_source_analytic"
                         domain="[('source_analytic_account_ids', '=', False)]"/>
-                <group expand="0" string="Agrupar Por">
+                <group string="Agrupar Por">
                     <filter string="Analítica Receptora" name="group_receiver_analytic"
                             context="{'group_by': 'receiver_analytic_account_id'}"/>
                     <filter string="Compañía" name="group_company"
