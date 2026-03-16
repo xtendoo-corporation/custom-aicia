@@ -100,3 +100,225 @@ class TestDistributionMove(AiciaCashDistributionCommon):
         for dm in dist_moves:
             self.assertTrue(dm.name, "Distribution move name must not be empty.")
 
+    def test_09_source_analytic_account_ids_populated(self):
+        """Distribution move must store the source analytic account that triggered it."""
+        invoice = self._create_invoice(amount=1000.0, analytic_account=self.analytic_account_a)
+        reconciles = self._register_payment(invoice)
+        dist_moves = self.env['aicia.distribution.move'].search([
+            ('partial_reconcile_id', 'in', reconciles.ids),
+        ])
+        self.assertTrue(dist_moves)
+        for dm in dist_moves:
+            self.assertIn(
+                self.analytic_account_a,
+                dm.source_analytic_account_ids,
+                "Source analytic account_a must be stored in the distribution move.",
+            )
+
+    def test_10_analytic_account_distribution_move_count(self):
+        """The analytic account distribution_move_count must reflect generated logs."""
+        invoice = self._create_invoice(amount=1000.0, analytic_account=self.analytic_account_a)
+        count_before = self.analytic_account_a.distribution_move_count
+        self._register_payment(invoice)
+        self.analytic_account_a.invalidate_recordset(['distribution_move_count'])
+        count_after = self.analytic_account_a.distribution_move_count
+        self.assertGreater(count_after, count_before,
+                           "distribution_move_count must increase after a payment distribution.")
+
+    def test_11_analytic_account_links_to_distribution_moves(self):
+        """The analytic account's distribution_move_ids must include the generated log."""
+        invoice = self._create_invoice(amount=1000.0, analytic_account=self.analytic_account_a)
+        reconciles = self._register_payment(invoice)
+        dist_moves = self.env['aicia.distribution.move'].search([
+            ('partial_reconcile_id', 'in', reconciles.ids),
+        ])
+        for dm in dist_moves:
+            self.assertIn(
+                dm,
+                self.analytic_account_a.distribution_move_ids,
+                "Distribution move must appear in analytic_account_a.distribution_move_ids.",
+            )
+
+    def test_12_payment_register_autofills_distribution_plan(self):
+        """The payment wizard should autofill the distribution plan from the invoice analytic."""
+        invoice = self._create_invoice(amount=1000.0, analytic_account=self.analytic_account_a)
+        wizard = self.env['account.payment.register'].with_context(
+            active_model='account.move',
+            active_ids=invoice.ids,
+        ).create({
+            'amount': invoice.amount_residual,
+            'journal_id': self.bank_journal.id,
+        })
+        self.assertEqual(
+            wizard.distribution_plan_id,
+            self.rule,
+            "The payment register wizard must autofill the plan from the invoice analytic.",
+        )
+
+    def test_13_created_payment_stores_distribution_plan(self):
+        """The created inbound payment must keep the distribution plan chosen in the wizard."""
+        invoice = self._create_invoice(amount=1000.0, analytic_account=self.analytic_account_a)
+        self._register_payment(invoice)
+        payments = self._get_invoice_payments(invoice)
+        self.assertTrue(payments, "A payment should have been created for the invoice.")
+        self.assertIn(
+            self.rule,
+            payments.mapped('distribution_plan_id'),
+            "The generated payment must store the detected distribution plan.",
+        )
+
+    def test_14_manual_plan_on_wizard_overrides_detected_plan_and_is_applied(self):
+        """A manually chosen plan on the wizard must be copied to the payment and executed."""
+        manual_plan = self.env['aicia.distribution.plan'].create({
+            'name': 'Manual Wizard Plan',
+            'company_id': self.company.id,
+            'receiver_analytic_account_id': self.analytic_account_dest.id,
+            'active': True,
+        })
+        self.env['aicia.distribution.plan.line'].create({
+            'plan_id': manual_plan.id,
+            'name': 'Manual Line 7%',
+            'percentage': 7.0,
+            'debit_account_id': self.account_dist_debit.id,
+            'debit_analytic_side': 'source',
+            'credit_account_id': self.account_dist_credit.id,
+            'credit_analytic_side': 'receiver',
+        })
+
+        invoice = self._create_invoice(amount=1000.0, analytic_account=self.analytic_account_a)
+        wizard = self.env['account.payment.register'].with_context(
+            active_model='account.move',
+            active_ids=invoice.ids,
+        ).create({
+            'amount': invoice.amount_residual,
+            'journal_id': self.bank_journal.id,
+            'distribution_plan_id': manual_plan.id,
+        })
+        wizard.action_create_payments()
+
+        payments = self._get_invoice_payments(invoice)
+        self.assertTrue(payments)
+        self.assertIn(
+            manual_plan,
+            payments.mapped('distribution_plan_id'),
+            "Manual plan from wizard must be copied to the generated payment.",
+        )
+
+        reconciles = invoice.line_ids.mapped('matched_debit_ids') | invoice.line_ids.mapped('matched_credit_ids')
+        dist_moves = self.env['aicia.distribution.move'].search([
+            ('partial_reconcile_id', 'in', reconciles.ids),
+        ])
+        self.assertTrue(dist_moves, "A distribution move should be generated.")
+        self.assertIn(
+            manual_plan,
+            dist_moves.mapped('applied_plan_ids'),
+            "The manually selected payment plan must be the one applied on reconciliation.",
+        )
+
+    def test_15_customer_refund_does_not_show_or_copy_distribution_plan(self):
+        """Distribution plan is only for sales invoices, not customer refunds."""
+        invoice = self._create_invoice(
+            amount=1000.0,
+            analytic_account=self.analytic_account_a,
+            move_type='out_refund',
+        )
+        wizard = self.env['account.payment.register'].with_context(
+            active_model='account.move',
+            active_ids=invoice.ids,
+        ).create({
+            'amount': invoice.amount_residual,
+            'journal_id': self.bank_journal.id,
+        })
+        self.assertEqual(wizard.partner_type, 'customer')
+        self.assertFalse(wizard.show_distribution_plan_id)
+        self.assertFalse(wizard.distribution_plan_id)
+
+        wizard.action_create_payments()
+        payments = self._get_invoice_payments(invoice)
+        self.assertTrue(payments)
+        self.assertFalse(payments.mapped('distribution_plan_id'))
+
+    def test_16_header_analytic_plan_has_priority_over_invoice_lines(self):
+        """If header and lines disagree, the payment must use the plan from the header analytic."""
+        if 'analytic_distribution' not in self.env['account.move']._fields:
+            self.skipTest("La cabecera analítica no está disponible en este entorno.")
+
+        rule_b = self._create_rule(
+            name='Move Test Rule B',
+            percentage=5.0,
+            source_analytic_ids=[self.analytic_account_b.id],
+            debit_account=self.account_dist_debit2,
+            credit_account=self.account_dist_credit2,
+        )
+        invoice = self.env['account.move'].create({
+            'move_type': 'out_invoice',
+            'partner_id': self.partner.id,
+            'journal_id': self.sale_journal.id,
+            'analytic_distribution': {str(self.analytic_account_a.id): 100},
+            'invoice_line_ids': [(0, 0, {
+                'name': 'Header must win',
+                'quantity': 1,
+                'price_unit': 1000.0,
+                'account_id': self.account_revenue.id,
+                'analytic_distribution': {str(self.analytic_account_b.id): 100},
+            })],
+        })
+        invoice.action_post()
+
+        wizard = self.env['account.payment.register'].with_context(
+            active_model='account.move',
+            active_ids=invoice.ids,
+        ).create({
+            'amount': invoice.amount_residual,
+            'journal_id': self.bank_journal.id,
+        })
+
+        self.assertEqual(wizard.distribution_plan_id, self.rule)
+        self.assertNotEqual(wizard.distribution_plan_id, rule_b)
+
+        wizard.action_create_payments()
+        payments = self._get_invoice_payments(invoice)
+        self.assertTrue(payments)
+        self.assertIn(
+            self.rule,
+            payments.mapped('distribution_plan_id'),
+            "El pago debe guardar el plan de la analítica definida en cabecera.",
+        )
+
+    def test_17_multiple_invoices_with_distinct_header_plans_do_not_autofill(self):
+        """Grouped payments must stay empty when header analytics point to different plans."""
+        if 'analytic_distribution' not in self.env['account.move']._fields:
+            self.skipTest("La cabecera analítica no está disponible en este entorno.")
+
+        self._create_rule(
+            name='Move Test Rule B',
+            percentage=5.0,
+            source_analytic_ids=[self.analytic_account_b.id],
+            debit_account=self.account_dist_debit2,
+            credit_account=self.account_dist_credit2,
+        )
+        invoice_a = self._create_invoice(
+            amount=1000.0,
+            analytic_account=self.analytic_account_a,
+            analytic_on_header=True,
+        )
+        invoice_b = self._create_invoice(
+            amount=500.0,
+            analytic_account=self.analytic_account_b,
+            analytic_on_header=True,
+        )
+
+        wizard = self.env['account.payment.register'].with_context(
+            active_model='account.move',
+            active_ids=(invoice_a + invoice_b).ids,
+        ).create({
+            'amount': invoice_a.amount_residual + invoice_b.amount_residual,
+            'journal_id': self.bank_journal.id,
+            'group_payment': True,
+        })
+
+        self.assertFalse(
+            wizard.distribution_plan_id,
+            "No debe autocompletarse un plan si las facturas tienen planes de cabecera distintos.",
+        )
+

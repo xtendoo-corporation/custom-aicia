@@ -10,6 +10,8 @@
         'security/ir.model.access.csv',
         'views/distribution_plan_views.xml',
         'views/distribution_move_views.xml',
+        'views/account_payment_views.xml',
+        'views/account_payment_register_views.xml',
         'views/res_config_settings_views.xml',
         'views/account_analytic_account_views.xml',
         'views/menus.xml',
