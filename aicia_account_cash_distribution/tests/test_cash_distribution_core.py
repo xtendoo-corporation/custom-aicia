@@ -251,7 +251,7 @@ class TestCashDistributionCore(AiciaCashDistributionCommon):
 
     def test_16_zero_percentage_rule_creates_no_entry(self):
         """A 0% rule must not create any journal entry lines."""
-        self.rule_10.write({'percentage': 0.0})
+        self.rule_10.line_ids.write({'percentage': 0.0})
         invoice = self._create_invoice(amount=1000.0, analytic_account=self.analytic_account_a)
         count_before = self.env['aicia.distribution.move'].search_count([])
         self._register_payment(invoice)

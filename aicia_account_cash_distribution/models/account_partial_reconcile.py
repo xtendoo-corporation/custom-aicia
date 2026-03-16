@@ -77,11 +77,15 @@ class AccountPartialReconcile(models.Model):
         """Reversión: cancela asientos y elimina logs."""
         for rec in self:
             for dist_move in rec.distribution_move_ids:
-                if dist_move.move_id.state == 'posted':
-                    dist_move.move_id.button_draft()
-                dist_move.move_id.button_cancel()
-                dist_move.move_id.unlink()
+                account_move = dist_move.move_id
+                # Primero eliminar el log (FK -> account_move)
                 dist_move.unlink()
+                # Luego cancelar y eliminar el asiento contable
+                if account_move.exists():
+                    if account_move.state == 'posted':
+                        account_move.button_draft()
+                    account_move.button_cancel()
+                    account_move.unlink()
     # ── Localización de factura ──────────────────────────────────────────
     def _find_invoice_move(self):
         """Devuelve la factura de cliente relacionada (out_invoice/out_refund)."""

@@ -215,8 +215,9 @@ class TestCashDistributionEdgeCases(AiciaCashDistributionCommon):
     # ── Rule without destination analytic ────────────────────────────────────
 
     def test_10_no_destination_analytic_credit_line_empty(self):
-        """When rule has no destination analytic, the credit line analytic must be empty."""
-        self.rule.write({'destination_analytic_account_id': False})
+        """When plan has no receiver analytic, the credit line analytic must be empty."""
+        self.rule.write({'receiver_analytic_account_id': False})
+        self.rule.company_id.write({'cash_distribution_receiver_analytic_id': False})
         invoice = self._create_invoice(amount=1000.0, analytic_account=self.analytic_account_a)
         reconciles = self._register_payment(invoice)
         dist_moves = self.env['aicia.distribution.move'].search([
