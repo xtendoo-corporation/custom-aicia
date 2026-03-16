@@ -3,6 +3,7 @@
     "summary": """Aicia Approval Documents""",
     "version": "19.0.1.0.0",
     "description": """Aicia Approval Documents""",
+    "author": "Xtendoo",
     "company": "Xtendoo",
     "website": "http://www.xtendoo.es",
     "category": "",

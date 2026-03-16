@@ -1,0 +1,24 @@
+<?xml version="1.0" encoding="utf-8"?>
+<odoo>
+    <record id="view_aicia_distribution_move_tree" model="ir.ui.view">
+        <field name="name">aicia.distribution.move.tree</field>
+        <field name="model">aicia.distribution.move</field>
+        <field name="arch" type="xml">
+            <list string="Distribution Logs" create="false" edit="false">
+                <field name="create_date"/>
+                <field name="partial_reconcile_id"/>
+                <field name="move_id"/>
+                <field name="amount_total"/>
+                <field name="state" widget="badge" decoration-success="state == 'posted'"/>
+            </list>
+        </field>
+    </record>
+
+    <record id="action_aicia_distribution_move" model="ir.actions.act_window">
+        <field name="name">Logs de Distribución</field>
+        <field name="res_model">aicia.distribution.move</field>
+        <field name="view_mode">list,form</field>
+    </record>
+
+
+</odoo>

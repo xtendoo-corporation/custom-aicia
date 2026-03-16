@@ -3,6 +3,7 @@
     "summary": """Aicia Custom Hr Employee""",
     "version": "19.0.1.0.0",
     "description": """Aicia Custom Hr Employee""",
+    "author": "Xtendoo",
     "company": "Xtendoo",
     "website": "http://www.xtendoo.es",
     "category": "Human Resources/Employees",

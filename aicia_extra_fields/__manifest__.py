@@ -1,5 +1,6 @@
 {
     "name": "AICIA - Campos extra",
+    "author": "Xtendoo",
     "category": "Extra Tools",
     "version": "19.0.1.0.4",
     "depends": [
