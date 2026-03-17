@@ -1,0 +1,36 @@
+<?xml version="1.0" encoding="utf-8"?>
+<odoo>
+    <!-- Vista standalone de las líneas de reparto analítico -->
+    <record id="view_employee_analytic_line_tree" model="ir.ui.view">
+        <field name="name">aicia.employee.analytic.line.tree</field>
+        <field name="model">aicia.employee.analytic.line</field>
+        <field name="arch" type="xml">
+            <list editable="bottom">
+                <field name="sequence" widget="handle"/>
+                <field name="analytic_account_id" string="Proyecto" required="1"/>
+                <field name="percentage" string="Porcentaje (%)"/>
+            </list>
+        </field>
+    </record>
+
+    <!-- Herencia del formulario de empleado: añadir grupo REPARTO en pestaña Nómina -->
+    <record id="view_employee_form_analytic_percentage_inherit" model="ir.ui.view">
+        <field name="name">hr.employee.form.analytic.percentage.inherit</field>
+        <field name="model">hr.employee</field>
+        <field name="inherit_id" ref="hr.view_employee_form"/>
+        <field name="arch" type="xml">
+            <!-- Inyectar separador REPARTO justo después de "Horas laborables" -->
+            <xpath expr="//field[@name='resource_calendar_id']" position="after">
+                <separator name="reparto" string="Reparto"/>
+                <field name="analytic_line_ids" nolabel="1" colspan="2">
+                    <list editable="bottom">
+                        <field name="sequence" widget="handle"/>
+                        <field name="analytic_account_id" string="Proyecto" required="1"/>
+                        <field name="percentage" string="Porcentaje (%)"/>
+                    </list>
+                </field>
+            </xpath>
+        </field>
+    </record>
+</odoo>
+
