@@ -46,6 +46,8 @@ class AccountAnalyticAccountInherit(models.Model):
             user = self.env.user
             if user.has_group('portal_requests.group_director_manager'):
                 record.user_can_edit = True
+            elif user.has_group('portal_requests.group_director_investigation_and_development'):
+                record.user_can_edit = True
             elif record.responsible_id == user:
                 record.user_can_edit = True
             else:
