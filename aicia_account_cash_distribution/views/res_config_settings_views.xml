@@ -6,13 +6,17 @@
         <field name="inherit_id" ref="account.res_config_settings_view_form"/>
         <field name="arch" type="xml">
             <xpath expr="//block[.//field[@name='group_analytic_accounting']]" position="after">
-                <block title="AICIA Cash Distribution" id="aicia_cash_distribution">
-                    <setting string="Enable Cash Distribution" help="Enable automatic analytic distribution on reconciliation">
+                <block title="Distribución de Cobros AICIA" id="aicia_cash_distribution">
+                    <setting string="Activar Distribución de Cobros" help="Genera asientos analíticos automáticos al conciliar cobros de clientes">
                         <field name="cash_distribution_active"/>
                         <div class="content-group" invisible="not cash_distribution_active">
                             <div class="row mt16">
                                 <label for="cash_distribution_journal_id" class="col-lg-3 o_light_label"/>
                                 <field name="cash_distribution_journal_id"/>
+                            </div>
+                            <div class="row mt8">
+                                <label for="cash_distribution_receiver_analytic_id" class="col-lg-3 o_light_label"/>
+                                <field name="cash_distribution_receiver_analytic_id"/>
                             </div>
                         </div>
                     </setting>

@@ -28,14 +28,18 @@ class AiciaDistributionPlan(models.Model):
     )
     active = fields.Boolean(default=True)
 
-    # Analíticas origen que activan este plan (vacío = todas)
-    source_analytic_account_ids = fields.Many2many(
+    # Analíticas que tienen asignado este plan (inverso del Many2one en analytic)
+    source_analytic_account_ids = fields.One2many(
         'account.analytic.account',
-        'aicia_dist_plan_source_analytic_rel',
-        'plan_id', 'analytic_id',
-        string='Analíticas Origen',
-        help="Analíticas de origen que activan este plan.\n"
-             "Vacío = se aplica a cualquier analítica de origen.",
+        'distribution_plan_id',
+        string='Analíticas Vinculadas',
+        help="Cuentas analíticas que tienen este plan asignado.\n"
+             "Se gestiona desde cada cuenta analítica.",
+        readonly=True,
+    )
+    analytic_count = fields.Integer(
+        compute='_compute_analytic_count',
+        string='Nº Analíticas',
     )
 
     # Analítica receptora AICIA (sobreescribe la de compañía si se indica)
@@ -58,14 +62,12 @@ class AiciaDistributionPlan(models.Model):
         for plan in self:
             plan.line_count = len(plan.line_ids)
 
-    # ── Business helpers ──────────────────────────────────────────────────
+    @api.depends('source_analytic_account_ids')
+    def _compute_analytic_count(self):
+        for plan in self:
+            plan.analytic_count = len(plan.source_analytic_account_ids)
 
-    def matches_analytic(self, analytic_id):
-        """True si el plan se aplica a la analítica origen `analytic_id`."""
-        self.ensure_one()
-        if not self.source_analytic_account_ids:
-            return True
-        return analytic_id in self.source_analytic_account_ids.ids
+    # ── Business helpers ──────────────────────────────────────────────────
 
     def get_receiver_analytic_id(self):
         """

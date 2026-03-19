@@ -5,20 +5,24 @@ from odoo import models, fields
 class AccountAnalyticAccount(models.Model):
     _inherit = 'account.analytic.account'
 
-    distribution_plan_ids = fields.Many2many(
+    distribution_plan_id = fields.Many2one(
         'aicia.distribution.plan',
-        'aicia_dist_plan_source_analytic_rel',
-        'analytic_id', 'plan_id',
-        string='Planes de Distribución',
-        help="Planes de distribución que se activan cuando esta analítica "
-             "está presente en la cabecera o líneas de una factura cobrada.",
+        string='Plan de Distribución AICIA',
+        domain="[('company_id', 'in', [company_id, False])]",
+        help="Plan de distribución que se ejecuta al cobrar una factura con esta analítica.\n"
+             "Cada analítica solo puede tener un plan asignado.",
     )
-    distribution_plan_count = fields.Integer(
-        compute='_compute_distribution_plan_count',
-        string='Nº Planes de Distribución',
+    distribution_move_ids = fields.Many2many(
+        'aicia.distribution.move',
+        'aicia_dist_move_source_analytic_rel',
+        'analytic_id', 'distribution_move_id',
+        string='Logs de Distribución',
+    )
+    distribution_move_count = fields.Integer(
+        compute='_compute_distribution_move_count',
+        string='Distribuciones',
     )
 
-    def _compute_distribution_plan_count(self):
+    def _compute_distribution_move_count(self):
         for account in self:
-            account.distribution_plan_count = len(account.distribution_plan_ids)
-
+            account.distribution_move_count = len(account.distribution_move_ids)

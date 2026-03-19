@@ -116,28 +116,29 @@ class TestCashDistributionCore(AiciaCashDistributionCommon):
         finally:
             self.company.write({'cash_distribution_active': True})
 
-    def test_08_multiple_rules_all_applied(self):
-        """Two active rules for the same analytic account → both create journal entries."""
-        rule2 = self._create_rule(
-            name='Core Rule 20%',
-            percentage=20.0,
-            source_analytic_ids=[self.analytic_account_a.id],
-            debit_account=self.account_dist_debit2,
-            credit_account=self.account_dist_credit2,
-        )
+    def test_08_single_plan_multiple_lines_all_applied(self):
+        """A plan with two lines → both lines generate entries (10% + 20% = 300 total debit)."""
+        # Añadir una segunda línea al plan existente de analytic_a
+        self.env['aicia.distribution.plan.line'].create({
+            'plan_id': self.rule_10.id,
+            'name': 'Second Line 20%',
+            'percentage': 20.0,
+            'debit_account_id': self.account_dist_debit2.id,
+            'debit_analytic_side': 'source',
+            'credit_account_id': self.account_dist_credit2.id,
+            'credit_analytic_side': 'receiver',
+        })
         invoice = self._create_invoice(amount=1000.0, analytic_account=self.analytic_account_a)
         reconciles = self._register_payment(invoice)
         dist_moves = self.env['aicia.distribution.move'].search([
             ('partial_reconcile_id', 'in', reconciles.ids),
         ])
-        # Should have 1 distribution move (one journal entry combining both rules)
         self.assertTrue(dist_moves)
         for dm in dist_moves:
-            # The journal entry must contain lines for both rules
             debit_total = sum(dm.move_id.line_ids.mapped('debit'))
-            # Rule1: 10% of 1000 = 100, Rule2: 20% of 1000 = 200 → total debit = 300
+            # Línea1: 10% de 1000 = 100, Línea2: 20% de 1000 = 200 → total = 300
             self.assertAlmostEqual(debit_total, 300.0, places=2,
-                                   msg="10% + 20% of 1000 = 300 total debit.")
+                                   msg="Dos líneas en el mismo plan: 10% + 20% de 1000 = 300.")
 
     def test_09_rule_source_filter_blocks_non_matching_analytic(self):
         """A rule that filters on analytic_account_a should NOT fire for analytic_account_b."""
@@ -148,12 +149,12 @@ class TestCashDistributionCore(AiciaCashDistributionCommon):
         self.assertEqual(count_before, count_after,
                          "Rule filtered to analytic A must not fire for analytic B.")
 
-    def test_10_rule_without_source_filter_matches_all_analytics(self):
-        """A rule with empty source_analytic_account_ids should fire for any analytic."""
-        rule_all = self._create_rule(
-            name='Catch-All Rule',
+    def test_10_rule_assigned_to_analytic_fires_for_that_analytic(self):
+        """A plan assigned to analytic_b must fire for analytic_b."""
+        rule_b = self._create_rule(
+            name='Plan for B',
             percentage=5.0,
-            source_analytic_ids=[],  # no filter → matches all
+            source_analytic_ids=[self.analytic_account_b.id],
             debit_account=self.account_dist_debit2,
             credit_account=self.account_dist_credit2,
         )
@@ -162,7 +163,8 @@ class TestCashDistributionCore(AiciaCashDistributionCommon):
         dist_moves = self.env['aicia.distribution.move'].search([
             ('partial_reconcile_id', 'in', reconciles.ids),
         ])
-        self.assertTrue(dist_moves, "Catch-all rule (no source filter) must fire for any analytic.")
+        self.assertTrue(dist_moves,
+                        "Plan assigned to analytic B must fire when analytic B is in the invoice.")
 
     def test_11_distribution_journal_entry_is_balanced(self):
         """For ANY invoice+rule combination, the generated journal entry must be balanced."""

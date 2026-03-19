@@ -38,9 +38,11 @@ class TestDistributionRule(AiciaCashDistributionCommon):
         )
         self.assertEqual(plan.receiver_analytic_account_id, self.analytic_account_dest)
 
-    def test_04_create_rule_type_fixed(self):
-        """A plan without source analytic should apply to all."""
-        plan = self._create_rule(name='Universal Plan', percentage=8.0)
+    def test_04_plan_without_analytics_never_fires(self):
+        """A plan with no analytics assigned never fires (no catch-all behavior)."""
+        plan = self._create_rule(name='Unassigned Plan', percentage=8.0)
+        # source_analytic_account_ids es One2many, vacío significa que ninguna
+        # analítica tiene este plan asignado
         self.assertFalse(plan.source_analytic_account_ids)
 
     def test_05_create_multiple_rules(self):

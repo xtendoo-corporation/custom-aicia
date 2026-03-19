@@ -26,7 +26,7 @@
             <list string="Planes de Distribución">
                 <field name="sequence" widget="handle"/>
                 <field name="name"/>
-                <field name="source_analytic_account_ids" widget="many2many_tags" optional="show"/>
+                <field name="analytic_count" string="Analíticas"/>
                 <field name="receiver_analytic_account_id" optional="hide"/>
                 <field name="line_count"/>
                 <field name="active" widget="boolean_toggle"/>
@@ -56,14 +56,27 @@
                             <field name="sequence"/>
                             <field name="company_id" groups="base.group_multi_company"/>
                         </group>
-                        <group string="Filtros y Destino">
-                            <field name="source_analytic_account_ids" widget="many2many_tags"/>
+                        <group string="Analítica Receptora">
                             <field name="receiver_analytic_account_id"/>
                         </group>
                     </group>
                     <notebook>
                         <page string="Líneas de Reparto" name="lines">
                             <field name="line_ids" context="{'tree_view_ref': 'aicia_account_cash_distribution.view_aicia_distribution_plan_line_tree'}"/>
+                        </page>
+                        <page string="Analíticas Vinculadas" name="analytics">
+                            <field name="source_analytic_account_ids" readonly="1">
+                                <list>
+                                    <field name="name"/>
+                                    <field name="plan_id" string="Plan Analítico"/>
+                                    <field name="distribution_plan_id" invisible="1"/>
+                                </list>
+                            </field>
+                            <p class="text-muted" invisible="analytic_count != 0">
+                                Ninguna cuenta analítica tiene asignado este plan todavía.
+                                Asígnelo desde el formulario de cada cuenta analítica
+                                en la pestaña <b>"Distribución de Cobros AICIA"</b>.
+                            </p>
                         </page>
                     </notebook>
                 </sheet>
@@ -78,7 +91,6 @@
         <field name="arch" type="xml">
             <search string="Buscar Planes de Distribución">
                 <field name="name" string="Plan"/>
-                <field name="source_analytic_account_ids"/>
                 <field name="receiver_analytic_account_id"/>
                 <filter string="Activos" name="active" domain="[('active', '=', True)]"/>
                 <filter string="Archivados" name="inactive" domain="[('active', '=', False)]"/>

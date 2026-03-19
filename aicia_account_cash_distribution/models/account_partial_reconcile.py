@@ -34,7 +34,12 @@ class AccountPartialReconcile(models.Model):
         return super().unlink()
     # ── Entry point ───────────────────────────────────────────────────────
     def _process_cash_distribution(self):
-        """Punto de entrada principal. Procesa todos los planes activos."""
+        """
+        Punto de entrada principal.
+        Prioridad para obtener el plan de distribución:
+          1. Plan asignado directamente en el pago (account.payment.distribution_plan_id)
+          2. Plan asignado en la cuenta analítica de la factura
+        """
         self.ensure_one()
         if not self.company_id.cash_distribution_active:
             return
@@ -44,24 +49,48 @@ class AccountPartialReconcile(models.Model):
         ratio = self._calc_payment_ratio(invoice)
         if not ratio:
             return
-        plans = self._get_active_plans()
-        if not plans:
-            return
+
+        # Prioridad 1: plan desde el pago
+        payment = (self.credit_move_id.payment_id or self.debit_move_id.payment_id)
+        payment_plan = payment.distribution_plan_id if payment else None
+
         all_lines = []
         applied_plans = self.env['aicia.distribution.plan']
+        source_analytic_ids = set()
+
         for analytic_id, base_amount, vat_amount in self._iter_analytic_amounts(invoice, ratio):
-            for plan in plans:
-                if not plan.matches_analytic(analytic_id):
-                    continue
-                receiver_id = plan.get_receiver_analytic_id()
-                if not receiver_id:
-                    continue
-                lines = self._build_journal_lines(
-                    plan, analytic_id, base_amount, vat_amount, receiver_id, invoice
-                )
-                if lines:
-                    all_lines.extend(lines)
-                    applied_plans |= plan
+            analytic = self.env['account.analytic.account'].browse(analytic_id)
+
+            if payment_plan and payment_plan.active:
+                # Si el plan del pago no está ligado a ninguna analítica,
+                # interpretamos que es un override manual y lo aplicamos a todas.
+                # Si sí está ligado, solo se aplica a las analíticas que usan ese plan.
+                if (
+                    not payment_plan.source_analytic_account_ids
+                    or analytic.distribution_plan_id == payment_plan
+                ):
+                    plan = payment_plan
+                else:
+                    plan = analytic.distribution_plan_id
+            else:
+                # Prioridad 2: plan de la cuenta analítica
+                plan = analytic.distribution_plan_id
+
+            if not plan or not plan.active:
+                continue
+            if plan.company_id and plan.company_id != self.company_id:
+                continue
+            receiver_id = plan.get_receiver_analytic_id()
+            if not receiver_id:
+                continue
+            lines = self._build_journal_lines(
+                plan, analytic_id, base_amount, vat_amount, receiver_id, invoice
+            )
+            if lines:
+                all_lines.extend(lines)
+                applied_plans |= plan
+                source_analytic_ids.add(analytic_id)
+
         if not all_lines:
             return
         move = self._create_distribution_move(invoice, all_lines)
@@ -72,6 +101,7 @@ class AccountPartialReconcile(models.Model):
             'move_id': move.id,
             'amount_total': move.amount_total,
             'applied_plan_ids': [(6, 0, applied_plans.ids)],
+            'source_analytic_account_ids': [(6, 0, list(source_analytic_ids))],
         })
     def _reverse_cash_distribution(self):
         """Reversión: cancela asientos y elimina logs."""
@@ -80,18 +110,18 @@ class AccountPartialReconcile(models.Model):
                 account_move = dist_move.move_id
                 # Primero eliminar el log (FK -> account_move)
                 dist_move.unlink()
-                # Luego cancelar y eliminar el asiento contable
+                # Luego poner en borrador y eliminar el asiento contable
+                # (button_cancel no existe en Odoo 19)
                 if account_move.exists():
                     if account_move.state == 'posted':
                         account_move.button_draft()
-                    account_move.button_cancel()
                     account_move.unlink()
     # ── Localización de factura ──────────────────────────────────────────
     def _find_invoice_move(self):
-        """Devuelve la factura de cliente relacionada (out_invoice/out_refund)."""
+        """Devuelve la factura de venta relacionada (solo out_invoice)."""
         self.ensure_one()
         moves = [self.debit_move_id.move_id, self.credit_move_id.move_id]
-        invoice = next((m for m in moves if m.move_type in ('out_invoice', 'out_refund')), None)
+        invoice = next((m for m in moves if m.move_type == 'out_invoice'), None)
         return invoice if invoice and invoice.state == 'posted' else None
     def _calc_payment_ratio(self, invoice):
         """Devuelve el ratio cobrado (rec.amount / total)."""
@@ -100,27 +130,24 @@ class AccountPartialReconcile(models.Model):
         if total == 0:
             return 0.0
         return min(self.amount / total, 1.0)
-    def _get_active_plans(self):
-        """Devuelve todos los planes activos de la compañía."""
-        return self.env['aicia.distribution.plan'].search([
-            ('company_id', '=', self.company_id.id),
-            ('active', '=', True),
-        ])
-    # ── Iterador de importes por analítica ────────────────────────────────
+    # ── Localización de factura ──────────────────────────────────────────
     def _iter_analytic_amounts(self, invoice, ratio):
         """
         Genera tuplas (analytic_id, base_cobrada, vat_cobrado).
         PRIORIDAD:
-        1. analytic_distribution en cabecera de factura
+        1. analytic_distribution en cabecera de factura (si existe el campo)
         2. analytic_distribution en lineas de factura
+        Nota: en Odoo 19 el campo analytic_distribution puede no existir
+        en account.move (sólo en account.move.line), por eso se usa getattr.
         """
         total_vat = sum(
             abs(l.balance)
             for l in invoice.line_ids
             if l.tax_line_id and not l.display_type
         )
-        # CASO 1: Analitica en cabecera de factura
-        if invoice.analytic_distribution:
+        # CASO 1: Analítica en cabecera de factura (Odoo 16/17, getattr seguro)
+        header_analytic = getattr(invoice, 'analytic_distribution', None)
+        if header_analytic:
             total_base = sum(
                 abs(l.balance)
                 for l in invoice.invoice_line_ids
@@ -128,7 +155,7 @@ class AccountPartialReconcile(models.Model):
             )
             if not total_base:
                 return
-            for acc_str, pct in invoice.analytic_distribution.items():
+            for acc_str, pct in header_analytic.items():
                 try:
                     acc_id = int(acc_str.split(',')[0])
                 except (ValueError, IndexError):
@@ -137,7 +164,7 @@ class AccountPartialReconcile(models.Model):
                 vat_cobrado = total_vat * pct / 100.0 * ratio
                 yield acc_id, base_cobrada, vat_cobrado
             return
-        # CASO 2: Analiticas en lineas de factura
+        # CASO 2: Analíticas en lineas de factura
         analytic_base = {}
         total_base = 0.0
         for line in invoice.invoice_line_ids:

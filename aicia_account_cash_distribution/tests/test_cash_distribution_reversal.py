@@ -43,15 +43,20 @@ class TestCashDistributionReversal(AiciaCashDistributionCommon):
                          "Distribution move log must be deleted when reconcile is unlinked.")
 
     def test_02_reversal_cancels_journal_entry(self):
-        """When a reconcile is undone, the linked journal entry must be cancelled."""
+        """When a reconcile is undone, the linked journal entry must be cancelled or deleted."""
         invoice, reconciles, dist_moves = self._pay_and_get_dist_moves()
         move_ids = dist_moves.mapped('move_id').ids
         reconciles.unlink()
-        # The journal entry should be in 'cancel' state (not 'posted')
+        # En Odoo 19 el asiento se elimina (button_draft + unlink).
+        # En versiones anteriores podría quedar en estado 'cancel'.
+        # El test verifica que el asiento ya NO esté en estado 'posted'.
         moves = self.env['account.move'].browse(move_ids)
-        for move in moves:
+        existing_moves = moves.exists()
+        for move in existing_moves:
             self.assertNotEqual(move.state, 'posted',
                                 "Journal entry must not remain 'posted' after reconcile removal.")
+        # Si no quedan asientos existentes, el test también es correcto
+        # (fueron eliminados por unlink)
 
     def test_03_reversal_partial_payment(self):
         """Partial payment reversal: only that partial reconcile's distribution is removed."""

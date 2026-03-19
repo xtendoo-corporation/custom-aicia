@@ -131,16 +131,21 @@ class AiciaCashDistributionCommon(TransactionCase):
                      debit_account=None, credit_account=None,
                      rule_type='source', active=True, is_vat_line=False):
         """
-        Create a distribution plan with one line.
-        For compatibility with old tests, this creates a plan with a single line.
+        Create a distribution plan with one line and assign it to the given
+        source analytic accounts (Many2one: one plan per analytic).
         """
         plan = self.env['aicia.distribution.plan'].create({
             'name': name,
             'company_id': self.company.id,
-            'source_analytic_account_ids': [(6, 0, source_analytic_ids or [])],
             'receiver_analytic_account_id': (dest_analytic or self.analytic_account_dest).id,
             'active': active,
         })
+
+        # Assign the plan to each source analytic account (Many2one)
+        for analytic_id in (source_analytic_ids or []):
+            self.env['account.analytic.account'].browse(analytic_id).write({
+                'distribution_plan_id': plan.id,
+            })
 
         # Create a single line for the plan
         debit_analytic_side = 'receiver' if rule_type == 'dest' else 'source'
@@ -168,7 +173,10 @@ class AiciaCashDistributionCommon(TransactionCase):
             'price_unit': amount,
             'account_id': self.account_revenue.id,
         }
-        if analytic_account and not analytic_on_header:
+        # En Odoo 19, account.move no tiene analytic_distribution en cabecera.
+        # Siempre ponemos la analítica en la línea (tanto si analytic_on_header
+        # es True como False) para garantizar compatibilidad.
+        if analytic_account:
             line_vals['analytic_distribution'] = {str(analytic_account.id): 100}
 
         invoice_vals = {
@@ -177,7 +185,12 @@ class AiciaCashDistributionCommon(TransactionCase):
             'journal_id': self.sale_journal.id,
             'invoice_line_ids': [(0, 0, line_vals)],
         }
-        if analytic_account and analytic_on_header:
+        # Intentar también en cabecera solo si el campo existe (Odoo 16/17).
+        if (
+            analytic_account
+            and analytic_on_header
+            and 'analytic_distribution' in self.env['account.move']._fields
+        ):
             invoice_vals['analytic_distribution'] = {str(analytic_account.id): 100}
 
         invoice = self.env['account.move'].create(invoice_vals)
@@ -196,3 +209,9 @@ class AiciaCashDistributionCommon(TransactionCase):
         })
         payment_register.action_create_payments()
         return invoice.line_ids.mapped('matched_debit_ids') | invoice.line_ids.mapped('matched_credit_ids')
+
+    def _get_invoice_payments(self, invoice):
+        """Return account.payment records linked to the invoice through reconciliation."""
+        reconciles = invoice.line_ids.mapped('matched_debit_ids') | invoice.line_ids.mapped('matched_credit_ids')
+        return (reconciles.debit_move_id.payment_id | reconciles.credit_move_id.payment_id).exists()
+
