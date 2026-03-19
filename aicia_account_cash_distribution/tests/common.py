@@ -42,6 +42,16 @@ class AiciaCashDistributionCommon(TransactionCase):
             [('type', '=', 'sale'), ('company_id', '=', cls.company.id)], limit=1
         )
 
+        cls.sale_tax = cls.env['account.tax'].search(
+            [
+                ('type_tax_use', '=', 'sale'),
+                ('company_id', '=', cls.company.id),
+                ('amount', '>', 0),
+            ],
+            order='amount desc, id',
+            limit=1,
+        )
+
         # ── Accounts — reuse existing to avoid NOT NULL issues from installed modules ──
         cls.account_revenue = cls.env['account.account'].search(
             [('account_type', '=', 'income'),
@@ -165,7 +175,8 @@ class AiciaCashDistributionCommon(TransactionCase):
         return plan
 
     def _create_invoice(self, amount=1000.0, analytic_account=None,
-                        analytic_on_header=False, move_type='out_invoice'):
+                        analytic_on_header=False, move_type='out_invoice',
+                        tax_ids=None):
         """Create and post a customer invoice."""
         line_vals = {
             'name': 'Test Service',
@@ -173,6 +184,8 @@ class AiciaCashDistributionCommon(TransactionCase):
             'price_unit': amount,
             'account_id': self.account_revenue.id,
         }
+        if tax_ids:
+            line_vals['tax_ids'] = [(6, 0, tax_ids)]
         # En Odoo 19, account.move no tiene analytic_distribution en cabecera.
         # Siempre ponemos la analítica en la línea (tanto si analytic_on_header
         # es True como False) para garantizar compatibilidad.

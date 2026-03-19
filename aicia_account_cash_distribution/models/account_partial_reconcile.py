@@ -42,6 +42,13 @@ class AccountPartialReconcile(models.Model):
         """
         self.ensure_one()
         if not self.company_id.cash_distribution_active:
+            payment = self.credit_move_id.payment_id or self.debit_move_id.payment_id
+            if payment and payment.distribution_plan_id:
+                _logger.info(
+                    "Distribución omitida para conciliación id=%s: la compañía %s tiene desactivada la distribución de cobros.",
+                    self.id,
+                    self.company_id.display_name,
+                )
             return
         invoice = self._find_invoice_move()
         if not invoice:
@@ -141,9 +148,9 @@ class AccountPartialReconcile(models.Model):
         en account.move (sólo en account.move.line), por eso se usa getattr.
         """
         total_vat = sum(
-            abs(l.balance)
-            for l in invoice.line_ids
-            if l.tax_line_id and not l.display_type
+            abs(line.balance)
+            for line in invoice.line_ids
+            if line.tax_line_id
         )
         # CASO 1: Analítica en cabecera de factura (Odoo 16/17, getattr seguro)
         header_analytic = getattr(invoice, 'analytic_distribution', None)
@@ -229,18 +236,32 @@ class AccountPartialReconcile(models.Model):
         return lines
     def _create_distribution_move(self, invoice, line_vals_list):
         """Crea y publica el asiento de distribución."""
-        journal = self.company_id.cash_distribution_journal_id
+        journal = self._get_distribution_journal()
         if not journal:
             _logger.warning(
-                "Sin diario de distribución configurado en compañía %s",
+                "Sin diario general disponible para distribución en compañía %s",
                 self.company_id.name,
             )
             return None
         move = self.env['account.move'].create({
             'journal_id': journal.id,
+            'company_id': self.company_id.id,
+            'partner_id': invoice.partner_id.id,
             'date': fields.Date.context_today(self),
             'ref': f'Distribución {invoice.name}',
             'line_ids': [(0, 0, vals) for vals in line_vals_list],
         })
         move.action_post()
         return move
+
+    def _get_distribution_journal(self):
+        """Obtiene el diario configurado o hace fallback al primer diario general."""
+        self.ensure_one()
+        return (
+            self.company_id.cash_distribution_journal_id
+            or self.env['account.journal'].search([
+                ('company_id', '=', self.company_id.id),
+                ('type', '=', 'general'),
+            ], limit=1)
+        )
+

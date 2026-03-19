@@ -16,8 +16,8 @@
         <field name="model">account.move</field>
         <field name="inherit_id" ref="account.view_invoice_tree"/>
         <field name="arch" type="xml">
-            <!-- Añade solo el grupo de trabajo; el proyecto ya lo aporta account_move_analytic_account -->
-            <xpath expr="//field[@name='invoice_date']" position="before">
+            <!-- Añade solo el grupo de trabajo después del proyecto existente -->
+            <xpath expr="//field[@name='analytic_distribution']" position="after">
                 <field name="work_group_id"/>
             </xpath>
         </field>

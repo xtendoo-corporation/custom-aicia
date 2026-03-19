@@ -295,3 +295,67 @@ class TestCashDistributionCore(AiciaCashDistributionCommon):
                 self.assertEqual(line.partner_id, self.partner,
                                  "Partner must be propagated to each distribution line.")
 
+    def test_20_distribution_move_partner_propagated_on_header(self):
+        """The generated journal entry must also keep the invoice partner on the move header."""
+        invoice = self._create_invoice(amount=1000.0, analytic_account=self.analytic_account_a)
+        reconciles = self._register_payment(invoice)
+        dist_moves = self.env['aicia.distribution.move'].search([
+            ('partial_reconcile_id', 'in', reconciles.ids),
+        ])
+        self.assertTrue(dist_moves)
+        for dm in dist_moves:
+            self.assertEqual(
+                dm.move_id.partner_id,
+                self.partner,
+                "Partner must be propagated to the distribution move header.",
+            )
+
+    def test_21_vat_plan_line_is_included_in_distribution_entry(self):
+        """A VAT plan line must generate 477/470-style movement based on collected tax."""
+        if not self.sale_tax:
+            self.skipTest("No sale tax available in the company to validate VAT distribution.")
+
+        tax_account = self.sale_tax.invoice_repartition_line_ids.filtered(
+            lambda line: line.repartition_type == 'tax' and line.account_id
+        )[:1].account_id
+        self.assertTrue(tax_account, "The selected sale tax must have a tax account.")
+
+        self.env['aicia.distribution.plan.line'].create({
+            'plan_id': self.rule_10.id,
+            'name': 'VAT Line',
+            'is_vat_line': True,
+            'percentage': 100.0,
+            'debit_account_id': tax_account.id,
+            'debit_analytic_side': 'receiver',
+            'credit_account_id': tax_account.id,
+            'credit_analytic_side': 'source',
+        })
+
+        invoice = self._create_invoice(
+            amount=100.0,
+            analytic_account=self.analytic_account_a,
+            tax_ids=[self.sale_tax.id],
+        )
+        reconciles = self._register_payment(invoice)
+        dist_moves = self.env['aicia.distribution.move'].search([
+            ('partial_reconcile_id', 'in', reconciles.ids),
+        ])
+        self.assertTrue(dist_moves)
+
+        vat_lines = dist_moves.move_id.line_ids.filtered(
+            lambda line: line.account_id == tax_account
+        )
+        self.assertEqual(len(vat_lines), 2, "VAT distribution must generate one debit and one credit line.")
+        self.assertAlmostEqual(
+            sum(vat_lines.mapped('debit')),
+            21.0,
+            places=2,
+            msg="Collected VAT must be redistributed in the debit side.",
+        )
+        self.assertAlmostEqual(
+            sum(vat_lines.mapped('credit')),
+            21.0,
+            places=2,
+            msg="Collected VAT must be redistributed in the credit side.",
+        )
+
