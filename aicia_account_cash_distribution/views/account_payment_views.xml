@@ -24,6 +24,22 @@
                        invisible="not show_distribution_plan_id"
                        options="{'no_create': True}"/>
             </xpath>
+            <!-- Pestaña de distribución analítica -->
+            <xpath expr="//notebook" position="inside">
+                <page string="Distribución Analítica AICIA" invisible="distribution_move_count == 0">
+                    <field name="distribution_move_line_ids" readonly="1">
+                        <list create="0" edit="0" delete="0">
+                            <field name="move_id" string="Asiento"/>
+                            <field name="date"/>
+                            <field name="account_id"/>
+                            <field name="name"/>
+                            <field name="analytic_distribution" widget="analytic_distribution"/>
+                            <field name="debit" sum="Total Debe"/>
+                            <field name="credit" sum="Total Haber"/>
+                        </list>
+                    </field>
+                </page>
+            </xpath>
         </field>
     </record>
 </odoo>

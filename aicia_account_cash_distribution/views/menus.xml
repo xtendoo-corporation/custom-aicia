@@ -21,11 +21,12 @@
             groups="account.group_account_manager"/>
 
         <menuitem id="menu_aicia_distribution_move"
-            name="Logs de Distribución"
+            name="Asientos de Distribución"
             parent="menu_aicia_cash_dist_root"
             action="action_aicia_distribution_move"
             sequence="20"
             groups="account.group_account_user"/>
+
 
     </data>
 </odoo>

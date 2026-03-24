@@ -121,3 +121,58 @@ class TestDistributionRule(AiciaCashDistributionCommon):
         self.assertIn(self.analytic_account_a, plan.source_analytic_account_ids)
         self.assertIn(self.analytic_account_b, plan.source_analytic_account_ids)
 
+    def test_14_vat_line_requires_same_account_on_both_sides(self):
+        """VAT redistribution must reuse the same account in debit and credit."""
+        plan = self._create_rule(name='VAT Validation Plan', percentage=10.0)
+        with self.assertRaises(ValidationError):
+            self.env['aicia.distribution.plan.line'].create({
+                'plan_id': plan.id,
+                'name': 'Invalid VAT Line',
+                'is_vat_line': True,
+                'percentage': 100.0,
+                'debit_account_id': self.account_dist_debit.id,
+                'debit_analytic_side': 'receiver',
+                'credit_account_id': self.account_dist_credit.id,
+                'credit_analytic_side': 'source',
+            })
+
+    def test_15_vat_line_requires_opposite_analytic_sides(self):
+        """VAT redistribution must move between opposite analytic sides."""
+        plan = self._create_rule(name='VAT Analytic Validation Plan', percentage=10.0)
+        with self.assertRaises(ValidationError):
+            self.env['aicia.distribution.plan.line'].create({
+                'plan_id': plan.id,
+                'name': 'Invalid VAT Analytic Line',
+                'is_vat_line': True,
+                'percentage': 100.0,
+                'debit_account_id': self.account_dist_credit.id,
+                'debit_analytic_side': 'receiver',
+                'credit_account_id': self.account_dist_credit.id,
+                'credit_analytic_side': 'receiver',
+            })
+
+    def test_16_normalize_legacy_vat_line_accounts(self):
+        """Legacy VAT lines with mismatched accounts must be normalized to one VAT account."""
+        plan = self._create_rule(name='Legacy VAT Plan', percentage=10.0)
+        vat_line = self.env['aicia.distribution.plan.line'].create({
+            'plan_id': plan.id,
+            'name': 'Valid VAT Line',
+            'is_vat_line': True,
+            'percentage': 100.0,
+            'debit_account_id': self.account_dist_credit.id,
+            'debit_analytic_side': 'receiver',
+            'credit_account_id': self.account_dist_credit.id,
+            'credit_analytic_side': 'source',
+        })
+        self.env.cr.execute(
+            "UPDATE aicia_distribution_plan_line SET debit_account_id = %s WHERE id = %s",
+            [self.account_dist_debit.id, vat_line.id],
+        )
+        self.env.invalidate_all()
+
+        self.env['aicia.distribution.plan.line']._normalize_legacy_vat_lines()
+        vat_line = self.env['aicia.distribution.plan.line'].browse(vat_line.id)
+
+        self.assertEqual(vat_line.debit_account_id, self.account_dist_credit)
+        self.assertEqual(vat_line.credit_account_id, self.account_dist_credit)
+

@@ -22,15 +22,24 @@ class AccountPayment(models.Model):
         compute='_compute_show_distribution_plan_id',
         string='Mostrar plan de distribución',
     )
+    distribution_move_line_ids = fields.Many2many(
+        'account.move.line',
+        compute='_compute_distribution_move_line_ids',
+        string='Líneas de Distribución',
+    )
+
+    def _compute_distribution_move_line_ids(self):
+        for payment in self:
+            payment.distribution_move_line_ids = self.env['account.move.line'].search([
+                ('move_id.is_cash_distribution_move', '=', True),
+                ('move_id.distribution_payment_id', '=', payment.id),
+            ])
 
     def _compute_distribution_move_count(self):
         for payment in self:
-            reconciles = (
-                payment.move_id.line_ids.mapped('matched_debit_ids')
-                | payment.move_id.line_ids.mapped('matched_credit_ids')
-            )
-            payment.distribution_move_count = self.env['aicia.distribution.move'].search_count([
-                ('partial_reconcile_id', 'in', reconciles.ids),
+            payment.distribution_move_count = self.env['account.move'].search_count([
+                ('is_cash_distribution_move', '=', True),
+                ('distribution_payment_id', '=', payment.id),
             ])
 
     def _compute_show_distribution_plan_id(self):
@@ -45,6 +54,17 @@ class AccountPayment(models.Model):
                     payment.payment_type == 'inbound'
                     and payment.partner_type == 'customer'
                 )
+
+    @api.model
+    def default_get(self, fields_list):
+        vals = super().default_get(fields_list)
+        if 'distribution_plan_id' in fields_list and not vals.get('distribution_plan_id'):
+            if self.env.context.get('active_model') == 'account.move':
+                invoices = self.env['account.move'].browse(self.env.context.get('active_ids', []))
+                plan = self._get_distribution_plan_from_invoices(invoices)
+                if plan:
+                    vals['distribution_plan_id'] = plan.id
+        return vals
 
     @api.model
     def _extract_analytic_ids_from_distribution(self, distribution):
@@ -89,11 +109,25 @@ class AccountPayment(models.Model):
         if header_distribution:
             return self._get_distribution_plan_from_distribution(header_distribution)
 
+        # Fallback: usar el plan de la analítica de cabecera cuando no hay distribución JSON
+        header_analytic = getattr(invoice, 'analytic_account_id', False)
+        if header_analytic and header_analytic.distribution_plan_id and header_analytic.distribution_plan_id.active:
+            return header_analytic.distribution_plan_id
+
         resolved_plan = self.env['aicia.distribution.plan']
         for line in invoice.invoice_line_ids.filtered(
             lambda l: l.display_type not in ('line_section', 'line_note')
         ):
             line_plan = self._get_distribution_plan_from_distribution(line.analytic_distribution)
+            # Compatibilidad: si solo hay analytic_account_id en la línea, usar su plan
+            line_analytic = getattr(line, 'analytic_account_id', False)
+            if (
+                not line_plan
+                and line_analytic
+                and line_analytic.distribution_plan_id
+                and line_analytic.distribution_plan_id.active
+            ):
+                line_plan = line_analytic.distribution_plan_id
             if not line_plan:
                 continue
             if resolved_plan and line_plan != resolved_plan:
@@ -139,17 +173,17 @@ class AccountPayment(models.Model):
                 payment.distribution_plan_id = plan
 
     def action_view_distribution_moves(self):
-        """Abrir los logs de distribución generados por este pago."""
+        """Abrir el asiento de distribución generado por este pago."""
         self.ensure_one()
-        reconciles = (
-            self.move_id.line_ids.mapped('matched_debit_ids')
-            | self.move_id.line_ids.mapped('matched_credit_ids')
-        )
         return {
             'type': 'ir.actions.act_window',
             'name': 'Distribuciones',
-            'res_model': 'aicia.distribution.move',
+            'res_model': 'account.move',
             'view_mode': 'list,form',
-            'domain': [('partial_reconcile_id', 'in', reconciles.ids)],
+            'domain': [
+                ('is_cash_distribution_move', '=', True),
+                ('distribution_payment_id', '=', self.id),
+            ],
+            'context': {'default_is_cash_distribution_move': True},
         }
 

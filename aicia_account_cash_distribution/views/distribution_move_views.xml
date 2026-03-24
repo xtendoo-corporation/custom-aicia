@@ -2,15 +2,16 @@
 <odoo>
     <record id="view_aicia_distribution_move_tree" model="ir.ui.view">
         <field name="name">aicia.distribution.move.tree</field>
-        <field name="model">aicia.distribution.move</field>
+        <field name="model">account.move</field>
         <field name="arch" type="xml">
-            <list string="Logs de Distribución" create="false" edit="false">
-                <field name="create_date"/>
-                <field name="name" string="Asiento"/>
-                <field name="partial_reconcile_id"/>
-                <field name="move_id"/>
-                <field name="source_analytic_account_ids" widget="many2many_tags" optional="show"/>
-                <field name="applied_plan_ids" widget="many2many_tags" optional="hide"/>
+            <list string="Asientos de Distribución" create="false" edit="false">
+                <field name="date"/>
+                <field name="name"/>
+                <field name="ref" optional="show"/>
+                <field name="distribution_payment_id" string="Pago" optional="hide"/>
+                <field name="distribution_partial_reconcile_id" string="Conciliación" optional="hide"/>
+                <field name="distribution_source_analytic_ids" widget="many2many_tags" optional="show"/>
+                <field name="distribution_applied_plan_ids" widget="many2many_tags" optional="hide"/>
                 <field name="amount_total"/>
                 <field name="state" widget="badge"
                        decoration-success="state == 'posted'"
@@ -20,56 +21,13 @@
         </field>
     </record>
 
-    <record id="view_aicia_distribution_move_form" model="ir.ui.view">
-        <field name="name">aicia.distribution.move.form</field>
-        <field name="model">aicia.distribution.move</field>
-        <field name="arch" type="xml">
-            <form string="Log de Distribución" create="false">
-                <sheet>
-                    <div class="oe_button_box" name="button_box">
-                        <button name="%(account.action_move_journal_line)d"
-                                type="action"
-                                class="oe_stat_button"
-                                icon="fa-file-text-o"
-                                context="{'search_default_id': move_id}">
-                            <div class="o_stat_info">
-                                <span class="o_stat_text">Ver Asiento</span>
-                            </div>
-                        </button>
-                    </div>
-                    <div class="oe_title">
-                        <label for="name"/>
-                        <h1><field name="name" readonly="1"/></h1>
-                    </div>
-                    <group>
-                        <group string="Conciliación">
-                            <field name="partial_reconcile_id" readonly="1"/>
-                            <field name="state" widget="badge"
-                                   decoration-success="state == 'posted'"
-                                   decoration-warning="state == 'draft'"/>
-                        </group>
-                        <group string="Asiento">
-                            <field name="move_id" readonly="1"/>
-                            <field name="amount_total" readonly="1"/>
-                            <field name="currency_id" invisible="1"/>
-                            <field name="company_id" groups="base.group_multi_company" readonly="1"/>
-                        </group>
-                    </group>
-                    <group string="Analíticas Origen">
-                        <field name="source_analytic_account_ids" widget="many2many_tags" readonly="1" nolabel="1"/>
-                    </group>
-                    <group string="Planes Aplicados">
-                        <field name="applied_plan_ids" widget="many2many_tags" readonly="1" nolabel="1"/>
-                    </group>
-                </sheet>
-            </form>
-        </field>
-    </record>
-
     <record id="action_aicia_distribution_move" model="ir.actions.act_window">
-        <field name="name">Logs de Distribución</field>
-        <field name="res_model">aicia.distribution.move</field>
+        <field name="name">Asientos de Distribución</field>
+        <field name="res_model">account.move</field>
         <field name="view_mode">list,form</field>
+        <field name="domain">[("is_cash_distribution_move", "=", True)]</field>
+        <field name="context">{"default_is_cash_distribution_move": True}</field>
+        <field name="view_id" ref="view_aicia_distribution_move_tree"/>
     </record>
 </odoo>
 

@@ -6,8 +6,11 @@
     'author': 'Xtendoo',
     'license': 'AGPL-3',
     'depends': ['account', 'analytic'],
+    'pre_init_hook': 'pre_init_hook',
+    'post_init_hook': 'post_init_hook',
     'data': [
         'security/ir.model.access.csv',
+        'data/default_distribution_plan.xml',
         'views/distribution_plan_views.xml',
         'views/distribution_move_views.xml',
         'views/account_payment_views.xml',

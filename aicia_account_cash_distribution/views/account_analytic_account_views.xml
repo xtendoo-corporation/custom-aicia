@@ -25,8 +25,8 @@
                 <button class="oe_stat_button"
                         type="action"
                         name="%(aicia_account_cash_distribution.action_aicia_distribution_move)d"
-                        context="{'default_source_analytic_account_ids': [id]}"
-                        domain="[('source_analytic_account_ids', 'in', [id])]"
+                        context="{'search_default_distribution_source_analytic_ids': [id], 'default_is_cash_distribution_move': True}"
+                        domain="[('is_cash_distribution_move', '=', True), ('distribution_source_analytic_ids', 'in', [id])]"
                         icon="fa-list-alt"
                         groups="account.group_account_user">
                     <field name="distribution_move_count" widget="statinfo" string="Distribuciones"/>

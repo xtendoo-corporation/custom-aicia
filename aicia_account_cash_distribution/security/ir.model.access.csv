@@ -5,9 +5,6 @@ access_aicia_distribution_plan_read,aicia.distribution.plan read,model_aicia_dis
 access_aicia_distribution_plan_line,aicia.distribution.plan.line,model_aicia_distribution_plan_line,account.group_account_manager,1,1,1,1
 access_aicia_distribution_plan_line_user,aicia.distribution.plan.line user,model_aicia_distribution_plan_line,account.group_account_user,1,0,0,0
 access_aicia_distribution_plan_line_read,aicia.distribution.plan.line read,model_aicia_distribution_plan_line,account.group_account_readonly,1,0,0,0
-access_aicia_distribution_move,aicia.distribution.move,model_aicia_distribution_move,account.group_account_manager,1,1,1,1
-access_aicia_distribution_move_user,aicia.distribution.move user,model_aicia_distribution_move,account.group_account_user,1,0,0,0
-access_aicia_distribution_move_read,aicia.distribution.move read,model_aicia_distribution_move,account.group_account_readonly,1,0,0,0
 
 
 

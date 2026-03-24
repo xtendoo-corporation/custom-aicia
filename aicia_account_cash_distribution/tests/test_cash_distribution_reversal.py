@@ -23,8 +23,9 @@ class TestCashDistributionReversal(AiciaCashDistributionCommon):
         """Helper: create invoice, pay, return (invoice, reconciles, dist_moves)."""
         invoice = self._create_invoice(amount=amount, analytic_account=self.analytic_account_a)
         reconciles = self._register_payment(invoice, amount=pay_amount)
-        dist_moves = self.env['aicia.distribution.move'].search([
-            ('partial_reconcile_id', 'in', reconciles.ids),
+        dist_moves = self.env['account.move'].search([
+            ('is_cash_distribution_move', '=', True),
+            ('distribution_partial_reconcile_id', 'in', reconciles.ids),
         ])
         return invoice, reconciles, dist_moves
 
@@ -38,14 +39,14 @@ class TestCashDistributionReversal(AiciaCashDistributionCommon):
         # Undo the reconciliation
         reconciles.unlink()
         # Logs must be gone
-        remaining = self.env['aicia.distribution.move'].browse(dm_ids).exists()
+        remaining = self.env['account.move'].browse(dm_ids).exists()
         self.assertFalse(remaining,
-                         "Distribution move log must be deleted when reconcile is unlinked.")
+                         "Distribution move must be deleted when reconcile is unlinked.")
 
     def test_02_reversal_cancels_journal_entry(self):
         """When a reconcile is undone, the linked journal entry must be cancelled or deleted."""
         invoice, reconciles, dist_moves = self._pay_and_get_dist_moves()
-        move_ids = dist_moves.mapped('move_id').ids
+        move_ids = dist_moves.ids
         reconciles.unlink()
         # En Odoo 19 el asiento se elimina (button_draft + unlink).
         # En versiones anteriores podría quedar en estado 'cancel'.
@@ -64,11 +65,13 @@ class TestCashDistributionReversal(AiciaCashDistributionCommon):
         rec1 = self._register_payment(invoice, amount=400.0)
         rec2 = self._register_payment(invoice, amount=400.0)
 
-        dm1 = self.env['aicia.distribution.move'].search([
-            ('partial_reconcile_id', 'in', rec1.ids),
+        dm1 = self.env['account.move'].search([
+            ('is_cash_distribution_move', '=', True),
+            ('distribution_partial_reconcile_id', 'in', rec1.ids),
         ])
-        dm2 = self.env['aicia.distribution.move'].search([
-            ('partial_reconcile_id', 'in', rec2.ids),
+        dm2 = self.env['account.move'].search([
+            ('is_cash_distribution_move', '=', True),
+            ('distribution_partial_reconcile_id', 'in', rec2.ids),
         ])
         self.assertTrue(dm1, "First partial payment must create distribution.")
         self.assertTrue(dm2, "Second partial payment must create distribution.")
@@ -76,7 +79,7 @@ class TestCashDistributionReversal(AiciaCashDistributionCommon):
         # Undo only the first reconcile
         dm1_ids = dm1.ids
         rec1.unlink()
-        remaining_dm1 = self.env['aicia.distribution.move'].browse(dm1_ids).exists()
+        remaining_dm1 = self.env['account.move'].browse(dm1_ids).exists()
         self.assertFalse(remaining_dm1,
                          "First distribution log must be removed after first reconcile is unlinked.")
         # Second distribution must remain intact
@@ -87,8 +90,9 @@ class TestCashDistributionReversal(AiciaCashDistributionCommon):
         """After undoing a payment and re-paying, a fresh distribution must be created."""
         invoice = self._create_invoice(amount=1000.0, analytic_account=self.analytic_account_a)
         rec1 = self._register_payment(invoice)
-        dm1 = self.env['aicia.distribution.move'].search([
-            ('partial_reconcile_id', 'in', rec1.ids),
+        dm1 = self.env['account.move'].search([
+            ('is_cash_distribution_move', '=', True),
+            ('distribution_partial_reconcile_id', 'in', rec1.ids),
         ])
         dm1_ids = set(dm1.ids)
 
@@ -100,8 +104,9 @@ class TestCashDistributionReversal(AiciaCashDistributionCommon):
 
         # Re-pay
         rec2 = self._register_payment(invoice)
-        dm2 = self.env['aicia.distribution.move'].search([
-            ('partial_reconcile_id', 'in', rec2.ids),
+        dm2 = self.env['account.move'].search([
+            ('is_cash_distribution_move', '=', True),
+            ('distribution_partial_reconcile_id', 'in', rec2.ids),
         ])
         # New distribution logs must have been created (different IDs)
         new_ids = set(dm2.ids)
@@ -119,8 +124,9 @@ class TestCashDistributionReversal(AiciaCashDistributionCommon):
         rec1 = self._register_payment(invoice1)
         rec2 = self._register_payment(invoice2)
 
-        dm2 = self.env['aicia.distribution.move'].search([
-            ('partial_reconcile_id', 'in', rec2.ids),
+        dm2 = self.env['account.move'].search([
+            ('is_cash_distribution_move', '=', True),
+            ('distribution_partial_reconcile_id', 'in', rec2.ids),
         ])
         dm2_ids = dm2.ids
 
@@ -129,7 +135,7 @@ class TestCashDistributionReversal(AiciaCashDistributionCommon):
 
         # Invoice2 distributions must be intact
         self.assertTrue(
-            self.env['aicia.distribution.move'].browse(dm2_ids).exists(),
+            self.env['account.move'].browse(dm2_ids).exists(),
             "Distributions for invoice2 must not be affected by reversal of invoice1.",
         )
 

@@ -28,8 +28,9 @@ class TestCashDistributionCore(AiciaCashDistributionCommon):
         """Full payment of a 1000 invoice with analytic A → 10% = 100 distribution."""
         invoice = self._create_invoice(amount=1000.0, analytic_account=self.analytic_account_a)
         reconciles = self._register_payment(invoice)
-        dist_moves = self.env['aicia.distribution.move'].search([
-            ('partial_reconcile_id', 'in', reconciles.ids),
+        dist_moves = self.env['account.move'].search([
+            ('is_cash_distribution_move', '=', True),
+            ('distribution_partial_reconcile_id', 'in', reconciles.ids),
         ])
         self.assertTrue(dist_moves, "Distribution move must be created on full payment.")
 
@@ -37,12 +38,13 @@ class TestCashDistributionCore(AiciaCashDistributionCommon):
         """Full payment: generated journal entry lines should each be 100 (10% of 1000)."""
         invoice = self._create_invoice(amount=1000.0, analytic_account=self.analytic_account_a)
         reconciles = self._register_payment(invoice)
-        dist_moves = self.env['aicia.distribution.move'].search([
-            ('partial_reconcile_id', 'in', reconciles.ids),
+        dist_moves = self.env['account.move'].search([
+            ('is_cash_distribution_move', '=', True),
+            ('distribution_partial_reconcile_id', 'in', reconciles.ids),
         ])
         for dm in dist_moves:
-            debit_lines = dm.move_id.line_ids.filtered(lambda l: l.debit > 0)
-            credit_lines = dm.move_id.line_ids.filtered(lambda l: l.credit > 0)
+            debit_lines = dm.line_ids.filtered(lambda l: l.debit > 0)
+            credit_lines = dm.line_ids.filtered(lambda l: l.credit > 0)
             self.assertTrue(debit_lines, "Must have at least one debit line.")
             self.assertTrue(credit_lines, "Must have at least one credit line.")
             total_debit = sum(debit_lines.mapped('debit'))
@@ -56,12 +58,13 @@ class TestCashDistributionCore(AiciaCashDistributionCommon):
         """Partial payment of 500 on 1000 invoice: 10% × 500 = 50 distribution."""
         invoice = self._create_invoice(amount=1000.0, analytic_account=self.analytic_account_a)
         reconciles = self._register_payment(invoice, amount=500.0)
-        dist_moves = self.env['aicia.distribution.move'].search([
-            ('partial_reconcile_id', 'in', reconciles.ids),
+        dist_moves = self.env['account.move'].search([
+            ('is_cash_distribution_move', '=', True),
+            ('distribution_partial_reconcile_id', 'in', reconciles.ids),
         ])
         self.assertTrue(dist_moves)
         for dm in dist_moves:
-            debit_lines = dm.move_id.line_ids.filtered(lambda l: l.debit > 0)
+            debit_lines = dm.line_ids.filtered(lambda l: l.debit > 0)
             total_debit = sum(debit_lines.mapped('debit'))
             self.assertAlmostEqual(total_debit, 50.0, places=2,
                                    msg="10% of 500 (partial payment ratio) must be 50.")
@@ -70,11 +73,12 @@ class TestCashDistributionCore(AiciaCashDistributionCommon):
         """Partial payment of 250 on 1000 invoice: 10% × 250 = 25 distribution."""
         invoice = self._create_invoice(amount=1000.0, analytic_account=self.analytic_account_a)
         reconciles = self._register_payment(invoice, amount=250.0)
-        dist_moves = self.env['aicia.distribution.move'].search([
-            ('partial_reconcile_id', 'in', reconciles.ids),
+        dist_moves = self.env['account.move'].search([
+            ('is_cash_distribution_move', '=', True),
+            ('distribution_partial_reconcile_id', 'in', reconciles.ids),
         ])
         for dm in dist_moves:
-            debit_lines = dm.move_id.line_ids.filtered(lambda l: l.debit > 0)
+            debit_lines = dm.line_ids.filtered(lambda l: l.debit > 0)
             total_debit = sum(debit_lines.mapped('debit'))
             self.assertAlmostEqual(total_debit, 25.0, places=2,
                                    msg="10% of 250 must be 25.")
@@ -87,8 +91,9 @@ class TestCashDistributionCore(AiciaCashDistributionCommon):
             analytic_on_header=True,
         )
         reconciles = self._register_payment(invoice)
-        dist_moves = self.env['aicia.distribution.move'].search([
-            ('partial_reconcile_id', 'in', reconciles.ids),
+        dist_moves = self.env['account.move'].search([
+            ('is_cash_distribution_move', '=', True),
+            ('distribution_partial_reconcile_id', 'in', reconciles.ids),
         ])
         self.assertTrue(dist_moves,
                         "Header analytic must trigger distribution the same way as line analytic.")
@@ -97,9 +102,9 @@ class TestCashDistributionCore(AiciaCashDistributionCommon):
         """If there are no active rules, no distribution move should be created."""
         self.rule_10.write({'active': False})
         invoice = self._create_invoice(amount=1000.0, analytic_account=self.analytic_account_a)
-        count_before = self.env['aicia.distribution.move'].search_count([])
+        count_before = self.env['account.move'].search_count([('is_cash_distribution_move', '=', True)])
         self._register_payment(invoice)
-        count_after = self.env['aicia.distribution.move'].search_count([])
+        count_after = self.env['account.move'].search_count([('is_cash_distribution_move', '=', True)])
         self.assertEqual(count_before, count_after,
                          "No distribution when all rules are inactive.")
 
@@ -108,9 +113,9 @@ class TestCashDistributionCore(AiciaCashDistributionCommon):
         self.company.write({'cash_distribution_active': False})
         try:
             invoice = self._create_invoice(amount=1000.0, analytic_account=self.analytic_account_a)
-            count_before = self.env['aicia.distribution.move'].search_count([])
+            count_before = self.env['account.move'].search_count([('is_cash_distribution_move', '=', True)])
             self._register_payment(invoice)
-            count_after = self.env['aicia.distribution.move'].search_count([])
+            count_after = self.env['account.move'].search_count([('is_cash_distribution_move', '=', True)])
             self.assertEqual(count_before, count_after,
                              "Distribution must be disabled when company flag is off.")
         finally:
@@ -130,12 +135,13 @@ class TestCashDistributionCore(AiciaCashDistributionCommon):
         })
         invoice = self._create_invoice(amount=1000.0, analytic_account=self.analytic_account_a)
         reconciles = self._register_payment(invoice)
-        dist_moves = self.env['aicia.distribution.move'].search([
-            ('partial_reconcile_id', 'in', reconciles.ids),
+        dist_moves = self.env['account.move'].search([
+            ('is_cash_distribution_move', '=', True),
+            ('distribution_partial_reconcile_id', 'in', reconciles.ids),
         ])
         self.assertTrue(dist_moves)
         for dm in dist_moves:
-            debit_total = sum(dm.move_id.line_ids.mapped('debit'))
+            debit_total = sum(dm.line_ids.mapped('debit'))
             # Línea1: 10% de 1000 = 100, Línea2: 20% de 1000 = 200 → total = 300
             self.assertAlmostEqual(debit_total, 300.0, places=2,
                                    msg="Dos líneas en el mismo plan: 10% + 20% de 1000 = 300.")
@@ -143,9 +149,9 @@ class TestCashDistributionCore(AiciaCashDistributionCommon):
     def test_09_rule_source_filter_blocks_non_matching_analytic(self):
         """A rule that filters on analytic_account_a should NOT fire for analytic_account_b."""
         invoice = self._create_invoice(amount=1000.0, analytic_account=self.analytic_account_b)
-        count_before = self.env['aicia.distribution.move'].search_count([])
+        count_before = self.env['account.move'].search_count([('is_cash_distribution_move', '=', True)])
         self._register_payment(invoice)
-        count_after = self.env['aicia.distribution.move'].search_count([])
+        count_after = self.env['account.move'].search_count([('is_cash_distribution_move', '=', True)])
         self.assertEqual(count_before, count_after,
                          "Rule filtered to analytic A must not fire for analytic B.")
 
@@ -160,8 +166,9 @@ class TestCashDistributionCore(AiciaCashDistributionCommon):
         )
         invoice = self._create_invoice(amount=1000.0, analytic_account=self.analytic_account_b)
         reconciles = self._register_payment(invoice)
-        dist_moves = self.env['aicia.distribution.move'].search([
-            ('partial_reconcile_id', 'in', reconciles.ids),
+        dist_moves = self.env['account.move'].search([
+            ('is_cash_distribution_move', '=', True),
+            ('distribution_partial_reconcile_id', 'in', reconciles.ids),
         ])
         self.assertTrue(dist_moves,
                         "Plan assigned to analytic B must fire when analytic B is in the invoice.")
@@ -170,12 +177,13 @@ class TestCashDistributionCore(AiciaCashDistributionCommon):
         """For ANY invoice+rule combination, the generated journal entry must be balanced."""
         invoice = self._create_invoice(amount=777.77, analytic_account=self.analytic_account_a)
         reconciles = self._register_payment(invoice)
-        dist_moves = self.env['aicia.distribution.move'].search([
-            ('partial_reconcile_id', 'in', reconciles.ids),
+        dist_moves = self.env['account.move'].search([
+            ('is_cash_distribution_move', '=', True),
+            ('distribution_partial_reconcile_id', 'in', reconciles.ids),
         ])
         for dm in dist_moves:
-            total_debit = sum(dm.move_id.line_ids.mapped('debit'))
-            total_credit = sum(dm.move_id.line_ids.mapped('credit'))
+            total_debit = sum(dm.line_ids.mapped('debit'))
+            total_credit = sum(dm.line_ids.mapped('credit'))
             self.assertAlmostEqual(total_debit, total_credit, places=2,
                                    msg="Journal entry must always be balanced.")
 
@@ -183,11 +191,12 @@ class TestCashDistributionCore(AiciaCashDistributionCommon):
         """The debit line account must match the rule's debit_account_id."""
         invoice = self._create_invoice(amount=1000.0, analytic_account=self.analytic_account_a)
         reconciles = self._register_payment(invoice)
-        dist_moves = self.env['aicia.distribution.move'].search([
-            ('partial_reconcile_id', 'in', reconciles.ids),
+        dist_moves = self.env['account.move'].search([
+            ('is_cash_distribution_move', '=', True),
+            ('distribution_partial_reconcile_id', 'in', reconciles.ids),
         ])
         for dm in dist_moves:
-            debit_accounts = dm.move_id.line_ids.filtered(lambda l: l.debit > 0).mapped('account_id')
+            debit_accounts = dm.line_ids.filtered(lambda l: l.debit > 0).mapped('account_id')
             self.assertIn(self.account_dist_debit, debit_accounts,
                           "Debit account in journal entry must match rule definition.")
 
@@ -195,11 +204,12 @@ class TestCashDistributionCore(AiciaCashDistributionCommon):
         """The credit line account must match the rule's credit_account_id."""
         invoice = self._create_invoice(amount=1000.0, analytic_account=self.analytic_account_a)
         reconciles = self._register_payment(invoice)
-        dist_moves = self.env['aicia.distribution.move'].search([
-            ('partial_reconcile_id', 'in', reconciles.ids),
+        dist_moves = self.env['account.move'].search([
+            ('is_cash_distribution_move', '=', True),
+            ('distribution_partial_reconcile_id', 'in', reconciles.ids),
         ])
         for dm in dist_moves:
-            credit_accounts = dm.move_id.line_ids.filtered(lambda l: l.credit > 0).mapped('account_id')
+            credit_accounts = dm.line_ids.filtered(lambda l: l.credit > 0).mapped('account_id')
             self.assertIn(self.account_dist_credit, credit_accounts,
                           "Credit account in journal entry must match rule definition.")
 
@@ -207,11 +217,12 @@ class TestCashDistributionCore(AiciaCashDistributionCommon):
         """Distribution journal entry must use the journal configured on the company."""
         invoice = self._create_invoice(amount=1000.0, analytic_account=self.analytic_account_a)
         reconciles = self._register_payment(invoice)
-        dist_moves = self.env['aicia.distribution.move'].search([
-            ('partial_reconcile_id', 'in', reconciles.ids),
+        dist_moves = self.env['account.move'].search([
+            ('is_cash_distribution_move', '=', True),
+            ('distribution_partial_reconcile_id', 'in', reconciles.ids),
         ])
         for dm in dist_moves:
-            self.assertEqual(dm.move_id.journal_id, self.misc_journal,
+            self.assertEqual(dm.journal_id, self.misc_journal,
                              "Distribution entry must be posted to the company's configured journal.")
 
     def test_15_two_line_invoice_both_lines_distributed(self):
@@ -241,23 +252,24 @@ class TestCashDistributionCore(AiciaCashDistributionCommon):
         invoice = self.env['account.move'].create(invoice_vals)
         invoice.action_post()
         reconciles = self._register_payment(invoice)
-        dist_moves = self.env['aicia.distribution.move'].search([
-            ('partial_reconcile_id', 'in', reconciles.ids),
+        dist_moves = self.env['account.move'].search([
+            ('is_cash_distribution_move', '=', True),
+            ('distribution_partial_reconcile_id', 'in', reconciles.ids),
         ])
         self.assertTrue(dist_moves)
-        # Only line A (500) should be distributed: 10% × (500/1000 × 1000) = 50
+        # Con plan aplicado desde el pago se reparte sobre el total (1.000): 10% = 100
         for dm in dist_moves:
-            debit_total = sum(dm.move_id.line_ids.mapped('debit'))
-            self.assertAlmostEqual(debit_total, 50.0, places=2,
-                                   msg="Only the analytic A line (500) should be distributed → 10% = 50.")
+            debit_total = sum(dm.line_ids.mapped('debit'))
+            self.assertAlmostEqual(debit_total, 100.0, places=2,
+                                   msg="Plan del pago aplicado al total: 10% de 1.000 = 100.")
 
     def test_16_zero_percentage_rule_creates_no_entry(self):
         """A 0% rule must not create any journal entry lines."""
         self.rule_10.line_ids.write({'percentage': 0.0})
         invoice = self._create_invoice(amount=1000.0, analytic_account=self.analytic_account_a)
-        count_before = self.env['aicia.distribution.move'].search_count([])
+        count_before = self.env['account.move'].search_count([('is_cash_distribution_move', '=', True)])
         self._register_payment(invoice)
-        count_after = self.env['aicia.distribution.move'].search_count([])
+        count_after = self.env['account.move'].search_count([('is_cash_distribution_move', '=', True)])
         self.assertEqual(count_before, count_after,
                          "Zero-percentage rule must not generate any distribution move.")
 
@@ -274,11 +286,12 @@ class TestCashDistributionCore(AiciaCashDistributionCommon):
         """The debit line in the distribution entry must carry the source analytic distribution."""
         invoice = self._create_invoice(amount=1000.0, analytic_account=self.analytic_account_a)
         reconciles = self._register_payment(invoice)
-        dist_moves = self.env['aicia.distribution.move'].search([
-            ('partial_reconcile_id', 'in', reconciles.ids),
+        dist_moves = self.env['account.move'].search([
+            ('is_cash_distribution_move', '=', True),
+            ('distribution_partial_reconcile_id', 'in', reconciles.ids),
         ])
         for dm in dist_moves:
-            debit_lines = dm.move_id.line_ids.filtered(lambda l: l.debit > 0)
+            debit_lines = dm.line_ids.filtered(lambda l: l.debit > 0)
             for dl in debit_lines:
                 self.assertTrue(dl.analytic_distribution,
                                 "Debit distribution line must carry analytic distribution.")
@@ -287,11 +300,12 @@ class TestCashDistributionCore(AiciaCashDistributionCommon):
         """The partner on the invoice must be propagated to the distribution journal entry lines."""
         invoice = self._create_invoice(amount=1000.0, analytic_account=self.analytic_account_a)
         reconciles = self._register_payment(invoice)
-        dist_moves = self.env['aicia.distribution.move'].search([
-            ('partial_reconcile_id', 'in', reconciles.ids),
+        dist_moves = self.env['account.move'].search([
+            ('is_cash_distribution_move', '=', True),
+            ('distribution_partial_reconcile_id', 'in', reconciles.ids),
         ])
         for dm in dist_moves:
-            for line in dm.move_id.line_ids:
+            for line in dm.line_ids:
                 self.assertEqual(line.partner_id, self.partner,
                                  "Partner must be propagated to each distribution line.")
 
@@ -299,19 +313,20 @@ class TestCashDistributionCore(AiciaCashDistributionCommon):
         """The generated journal entry must also keep the invoice partner on the move header."""
         invoice = self._create_invoice(amount=1000.0, analytic_account=self.analytic_account_a)
         reconciles = self._register_payment(invoice)
-        dist_moves = self.env['aicia.distribution.move'].search([
-            ('partial_reconcile_id', 'in', reconciles.ids),
+        dist_moves = self.env['account.move'].search([
+            ('is_cash_distribution_move', '=', True),
+            ('distribution_partial_reconcile_id', 'in', reconciles.ids),
         ])
         self.assertTrue(dist_moves)
         for dm in dist_moves:
             self.assertEqual(
-                dm.move_id.partner_id,
+                dm.partner_id,
                 self.partner,
                 "Partner must be propagated to the distribution move header.",
             )
 
     def test_21_vat_plan_line_is_included_in_distribution_entry(self):
-        """A VAT plan line must generate 477/470-style movement based on collected tax."""
+        """A VAT plan line must generate movement on the invoice tax account in both sides."""
         if not self.sale_tax:
             self.skipTest("No sale tax available in the company to validate VAT distribution.")
 
@@ -337,25 +352,76 @@ class TestCashDistributionCore(AiciaCashDistributionCommon):
             tax_ids=[self.sale_tax.id],
         )
         reconciles = self._register_payment(invoice)
-        dist_moves = self.env['aicia.distribution.move'].search([
-            ('partial_reconcile_id', 'in', reconciles.ids),
+        dist_moves = self.env['account.move'].search([
+            ('is_cash_distribution_move', '=', True),
+            ('distribution_partial_reconcile_id', 'in', reconciles.ids),
         ])
         self.assertTrue(dist_moves)
 
-        vat_lines = dist_moves.move_id.line_ids.filtered(
+        vat_lines = dist_moves.line_ids.filtered(
             lambda line: line.account_id == tax_account
         )
         self.assertEqual(len(vat_lines), 2, "VAT distribution must generate one debit and one credit line.")
+        vat_amount = sum(abs(line.balance) for line in invoice.line_ids if line.tax_line_id)
         self.assertAlmostEqual(
             sum(vat_lines.mapped('debit')),
-            21.0,
+            vat_amount,
             places=2,
             msg="Collected VAT must be redistributed in the debit side.",
         )
         self.assertAlmostEqual(
             sum(vat_lines.mapped('credit')),
-            21.0,
+            vat_amount,
             places=2,
             msg="Collected VAT must be redistributed in the credit side.",
+        )
+
+    def test_22_legacy_invalid_vat_plan_still_uses_invoice_tax_account(self):
+        """Even with a legacy bad VAT line, the generated move must use the invoice tax account on both sides."""
+        if not self.sale_tax:
+            self.skipTest("No sale tax available in the company to validate VAT distribution.")
+
+        tax_account = self.sale_tax.invoice_repartition_line_ids.filtered(
+            lambda line: line.repartition_type == 'tax' and line.account_id
+        )[:1].account_id
+        self.assertTrue(tax_account, "The selected sale tax must have a tax account.")
+
+        vat_line = self.env['aicia.distribution.plan.line'].create({
+            'plan_id': self.rule_10.id,
+            'name': 'Legacy VAT Line',
+            'is_vat_line': True,
+            'percentage': 100.0,
+            'debit_account_id': tax_account.id,
+            'debit_analytic_side': 'receiver',
+            'credit_account_id': tax_account.id,
+            'credit_analytic_side': 'source',
+        })
+        self.env.cr.execute(
+            "UPDATE aicia_distribution_plan_line SET debit_account_id = %s WHERE id = %s",
+            [self.account_dist_debit.id, vat_line.id],
+        )
+        self.env.invalidate_all()
+
+        invoice = self._create_invoice(
+            amount=100.0,
+            analytic_account=self.analytic_account_a,
+            tax_ids=[self.sale_tax.id],
+        )
+        reconciles = self._register_payment(invoice)
+        dist_moves = self.env['account.move'].search([
+            ('is_cash_distribution_move', '=', True),
+            ('distribution_partial_reconcile_id', 'in', reconciles.ids),
+        ])
+        self.assertTrue(dist_moves)
+
+        move_lines = dist_moves.line_ids.filtered(
+            lambda line: 'Legacy VAT Line' in (line.name or '')
+        )
+        vat_lines = move_lines.filtered(lambda line: line.account_id == tax_account)
+        wrong_lines = move_lines.filtered(lambda line: line.account_id == self.account_dist_debit)
+        self.assertEqual(len(vat_lines), 2)
+        self.assertFalse(
+            wrong_lines,
+            "Legacy bad VAT configuration must not leak a non-tax account into the generated move.",
         )
 

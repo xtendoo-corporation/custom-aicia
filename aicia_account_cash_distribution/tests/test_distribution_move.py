@@ -1,12 +1,12 @@
 # -*- coding: utf-8 -*-
 """
-Tests for aicia.distribution.move model fields, relations and state tracking.
+Tests for asientos de distribución (account.move con flag is_cash_distribution_move).
 """
 from .common import AiciaCashDistributionCommon
 
 
 class TestDistributionMove(AiciaCashDistributionCommon):
-    """Tests for the Distribution Move log model."""
+    """Tests for los asientos de distribución (sin modelo intermedio)."""
 
     def setUp(self):
         super().setUp()
@@ -22,8 +22,9 @@ class TestDistributionMove(AiciaCashDistributionCommon):
         """A distribution move log should be created when a full payment reconciles an invoice."""
         invoice = self._create_invoice(amount=1000.0, analytic_account=self.analytic_account_a)
         self._register_payment(invoice)
-        dist_moves = self.env['aicia.distribution.move'].search([
-            ('partial_reconcile_id', 'in', (
+        dist_moves = self.env['account.move'].search([
+            ('is_cash_distribution_move', '=', True),
+            ('distribution_partial_reconcile_id', 'in', (
                 invoice.line_ids.mapped('matched_debit_ids') |
                 invoice.line_ids.mapped('matched_credit_ids')
             ).ids),
@@ -34,38 +35,44 @@ class TestDistributionMove(AiciaCashDistributionCommon):
         """The journal entry linked to a distribution move must be in 'posted' state."""
         invoice = self._create_invoice(amount=500.0, analytic_account=self.analytic_account_a)
         self._register_payment(invoice)
-        dist_moves = self.env['aicia.distribution.move'].search([
-            ('move_id.ref', 'like', invoice.name),
+        dist_moves = self.env['account.move'].search([
+            ('is_cash_distribution_move', '=', True),
+            ('ref', 'like', invoice.name),
         ])
         for dm in dist_moves:
             self.assertEqual(dm.state, 'posted',
                              "All generated journal entries must be posted.")
 
     def test_03_distribution_move_amount_positive(self):
-        """The amount_total on every distribution move log must be positive."""
+        """Sum of debit lines on distribution move must be positive."""
         invoice = self._create_invoice(amount=800.0, analytic_account=self.analytic_account_a)
         self._register_payment(invoice)
-        dist_moves = self.env['aicia.distribution.move'].search([
-            ('move_id.ref', 'like', invoice.name),
+        dist_moves = self.env['account.move'].search([
+            ('is_cash_distribution_move', '=', True),
+            ('ref', 'like', invoice.name),
         ])
         for dm in dist_moves:
-            self.assertGreater(dm.amount_total, 0,
-                               "Distribution move amount_total must be > 0.")
+            self.assertGreater(
+                sum(dm.line_ids.mapped('debit')),
+                0,
+                "Distribution move total debit must be > 0.",
+            )
 
     def test_04_distribution_move_linked_to_reconcile(self):
         """Each distribution move must be linked to a valid partial reconcile."""
         invoice = self._create_invoice(amount=600.0, analytic_account=self.analytic_account_a)
         reconciles = self._register_payment(invoice)
         for rec in reconciles:
-            for dm in rec.distribution_move_ids:
-                self.assertEqual(dm.partial_reconcile_id, rec)
+            self.assertTrue(rec.distribution_move_id)
+            self.assertEqual(rec.distribution_move_id.distribution_partial_reconcile_id, rec)
 
     def test_05_distribution_move_currency_matches_company(self):
         """The currency of the distribution move should match the company currency."""
         invoice = self._create_invoice(amount=900.0, analytic_account=self.analytic_account_a)
         self._register_payment(invoice)
-        dist_moves = self.env['aicia.distribution.move'].search([
-            ('move_id.ref', 'like', invoice.name),
+        dist_moves = self.env['account.move'].search([
+            ('is_cash_distribution_move', '=', True),
+            ('ref', 'like', invoice.name),
         ])
         for dm in dist_moves:
             self.assertEqual(dm.currency_id, self.company.currency_id)
@@ -73,9 +80,9 @@ class TestDistributionMove(AiciaCashDistributionCommon):
     def test_06_no_distribution_move_without_analytic(self):
         """No distribution move should be created if the invoice has no analytic distribution."""
         invoice = self._create_invoice(amount=1000.0, analytic_account=None)
-        reconciles_before = self.env['aicia.distribution.move'].search_count([])
+        reconciles_before = self.env['account.move'].search_count([('is_cash_distribution_move', '=', True)])
         self._register_payment(invoice)
-        reconciles_after = self.env['aicia.distribution.move'].search_count([])
+        reconciles_after = self.env['account.move'].search_count([('is_cash_distribution_move', '=', True)])
         self.assertEqual(reconciles_before, reconciles_after,
                          "No distribution log should appear when invoice has no analytic.")
 
@@ -84,8 +91,9 @@ class TestDistributionMove(AiciaCashDistributionCommon):
         invoice = self._create_invoice(amount=1000.0, analytic_account=self.analytic_account_a)
         self._register_payment(invoice, amount=400.0)
         self._register_payment(invoice, amount=400.0)
-        dist_moves = self.env['aicia.distribution.move'].search([
-            ('move_id.ref', 'like', invoice.name),
+        dist_moves = self.env['account.move'].search([
+            ('is_cash_distribution_move', '=', True),
+            ('ref', 'like', invoice.name),
         ])
         self.assertGreaterEqual(len(dist_moves), 2,
                                 "Two payments should generate at least two distribution logs.")
@@ -94,8 +102,9 @@ class TestDistributionMove(AiciaCashDistributionCommon):
         """Distribution move should receive a name (not left as '/')."""
         invoice = self._create_invoice(amount=700.0, analytic_account=self.analytic_account_a)
         self._register_payment(invoice)
-        dist_moves = self.env['aicia.distribution.move'].search([
-            ('move_id.ref', 'like', invoice.name),
+        dist_moves = self.env['account.move'].search([
+            ('is_cash_distribution_move', '=', True),
+            ('ref', 'like', invoice.name),
         ])
         for dm in dist_moves:
             self.assertTrue(dm.name, "Distribution move name must not be empty.")
@@ -104,14 +113,15 @@ class TestDistributionMove(AiciaCashDistributionCommon):
         """Distribution move must store the source analytic account that triggered it."""
         invoice = self._create_invoice(amount=1000.0, analytic_account=self.analytic_account_a)
         reconciles = self._register_payment(invoice)
-        dist_moves = self.env['aicia.distribution.move'].search([
-            ('partial_reconcile_id', 'in', reconciles.ids),
+        dist_moves = self.env['account.move'].search([
+            ('is_cash_distribution_move', '=', True),
+            ('distribution_partial_reconcile_id', 'in', reconciles.ids),
         ])
         self.assertTrue(dist_moves)
         for dm in dist_moves:
             self.assertIn(
                 self.analytic_account_a,
-                dm.source_analytic_account_ids,
+                dm.distribution_source_analytic_ids,
                 "Source analytic account_a must be stored in the distribution move.",
             )
 
@@ -129,8 +139,9 @@ class TestDistributionMove(AiciaCashDistributionCommon):
         """The analytic account's distribution_move_ids must include the generated log."""
         invoice = self._create_invoice(amount=1000.0, analytic_account=self.analytic_account_a)
         reconciles = self._register_payment(invoice)
-        dist_moves = self.env['aicia.distribution.move'].search([
-            ('partial_reconcile_id', 'in', reconciles.ids),
+        dist_moves = self.env['account.move'].search([
+            ('is_cash_distribution_move', '=', True),
+            ('distribution_partial_reconcile_id', 'in', reconciles.ids),
         ])
         for dm in dist_moves:
             self.assertIn(
@@ -205,13 +216,14 @@ class TestDistributionMove(AiciaCashDistributionCommon):
         )
 
         reconciles = invoice.line_ids.mapped('matched_debit_ids') | invoice.line_ids.mapped('matched_credit_ids')
-        dist_moves = self.env['aicia.distribution.move'].search([
-            ('partial_reconcile_id', 'in', reconciles.ids),
+        dist_moves = self.env['account.move'].search([
+            ('is_cash_distribution_move', '=', True),
+            ('distribution_partial_reconcile_id', 'in', reconciles.ids),
         ])
         self.assertTrue(dist_moves, "A distribution move should be generated.")
         self.assertIn(
             manual_plan,
-            dist_moves.mapped('applied_plan_ids'),
+            dist_moves.mapped('distribution_applied_plan_ids'),
             "The manually selected payment plan must be the one applied on reconciliation.",
         )
 
@@ -320,5 +332,52 @@ class TestDistributionMove(AiciaCashDistributionCommon):
         self.assertFalse(
             wizard.distribution_plan_id,
             "No debe autocompletarse un plan si las facturas tienen planes de cabecera distintos.",
+        )
+
+    def test_18_payment_plan_overrides_even_if_not_bound_to_invoice_analytic(self):
+        """If the user selects a plan on the payment, it must generate distribution even when the plan is bound to other analytics."""
+
+        # Simula factura sin plan en la analítica y plan manual ligado a otra analítica
+        self.analytic_account_a.write({'distribution_plan_id': False})
+
+        manual_plan = self.env['aicia.distribution.plan'].create({
+            'name': 'Manual Override Plan',
+            'company_id': self.company.id,
+            'receiver_analytic_account_id': self.analytic_account_dest.id,
+            'active': True,
+            'source_analytic_account_ids': [(6, 0, [self.analytic_account_b.id])],
+        })
+        self.env['aicia.distribution.plan.line'].create({
+            'plan_id': manual_plan.id,
+            'name': 'Manual Line 12%',
+            'percentage': 12.0,
+            'debit_account_id': self.account_dist_debit.id,
+            'debit_analytic_side': 'source',
+            'credit_account_id': self.account_dist_credit.id,
+            'credit_analytic_side': 'receiver',
+        })
+
+        invoice = self._create_invoice(amount=1000.0, analytic_account=self.analytic_account_a)
+        wizard = self.env['account.payment.register'].with_context(
+            active_model='account.move',
+            active_ids=invoice.ids,
+        ).create({
+            'amount': invoice.amount_residual,
+            'journal_id': self.bank_journal.id,
+            'distribution_plan_id': manual_plan.id,
+        })
+        wizard.action_create_payments()
+
+        reconciles = invoice.line_ids.mapped('matched_debit_ids') | invoice.line_ids.mapped('matched_credit_ids')
+        dist_moves = self.env['account.move'].search([
+            ('is_cash_distribution_move', '=', True),
+            ('distribution_partial_reconcile_id', 'in', reconciles.ids),
+        ])
+
+        self.assertTrue(dist_moves, "El plan seleccionado en el pago debe generar el apunte de distribución.")
+        self.assertIn(
+            manual_plan,
+            dist_moves.mapped('distribution_applied_plan_ids'),
+            "El apunte de distribución debe reflejar el plan manual seleccionado en el pago, aunque no coincida con la analítica de la factura.",
         )
 

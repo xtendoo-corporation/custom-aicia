@@ -4,17 +4,20 @@ Motor de distribución contable AICIA por criterio de caja.
 Trigger: account.partial.reconcile — cada vez que se concilia (parcial o total)
 una línea de pago con una línea de factura de cliente.
 Reversión:
-Al eliminar la conciliación (unlink) -> borrar el asiento y el log.
+Al eliminar la conciliación (unlink) -> borrar el asiento generado.
 """
 import logging
 from odoo import models, fields, api
 _logger = logging.getLogger(__name__)
 class AccountPartialReconcile(models.Model):
     _inherit = 'account.partial.reconcile'
-    distribution_move_ids = fields.One2many(
-        'aicia.distribution.move',
-        'partial_reconcile_id',
-        string='Distribuciones generadas',
+
+    distribution_move_id = fields.Many2one(
+        'account.move',
+        string='Asiento de distribución',
+        copy=False,
+        ondelete='set null',
+        domain=[('is_cash_distribution_move', '=', True)],
     )
     # ── Hooks ORM ─────────────────────────────────────────────────────────
     @api.model
@@ -22,10 +25,12 @@ class AccountPartialReconcile(models.Model):
         reconciles = super().create(vals)
         for rec in reconciles:
             try:
-                rec._process_cash_distribution()
+                move = rec._process_cash_distribution()
+                if move:
+                    rec.distribution_move_id = move.id
             except Exception:
                 _logger.exception(
-                    "Error al procesar distribución para reconciliación id=%s", rec.id
+                    "Error al procesar distribución para conciliación id=%s", rec.id
                 )
         return reconciles
     def unlink(self):
@@ -68,19 +73,12 @@ class AccountPartialReconcile(models.Model):
         for analytic_id, base_amount, vat_amount in self._iter_analytic_amounts(invoice, ratio):
             analytic = self.env['account.analytic.account'].browse(analytic_id)
 
+            # Si el pago trae un plan, se considera override explícito y se aplica
+            # siempre sobre las analíticas detectadas en la factura, aunque el plan
+            # tenga analíticas origen distintas configuradas.
             if payment_plan and payment_plan.active:
-                # Si el plan del pago no está ligado a ninguna analítica,
-                # interpretamos que es un override manual y lo aplicamos a todas.
-                # Si sí está ligado, solo se aplica a las analíticas que usan ese plan.
-                if (
-                    not payment_plan.source_analytic_account_ids
-                    or analytic.distribution_plan_id == payment_plan
-                ):
-                    plan = payment_plan
-                else:
-                    plan = analytic.distribution_plan_id
+                plan = payment_plan
             else:
-                # Prioridad 2: plan de la cuenta analítica
                 plan = analytic.distribution_plan_id
 
             if not plan or not plan.active:
@@ -100,29 +98,24 @@ class AccountPartialReconcile(models.Model):
 
         if not all_lines:
             return
-        move = self._create_distribution_move(invoice, all_lines)
-        if not move:
-            return
-        self.env['aicia.distribution.move'].create({
-            'partial_reconcile_id': self.id,
-            'move_id': move.id,
-            'amount_total': move.amount_total,
-            'applied_plan_ids': [(6, 0, applied_plans.ids)],
-            'source_analytic_account_ids': [(6, 0, list(source_analytic_ids))],
-        })
+        move = self._create_distribution_move(
+            invoice,
+            all_lines,
+            payment,
+            applied_plans=applied_plans,
+            source_analytic_ids=source_analytic_ids,
+        )
+        return move
     def _reverse_cash_distribution(self):
-        """Reversión: cancela asientos y elimina logs."""
+        """Reversión: cancela y elimina el asiento de distribución."""
         for rec in self:
-            for dist_move in rec.distribution_move_ids:
-                account_move = dist_move.move_id
-                # Primero eliminar el log (FK -> account_move)
-                dist_move.unlink()
-                # Luego poner en borrador y eliminar el asiento contable
-                # (button_cancel no existe en Odoo 19)
-                if account_move.exists():
-                    if account_move.state == 'posted':
-                        account_move.button_draft()
-                    account_move.unlink()
+            move = rec.distribution_move_id
+            if not move:
+                continue
+            if move.exists():
+                if move.state == 'posted':
+                    move.button_draft()
+                move.unlink()
     # ── Localización de factura ──────────────────────────────────────────
     def _find_invoice_move(self):
         """Devuelve la factura de venta relacionada (solo out_invoice)."""
@@ -203,8 +196,14 @@ class AccountPartialReconcile(models.Model):
         lines = []
         currency = self.company_id.currency_id
         for plan_line in plan.line_ids:
+            debit_account = plan_line.debit_account_id
+            credit_account = plan_line.credit_account_id
             if plan_line.is_vat_line:
                 amount = vat_amount
+                vat_account = plan_line.get_effective_vat_account(invoice)
+                if vat_account:
+                    debit_account = vat_account
+                    credit_account = vat_account
             else:
                 amount = base_amount * plan_line.percentage / 100.0
             amount = currency.round(amount)
@@ -219,7 +218,7 @@ class AccountPartialReconcile(models.Model):
             label = f'Distr: {invoice.name} - {plan.name} - {plan_line.name}'
             lines.append({
                 'name': label,
-                'account_id': plan_line.debit_account_id.id,
+                'account_id': debit_account.id,
                 'debit': amount,
                 'credit': 0.0,
                 'analytic_distribution': {str(debit_analytic): 100},
@@ -227,15 +226,17 @@ class AccountPartialReconcile(models.Model):
             })
             lines.append({
                 'name': label,
-                'account_id': plan_line.credit_account_id.id,
+                'account_id': credit_account.id,
                 'debit': 0.0,
                 'credit': amount,
                 'analytic_distribution': {str(credit_analytic): 100},
                 'partner_id': invoice.partner_id.id,
             })
         return lines
-    def _create_distribution_move(self, invoice, line_vals_list):
+    def _create_distribution_move(self, invoice, line_vals_list, payment, applied_plans=None, source_analytic_ids=None):
         """Crea y publica el asiento de distribución."""
+        applied_plans = applied_plans or self.env['aicia.distribution.plan']
+        source_analytic_ids = source_analytic_ids or set()
         journal = self._get_distribution_journal()
         if not journal:
             _logger.warning(
@@ -249,6 +250,11 @@ class AccountPartialReconcile(models.Model):
             'partner_id': invoice.partner_id.id,
             'date': fields.Date.context_today(self),
             'ref': f'Distribución {invoice.name}',
+            'is_cash_distribution_move': True,
+            'distribution_partial_reconcile_id': self.id,
+            'distribution_payment_id': payment.id if payment else False,
+            'distribution_source_analytic_ids': [(6, 0, list(source_analytic_ids))],
+            'distribution_applied_plan_ids': [(6, 0, applied_plans.ids)],
             'line_ids': [(0, 0, vals) for vals in line_vals_list],
         })
         move.action_post()
