@@ -11,7 +11,6 @@
     "category": "Accounting",
     "depends": [
         "account",
-        "account_move_analytic_account",
         "portal_requests",
     ],
     "license": "AGPL-3",

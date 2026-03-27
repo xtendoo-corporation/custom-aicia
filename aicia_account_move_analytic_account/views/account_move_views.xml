@@ -7,11 +7,10 @@
         <field name="model">account.move</field>
         <field name="inherit_id" ref="account.view_invoice_tree"/>
         <field name="arch" type="xml">
-            <!-- Añade solo el grupo de trabajo después del proyecto existente -->
-            <xpath expr="//field[@name='analytic_distribution']" position="after">
+            <!-- Inserta el grupo de trabajo en una columna estable de la lista de facturas -->
+            <xpath expr="//field[@name='invoice_user_id']" position="after">
                 <field name="work_group_id"/>
             </xpath>
         </field>
     </record>
 </odoo>
-
