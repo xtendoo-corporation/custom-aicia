@@ -26,6 +26,23 @@
             <t name="invoice_title">Número de Factura</t>
         </xpath>
 
+        <xpath expr="//tr[.//i[contains(@class, 'oe_payment_label')]]" position="replace">
+        </xpath>
+
+        <xpath expr="//tr[.//span[@t-field='o.amount_residual']]" position="replace">
+        </xpath>
+
+        <xpath expr="//t[@t-set='display_taxes']" position="attributes">
+            <attribute name="t-value">False</attribute>
+        </xpath>
+
+        <xpath expr="//div[@name='due_date']" position="replace">
+        </xpath>
+
+        <xpath expr="//div[@id='informations']" position="attributes">
+            <attribute name="t-if">o.invoice_date or o.delivery_date or o.invoice_origin or o.partner_id.ref or o.ref or o.invoice_incoterm_id</attribute>
+        </xpath>
+
         <xpath expr="//div[@name='reference']/strong" position="replace">
             <strong>Número de Pedido</strong>
         </xpath>
