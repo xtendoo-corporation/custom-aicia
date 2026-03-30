@@ -35,5 +35,28 @@
         </field>
     </record>
 
+    <!-- Smart button Margen del Proyecto (Grupo 7 - Grupo 6) -->
+    <record id="view_account_analytic_account_form_margin_button_aicia" model="ir.ui.view">
+        <field name="name">account.analytic.account.form.margin.button.aicia</field>
+        <field name="model">account.analytic.account</field>
+        <field name="inherit_id" ref="analytic.view_account_analytic_account_form"/>
+        <field name="arch" type="xml">
+            <xpath expr="//div[@name='button_box']" position="inside">
+                <button class="oe_stat_button"
+                        type="object"
+                        name="action_view_project_margin_lines"
+                        icon="fa-bar-chart"
+                        groups="account.group_account_user">
+                    <div class="o_stat_info">
+                        <span class="o_stat_value">
+                            <field name="project_margin" widget="float" digits="[16,2]"/>
+                        </span>
+                        <span class="o_stat_text">Margen (7-6)</span>
+                    </div>
+                </button>
+            </xpath>
+        </field>
+    </record>
+
 </odoo>
 
