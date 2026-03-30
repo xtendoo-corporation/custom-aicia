@@ -51,7 +51,7 @@
                         <span class="o_stat_value">
                             <field name="project_margin" widget="float" digits="[16,2]"/>
                         </span>
-                        <span class="o_stat_text">Margen (7-6)</span>
+                        <span class="o_stat_text">Margen neto</span>
                     </div>
                 </button>
             </xpath>
