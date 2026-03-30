@@ -63,9 +63,12 @@ class AccountAnalyticAccount(models.Model):
         Calcula el margen del proyecto como la diferencia entre:
         - Ingresos: saldos de cuentas del grupo 7 imputados a esta analítica
         - Gastos:   saldos de cuentas del grupo 6 imputados a esta analítica
-        Usa SQL directo con el operador JSONB '?' para filtrar de forma eficiente.
+        Usa SQL directo con ->> (compatible con json y jsonb).
+        Utiliza savepoints para no abortar la transacción en caso de error.
         """
         for account in self:
+            sp = 'sp_margin_%d' % account.id
+            self.env.cr.execute('SAVEPOINT "%s"' % sp)
             try:
                 self.env.cr.execute("""
                     SELECT
@@ -87,7 +90,7 @@ class AccountAnalyticAccount(models.Model):
                     FROM account_move_line aml
                     JOIN account_account aa ON aa.id = aml.account_id
                     JOIN account_move am ON am.id = aml.move_id
-                    WHERE aml.analytic_distribution ? %(aid)s
+                    WHERE (aml.analytic_distribution->>%(aid)s) IS NOT NULL
                       AND (aa.code LIKE '6%%' OR aa.code LIKE '7%%')
                       AND am.state = 'posted'
                 """, {'aid': str(account.id)})
@@ -98,8 +101,13 @@ class AccountAnalyticAccount(models.Model):
                 account.project_expense = expense
                 account.project_margin = income - expense
                 account.project_margin_line_count = int(row[2]) if row and row[2] is not None else 0
+                self.env.cr.execute('RELEASE SAVEPOINT "%s"' % sp)
             except Exception:
-                _logger.exception("Error calculando margen del proyecto para analítica id=%s", account.id)
+                _logger.exception(
+                    "Error calculando margen del proyecto para analítica id=%s", account.id
+                )
+                self.env.cr.execute('ROLLBACK TO SAVEPOINT "%s"' % sp)
+                self.env.cr.execute('RELEASE SAVEPOINT "%s"' % sp)
                 account.project_income = 0.0
                 account.project_expense = 0.0
                 account.project_margin = 0.0
@@ -111,16 +119,27 @@ class AccountAnalyticAccount(models.Model):
         imputados a esta cuenta analítica, agrupados por cuenta contable.
         """
         self.ensure_one()
-        self.env.cr.execute("""
-            SELECT aml.id
-            FROM account_move_line aml
-            JOIN account_account aa ON aa.id = aml.account_id
-            JOIN account_move am ON am.id = aml.move_id
-            WHERE aml.analytic_distribution ? %(aid)s
-              AND (aa.code LIKE '6%%' OR aa.code LIKE '7%%')
-              AND am.state = 'posted'
-        """, {'aid': str(self.id)})
-        line_ids = [row[0] for row in self.env.cr.fetchall()]
+        sp = 'sp_margin_lines_%d' % self.id
+        self.env.cr.execute('SAVEPOINT "%s"' % sp)
+        try:
+            self.env.cr.execute("""
+                SELECT aml.id
+                FROM account_move_line aml
+                JOIN account_account aa ON aa.id = aml.account_id
+                JOIN account_move am ON am.id = aml.move_id
+                WHERE (aml.analytic_distribution->>%(aid)s) IS NOT NULL
+                  AND (aa.code LIKE '6%%' OR aa.code LIKE '7%%')
+                  AND am.state = 'posted'
+            """, {'aid': str(self.id)})
+            line_ids = [row[0] for row in self.env.cr.fetchall()]
+            self.env.cr.execute('RELEASE SAVEPOINT "%s"' % sp)
+        except Exception:
+            _logger.exception(
+                "Error obteniendo apuntes de margen para analítica id=%s", self.id
+            )
+            self.env.cr.execute('ROLLBACK TO SAVEPOINT "%s"' % sp)
+            self.env.cr.execute('RELEASE SAVEPOINT "%s"' % sp)
+            line_ids = []
         return {
             'type': 'ir.actions.act_window',
             'name': _('Margen Analítico: %s') % self.name,
