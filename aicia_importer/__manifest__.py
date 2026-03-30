@@ -1,6 +1,5 @@
 {
     "name": "AICIA - Importador de Clientes, Proveedores, Empleados y Proyectos",
-    "author": "Xtendoo",
     "category": "Extra Tools",
     "version": "19.0.1.0.5",
     "depends": [
@@ -10,6 +9,7 @@
         "hr",
         "analytic",
         "portal_requests",
+        "aicia_employee_project_percentage",
     ],
     "license": "AGPL-3",
     "application": True,
@@ -19,6 +19,7 @@
     "data": [
         "security/ir.model.access.csv",
         "wizard/aicia_importer_wizard.xml",
+        "wizard/aicia_importer_payroll_wizard.xml",
         "views/aicia_importer_menu.xml",
     ],
     "external_dependencies": {
@@ -26,4 +27,3 @@
     },
     "installable": True,
 }
-

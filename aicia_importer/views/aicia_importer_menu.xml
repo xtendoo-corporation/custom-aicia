@@ -42,37 +42,37 @@
         sequence="100"
     />
 
-    <menuitem
-        id="aicia_importer_employees_menu"
-        name="Importar Personal"
-        parent="aicia_menu_hr"
-        action="aicia_importer_employees_action"
-        sequence="10"
-    />
+<!--    <menuitem-->
+<!--        id="aicia_importer_employees_menu"-->
+<!--        name="Importar Personal"-->
+<!--        parent="aicia_menu_hr"-->
+<!--        action="aicia_importer_employees_action"-->
+<!--        sequence="10"-->
+<!--    />-->
 
-    <menuitem
-        id="aicia_update_work_groups_menu"
-        name="Actualizar Grupos"
-        parent="aicia_menu_hr"
-        action="aicia_update_work_groups_action"
-        sequence="20"
-    />
+<!--    <menuitem-->
+<!--        id="aicia_update_work_groups_menu"-->
+<!--        name="Actualizar Grupos"-->
+<!--        parent="aicia_menu_hr"-->
+<!--        action="aicia_update_work_groups_action"-->
+<!--        sequence="20"-->
+<!--    />-->
 
-    <menuitem
-        id="aicia_update_project_bosses_menu"
-        name="Actualizar Jefes de Equipo"
-        parent="aicia_menu_hr"
-        action="aicia_update_project_bosses_action"
-        sequence="30"
-    />
+<!--    <menuitem-->
+<!--        id="aicia_update_project_bosses_menu"-->
+<!--        name="Actualizar Jefes de Equipo"-->
+<!--        parent="aicia_menu_hr"-->
+<!--        action="aicia_update_project_bosses_action"-->
+<!--        sequence="30"-->
+<!--    />-->
 
-    <menuitem
-        id="aicia_assign_project_work_groups_menu"
-        name="Asignar Grupos a Proyectos"
-        parent="aicia_menu_hr"
-        action="aicia_assign_project_work_groups_action"
-        sequence="40"
-    />
+<!--    <menuitem-->
+<!--        id="aicia_assign_project_work_groups_menu"-->
+<!--        name="Asignar Grupos a Proyectos"-->
+<!--        parent="aicia_menu_hr"-->
+<!--        action="aicia_assign_project_work_groups_action"-->
+<!--        sequence="40"-->
+<!--    />-->
 
     <!-- Menú AICIA en Contabilidad (Proyectos / Cuentas Analíticas) -->
 <!--    <menuitem-->
@@ -82,20 +82,28 @@
 <!--        sequence="100"-->
 <!--    />-->
 
-    <menuitem
-        id="aicia_importer_projects_menu"
-        name="Importar Proyectos"
-        parent="aicia_menu_hr"
-        action="aicia_importer_projects_action"
-        sequence="10"
-    />
+<!--    <menuitem-->
+<!--        id="aicia_importer_projects_menu"-->
+<!--        name="Importar Proyectos"-->
+<!--        parent="aicia_menu_hr"-->
+<!--        action="aicia_importer_projects_action"-->
+<!--        sequence="10"-->
+<!--    />-->
+
+<!--    <menuitem-->
+<!--        id="aicia_importer_project_assignments_menu"-->
+<!--        name="Importar Asignación de Proyectos"-->
+<!--        parent="aicia_menu_hr"-->
+<!--        action="aicia_importer_project_assignments_action"-->
+<!--        sequence="20"-->
+<!--    />-->
 
     <menuitem
-        id="aicia_importer_project_assignments_menu"
-        name="Importar Asignación de Proyectos"
+        id="aicia_importer_payroll_menu"
+        name="Importar Nóminas"
         parent="aicia_menu_hr"
-        action="aicia_importer_project_assignments_action"
-        sequence="20"
+        action="aicia_importer_payroll_action"
+        sequence="50"
     />
 </odoo>
 
