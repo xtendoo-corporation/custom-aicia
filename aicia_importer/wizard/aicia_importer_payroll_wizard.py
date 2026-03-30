@@ -173,13 +173,37 @@ class AiciaImporterPayrollWizard(models.TransientModel):
                             'COST DESP': parse_importe(empleado, 'COST DESP'),
                             'ANTICIPOS': parse_importe(empleado, 'ANTICIPOS'),
                         }
-                        # Por cada concepto con importe, crear dos líneas: una al debe y otra al haber, misma cuenta y mismo importe
+                        # Diccionario de mapeo concepto-cuenta para debe y haber
+                        cuentas_concepto = {
+                            'LIQUIDO':    {'debe': '640000', 'haber': '465000'},   # Gasto salarial vs Remuneraciones pendientes de pago
+                            'IRPF':       {'debe': '640000', 'haber': '475100'},   # Gasto salarial vs Hacienda Pública, retenciones IRPF
+                            'SS_TRABAJ':  {'debe': '640000', 'haber': '476000'},   # Gasto salarial vs Seguridad Social a cargo del trabajador
+                            'SS_EMPRES':  {'debe': '642000', 'haber': '476000'},   # Seguridad Social empresa vs Seguridad Social a cargo del trabajador
+                            'DIETA':      {'debe': '640000', 'haber': '465000'},   # Gastos de dieta vs Remuneraciones pendientes de pago
+                            'KM':         {'debe': '640000', 'haber': '465000'},   # Gastos de kilometraje vs Remuneraciones pendientes de pago
+                            'GRATIFICAC': {'debe': '640000', 'haber': '465000'},   # Gratificaciones vs Remuneraciones pendientes de pago
+                            'COST GEST':  {'debe': '640000', 'haber': '465000'},   # Costes de gestión vs Remuneraciones pendientes de pago
+                            'COST CT':    {'debe': '640000', 'haber': '465000'},   # Costes de contrato vs Remuneraciones pendientes de pago
+                            'COST DESP':  {'debe': '640000', 'haber': '465000'},   # Costes de desplazamiento vs Remuneraciones pendientes de pago
+                            'DEDUCCION':  {'debe': '640000', 'haber': '460000'},   # Deducciones varias
+                            'ANTICIPOS':  {'debe': '640000', 'haber': '460000'},   # Anticipos
+                        }
+                        # Por cada concepto con importe, crear dos líneas: una al debe y otra al haber, cada una con su cuenta
                         lineas_contables = []
                         for concepto, importe in importes.items():
                             if abs(importe) > 0.0001:
+                                cuentas = cuentas_concepto.get(concepto)
+                                if not cuentas or not cuentas.get('debe') or not cuentas.get('haber'):
+                                    log_lines.append(f"<li style='color:orange;'>Advertencia: No hay cuentas definidas para debe/haber del concepto {concepto}. Se omite.</li>")
+                                    continue
+                                cuenta_debe = self.env['account.account'].search([('code', '=', cuentas['debe'])], limit=1)
+                                cuenta_haber = self.env['account.account'].search([('code', '=', cuentas['haber'])], limit=1)
+                                if not cuenta_debe or not cuenta_haber:
+                                    log_lines.append(f"<li style='color:orange;'>Advertencia: No se encontró la cuenta debe ({cuentas['debe']}) o haber ({cuentas['haber']}) para el concepto {concepto}. Se omite.</li>")
+                                    continue
                                 # Línea al debe
                                 lineas_contables.append((0, 0, {
-                                    'account_id': account_gasto.id,
+                                    'account_id': cuenta_debe.id,
                                     'name': f"{concepto} {empleado.get('Nombre','')} (Debe)",
                                     'debit': abs(importe),
                                     'credit': 0.0,
@@ -187,7 +211,7 @@ class AiciaImporterPayrollWizard(models.TransientModel):
                                 }))
                                 # Línea al haber
                                 lineas_contables.append((0, 0, {
-                                    'account_id': account_gasto.id,
+                                    'account_id': cuenta_haber.id,
                                     'name': f"{concepto} {empleado.get('Nombre','')} (Haber)",
                                     'debit': 0.0,
                                     'credit': abs(importe),
