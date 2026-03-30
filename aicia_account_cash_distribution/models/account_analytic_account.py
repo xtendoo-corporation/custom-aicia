@@ -53,11 +53,14 @@ class AccountAnalyticAccount(models.Model):
             ])
     def _compute_project_margin(self):
         """
-        Calcula el margen del proyecto usando account.analytic.line.
-        account_id es FK directa al proyecto; amount ya incluye el % analítico.
-        Convención: grupo 7 crédito => aal.amount > 0 (ingreso)
-                    grupo 6 débito  => aal.amount < 0 (gasto, invertimos signo)
-        Savepoints para no abortar la transacción en caso de error SQL.
+        Calcula el margen del proyecto (Grupo 7 - Grupo 6).
+
+        Notas de implementación Odoo 19:
+        - account.account.code se almacena en columna 'code_store' (JSONB: {"company_id": "600000"})
+          → se filtra con code_store::text LIKE '%": "6%' / '%": "7%'
+        - analytic_distribution en account.move.line es JSONB
+          → se usa el operador ? para comprobar si contiene la clave (ID analítica)
+        - Savepoints para no abortar la transacción en caso de error SQL.
         """
         for account in self:
             sp = 'sp_margin_%d' % account.id
@@ -66,30 +69,34 @@ class AccountAnalyticAccount(models.Model):
                 self.env.cr.execute("""
                     SELECT
                         COALESCE(SUM(
-                            CASE WHEN aa.code LIKE '7%%'
-                            THEN aal.amount
+                            CASE WHEN aa.code_store::text LIKE '%%": "7%%'
+                            THEN -(aml.balance)
+                                 * COALESCE((aml.analytic_distribution->>%(aid)s)::numeric, 0)
+                                 / 100.0
                             ELSE 0 END
                         ), 0.0) AS income,
                         COALESCE(SUM(
-                            CASE WHEN aa.code LIKE '6%%'
-                            THEN -aal.amount
+                            CASE WHEN aa.code_store::text LIKE '%%": "6%%'
+                            THEN aml.balance
+                                 * COALESCE((aml.analytic_distribution->>%(aid)s)::numeric, 0)
+                                 / 100.0
                             ELSE 0 END
                         ), 0.0) AS expense,
-                        COUNT(aal.id) AS cnt
-                    FROM account_analytic_line aal
-                    JOIN account_move_line aml ON aml.id = aal.move_line_id
-                    JOIN account_account aa   ON aa.id  = aml.account_id
-                    JOIN account_move am      ON am.id  = aml.move_id
-                    WHERE aal.account_id = %(account_id)s
-                      AND (aa.code LIKE '6%%' OR aa.code LIKE '7%%')
+                        COUNT(aml.id) AS cnt
+                    FROM account_move_line aml
+                    JOIN account_account aa ON aa.id = aml.account_id
+                    JOIN account_move am    ON am.id = aml.move_id
+                    WHERE aml.analytic_distribution ? %(aid)s
+                      AND (   aa.code_store::text LIKE '%%": "6%%'
+                           OR aa.code_store::text LIKE '%%": "7%%')
                       AND am.state = 'posted'
-                """, {'account_id': account.id})
+                """, {'aid': str(account.id)})
                 row = self.env.cr.fetchone()
                 income  = float(row[0]) if row and row[0] is not None else 0.0
                 expense = float(row[1]) if row and row[1] is not None else 0.0
-                account.project_income = income
+                account.project_income  = income
                 account.project_expense = expense
-                account.project_margin = income - expense
+                account.project_margin  = income - expense
                 account.project_margin_line_count = int(row[2]) if row and row[2] is not None else 0
                 self.env.cr.execute('RELEASE SAVEPOINT "%s"' % sp)
             except Exception:
@@ -98,29 +105,29 @@ class AccountAnalyticAccount(models.Model):
                 )
                 self.env.cr.execute('ROLLBACK TO SAVEPOINT "%s"' % sp)
                 self.env.cr.execute('RELEASE SAVEPOINT "%s"' % sp)
-                account.project_income = 0.0
+                account.project_income  = 0.0
                 account.project_expense = 0.0
-                account.project_margin = 0.0
+                account.project_margin  = 0.0
                 account.project_margin_line_count = 0
     def action_view_project_margin_lines(self):
         """
-        Abre los apuntes contables de grupos 6 y 7 imputados a esta analítica,
-        obtenidos vía account.analytic.line para máxima fiabilidad.
+        Abre los apuntes contables de grupos 6 y 7 imputados a esta analítica.
+        Usa la misma lógica SQL que _compute_project_margin.
         """
         self.ensure_one()
         sp = 'sp_margin_lines_%d' % self.id
         self.env.cr.execute('SAVEPOINT "%s"' % sp)
         try:
             self.env.cr.execute("""
-                SELECT DISTINCT aml.id
-                FROM account_analytic_line aal
-                JOIN account_move_line aml ON aml.id = aal.move_line_id
-                JOIN account_account aa   ON aa.id  = aml.account_id
-                JOIN account_move am      ON am.id  = aml.move_id
-                WHERE aal.account_id = %(account_id)s
-                  AND (aa.code LIKE '6%%' OR aa.code LIKE '7%%')
+                SELECT aml.id
+                FROM account_move_line aml
+                JOIN account_account aa ON aa.id = aml.account_id
+                JOIN account_move am    ON am.id = aml.move_id
+                WHERE aml.analytic_distribution ? %(aid)s
+                  AND (   aa.code_store::text LIKE '%%": "6%%'
+                       OR aa.code_store::text LIKE '%%": "7%%')
                   AND am.state = 'posted'
-            """, {'account_id': self.id})
+            """, {'aid': str(self.id)})
             line_ids = [row[0] for row in self.env.cr.fetchall()]
             self.env.cr.execute('RELEASE SAVEPOINT "%s"' % sp)
         except Exception:
