@@ -7,15 +7,14 @@
         <field name="arch" type="xml">
             <xpath expr="//block[.//field[@name='group_analytic_accounting']]" position="after">
                 <block title="Distribución de Cobros AICIA" id="aicia_cash_distribution">
-                    <setting string="Activar Distribución de Cobros" help="Genera asientos analíticos automáticos al conciliar cobros de clientes">
-                        <field name="cash_distribution_active"/>
-                        <div class="content-group" invisible="not cash_distribution_active">
+                    <setting string="Configuración de Distribución" help="Configura los valores por defecto para los asientos analíticos de cobros">
+                        <div class="content-group">
                             <div class="row mt16">
-                                <label for="cash_distribution_journal_id" class="col-lg-3 o_light_label"/>
+                                <label for="cash_distribution_journal_id" string="Diario de Distribución" class="col-lg-4 o_light_label"/>
                                 <field name="cash_distribution_journal_id"/>
                             </div>
                             <div class="row mt8">
-                                <label for="cash_distribution_receiver_analytic_id" class="col-lg-3 o_light_label"/>
+                                <label for="cash_distribution_receiver_analytic_id" string="Analítica Receptora (Defecto)" class="col-lg-4 o_light_label"/>
                                 <field name="cash_distribution_receiver_analytic_id"/>
                             </div>
                         </div>

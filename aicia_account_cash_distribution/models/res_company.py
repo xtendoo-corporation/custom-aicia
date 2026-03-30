@@ -4,9 +4,6 @@ from odoo import models, fields
 class ResCompany(models.Model):
     _inherit = 'res.company'
 
-    cash_distribution_active = fields.Boolean(
-        string='Activar Distribución de Cobros', default=False,
-    )
     cash_distribution_journal_id = fields.Many2one(
         'account.journal', string='Diario de Distribución',
         check_company=True,

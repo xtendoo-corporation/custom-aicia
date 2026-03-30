@@ -30,13 +30,16 @@ class TestDistributionRule(AiciaCashDistributionCommon):
         self.assertIn(self.analytic_account_a, plan.source_analytic_account_ids)
 
     def test_03_create_rule_with_destination_analytic(self):
-        """A plan with a receiver analytic account should store it correctly."""
+        """A plan's line with a fixed credit analytic should store it correctly."""
         plan = self._create_rule(
             name='Plan with Receiver',
             percentage=15.0,
             dest_analytic=self.analytic_account_dest,
         )
-        self.assertEqual(plan.receiver_analytic_account_id, self.analytic_account_dest)
+        self.assertEqual(
+            plan.line_ids[0].credit_analytic_account_id,
+            self.analytic_account_dest,
+        )
 
     def test_04_plan_without_analytics_never_fires(self):
         """A plan with no analytics assigned never fires (no catch-all behavior)."""
@@ -131,9 +134,10 @@ class TestDistributionRule(AiciaCashDistributionCommon):
                 'is_vat_line': True,
                 'percentage': 100.0,
                 'debit_account_id': self.account_dist_debit.id,
-                'debit_analytic_side': 'receiver',
+                'debit_analytic_side': 'source',
                 'credit_account_id': self.account_dist_credit.id,
-                'credit_analytic_side': 'source',
+                'credit_analytic_side': 'fixed',
+                'credit_analytic_account_id': self.analytic_account_dest.id,
             })
 
     def test_15_vat_line_requires_opposite_analytic_sides(self):
@@ -146,9 +150,11 @@ class TestDistributionRule(AiciaCashDistributionCommon):
                 'is_vat_line': True,
                 'percentage': 100.0,
                 'debit_account_id': self.account_dist_credit.id,
-                'debit_analytic_side': 'receiver',
+                'debit_analytic_side': 'fixed',
+                'debit_analytic_account_id': self.analytic_account_dest.id,
                 'credit_account_id': self.account_dist_credit.id,
-                'credit_analytic_side': 'receiver',
+                'credit_analytic_side': 'fixed',
+                'credit_analytic_account_id': self.analytic_account_dest.id,
             })
 
     def test_16_normalize_legacy_vat_line_accounts(self):
@@ -160,7 +166,8 @@ class TestDistributionRule(AiciaCashDistributionCommon):
             'is_vat_line': True,
             'percentage': 100.0,
             'debit_account_id': self.account_dist_credit.id,
-            'debit_analytic_side': 'receiver',
+            'debit_analytic_side': 'fixed',
+            'debit_analytic_account_id': self.analytic_account_dest.id,
             'credit_account_id': self.account_dist_credit.id,
             'credit_analytic_side': 'source',
         })

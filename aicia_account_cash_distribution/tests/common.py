@@ -129,7 +129,6 @@ class AiciaCashDistributionCommon(TransactionCase):
 
         # ── Enable distribution for the company ──────────────────────────────
         cls.company.write({
-            'cash_distribution_active': True,
             'cash_distribution_journal_id': cls.misc_journal.id,
             'cash_distribution_receiver_analytic_id': cls.analytic_account_dest.id,
         })
@@ -147,7 +146,6 @@ class AiciaCashDistributionCommon(TransactionCase):
         plan = self.env['aicia.distribution.plan'].create({
             'name': name,
             'company_id': self.company.id,
-            'receiver_analytic_account_id': (dest_analytic or self.analytic_account_dest).id,
             'active': active,
         })
 
@@ -158,10 +156,19 @@ class AiciaCashDistributionCommon(TransactionCase):
             })
 
         # Create a single line for the plan
-        debit_analytic_side = 'receiver' if rule_type == 'dest' else 'source'
-        credit_analytic_side = 'source' if rule_type == 'dest' else 'receiver'
+        dest = dest_analytic or self.analytic_account_dest
+        if rule_type == 'dest':
+            debit_analytic_side = 'fixed'
+            debit_analytic_account_id = dest.id
+            credit_analytic_side = 'source'
+            credit_analytic_account_id = False
+        else:
+            debit_analytic_side = 'source'
+            debit_analytic_account_id = False
+            credit_analytic_side = 'fixed'
+            credit_analytic_account_id = dest.id
 
-        self.env['aicia.distribution.plan.line'].create({
+        line_vals = {
             'plan_id': plan.id,
             'name': f'{name} Line',
             'is_vat_line': is_vat_line,
@@ -170,7 +177,13 @@ class AiciaCashDistributionCommon(TransactionCase):
             'debit_analytic_side': debit_analytic_side,
             'credit_account_id': (credit_account or self.account_dist_credit).id,
             'credit_analytic_side': credit_analytic_side,
-        })
+        }
+        if debit_analytic_account_id:
+            line_vals['debit_analytic_account_id'] = debit_analytic_account_id
+        if credit_analytic_account_id:
+            line_vals['credit_analytic_account_id'] = credit_analytic_account_id
+
+        self.env['aicia.distribution.plan.line'].create(line_vals)
 
         return plan
 

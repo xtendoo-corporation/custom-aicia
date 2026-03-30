@@ -49,8 +49,7 @@ class AccountPaymentRegister(models.TransientModel):
             return self.env['aicia.distribution.plan']
         if self.distribution_plan_id:
             return self.distribution_plan_id
-        if self.env.company.cash_distribution_active:
-            return self._detect_distribution_plan()
+        return self._detect_distribution_plan()
         return self.env['aicia.distribution.plan']
 
     def _create_payment_vals_from_wizard(self, batch_result):
@@ -93,22 +92,44 @@ class AccountPaymentRegister(models.TransientModel):
         )._sync_distribution_plan_from_invoices()
         return res
 
+    @api.onchange('line_ids')
+    def _onchange_line_ids_detect_plan(self):
+        for wizard in self:
+            if not wizard.distribution_plan_id:
+                plan = wizard._detect_distribution_plan()
+                if plan:
+                    wizard.distribution_plan_id = plan
+
     @api.model
     def _detect_distribution_plan_from_context(self):
         """Detecta el plan desde los documentos activos del wizard."""
-        if self.env.context.get('active_model') != 'account.move':
-            return self.env['aicia.distribution.plan']
-        moves = self.env['account.move'].browse(self.env.context.get('active_ids', []))
-        return self._detect_distribution_plan_from_moves(moves)
+        # Se prioriza el active_model/active_ids del contexto
+        active_model = self.env.context.get('active_model')
+        if active_model == 'account.move':
+            active_ids = self.env.context.get('active_ids') or [self.env.context.get('active_id')]
+            active_ids = [aid for aid in active_ids if aid]
+            if active_ids:
+                moves = self.env['account.move'].browse(active_ids)
+                return self._detect_distribution_plan_from_moves(moves)
+        elif active_model == 'account.move.line':
+            # Si se viene desde apuntes contables, detectamos desde los asientos de esos apuntes
+            active_ids = self.env.context.get('active_ids') or [self.env.context.get('active_id')]
+            active_ids = [aid for aid in active_ids if aid]
+            if active_ids:
+                lines = self.env['account.move.line'].browse(active_ids)
+                return self._detect_distribution_plan_from_moves(lines.move_id)
+                
+        return self.env['aicia.distribution.plan']
 
     @api.model
     def _detect_distribution_plan_from_moves(self, moves):
-        """Prioriza la analítica de cabecera y solo autocompleta si el plan es inequívoco."""
-        if not self._is_distribution_plan_applicable_moves(moves):
+        """Detecta el plan desde un lote de asientos."""
+        if not moves:
             return self.env['aicia.distribution.plan']
+        # Usamos el método de account.payment que ahora es más robusto
         return self.env['account.payment']._get_distribution_plan_from_invoices(moves)
 
     def _detect_distribution_plan(self):
-        """Compatibilidad: detecta el plan desde las líneas cargadas en el wizard."""
+        """Detecta el plan desde las líneas ya cargadas en el objeto Transient."""
         moves = self.line_ids.move_id
         return self._detect_distribution_plan_from_moves(moves)

@@ -4,11 +4,6 @@ from odoo import models, fields
 class ResConfigSettings(models.TransientModel):
     _inherit = 'res.config.settings'
 
-    cash_distribution_active = fields.Boolean(
-        related='company_id.cash_distribution_active',
-        string='Activar Distribución de Cobros',
-        readonly=False,
-    )
     cash_distribution_journal_id = fields.Many2one(
         related='company_id.cash_distribution_journal_id',
         string='Diario de Distribución',

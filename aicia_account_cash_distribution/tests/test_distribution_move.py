@@ -183,7 +183,6 @@ class TestDistributionMove(AiciaCashDistributionCommon):
         manual_plan = self.env['aicia.distribution.plan'].create({
             'name': 'Manual Wizard Plan',
             'company_id': self.company.id,
-            'receiver_analytic_account_id': self.analytic_account_dest.id,
             'active': True,
         })
         self.env['aicia.distribution.plan.line'].create({
@@ -193,7 +192,8 @@ class TestDistributionMove(AiciaCashDistributionCommon):
             'debit_account_id': self.account_dist_debit.id,
             'debit_analytic_side': 'source',
             'credit_account_id': self.account_dist_credit.id,
-            'credit_analytic_side': 'receiver',
+            'credit_analytic_side': 'fixed',
+            'credit_analytic_account_id': self.analytic_account_dest.id,
         })
 
         invoice = self._create_invoice(amount=1000.0, analytic_account=self.analytic_account_a)
@@ -343,9 +343,10 @@ class TestDistributionMove(AiciaCashDistributionCommon):
         manual_plan = self.env['aicia.distribution.plan'].create({
             'name': 'Manual Override Plan',
             'company_id': self.company.id,
-            'receiver_analytic_account_id': self.analytic_account_dest.id,
             'active': True,
-            'source_analytic_account_ids': [(6, 0, [self.analytic_account_b.id])],
+        })
+        self.env['account.analytic.account'].browse(self.analytic_account_b.id).write({
+            'distribution_plan_id': manual_plan.id,
         })
         self.env['aicia.distribution.plan.line'].create({
             'plan_id': manual_plan.id,
@@ -354,7 +355,8 @@ class TestDistributionMove(AiciaCashDistributionCommon):
             'debit_account_id': self.account_dist_debit.id,
             'debit_analytic_side': 'source',
             'credit_account_id': self.account_dist_credit.id,
-            'credit_analytic_side': 'receiver',
+            'credit_analytic_side': 'fixed',
+            'credit_analytic_account_id': self.analytic_account_dest.id,
         })
 
         invoice = self._create_invoice(amount=1000.0, analytic_account=self.analytic_account_a)

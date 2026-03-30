@@ -108,19 +108,6 @@ class TestCashDistributionCore(AiciaCashDistributionCommon):
         self.assertEqual(count_before, count_after,
                          "No distribution when all rules are inactive.")
 
-    def test_07_distribution_inactive_company_flag(self):
-        """When cash_distribution_active=False, no distribution is generated."""
-        self.company.write({'cash_distribution_active': False})
-        try:
-            invoice = self._create_invoice(amount=1000.0, analytic_account=self.analytic_account_a)
-            count_before = self.env['account.move'].search_count([('is_cash_distribution_move', '=', True)])
-            self._register_payment(invoice)
-            count_after = self.env['account.move'].search_count([('is_cash_distribution_move', '=', True)])
-            self.assertEqual(count_before, count_after,
-                             "Distribution must be disabled when company flag is off.")
-        finally:
-            self.company.write({'cash_distribution_active': True})
-
     def test_08_single_plan_multiple_lines_all_applied(self):
         """A plan with two lines → both lines generate entries (10% + 20% = 300 total debit)."""
         # Añadir una segunda línea al plan existente de analytic_a
@@ -131,7 +118,8 @@ class TestCashDistributionCore(AiciaCashDistributionCommon):
             'debit_account_id': self.account_dist_debit2.id,
             'debit_analytic_side': 'source',
             'credit_account_id': self.account_dist_credit2.id,
-            'credit_analytic_side': 'receiver',
+            'credit_analytic_side': 'fixed',
+            'credit_analytic_account_id': self.analytic_account_dest.id,
         })
         invoice = self._create_invoice(amount=1000.0, analytic_account=self.analytic_account_a)
         reconciles = self._register_payment(invoice)
@@ -341,7 +329,8 @@ class TestCashDistributionCore(AiciaCashDistributionCommon):
             'is_vat_line': True,
             'percentage': 100.0,
             'debit_account_id': tax_account.id,
-            'debit_analytic_side': 'receiver',
+            'debit_analytic_side': 'fixed',
+            'debit_analytic_account_id': self.analytic_account_dest.id,
             'credit_account_id': tax_account.id,
             'credit_analytic_side': 'source',
         })
@@ -392,7 +381,8 @@ class TestCashDistributionCore(AiciaCashDistributionCommon):
             'is_vat_line': True,
             'percentage': 100.0,
             'debit_account_id': tax_account.id,
-            'debit_analytic_side': 'receiver',
+            'debit_analytic_side': 'fixed',
+            'debit_analytic_account_id': self.analytic_account_dest.id,
             'credit_account_id': tax_account.id,
             'credit_analytic_side': 'source',
         })

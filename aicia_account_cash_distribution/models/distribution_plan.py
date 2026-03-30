@@ -42,13 +42,6 @@ class AiciaDistributionPlan(models.Model):
         string='Nº Analíticas',
     )
 
-    # Analítica receptora AICIA (sobreescribe la de compañía si se indica)
-    receiver_analytic_account_id = fields.Many2one(
-        'account.analytic.account',
-        string='Analítica Receptora AICIA',
-        help="Proyecto AICIA receptor de los repartos.\n"
-             "Si no se indica, se usa la configurada en la compañía.",
-    )
 
     line_ids = fields.One2many(
         'aicia.distribution.plan.line', 'plan_id',
@@ -71,18 +64,14 @@ class AiciaDistributionPlan(models.Model):
 
     def get_receiver_analytic_id(self):
         """
-        Devuelve el id de la analítica receptora efectiva.
-        Prioridad: plan → compañía.
+        Devuelve el id de la analítica receptora configurada en la compañía.
         Retorna None (con warning) si no hay ninguna configurada.
         """
         self.ensure_one()
-        analytic = (
-            self.receiver_analytic_account_id
-            or self.company_id.cash_distribution_receiver_analytic_id
-        )
+        analytic = self.company_id.cash_distribution_receiver_analytic_id
         if not analytic:
             _logger.warning(
-                "Plan '%s' (id=%s): sin analítica receptora configurada — omitido.",
+                "Plan '%s' (id=%s): sin analítica receptora configurada en la compañía — omitido.",
                 self.name, self.id,
             )
         return analytic.id if analytic else None
@@ -97,15 +86,11 @@ class AiciaDistributionPlan(models.Model):
             ('name', '=', 'Distribución AICIA por defecto'),
         ], limit=1)
         if not plan:
-            receiver = self._ensure_receiver_analytic(company)
             plan = self.create({
                 'name': 'Distribución AICIA por defecto',
                 'company_id': company.id,
-                'receiver_analytic_account_id': receiver.id,
             })
         receiver = self._ensure_receiver_analytic(company)
-        if plan.receiver_analytic_account_id != receiver:
-            plan.write({'receiver_analytic_account_id': receiver.id})
 
         vat_account = self._get_account(company, [('code', '=', '477000')], order='code')
         if not vat_account:
@@ -125,7 +110,8 @@ class AiciaDistributionPlan(models.Model):
                     'debit_account_id': vat_account.id,
                     'credit_account_id': vat_account.id,
                     'debit_analytic_side': 'source',
-                    'credit_analytic_side': 'receiver',
+                    'credit_analytic_side': 'fixed',
+                    'credit_analytic_account_id': receiver.id,
                 })
             else:
                 self.env['aicia.distribution.plan.line'].create({
@@ -136,7 +122,8 @@ class AiciaDistributionPlan(models.Model):
                     'debit_account_id': vat_account.id,
                     'credit_account_id': vat_account.id,
                     'debit_analytic_side': 'source',
-                    'credit_analytic_side': 'receiver',
+                    'credit_analytic_side': 'fixed',
+                    'credit_analytic_account_id': receiver.id,
                 })
 
         # Base 10%
@@ -149,7 +136,8 @@ class AiciaDistributionPlan(models.Model):
                     'debit_account_id': debit_account.id,
                     'credit_account_id': credit_account.id,
                     'debit_analytic_side': 'source',
-                    'credit_analytic_side': 'receiver',
+                    'credit_analytic_side': 'fixed',
+                    'credit_analytic_account_id': receiver.id,
                 })
             else:
                 self.env['aicia.distribution.plan.line'].create({
@@ -159,8 +147,9 @@ class AiciaDistributionPlan(models.Model):
                     'percentage': 10.0,
                     'debit_account_id': debit_account.id,
                     'credit_account_id': credit_account.id,
-                    'debit_analytic_side': 'source',    # Origen paga (Gasto/Reducción Ingreso)
-                    'credit_analytic_side': 'receiver', # AICIA recibe (Ingreso)
+                    'debit_analytic_side': 'source',        # Origen paga (Gasto/Reducción Ingreso)
+                    'credit_analytic_side': 'fixed',        # AICIA recibe (Ingreso)
+                    'credit_analytic_account_id': receiver.id,
                 })
         return plan
 

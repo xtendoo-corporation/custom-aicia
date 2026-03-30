@@ -323,12 +323,12 @@ class AccountPartialReconcile(models.Model):
             if plan_line.is_vat_line:
                 iva_line_created = True
 
-            debit_analytic = (source_analytic_id
-                              if plan_line.debit_analytic_side == 'source'
-                              else receiver_analytic_id)
-            credit_analytic = (source_analytic_id
-                               if plan_line.credit_analytic_side == 'source'
-                               else receiver_analytic_id)
+            debit_analytic = plan_line._get_debit_analytic_id(
+                source_analytic_id, receiver_analytic_id
+            )
+            credit_analytic = plan_line._get_credit_analytic_id(
+                source_analytic_id, receiver_analytic_id
+            )
             label = f'Distr: {invoice.name} - {plan.name} - {plan_line.name}'
             lines.append({
                 'name': label,

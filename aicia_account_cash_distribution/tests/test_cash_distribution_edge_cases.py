@@ -182,20 +182,18 @@ class TestCashDistributionEdgeCases(AiciaCashDistributionCommon):
 
     # ── Company flag toggling ─────────────────────────────────────────────────
 
-    def test_08_re_enabling_company_flag_restores_distribution(self):
-        """After re-enabling the flag, distribution should resume normally."""
-        self.company.write({'cash_distribution_active': False})
-        invoice1 = self._create_invoice(amount=1000.0, analytic_account=self.analytic_account_a)
+    def test_08_distribution_on_multiple_invoices_same_analytic(self):
+        """Distribution must generate separate entries per payment, validated on multiple invoices."""
+        invoice1 = self._create_invoice(amount=500.0, analytic_account=self.analytic_account_a)
+        invoice2 = self._create_invoice(amount=1000.0, analytic_account=self.analytic_account_a)
+
         count_before = self.env['account.move'].search_count([('is_cash_distribution_move', '=', True)])
         self._register_payment(invoice1)
-        count_mid = self.env['account.move'].search_count([('is_cash_distribution_move', '=', True)])
-        self.assertEqual(count_before, count_mid, "Flag off: no distribution.")
-
-        self.company.write({'cash_distribution_active': True})
-        invoice2 = self._create_invoice(amount=1000.0, analytic_account=self.analytic_account_a)
         self._register_payment(invoice2)
         count_after = self.env['account.move'].search_count([('is_cash_distribution_move', '=', True)])
-        self.assertGreater(count_after, count_mid, "Flag on: distribution must resume.")
+
+        self.assertEqual(count_after - count_before, 2,
+                         "Each payment must create exactly one distribution move.")
 
     # ── Rule with destination analytic ───────────────────────────────────────
 
@@ -219,21 +217,11 @@ class TestCashDistributionEdgeCases(AiciaCashDistributionCommon):
 
     # ── Rule without destination analytic ────────────────────────────────────
 
-    def test_10_no_destination_analytic_credit_line_empty(self):
-        """When plan has no receiver analytic, the credit line analytic must be empty."""
-        self.rule.write({'receiver_analytic_account_id': False})
+    def test_10_no_destination_analytic_raises_error(self):
+        """When the company has no receiver analytic, a UserError must be raised."""
+        from odoo.exceptions import UserError
         self.rule.company_id.write({'cash_distribution_receiver_analytic_id': False})
         invoice = self._create_invoice(amount=1000.0, analytic_account=self.analytic_account_a)
-        reconciles = self._register_payment(invoice)
-        dist_moves = self.env['account.move'].search([
-            ('is_cash_distribution_move', '=', True),
-            ('distribution_partial_reconcile_id', 'in', reconciles.ids),
-        ])
-        for dm in dist_moves:
-            credit_lines = dm.line_ids.filtered(
-                lambda l: l.credit > 0 and l.account_id == self.account_dist_credit
-            )
-            for cl in credit_lines:
-                self.assertFalse(cl.analytic_distribution,
-                                 "Credit line analytic must be empty when no destination is set.")
+        with self.assertRaisesRegex(UserError, "no tiene configurada la Cuenta Analítica Receptora"):
+            self._register_payment(invoice)
 
