@@ -144,35 +144,72 @@ class AiciaImporterPayrollWizard(models.TransientModel):
                         if not journal or not account_gasto or not account_pago:
                             raise UserError(_('No se encuentra el diario "NOMINA" o las cuentas "640000"/"465000".'))
                         # Comprobar si el campo address_home_id existe en hr.employee
-                        partner_id = False
-                        if 'address_home_id' in emp._fields:
-                            partner_id = emp.address_home_id.id if emp.address_home_id else False
+                        partner_id = emp.partner_id.id if emp.partner_id else False
+                        if not partner_id:
+                            log_lines.append(f"<li style='color:orange;'>Advertencia: El empleado {empleado.get('Nombre','')} (NIF: {nif}) no tiene contacto (partner_id) asignado.</li>")
+                        # Construir analytic_distribution a partir del reparto del empleado
+                        analytic_distribution = {}
+                        for line in emp.analytic_line_ids:
+                            if line.analytic_account_id:
+                                analytic_distribution[line.analytic_account_id.id] = (line.percentage or 0.0)
+                        # Parsear todos los importes relevantes
+                        def parse_importe(empleado, campo):
+                            valor = empleado.get(campo, '0').replace(',', '.').strip()
+                            try:
+                                return float(valor)
+                            except Exception:
+                                return 0.0
+                        importes = {
+                            'LIQUIDO': liquido,
+                            'IRPF': parse_importe(empleado, 'IRPF'),
+                            'SS_TRABAJ': parse_importe(empleado, 'SS_TRABAJ'),
+                            'SS_EMPRES': parse_importe(empleado, 'SS_EMPRES'),
+                            'DIETA': parse_importe(empleado, 'DIETA'),
+                            'KM': parse_importe(empleado, 'KM'),
+                            'GRATIFICAC': parse_importe(empleado, 'GRATIFICAC'),
+                            'DEDUCCION': parse_importe(empleado, 'DEDUCCION'),
+                            'COST GEST': parse_importe(empleado, 'COST GEST'),
+                            'COST CT': parse_importe(empleado, 'COST CT'),
+                            'COST DESP': parse_importe(empleado, 'COST DESP'),
+                            'ANTICIPOS': parse_importe(empleado, 'ANTICIPOS'),
+                        }
+                        # Por cada concepto con importe, crear dos líneas: una al debe y otra al haber, misma cuenta y mismo importe
+                        lineas_contables = []
+                        for concepto, importe in importes.items():
+                            if abs(importe) > 0.0001:
+                                # Línea al debe
+                                lineas_contables.append((0, 0, {
+                                    'account_id': account_gasto.id,
+                                    'name': f"{concepto} {empleado.get('Nombre','')} (Debe)",
+                                    'debit': abs(importe),
+                                    'credit': 0.0,
+                                    'partner_id': partner_id,
+                                }))
+                                # Línea al haber
+                                lineas_contables.append((0, 0, {
+                                    'account_id': account_gasto.id,
+                                    'name': f"{concepto} {empleado.get('Nombre','')} (Haber)",
+                                    'debit': 0.0,
+                                    'credit': abs(importe),
+                                    'partner_id': partner_id,
+                                }))
                         move_vals = {
                             'journal_id': journal.id,
                             'date': fields.Date.today(),
                             'ref': f"Nómina {empleado.get('Nombre','')} {empleado.get('NIF','')}",
                             'state': 'draft',
-                            'line_ids': [
-                                (0, 0, {
-                                    'account_id': account_gasto.id,
-                                    'name': f"Nómina {empleado.get('Nombre','')}",
-                                    'debit': liquido,
-                                    'credit': 0.0,
-                                    'partner_id': partner_id,
-                                }),
-                                (0, 0, {
-                                    'account_id': account_pago.id,
-                                    'name': f"Pago nómina {empleado.get('Nombre','')}",
-                                    'debit': 0.0,
-                                    'credit': liquido,
-                                    'partner_id': partner_id,
-                                }),
-                            ],
+                            'analytic_distribution': analytic_distribution,
+                            'line_ids': lineas_contables,
                         }
                         move = self.env['account.move'].create(move_vals)
+                        # Forzar el onchange para propagar el reparto a las líneas
+                        if hasattr(move, 'onchange_analytic_distribution'):
+                            move.onchange_analytic_distribution()
                         created_moves.append(move.id)
                         move_url = f"/web#id={move.id}&model=account.move&view_type=form"
-                        log_lines.append(f"<li><b>{empleado.get('NIF','')} - {empleado.get('Nombre','')}</b> - Asiento creado: <a href='{move_url}' target='_blank'>{move.name}</a> - Importe: {liquido:.2f} €</li>")
+                        # Calcular el total de importes añadidos (suma de todos los conceptos relevantes)
+                        total_importe = sum(abs(imp) for imp in importes.values() if abs(imp) > 0.0001)
+                        log_lines.append(f"<li><b>{empleado.get('NIF','')} - {empleado.get('Nombre','')}</b> - Asiento creado: <a href='{move_url}' target='_blank'>{move.name}</a> - <b>Total conceptos:</b> {total_importe:.2f} €</li>")
                     else:
                         print(f"  [Empleado con NIF {nif} no encontrado en Odoo]")
                         log_lines.append(f"<li style='color:red;'>Empleado con NIF {nif} no encontrado en Odoo</li>")
@@ -202,4 +239,3 @@ class AiciaImporterPayrollWizard(models.TransientModel):
             'target': 'new',
             'context': self.env.context,
         }
-
