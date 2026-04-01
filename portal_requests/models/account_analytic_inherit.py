@@ -38,7 +38,7 @@ class AccountAnalyticAccountInherit(models.Model):
                                      domain="[('id', 'in', responsible_domain)]")
 
     user_can_edit = fields.Boolean(string='User Can Edit', compute='_compute_user_can_edit')
-    presupuesto = fields.Float(string='Presupuesto', tracking=True)
+    presupuesto = fields.Float(string='Presupuesto AICIA', tracking=True)
 
     @api.depends('work_group_id', 'responsible_id')
     def _compute_user_can_edit(self):
@@ -62,7 +62,7 @@ class AccountAnalyticAccountInherit(models.Model):
             ])
             record.attachment_count = attachment_count
 
-    attachment_count = fields.Integer(string='Attachment Count', compute='_compute_attachment_count')
+    attachment_count = fields.Integer(string='Adjuntos', compute='_compute_attachment_count')
 
     def _compute_invoice_count(self):
         """Cuenta las facturas asociadas a esta cuenta analítica"""

@@ -15,6 +15,7 @@
         Wizard para importar proveedores, clientes y personal desde archivos Excel.
         """,
     "data": [
+        "security/ir.model.access.csv",
         "views/res_partner.xml",
         "views/hr_employee.xml",
     ],

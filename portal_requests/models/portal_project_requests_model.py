@@ -11,7 +11,7 @@ class PortalProjectRequest(models.Model):
     company_id = fields.Many2one('res.company', string='Compañía', required=True, tracking=True)
     work_group_id = fields.Many2one('portal.work.group', string='Grupo de Trabajo', tracking=True)
     partner_id = fields.Many2one('res.partner', string='Cliente', tracking=True)
-    partner_id_char = fields.Char(string='Cliente', store=True)
+    partner_id_char = fields.Char(string='Nombre del Cliente', store=True)
     date_start = fields.Date(string='Start Date')
     date_end = fields.Date(string='End Date')
     project_name = fields.Char(string='Project Name')

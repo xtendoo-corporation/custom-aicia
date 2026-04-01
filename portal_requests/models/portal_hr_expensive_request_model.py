@@ -83,7 +83,7 @@ class PortalHrExpensiveRequest(models.Model):
             else:
                 record.show_project_credit = False
 
-    show_group_credit = fields.Boolean(string='Mostrar Saldo del Proyecto', compute='_compute_show_group_credit')
+    show_group_credit = fields.Boolean(string='Mostrar Saldo del Grupo', compute='_compute_show_group_credit')
 
     @api.depends('user_id', 'project')
     def _compute_show_group_credit(self):
