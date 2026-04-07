@@ -10,6 +10,15 @@
             <attribute name="t-value">'267'</attribute>
         </xpath>
 
+        <xpath expr="//div[contains(@class, 'd-flex justify-content-between')]/div[1]" position="attributes">
+            <attribute name="class" remove="w-50" separator=" "/>
+            <attribute name="style">width: 30% !important;</attribute>
+        </xpath>
+
+        <xpath expr="//div[@name='company_address']" position="attributes">
+            <attribute name="class" remove="w-50" separator=" "/>
+            <attribute name="style">width: 70% !important;</attribute>
+        </xpath>
 
         <xpath expr="//img[@t-if='company.logo']" position="before">
             <style>
@@ -17,11 +26,33 @@
                     max-height: 8rem !important;
                     max-width: 10rem !important;
                 }
+
+                div[name='company_address'] ul[name='company_address_list'] li span[t-field='company.company_details'] > div:first-child,
+                div[name='company_address'] ul[name='company_address_list'] li span[t-field='company.company_details'] > div:nth-child(2) {
+                    display: inline !important;
+                    white-space: nowrap !important;
+                }
+
+                div[name='company_address'] ul[name='company_address_list'] li span[t-field='company.company_details'] > div:first-child::after {
+                    content: " ";
+                }
+
+                div[name='company_address'] ul[name='company_address_list'] li span[t-field='company.company_details'] > div:first-child br:first-child {
+                    display: none !important;
+                }
             </style>
         </xpath>
     </template>
 
     <template id="report_invoice_document_aicia" inherit_id="account.report_invoice_document">
+        <xpath expr="//th[@name='th_quantity']" position="replace"/>
+
+        <xpath expr="//td[@name='td_quantity']" position="replace"/>
+
+        <xpath expr="//th[@name='th_priceunit']" position="replace"/>
+
+        <xpath expr="//td[@name='td_price_unit']" position="replace"/>
+
         <xpath expr="//t[@name='invoice_title']" position="replace">
             <t name="invoice_title">Número de Factura</t>
         </xpath>
