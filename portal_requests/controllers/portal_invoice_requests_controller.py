@@ -107,7 +107,7 @@ class PortalInvoiceController(Controller):
                 'email_to': email,
                 'body_html': body_html,
             }
-            mail = request.env['mail.mail'].create(mail_values)
+            mail = request.env['mail.mail'].sudo().create(mail_values)
 
             mail.send()
 

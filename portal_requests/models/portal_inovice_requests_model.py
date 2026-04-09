@@ -113,7 +113,7 @@ class PortalInvoiceRequest(models.Model):
                         'email_to': email,
                         'body_html': body_html,
                     }
-                    mail = self.env['mail.mail'].create(mail_values)
+                    mail = self.env['mail.mail'].sudo().create(mail_values)
                     mail.send()
             if type == 'approved_by_boss_group':
                 for admin_user in users_to_send:
@@ -132,7 +132,7 @@ class PortalInvoiceRequest(models.Model):
                         'email_to': email,
                         'body_html': body_html,
                     }
-                    mail = self.env['mail.mail'].create(mail_values)
+                    mail = self.env['mail.mail'].sudo().create(mail_values)
                     mail.send()
             if type == 'rejected':
                 for admin_user in users_to_send:
@@ -152,7 +152,7 @@ class PortalInvoiceRequest(models.Model):
                         'email_to': email,
                         'body_html': body_html,
                     }
-                    mail = self.env['mail.mail'].create(mail_values)
+                    mail = self.env['mail.mail'].sudo().create(mail_values)
                     mail.send()
 
 

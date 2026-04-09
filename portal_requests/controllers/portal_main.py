@@ -147,7 +147,8 @@ class PortalRequestsCustomerPortal(CustomerPortal):
         # Obtener TODOS los mensajes del chatter usando sudo para tener acceso completo
         raw_messages = request.env['mail.message'].sudo().search([
             ('model', '=', 'portal.hr.expensive.request'),
-            ('res_id', '=', expense_id)
+            ('res_id', '=', expense_id),
+            ('subtype_id.internal', '!=', True),
         ], order='date desc')
         messages = self._enrich_messages(raw_messages)
 
@@ -249,7 +250,8 @@ class PortalRequestsCustomerPortal(CustomerPortal):
         # Obtener TODOS los mensajes del chatter usando sudo
         raw_messages = request.env['mail.message'].sudo().search([
             ('model', '=', 'portal.invoice.request'),
-            ('res_id', '=', invoice_request_id)
+            ('res_id', '=', invoice_request_id),
+            ('subtype_id.internal', '!=', True),
         ], order='date desc')
         messages = self._enrich_messages(raw_messages)
 
@@ -335,7 +337,8 @@ class PortalRequestsCustomerPortal(CustomerPortal):
         # Obtener TODOS los mensajes del chatter de la factura usando sudo
         messages = request.env['mail.message'].sudo().search([
             ('model', '=', 'account.move'),
-            ('res_id', '=', invoice.id)
+            ('res_id', '=', invoice.id),
+            ('subtype_id.internal', '!=', True),
         ], order='date desc')
 
         # Renderizar una vista personalizada de la factura
@@ -450,7 +453,8 @@ class PortalRequestsCustomerPortal(CustomerPortal):
         # Obtener TODOS los mensajes del chatter usando sudo
         raw_messages = request.env['mail.message'].sudo().search([
             ('model', '=', 'document.approval'),
-            ('res_id', '=', document_id)
+            ('res_id', '=', document_id),
+            ('subtype_id.internal', '!=', True),
         ], order='date desc')
         messages = self._enrich_messages(raw_messages)
 
@@ -489,19 +493,25 @@ class PortalRequestsCustomerPortal(CustomerPortal):
     @http.route(['/my/documents/<int:document_id>/post_message'], type='http', auth="user", website=True, methods=['POST'], csrf=True)
     def portal_document_post_message(self, document_id, message, **kw):
         """Permite al usuario portal enviar un mensaje en la solicitud de documento"""
-        document = request.env['document.approval'].browse(document_id)
+        user = request.env.user
+        document = request.env['document.approval'].sudo().browse(document_id)
 
-        # Verificar que la solicitud pertenece al usuario actual
-        if document.user_id != request.env.user:
+        # Verificar acceso: el creador O el jefe de equipo del grupo de trabajo
+        is_owner = document.user_id == user
+        is_boss_of_group = False
+        if user.has_group('portal_requests.group_equip_boss') and document.work_group_id:
+            is_boss_of_group = document.work_group_id.equip_boss == user
+
+        if not is_owner and not is_boss_of_group:
             return request.redirect('/my')
 
         # Publicar el mensaje
         if message and message.strip():
-            document.message_post(
+            document.sudo().message_post(
                 body=message,
                 message_type='comment',
                 subtype_xmlid='mail.mt_comment',
-                author_id=request.env.user.partner_id.id
+                author_id=user.partner_id.id
             )
 
         # Redirigir de vuelta al detalle
@@ -561,7 +571,8 @@ class PortalRequestsCustomerPortal(CustomerPortal):
         # Obtener TODOS los mensajes del chatter usando sudo para tener acceso completo
         raw_messages = request.env['mail.message'].sudo().search([
             ('model', '=', 'account.analytic.account'),
-            ('res_id', '=', project_id)
+            ('res_id', '=', project_id),
+            ('subtype_id.internal', '!=', True),
         ], order='date desc')
 
         # Enriquecer mensajes: si el body está vacío, construirlo desde tracking_value_ids
@@ -700,7 +711,8 @@ class PortalRequestsCustomerPortal(CustomerPortal):
         # Obtener los mensajes del chatter de la factura
         raw_messages = request.env['mail.message'].sudo().search([
             ('model', '=', 'account.move'),
-            ('res_id', '=', invoice_id)
+            ('res_id', '=', invoice_id),
+            ('subtype_id.internal', '!=', True),
         ], order='date desc')
         messages = self._enrich_messages(raw_messages)
 
@@ -786,7 +798,8 @@ class PortalRequestsCustomerPortal(CustomerPortal):
         # Obtener los mensajes del chatter
         raw_messages = request.env['mail.message'].sudo().search([
             ('model', '=', 'portal.project.request'),
-            ('res_id', '=', request_id)
+            ('res_id', '=', request_id),
+            ('subtype_id.internal', '!=', True),
         ], order='date desc')
         messages = self._enrich_messages(raw_messages)
 
