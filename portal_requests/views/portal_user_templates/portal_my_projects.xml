@@ -109,7 +109,7 @@
                                                 <p><span t-esc="project.company_id.name if project.company_id else '-'"/></p>
                                             </div>
                                             <div class="mb-3">
-                                                <strong>Balance:</strong>
+                                                <strong>Saldo:</strong>
                                                 <p><span t-esc="project.balance"/>€</p>
                                             </div>
                                             <div class="mb-3">

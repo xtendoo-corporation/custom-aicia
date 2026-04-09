@@ -54,6 +54,20 @@ class PortalRequestsCustomerPortal(CustomerPortal):
             return True
         return False
 
+    def _get_accessible_analytic_project_domain(self, user):
+        """Dominio de proyectos visibles en portal para el usuario actual.
+        - Usuario normal: solo proyectos donde es responsable.
+        - Jefe de equipo: propios + proyectos de grupos donde es equip_boss.
+        """
+        domain = [('responsible_id', '=', user.id)]
+        if user.has_group('portal_requests.group_equip_boss'):
+            boss_group_ids = request.env['portal.work.group'].sudo().search([
+                ('equip_boss', '=', user.id)
+            ]).ids
+            if boss_group_ids:
+                domain = ['|', ('responsible_id', '=', user.id), ('work_group_id', 'in', boss_group_ids)]
+        return domain
+
     def _prepare_home_portal_values(self, counters):
         """Añade contadores personalizados al portal"""
         values = super()._prepare_home_portal_values(counters)
@@ -76,11 +90,11 @@ class PortalRequestsCustomerPortal(CustomerPortal):
         # ])
         # values['document_approval_count'] = document_approval_count
 
-        # Contador de proyectos analíticos donde el usuario es responsable
+        # Contador de proyectos analíticos visibles para el usuario portal
         if 'analytic_project_count' in counters:
-            analytic_project_count = request.env['account.analytic.account'].search_count([
-                ('responsible_id', '=', request.env.user.id)
-            ])
+            analytic_project_count = request.env['account.analytic.account'].search_count(
+                self._get_accessible_analytic_project_domain(request.env.user)
+            )
             values['analytic_project_count'] = analytic_project_count
 
         # Contador de solicitudes de proyectos - siempre se calcula para que la tarjeta se muestre
@@ -499,13 +513,13 @@ class PortalRequestsCustomerPortal(CustomerPortal):
 
     @http.route(['/my/analytic_projects', '/my/analytic_projects/page/<int:page>'], type='http', auth="user", website=True)
     def portal_my_projects(self, page=1, sortby=None, filterby=None, **kw):
-        """Muestra el listado de proyectos (cuentas analíticas) donde el usuario es responsable"""
+        """Muestra el listado de proyectos visibles para el usuario portal."""
         user = request.env.user
 
-        # Búsqueda de cuentas analíticas donde el usuario es responsable
-        projects = request.env['account.analytic.account'].search([
-            ('responsible_id', '=', user.id)
-        ], order='name asc')
+        projects = request.env['account.analytic.account'].search(
+            self._get_accessible_analytic_project_domain(user),
+            order='name asc'
+        )
 
         values = {
             'projects': projects.sudo(),  # sudo() para renderizar campos relacionados en la vista
@@ -522,11 +536,11 @@ class PortalRequestsCustomerPortal(CustomerPortal):
         print(f"Usuario actual: {request.env.user.name} (ID: {request.env.user.id})")
         print("*"*100)
         """Muestra el detalle de un proyecto (cuenta analítica)"""
-        # Buscar el proyecto donde el usuario es responsable
-        project = request.env['account.analytic.account'].search([
-            ('id', '=', project_id),
-            ('responsible_id', '=', request.env.user.id)
-        ], limit=1)
+        # Buscar el proyecto accesible para el usuario portal (responsable o jefe de su grupo)
+        project = request.env['account.analytic.account'].search(
+            [('id', '=', project_id)] + self._get_accessible_analytic_project_domain(request.env.user),
+            limit=1
+        )
 
         print(f"Proyecto encontrado: {project}")
         if project:
@@ -598,11 +612,11 @@ class PortalRequestsCustomerPortal(CustomerPortal):
     @http.route(['/my/analytic_projects/<int:project_id>/post_message'], type='http', auth="user", website=True, methods=['POST'], csrf=True)
     def portal_project_post_message(self, project_id, message, **kw):
         """Permite al usuario portal enviar un mensaje en el proyecto"""
-        # Buscar el proyecto donde el usuario es responsable
-        project = request.env['account.analytic.account'].search([
-            ('id', '=', project_id),
-            ('responsible_id', '=', request.env.user.id)
-        ], limit=1)
+        # Buscar el proyecto accesible para el usuario portal (responsable o jefe de su grupo)
+        project = request.env['account.analytic.account'].search(
+            [('id', '=', project_id)] + self._get_accessible_analytic_project_domain(request.env.user),
+            limit=1
+        )
 
         # Si no existe o no es el responsable, redirigir
         if not project:
@@ -623,11 +637,11 @@ class PortalRequestsCustomerPortal(CustomerPortal):
     @http.route(['/my/analytic_projects/<int:project_id>/invoices_list'], type='http', auth="user", website=True)
     def portal_project_invoices(self, project_id, **kw):
         """Muestra las facturas asociadas a un proyecto (cuenta analítica)"""
-        # Buscar el proyecto donde el usuario es responsable
-        project = request.env['account.analytic.account'].search([
-            ('id', '=', project_id),
-            ('responsible_id', '=', request.env.user.id)
-        ], limit=1)
+        # Buscar el proyecto accesible para el usuario portal (responsable o jefe de su grupo)
+        project = request.env['account.analytic.account'].search(
+            [('id', '=', project_id)] + self._get_accessible_analytic_project_domain(request.env.user),
+            limit=1
+        )
 
         # Si no existe o no es el responsable, redirigir
         if not project:
@@ -666,11 +680,11 @@ class PortalRequestsCustomerPortal(CustomerPortal):
     @http.route(['/my/analytic_projects/<int:project_id>/invoices_list/<int:invoice_id>'], type='http', auth="user", website=True)
     def portal_project_invoice_detail(self, project_id, invoice_id, success=None, **kw):
         """Muestra el detalle de una factura asociada a un proyecto"""
-        # Buscar el proyecto donde el usuario es responsable
-        project = request.env['account.analytic.account'].search([
-            ('id', '=', project_id),
-            ('responsible_id', '=', request.env.user.id)
-        ], limit=1)
+        # Buscar el proyecto accesible para el usuario portal (responsable o jefe de su grupo)
+        project = request.env['account.analytic.account'].search(
+            [('id', '=', project_id)] + self._get_accessible_analytic_project_domain(request.env.user),
+            limit=1
+        )
 
         # Si no existe o no es el responsable, redirigir
         if not project:
@@ -703,11 +717,11 @@ class PortalRequestsCustomerPortal(CustomerPortal):
     @http.route(['/my/analytic_projects/<int:project_id>/invoices_list/<int:invoice_id>/post_message'], type='http', auth="user", website=True, methods=['POST'], csrf=True)
     def portal_project_invoice_post_message(self, project_id, invoice_id, message, **kw):
         """Permite enviar un mensaje en el chatter de una factura asociada a un proyecto"""
-        # Buscar el proyecto donde el usuario es responsable
-        project = request.env['account.analytic.account'].search([
-            ('id', '=', project_id),
-            ('responsible_id', '=', request.env.user.id)
-        ], limit=1)
+        # Buscar el proyecto accesible para el usuario portal (responsable o jefe de su grupo)
+        project = request.env['account.analytic.account'].search(
+            [('id', '=', project_id)] + self._get_accessible_analytic_project_domain(request.env.user),
+            limit=1
+        )
 
         # Si no existe o no es el responsable, redirigir
         if not project:

@@ -2,7 +2,7 @@
 <odoo>
     <data>
         <template id="portal_my_home_inherit" name="Portal My Home Inherit" inherit_id="portal.portal_my_home">
-            <xpath expr="//div[hasclass('o_portal_docs','row','g-2')]" position="replace">
+            <xpath expr="//div[@class='o_portal_docs row g-2']" position="replace">
                     <div class="o_portal_docs row g-2">
                     <div style="display:none">
                         <div t-if="portal_alert_category_enable" class="o_portal_category row g-2 mt-3" id="portal_alert_category"/>
