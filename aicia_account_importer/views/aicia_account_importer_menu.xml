@@ -2,11 +2,11 @@
 <!-- Copyright 2026 Xtendoo - https://www.xtendoo.es/
      License AGPL-3.0 or later (http://www.gnu.org/licenses/agpl). -->
 <odoo>
-    <!-- Menú raíz en Contabilidad -->
+    <!-- Menú dentro de Contabilidad → sección Contabilidad -->
     <menuitem
         id="menu_aicia_account_importer_root"
         name="AICIA - Importación"
-        parent="account.menu_finance"
+        parent="account.menu_finance_entries"
         sequence="99"
     />
 

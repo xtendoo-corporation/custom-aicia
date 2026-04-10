@@ -163,6 +163,7 @@ class AiciaAccountImporterWizard(models.TransientModel):
 
         results = []
         created = skipped = errors = 0
+        missing_accounts = set()  # Set local; se pasa por referencia a los métodos
 
         for id_apunte, cabecera in apuntes.items():
             lineas = lineas_by_apunte.get(id_apunte, [])
@@ -179,7 +180,7 @@ class AiciaAccountImporterWizard(models.TransientModel):
                 errors += 1
                 continue
 
-            result = self._process_asiento(cabecera, lineas)
+            result = self._process_asiento(cabecera, lineas, missing_accounts)
             results.append(result)
             if result["status"] == "created":
                 created += 1
@@ -194,10 +195,17 @@ class AiciaAccountImporterWizard(models.TransientModel):
                 "total_created": created,
                 "total_skipped": skipped,
                 "total_errors": errors,
-                "import_log": self._build_log_html(results),
+                "import_log": self._build_log_html(results, missing_accounts),
             }
         )
-        return {"type": "ir.actions.act_window_close"}
+        # Reabrir el mismo wizard para mostrar el log de resultados
+        return {
+            "type": "ir.actions.act_window",
+            "res_model": self._name,
+            "res_id": self.id,
+            "view_mode": "form",
+            "target": "new",
+        }
 
     # ── Parseo de Apuntes2025.xlsx ────────────────────────────────────────────
 
@@ -273,7 +281,7 @@ class AiciaAccountImporterWizard(models.TransientModel):
 
     # ── Procesamiento de un asiento ───────────────────────────────────────────
 
-    def _process_asiento(self, cabecera: dict, lineas: list) -> dict:
+    def _process_asiento(self, cabecera: dict, lineas: list, missing_accounts: set) -> dict:
         """Crea un account.move a partir de la cabecera y sus líneas."""
         ref = str(cabecera["numero"])
 
@@ -295,7 +303,7 @@ class AiciaAccountImporterWizard(models.TransientModel):
         line_vals = []
         errors = []
         for linea in lineas:
-            vals, error = self._build_line_vals(linea, cabecera["descripcion"])
+            vals, error = self._build_line_vals(linea, cabecera["descripcion"], missing_accounts)
             if error:
                 errors.append(error)
             else:
@@ -345,12 +353,12 @@ class AiciaAccountImporterWizard(models.TransientModel):
                 "msg": _("Error al crear asiento Nº %s: %s") % (ref, str(exc)),
             }
 
-    def _build_line_vals(self, linea: dict, asiento_desc: str) -> tuple:
+    def _build_line_vals(self, linea: dict, asiento_desc: str, missing_accounts: set) -> tuple:
         """Construye el dict de valores para una account.move.line.
 
         Devuelve (vals, None) si todo va bien, o (None, msg_error) si falla.
         """
-        account = self._get_account(linea["cuenta"])
+        account = self._get_account(linea["cuenta"], missing_accounts)
         if not account:
             return None, _(
                 "Cuenta '%s' no encontrada ni en colectivas ni en el plan contable."
@@ -379,7 +387,7 @@ class AiciaAccountImporterWizard(models.TransientModel):
         prefix = code[:3]
         return prefix if prefix in COLLECTIVE_ACCOUNT_MAP else None
 
-    def _get_account(self, code: str):
+    def _get_account(self, code: str, missing_accounts: set = None):
         """Resuelve la cuenta Odoo a partir del código legado de 9 dígitos:
 
         1. Prefijo colectivo (400/430/572) → devuelve/crea la cuenta colectiva.
@@ -397,28 +405,31 @@ class AiciaAccountImporterWizard(models.TransientModel):
         # Normalizar código: 9 dígitos → 6 dígitos sin ceros finales
         normalized = code[:6].rstrip("0") or code[:3]
         account = self.env["account.account"].search(
-            [("code", "=", normalized), ("company_id", "=", self.env.company.id)],
+            [("code", "=", normalized), ("company_ids", "in", [self.env.company.id])],
             limit=1,
         )
         if account:
             return account
 
         # Último recurso: buscar por prefijo de 3 dígitos
-        return (
+        account = (
             self.env["account.account"].search(
                 [
                     ("code", "=like", code[:3] + "%"),
-                    ("company_id", "=", self.env.company.id),
+                    ("company_ids", "in", [self.env.company.id]),
                 ],
                 limit=1,
             )
             or None
         )
+        if not account and missing_accounts is not None:
+            missing_accounts.add(code)
+        return account
 
     def _get_or_create_account(self, code: str, name: str, account_type: str):
         """Obtiene la cuenta colectiva; la crea si no existe en el plan contable."""
         account = self.env["account.account"].search(
-            [("code", "=", code), ("company_id", "=", self.env.company.id)],
+            [("code", "=", code), ("company_ids", "in", [self.env.company.id])],
             limit=1,
         )
         if not account:
@@ -427,7 +438,7 @@ class AiciaAccountImporterWizard(models.TransientModel):
                     "code": code,
                     "name": name,
                     "account_type": account_type,
-                    "company_ids": [self.env.company.id],
+                    "company_ids": [(4, self.env.company.id)],
                 }
             )
             _logger.info(
@@ -505,7 +516,7 @@ class AiciaAccountImporterWizard(models.TransientModel):
 
     # ── Generación del log HTML ───────────────────────────────────────────────
 
-    def _build_log_html(self, results: list) -> str:
+    def _build_log_html(self, results: list, missing_accounts: set = None) -> str:
         """Genera el HTML del resumen de la importación."""
         created = [r for r in results if r["status"] == "created"]
         skipped = [r for r in results if r["status"] == "skipped"]
@@ -518,6 +529,24 @@ class AiciaAccountImporterWizard(models.TransientModel):
             f"<span style='color:orange'>{len(skipped)} omitidos</span> | "
             f"<span style='color:red'>{len(errors)} errores</span></p>"
         )
+
+        # ── Cuentas no encontradas (resumen al inicio del log) ────────────────
+        missing = missing_accounts or set()
+        if missing:
+            html += (
+                "<hr/>"
+                f"<p><strong style='color:#8B0000'>🔍 Cuentas no encontradas en el "
+                f"plan contable ({len(missing)} únicas — créalas antes de reimportar):"
+                f"</strong></p>"
+                "<ul style='columns:3; column-gap:24px; list-style:none; padding:0;'>"
+            )
+            for code in sorted(missing):
+                html += (
+                    f"<li style='color:#8B0000; padding:1px 0;'>"
+                    f"<code>{code}</code></li>"
+                )
+            html += "</ul>"
+        # ─────────────────────────────────────────────────────────────────────
 
         if errors:
             html += "<hr/><p><strong style='color:red'>❌ Errores:</strong></p><ul>"
