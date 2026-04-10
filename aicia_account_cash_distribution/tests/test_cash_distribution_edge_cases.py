@@ -217,11 +217,54 @@ class TestCashDistributionEdgeCases(AiciaCashDistributionCommon):
 
     # ── Rule without destination analytic ────────────────────────────────────
 
-    def test_10_no_destination_analytic_raises_error(self):
-        """When the company has no receiver analytic, a UserError must be raised."""
-        from odoo.exceptions import UserError
+    def test_10_no_company_receiver_but_line_has_fixed_analytic_ok(self):
+        """When the company has no receiver analytic but all plan lines have their own
+        fixed analytic account configured, distribution must succeed without error."""
+        original_receiver = self.rule.company_id.cash_distribution_receiver_analytic_id
         self.rule.company_id.write({'cash_distribution_receiver_analytic_id': False})
-        invoice = self._create_invoice(amount=1000.0, analytic_account=self.analytic_account_a)
-        with self.assertRaisesRegex(UserError, "no tiene configurada la Cuenta Analítica Receptora"):
-            self._register_payment(invoice)
+        try:
+            invoice = self._create_invoice(amount=1000.0, analytic_account=self.analytic_account_a)
+            # Must NOT raise: lines have credit_analytic_account_id set directly
+            reconciles = self._register_payment(invoice)
+            dist_moves = self.env['account.move'].search([
+                ('is_cash_distribution_move', '=', True),
+                ('distribution_partial_reconcile_id', 'in', reconciles.ids),
+            ])
+            self.assertTrue(dist_moves, "A distribution move must be created even without company receiver analytic.")
+        finally:
+            self.rule.company_id.write({'cash_distribution_receiver_analytic_id': original_receiver.id})
+
+    def test_11_needs_receiver_analytic_detects_missing_account(self):
+        """_needs_receiver_analytic() must return True when a line has fixed side
+        without its own analytic account, and False when all fixed lines have one."""
+        plan = self.env['aicia.distribution.plan'].create({
+            'name': 'Test needs receiver',
+            'company_id': self.company.id,
+        })
+        # Line with fixed credit and explicit account → does NOT need receiver fallback
+        line = self.env['aicia.distribution.plan.line'].create({
+            'plan_id': plan.id,
+            'name': 'Línea fija con cuenta',
+            'percentage': 10.0,
+            'debit_account_id': self.account_dist_debit.id,
+            'debit_analytic_side': 'source',
+            'credit_account_id': self.account_dist_credit.id,
+            'credit_analytic_side': 'fixed',
+            'credit_analytic_account_id': self.analytic_account_dest.id,
+        })
+        self.assertFalse(
+            plan._needs_receiver_analytic(),
+            "Plan with all fixed lines having explicit analytic accounts must NOT need company receiver.",
+        )
+
+        # Simulate legacy data: remove the fixed account directly (bypass ORM constraint)
+        self.env.cr.execute(
+            "UPDATE aicia_distribution_plan_line SET credit_analytic_account_id = NULL WHERE id = %s",
+            (line.id,),
+        )
+        self.env.invalidate_all()
+        self.assertTrue(
+            plan._needs_receiver_analytic(),
+            "Plan with a fixed line missing its analytic account MUST need company receiver.",
+        )
 

@@ -24,7 +24,7 @@
                        invisible="not show_distribution_plan_id"
                        options="{'no_create': True}"/>
             </xpath>
-            <!-- Pestaña de distribución analítica -->
+            <!-- Pestaña de distribución analítica
             <xpath expr="//notebook" position="inside">
                 <page string="Distribución Analítica AICIA" invisible="distribution_move_count == 0">
                     <field name="distribution_move_line_ids" readonly="1">
@@ -40,6 +40,7 @@
                     </field>
                 </page>
             </xpath>
+            -->
         </field>
     </record>
 </odoo>

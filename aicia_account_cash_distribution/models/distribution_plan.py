@@ -76,6 +76,21 @@ class AiciaDistributionPlan(models.Model):
             )
         return analytic.id if analytic else None
 
+    def _needs_receiver_analytic(self):
+        """
+        Retorna True si alguna línea del plan requiere la analítica receptora
+        de la compañía como fallback, es decir, tiene analytic_side='fixed'
+        pero sin una cuenta analítica específica configurada en la propia línea.
+        Si todas las líneas con analytic_side='fixed' tienen su propia cuenta
+        analítica, la receptora de la compañía no es necesaria.
+        """
+        self.ensure_one()
+        return any(
+            (line.debit_analytic_side == 'fixed' and not line.debit_analytic_account_id)
+            or (line.credit_analytic_side == 'fixed' and not line.credit_analytic_account_id)
+            for line in self.line_ids
+        )
+
     # ── Defaults bootstrap ───────────────────────────────────────────────
 
     @api.model

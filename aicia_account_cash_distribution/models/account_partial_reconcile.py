@@ -96,9 +96,12 @@ class AccountPartialReconcile(models.Model):
                 )
 
             receiver_id = plan.get_receiver_analytic_id()
-            if not receiver_id:
+            if not receiver_id and plan._needs_receiver_analytic():
                 raise UserError(
-                    "El plan '%s' (o la compañía) no tiene configurada la Cuenta Analítica Receptora." % plan.name
+                    "El plan '%s' (o la compañía) no tiene configurada la Cuenta Analítica Receptora.\n\n"
+                    "Configúrela en Contabilidad > Configuración > Ajustes > "
+                    "Distribución de Cobros AICIA, o asigne una cuenta analítica fija "
+                    "en cada línea del plan." % plan.name
                 )
 
             lines = self._build_journal_lines(
