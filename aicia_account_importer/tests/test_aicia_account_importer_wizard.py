@@ -101,7 +101,7 @@ class TestAiciaAccountImporterWizard(TransactionCase):
 
     def _ensure_account(self, code: str, name: str, account_type: str):
         existing = self.env["account.account"].search(
-            [("code", "=", code), ("company_id", "=", self.env.company.id)],
+            [("code", "=", code), ("company_ids", "in", [self.env.company.id])],
             limit=1,
         )
         if not existing:
@@ -109,7 +109,7 @@ class TestAiciaAccountImporterWizard(TransactionCase):
                 "code": code,
                 "name": name,
                 "account_type": account_type,
-                "company_ids": [self.env.company.id],
+                "company_ids": [(4, self.env.company.id)],
             })
 
     # ── Tests: parseo de Fecha_Contable ──────────────────────────────────────
@@ -164,7 +164,7 @@ class TestAiciaAccountImporterWizard(TransactionCase):
     def test_get_account_430_uses_colectiva(self):
         """430003604 → devuelve/crea la cuenta colectiva 430000."""
         self.env["account.account"].search(
-            [("code", "=", "430000"), ("company_id", "=", self.env.company.id)]
+            [("code", "=", "430000"), ("company_ids", "in", [self.env.company.id])]
         ).unlink()
         wizard = self._make_wizard()
         acc = wizard._get_account("430003604")
@@ -174,7 +174,7 @@ class TestAiciaAccountImporterWizard(TransactionCase):
     def test_get_account_400_uses_colectiva(self):
         """400000043 → devuelve/crea la cuenta colectiva 400000."""
         self.env["account.account"].search(
-            [("code", "=", "400000"), ("company_id", "=", self.env.company.id)]
+            [("code", "=", "400000"), ("company_ids", "in", [self.env.company.id])]
         ).unlink()
         wizard = self._make_wizard()
         acc = wizard._get_account("400000043")
@@ -185,7 +185,7 @@ class TestAiciaAccountImporterWizard(TransactionCase):
         """572000106 sin cuenta exacta → normaliza a 572000."""
         self.env["account.account"].search(
             [("code", "in", ["572000", "572000106"]),
-             ("company_id", "=", self.env.company.id)]
+             ("company_ids", "in", [self.env.company.id])]
         ).unlink()
         wizard = self._make_wizard()
         acc = wizard._get_account("572000106")
@@ -205,38 +205,92 @@ class TestAiciaAccountImporterWizard(TransactionCase):
 
     # ── Tests: partners ───────────────────────────────────────────────────────
 
-    def test_resolve_partner_existing(self):
-        partner = self.env["res.partner"].create({"name": "Cliente Legado Test"})
+    def test_resolve_partner_found_by_exact_ref(self):
+        """Partner con ref exacto 'C03604' → encontrado directamente."""
+        partner = self.env["res.partner"].create({
+            "name": "Cliente Legado Test",
+            "ref": "C03604",
+        })
         wizard = self._make_wizard()
-        found, error = wizard._resolve_partner("Cliente Legado Test")
-        self.assertIsNone(error)
+        found = wizard._resolve_partner("C03604")
+        self.assertIsNotNone(found)
         self.assertEqual(found.id, partner.id)
 
-    def test_resolve_partner_creates_if_enabled(self):
-        wizard = self._make_wizard(create_missing_partners=True)
-        partner, error = wizard._resolve_partner("Nuevo Cliente XYZ999")
-        self.assertIsNone(error)
-        self.assertIsNotNone(partner)
-        self.assertEqual(partner.name, "Nuevo Cliente XYZ999")
-
-    def test_resolve_partner_returns_none_if_disabled(self):
-        wizard = self._make_wizard(create_missing_partners=False)
-        partner, error = wizard._resolve_partner("Partner Inexistente ABC888")
-        self.assertIsNone(partner)
-        self.assertIsNone(error)  # No bloquea el asiento
-
-    def test_resolve_partner_empty_name(self):
+    def test_resolve_partner_found_by_stripped_zeros(self):
+        """Partner con ref sin ceros ('C3604') → encontrado por fallback."""
+        partner = self.env["res.partner"].create({
+            "name": "Cliente Sin Ceros",
+            "ref": "C3604",
+        })
         wizard = self._make_wizard()
-        partner, error = wizard._resolve_partner("")
-        self.assertIsNone(partner)
-        self.assertIsNone(error)
+        found = wizard._resolve_partner("C03604")
+        self.assertIsNotNone(found)
+        self.assertEqual(found.id, partner.id)
+
+    def test_resolve_partner_not_found_returns_none(self):
+        """Partner inexistente → retorna None (no crea ni lanza error)."""
+        wizard = self._make_wizard()
+        result = wizard._resolve_partner("C99999")
+        self.assertIsNone(result)
+
+    def test_resolve_partner_empty_ref_returns_none(self):
+        """ref_code vacío → retorna None inmediatamente."""
+        wizard = self._make_wizard()
+        result = wizard._resolve_partner("")
+        self.assertIsNone(result)
 
     # ── Tests: importación completa ───────────────────────────────────────────
+
+    def test_account_code_numeric_zfill(self):
+        """Cuenta como entero en Excel (430003604 sin ceros) → zfill(9) correcto."""
+        self._ensure_account("430000", "Clientes", "asset_receivable")
+        self._ensure_account("700000", "Ventas", "income")
+
+        apuntes = self._make_apuntes_xlsx([
+            [1, 101, 20250115, None, "Test zfill", "DOC", 50000, True, False, "R"],
+        ])
+        # Cuenta_Contable como ENTERO (simula que Excel lo guardó sin ceros a la izq.)
+        lineas = self._make_lineas_xlsx([
+            [1, 1, 430003604, 0, 0, "Cliente zfill", 50000, "D"],   # int, no str
+            [1, 2, 700000000, 0, 0, "Venta zfill",   50000, "H"],
+        ])
+        wizard = self._make_wizard(
+            file_apuntes=self._enc(apuntes), file_lineas=self._enc(lineas)
+        )
+        wizard.action_import()
+
+        self.assertEqual(wizard.total_errors, 0)
+        self.assertGreaterEqual(wizard.total_created + wizard.total_warnings, 1)
+
+    def test_numero_apunte_float_no_dot_zero(self):
+        """Numero_Apunte como float en Excel → se convierte a int (sin '.0' en ref)."""
+        self._ensure_account("430000", "Clientes", "asset_receivable")
+        self._ensure_account("700000", "Ventas", "income")
+
+        apuntes = self._make_apuntes_xlsx([
+            # Numero_Apunte como float 102.0
+            [2, 102.0, 20250115, None, "Test float ref", "DOC", 30000, True, False, "R"],
+        ])
+        lineas = self._make_lineas_xlsx([
+            [2, 1, "430000001", 0, 0, "Test", 30000, "D"],
+            [2, 2, "700000000", 0, 0, "Test", 30000, "H"],
+        ])
+        wizard = self._make_wizard(
+            file_apuntes=self._enc(apuntes), file_lineas=self._enc(lineas)
+        )
+        wizard.action_import()
+
+        # La ref debe ser "102", no "102.0"
+        move = self.env["account.move"].search([("ref", "=", "102")], limit=1)
+        self.assertTrue(move, "El asiento debe tener ref='102', no '102.0'")
 
     def test_import_creates_journal_entry(self):
         """Importar un asiento cuadrado válido → crea el account.move."""
         self._ensure_account("430000", "Clientes", "asset_receivable")
         self._ensure_account("700000", "Ventas", "income")
+        # Partner necesario: 430003604 → ref C03604. Sin él el asiento quedaría
+        # como 'warning' (borrador) en lugar de 'created'.
+        self.env["res.partner"].create({"name": "Cliente Test", "ref": "C03604"})
 
         apuntes = self._make_apuntes_xlsx([
             # id, num, fecha, intro, desc, doc, total, val, anu, clase
@@ -373,14 +427,16 @@ class TestAiciaAccountImporterWizard(TransactionCase):
 
     def test_import_posted_state(self):
         """move_state='posted' → asiento confirmado tras la importación."""
-        self._ensure_account("430000", "Clientes", "asset_receivable")
+        # Usamos 572 (banco) en el debe: no está en PARTNER_ACCOUNT_PREFIXES,
+        # no dispara búsqueda de partner y permite confirmar el asiento.
+        self._ensure_account("572000", "Bancos", "asset_cash")
         self._ensure_account("700000", "Ventas", "income")
 
         apuntes = self._make_apuntes_xlsx([
             [8, 800, 20250201, None, "Posted test", "DOC", 80000, True, False, "R"],
         ])
         lineas = self._make_lineas_xlsx([
-            [8, 1, "430000001", 0, 0, "Test", 80000, "D"],
+            [8, 1, "572000001", 0, 0, "Test", 80000, "D"],   # banco → sin partner
             [8, 2, "700000000", 0, 0, "Test", 80000, "H"],
         ])
         wizard = self._make_wizard(
@@ -427,3 +483,125 @@ class TestAiciaAccountImporterWizard(TransactionCase):
         wizard = self._make_wizard(file_apuntes=self._enc(apuntes))
         with self.assertRaises(UserError):
             wizard.action_import()
+
+    # ── Tests: creación automática de partners ────────────────────────────────
+
+    def test_create_missing_partner_creates_customer(self):
+        """create_missing_partners=True + cuenta cliente → crea partner con customer_rank=1."""
+        self._ensure_account("430000", "Clientes", "asset_receivable")
+        self._ensure_account("700000", "Ventas", "income")
+
+        apuntes = self._make_apuntes_xlsx([
+            [20, 2001, 20250115, None, "Cliente auto", "DOC", 50000, True, False, "R"],
+        ])
+        # "430099999" → last5="99999" → ref="C99999"
+        lineas = self._make_lineas_xlsx([
+            [20, 1, "430099999", 0, 0, "Cliente Automático", 50000, "D"],
+            [20, 2, "700000000", 0, 0, "Venta auto",         50000, "H"],
+        ])
+        wizard = self._make_wizard(
+            file_apuntes=self._enc(apuntes),
+            file_lineas=self._enc(lineas),
+            create_missing_partners=True,
+        )
+        wizard.action_import()
+
+        self.assertEqual(wizard.total_errors, 0)
+        # Partner creado con ref "C99999" y clasificado como cliente
+        partner = self.env["res.partner"].search([("ref", "=", "C99999")], limit=1)
+        self.assertTrue(partner, "Debe haberse creado el partner C99999")
+        self.assertEqual(partner.customer_rank, 1)
+        self.assertEqual(partner.supplier_rank, 0)
+
+    def test_create_missing_partner_creates_supplier(self):
+        """create_missing_partners=True + cuenta proveedor → crea partner con supplier_rank=1."""
+        self._ensure_account("400000", "Proveedores", "liability_payable")
+        self._ensure_account("600000", "Compras", "expense")
+
+        apuntes = self._make_apuntes_xlsx([
+            [21, 2101, 20250115, None, "Proveedor auto", "DOC", 30000, True, False, "R"],
+        ])
+        # "400088888" → last5="88888" → ref="P88888"
+        lineas = self._make_lineas_xlsx([
+            [21, 1, "600000000", 0, 0, "Compra auto",          30000, "D"],
+            [21, 2, "400088888", 0, 0, "Proveedor Automático", 30000, "H"],
+        ])
+        wizard = self._make_wizard(
+            file_apuntes=self._enc(apuntes),
+            file_lineas=self._enc(lineas),
+            create_missing_partners=True,
+        )
+        wizard.action_import()
+
+        self.assertEqual(wizard.total_errors, 0)
+        partner = self.env["res.partner"].search([("ref", "=", "P88888")], limit=1)
+        self.assertTrue(partner, "Debe haberse creado el partner P88888")
+        self.assertEqual(partner.supplier_rank, 1)
+        self.assertEqual(partner.customer_rank, 0)
+
+    def test_no_create_missing_partner_when_disabled(self):
+        """create_missing_partners=False + partner no existe → warning, línea sin partner."""
+        self._ensure_account("430000", "Clientes", "asset_receivable")
+        self._ensure_account("700000", "Ventas", "income")
+
+        apuntes = self._make_apuntes_xlsx([
+            [22, 2201, 20250115, None, "Sin socio", "DOC", 40000, True, False, "R"],
+        ])
+        # "430077777" → last5="77777" → ref="C77777"
+        lineas = self._make_lineas_xlsx([
+            [22, 1, "430077777", 0, 0, "Sin Partner", 40000, "D"],
+            [22, 2, "700000000", 0, 0, "Venta",       40000, "H"],
+        ])
+        wizard = self._make_wizard(
+            file_apuntes=self._enc(apuntes),
+            file_lineas=self._enc(lineas),
+            create_missing_partners=False,
+        )
+        wizard.action_import()
+
+        # No debe haberse creado ningún partner
+        partner = self.env["res.partner"].search([("ref", "=", "C77777")], limit=1)
+        self.assertFalse(partner, "No debe haberse creado ningún partner automático")
+        # El asiento queda en borrador con warning
+        self.assertEqual(wizard.total_warnings, 1)
+        self.assertEqual(wizard.total_errors, 0)
+
+    def test_create_missing_partner_idempotent(self):
+        """Dos asientos con la misma cuenta de partner faltante → un solo partner creado."""
+        self._ensure_account("430000", "Clientes", "asset_receivable")
+        self._ensure_account("700000", "Ventas", "income")
+
+        apuntes = self._make_apuntes_xlsx([
+            [23, 2301, 20250201, None, "Asiento 1", "DOC", 10000, True, False, "R"],
+            [24, 2401, 20250201, None, "Asiento 2", "DOC", 20000, True, False, "R"],
+        ])
+        # Ambas líneas referencian la misma cuenta → mismo ref "C66666"
+        lineas = self._make_lineas_xlsx([
+            [23, 1, "430066666", 0, 0, "Rep. cliente", 10000, "D"],
+            [23, 2, "700000000", 0, 0, "Venta",        10000, "H"],
+            [24, 1, "430066666", 0, 0, "Rep. cliente", 20000, "D"],
+            [24, 2, "700000000", 0, 0, "Venta",        20000, "H"],
+        ])
+        wizard = self._make_wizard(
+            file_apuntes=self._enc(apuntes),
+            file_lineas=self._enc(lineas),
+            create_missing_partners=True,
+        )
+        wizard.action_import()
+
+        partners = self.env["res.partner"].search([("ref", "=", "C66666")])
+        self.assertEqual(len(partners), 1, "Solo debe existir un único partner C66666")
+        self.assertEqual(wizard.total_errors, 0)
+
+    def test_resolve_partner_found_by_6digit_ref(self):
+        """Partner con ref de 6 dígitos 'C003604' → encontrado por fallback de _resolve_partner."""
+        partner = self.env["res.partner"].create({
+            "name": "Cliente 6 dígitos",
+            "ref": "C003604",
+        })
+        wizard = self._make_wizard()
+        # "C03604" → digits="03604" → digits_6="003604" → candidato "C003604"
+        found = wizard._resolve_partner("C03604")
+        self.assertIsNotNone(found)
+        self.assertEqual(found.id, partner.id)
+

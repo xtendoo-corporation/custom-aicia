@@ -34,7 +34,7 @@ except ImportError:
 #    Col 9: Clase_Apunte       → no se usa en la importación
 #
 #  Lineas_Apunte2025.xlsx — hoja "Lineas_Apunte"  (líneas contables)
-#    Col 0: ID_Apunte          → clave de unión con Apuntes
+#    Col 0: Numero_Apunte      → clave real de unión con Apuntes (NO es ID_Apunte)
 #    Col 1: ID_Linea           → identificador de línea (no se usa)
 #    Col 2: Cuenta_Contable    → 9 dígitos (ej: 430003604)
 #    Col 3: ID_Departamento    → analítico (futuro uso)
@@ -84,12 +84,42 @@ APUNTES_COLS = {
 }
 
 LINEAS_COLS = {
-    "id_apunte": 0,
+    "id_apunte": 0,   # Contiene Numero_Apunte (clave real de unión, no ID_Apunte)
     "cuenta": 2,
     "descripcion": 5,
     "importe": 6,
     "tipo": 7,
 }
+
+
+class AiciaAccountImporterAccountMapping(models.TransientModel):
+    """Línea de mapeo de cuentas: código legado → cuenta Odoo."""
+
+    _name = "aicia.account.importer.account.mapping"
+    _description = "Mapeo de cuentas para importación AICIA"
+
+    wizard_id = fields.Many2one(
+        "aicia.account.importer.wizard",
+        string="Wizard",
+        required=True,
+        ondelete="cascade",
+    )
+    source_code = fields.Char(
+        string="Código origen (legado)",
+        required=True,
+        help=(
+            "Código del sistema legado que se quiere redirigir. "
+            "Puede ser el código de 9 dígitos tal cual viene del Excel "
+            "(ej: 478000000) o sólo el prefijo (ej: 478). "
+            "Se aplica por coincidencia exacta o por prefijo."
+        ),
+    )
+    target_account_id = fields.Many2one(
+        "account.account",
+        string="Cuenta destino (Odoo)",
+        required=True,
+    )
+
 
 
 class AiciaAccountImporterWizard(models.TransientModel):
@@ -134,6 +164,18 @@ class AiciaAccountImporterWizard(models.TransientModel):
         default=True,
     )
 
+    # ── Mapeo de cuentas ─────────────────────────────────────────────────────
+    account_mapping_ids = fields.One2many(
+        "aicia.account.importer.account.mapping",
+        "wizard_id",
+        string="Mapeo de cuentas",
+        help=(
+            "Define aquí las cuentas del sistema legado que deben redirigirse "
+            "a otra cuenta de Odoo antes de importar."
+        ),
+    )
+
+
     # ── Estado y log ─────────────────────────────────────────────────────────
     state = fields.Selection(
         [("draft", "Borrador"), ("done", "Completado")],
@@ -143,8 +185,61 @@ class AiciaAccountImporterWizard(models.TransientModel):
     total_created = fields.Integer(string="Asientos creados", readonly=True)
     total_skipped = fields.Integer(string="Omitidos (ya existían)", readonly=True)
     total_errors = fields.Integer(string="Errores", readonly=True)
+    total_warnings = fields.Integer(
+        string="Con socios no resueltos (borrador)", readonly=True
+    )
 
     # ── Acción principal ─────────────────────────────────────────────────────
+
+    def action_delete_draft_moves(self):
+        """Elimina todos los asientos en borrador del diario seleccionado.
+
+        Útil para limpiar una importación fallida antes de reimportar.
+        """
+        self.ensure_one()
+        if not self.journal_id:
+            raise UserError(_("Selecciona un diario primero."))
+
+        draft_moves = self.env["account.move"].search(
+            [
+                ("journal_id", "=", self.journal_id.id),
+                ("state", "=", "draft"),
+            ]
+        )
+        count = len(draft_moves)
+        if not count:
+            raise UserError(
+                _("No hay asientos en borrador en el diario '%s'.")
+                % self.journal_id.name
+            )
+
+        draft_moves.unlink()
+        _logger.info(
+            "Limpieza: %d borradores eliminados del diario '%s' (ID %d).",
+            count,
+            self.journal_id.name,
+            self.journal_id.id,
+        )
+
+        return {
+            "type": "ir.actions.client",
+            "tag": "display_notification",
+            "params": {
+                "title": _("Limpieza completada"),
+                "message": _(
+                    "%d asientos en borrador eliminados del diario '%s'."
+                ) % (count, self.journal_id.name),
+                "type": "success",
+                "sticky": False,
+                "next": {
+                    "type": "ir.actions.act_window",
+                    "res_model": self._name,
+                    "res_id": self.id,
+                    "view_mode": "form",
+                    "target": "new",
+                },
+            },
+        }
 
     def action_import(self):
         """Punto de entrada: cruza los dos Excel y crea los account.move."""
@@ -161,31 +256,49 @@ class AiciaAccountImporterWizard(models.TransientModel):
         apuntes = self._parse_apuntes(b64decode(self.file_apuntes))
         lineas_by_apunte = self._parse_lineas(b64decode(self.file_lineas))
 
+        # Construir diccionario de mapeo de cuentas {source_code: account_record}
+        account_mapping = {
+            m.source_code.strip(): m.target_account_id
+            for m in self.account_mapping_ids
+            if m.source_code and m.target_account_id
+        }
+
         results = []
-        created = skipped = errors = 0
-        missing_accounts = set()  # Set local; se pasa por referencia a los métodos
+        created = skipped = errors = warnings = 0
+        missing_accounts = set()
+        missing_partners = {}
 
         for id_apunte, cabecera in apuntes.items():
             lineas = lineas_by_apunte.get(id_apunte, [])
             if not lineas:
+                # Diagnóstico: muestra los IDs disponibles en el fichero de líneas
+                ids_lineas = sorted(lineas_by_apunte.keys())
+                ids_str = ", ".join(str(x) for x in ids_lineas[:20])
+                if len(ids_lineas) > 20:
+                    ids_str += f" … ({len(ids_lineas)} en total)"
                 results.append(
                     {
                         "status": "error",
                         "ref": str(cabecera["numero"]),
                         "msg": _(
-                            "Asiento ID=%s (Nº %s) no tiene líneas contables."
-                        ) % (id_apunte, cabecera["numero"]),
+                            "Asiento ID=%s (Nº %s) no tiene líneas contables. "
+                            "IDs encontrados en Lineas_Apunte: [%s]"
+                        ) % (id_apunte, cabecera["numero"], ids_str or "ninguno"),
                     }
                 )
                 errors += 1
                 continue
 
-            result = self._process_asiento(cabecera, lineas, missing_accounts)
+            result = self._process_asiento(
+                cabecera, lineas, missing_accounts, missing_partners, account_mapping
+            )
             results.append(result)
             if result["status"] == "created":
                 created += 1
             elif result["status"] == "skipped":
                 skipped += 1
+            elif result["status"] == "warning":
+                warnings += 1
             else:
                 errors += 1
 
@@ -195,7 +308,10 @@ class AiciaAccountImporterWizard(models.TransientModel):
                 "total_created": created,
                 "total_skipped": skipped,
                 "total_errors": errors,
-                "import_log": self._build_log_html(results, missing_accounts),
+                "total_warnings": warnings,
+                "import_log": self._build_log_html(
+                    results, missing_accounts, missing_partners
+                ),
             }
         )
         # Reabrir el mismo wizard para mostrar el log de resultados
@@ -223,6 +339,11 @@ class AiciaAccountImporterWizard(models.TransientModel):
             id_apunte = row[c["id"]]
             if id_apunte is None:
                 continue
+            # Normalizar a int para evitar desajustes int/float/str entre los dos Excel
+            try:
+                id_apunte = int(float(id_apunte))
+            except (ValueError, TypeError):
+                id_apunte = str(id_apunte).strip()
 
             validado = row[c["validado"]]
             anulado = row[c["anulado"]]
@@ -232,9 +353,16 @@ class AiciaAccountImporterWizard(models.TransientModel):
             if self.skip_anulados and anulado:
                 continue
 
-            apuntes[id_apunte] = {
+            # Número del apunte normalizado — es la clave real de unión con Lineas_Apunte
+            numero_raw = row[c["numero"]]
+            try:
+                numero_key = int(float(numero_raw))
+            except (ValueError, TypeError):
+                numero_key = str(numero_raw).strip()
+
+            apuntes[numero_key] = {
                 "id": id_apunte,
-                "numero": row[c["numero"]],
+                "numero": numero_key,
                 "fecha": self._parse_fecha_contable(row[c["fecha"]]),
                 "descripcion": str(row[c["descripcion"]] or "").strip(),
                 "numero_documento": str(row[c["numero_documento"]] or "").strip(),
@@ -262,7 +390,17 @@ class AiciaAccountImporterWizard(models.TransientModel):
             id_apunte = row[c["id_apunte"]]
             if id_apunte is None:
                 continue
-            cuenta = str(row[c["cuenta"]] or "").strip()
+            # Normalizar a int para que el cruce con Apuntes funcione
+            # independientemente del tipo devuelto por openpyxl (int/float/str)
+            try:
+                id_apunte = int(float(id_apunte))
+            except (ValueError, TypeError):
+                id_apunte = str(id_apunte).strip()
+            cuenta_raw = row[c["cuenta"]]
+            if isinstance(cuenta_raw, (int, float)):
+                cuenta = str(int(cuenta_raw)).zfill(9)
+            else:
+                cuenta = str(cuenta_raw or "").strip().zfill(9)
             importe_cents = row[c["importe"]] or 0
             tipo = str(row[c["tipo"]] or "").strip().upper()
             descripcion = str(row[c["descripcion"]] or "").strip()
@@ -281,33 +419,55 @@ class AiciaAccountImporterWizard(models.TransientModel):
 
     # ── Procesamiento de un asiento ───────────────────────────────────────────
 
-    def _process_asiento(self, cabecera: dict, lineas: list, missing_accounts: set) -> dict:
+    def _process_asiento(
+        self,
+        cabecera: dict,
+        lineas: list,
+        missing_accounts: set,
+        missing_partners: dict,
+        account_mapping: dict = None,
+    ) -> dict:
         """Crea un account.move a partir de la cabecera y sus líneas."""
         ref = str(cabecera["numero"])
 
-        # Idempotencia: comprobar si ya existe por Numero_Apunte
+        # Idempotencia: busca SOLO en el diario de importación y excluye
+        # los cancelados (pueden reimportarse sin problema).
         existing = self.env["account.move"].search(
-            [("ref", "=", ref), ("company_id", "=", self.env.company.id)],
+            [
+                ("ref", "=", ref),
+                ("journal_id", "=", self.journal_id.id),
+                ("state", "in", ["draft", "posted"]),
+            ],
             limit=1,
         )
         if existing:
+            state_label = {"draft": "borrador", "posted": "confirmado"}.get(
+                existing.state, existing.state
+            )
             return {
                 "status": "skipped",
                 "ref": ref,
                 "msg": _(
-                    "Asiento Nº %s (ID legado %s) ya existe en Odoo (ID %d). Omitido."
-                ) % (ref, cabecera["id"], existing.id),
+                    "Asiento Nº %s ya existe en Odoo (ID %d, estado: %s). "
+                    "Elimínalo o resetéalo a borrador para poder reimportarlo."
+                ) % (ref, existing.id, state_label),
             }
 
         # Construir líneas del asiento
         line_vals = []
         errors = []
+        line_warnings = []
         for linea in lineas:
-            vals, error = self._build_line_vals(linea, cabecera["descripcion"], missing_accounts)
+            vals, error, warning = self._build_line_vals(
+                linea, cabecera["descripcion"], missing_accounts, missing_partners,
+                account_mapping,
+            )
             if error:
                 errors.append(error)
             else:
                 line_vals.append((0, 0, vals))
+                if warning:
+                    line_warnings.append(warning)
 
         if errors:
             return {
@@ -316,6 +476,25 @@ class AiciaAccountImporterWizard(models.TransientModel):
                 "msg": _("Asiento Nº %s — errores en líneas: %s")
                 % (ref, "; ".join(errors)),
             }
+        if not line_vals:
+            return {
+                "status": "error",
+                "ref": ref,
+                "msg": _("Asiento Nº %s no generó ninguna línea válida.") % ref,
+            }
+
+        # ── Propagar partner a TODAS las líneas del mismo asiento ────────────
+        # El partner se detecta en las líneas de cliente/proveedor (400/430…)
+        # y se copia a las demás líneas (contrapartidas, bancos, etc.)
+        partner_id_asiento = None
+        for _cmd, _id, v in line_vals:
+            if v.get("partner_id"):
+                partner_id_asiento = v["partner_id"]
+                break
+        if partner_id_asiento:
+            for _cmd, _id, v in line_vals:
+                if not v.get("partner_id"):
+                    v["partner_id"] = partner_id_asiento
 
         # Validar cuadre contable
         total_debe = sum(v[2]["debit"] for v in line_vals)
@@ -331,16 +510,30 @@ class AiciaAccountImporterWizard(models.TransientModel):
 
         move_vals = {
             "ref": ref,
-            "name": cabecera["descripcion"] or "/",
             "date": cabecera["fecha"],
             "journal_id": self.journal_id.id,
             "line_ids": line_vals,
+            "narration": cabecera["descripcion"] or "/",
         }
 
         try:
             move = self.env["account.move"].create(move_vals)
-            if self.move_state == "posted":
+            # Si hay socios no resueltos → forzar borrador siempre
+            if not line_warnings and self.move_state == "posted":
                 move.action_post()
+
+            if line_warnings:
+                # Deduplicar refs en el mensaje del asiento
+                refs_uniq = sorted({w.split("'")[1] for w in line_warnings if "'" in w})
+                refs_str = ", ".join(refs_uniq) if refs_uniq else "; ".join(line_warnings)
+                return {
+                    "status": "warning",
+                    "ref": ref,
+                    "msg": _(
+                        "Asiento Nº %s creado en BORRADOR (ID Odoo %d) "
+                        "— socios no resueltos: %s"
+                    ) % (ref, move.id, refs_str),
+                }
             return {
                 "status": "created",
                 "ref": ref,
@@ -353,21 +546,37 @@ class AiciaAccountImporterWizard(models.TransientModel):
                 "msg": _("Error al crear asiento Nº %s: %s") % (ref, str(exc)),
             }
 
-    def _build_line_vals(self, linea: dict, asiento_desc: str, missing_accounts: set) -> tuple:
-        """Construye el dict de valores para una account.move.line.
-
-        Devuelve (vals, None) si todo va bien, o (None, msg_error) si falla.
-        """
-        account = self._get_account(linea["cuenta"], missing_accounts)
+    def _build_line_vals(
+        self,
+        linea: dict,
+        asiento_desc: str,
+        missing_accounts: set,
+        missing_partners: dict,
+        account_mapping: dict = None,
+    ) -> tuple:
+        """Construye el dict de valores para una account.move.line."""
+        account = self._get_account(linea["cuenta"], missing_accounts, account_mapping)
         if not account:
             return None, _(
                 "Cuenta '%s' no encontrada ni en colectivas ni en el plan contable."
-            ) % linea["cuenta"]
+            ) % linea["cuenta"], None
 
         partner = None
+        warning_msg = None
         if linea["cuenta"][:3] in PARTNER_ACCOUNT_PREFIXES:
-            nombre_tercero = linea["descripcion"] or asiento_desc
-            partner, _error = self._resolve_partner(nombre_tercero)
+            ref_code = self._partner_ref_from_account(linea["cuenta"])
+            partner = self._resolve_partner(ref_code)
+            if not partner:
+                if self.create_missing_partners:
+                    partner = self._create_partner(
+                        ref_code, linea["cuenta"], linea["descripcion"]
+                    )
+                else:
+                    warning_msg = _(
+                        "Socio no encontrado para ref '%s' (cuenta legada: %s)"
+                    ) % (ref_code, linea["cuenta"])
+                    if missing_partners is not None:
+                        missing_partners[ref_code] = linea["cuenta"]
 
         return (
             {
@@ -378,6 +587,7 @@ class AiciaAccountImporterWizard(models.TransientModel):
                 "credit": linea["credit"],
             },
             None,
+            warning_msg,
         )
 
     # ── Resolución de cuentas contables ──────────────────────────────────────
@@ -387,22 +597,43 @@ class AiciaAccountImporterWizard(models.TransientModel):
         prefix = code[:3]
         return prefix if prefix in COLLECTIVE_ACCOUNT_MAP else None
 
-    def _get_account(self, code: str, missing_accounts: set = None):
-        """Resuelve la cuenta Odoo a partir del código legado de 9 dígitos:
+    def _get_account(self, code: str, missing_accounts: set = None, account_mapping: dict = None):
+        """Resuelve la cuenta Odoo a partir del código legado de 9 dígitos.
 
-        1. Prefijo colectivo (400/430/572) → devuelve/crea la cuenta colectiva.
-        2. Normaliza a 6 dígitos (quitando ceros finales) y busca exacta.
-        3. Busca por prefijo de 3 dígitos como último recurso.
+        Orden de resolución:
+          0. Mapeo manual del usuario (account_mapping_ids) — tiene prioridad absoluta.
+          1. Prefijo colectivo (400/430/572) → devuelve/crea la cuenta colectiva.
+          2. Normaliza a 6 dígitos (quitando ceros finales) y busca exacta.
+          3. Busca por prefijo de 3 dígitos como último recurso.
         """
         if not code:
             return None
 
+        # ── 0. Mapeo manual definido por el usuario ───────────────────────────
+        if account_mapping:
+            normalized_for_map = code[:6].rstrip("0") or code[:3]
+            for src, target_acc in account_mapping.items():
+                # Coincidencia: código exacto de 9 dígitos, código normalizado,
+                # o el código comienza con el prefijo indicado por el usuario.
+                if (
+                    code == src
+                    or normalized_for_map == src
+                    or code.startswith(src)
+                    or normalized_for_map.startswith(src)
+                ):
+                    _logger.debug(
+                        "Cuenta '%s' redirigida a '%s' por mapeo de usuario.",
+                        code, target_acc.code,
+                    )
+                    return target_acc
+
+        # ── 1. Prefijo colectivo ──────────────────────────────────────────────
         prefix = self._get_collective_prefix(code)
         if prefix:
             col_code, col_name, col_type = COLLECTIVE_ACCOUNT_MAP[prefix]
             return self._get_or_create_account(col_code, col_name, col_type)
 
-        # Normalizar código: 9 dígitos → 6 dígitos sin ceros finales
+        # ── 2. Normalizar a 6 dígitos ─────────────────────────────────────────
         normalized = code[:6].rstrip("0") or code[:3]
         account = self.env["account.account"].search(
             [("code", "=", normalized), ("company_ids", "in", [self.env.company.id])],
@@ -411,7 +642,7 @@ class AiciaAccountImporterWizard(models.TransientModel):
         if account:
             return account
 
-        # Último recurso: buscar por prefijo de 3 dígitos
+        # ── 3. Búsqueda por prefijo de 3 dígitos ─────────────────────────────
         account = (
             self.env["account.account"].search(
                 [
@@ -448,30 +679,139 @@ class AiciaAccountImporterWizard(models.TransientModel):
 
     # ── Resolución de partners ────────────────────────────────────────────────
 
-    def _resolve_partner(self, name: str) -> tuple:
-        """Busca el partner por nombre (ilike). Crea si create_missing_partners=True.
+    def _partner_ref_from_account(self, code: str) -> str:
+        """Construye el ref del partner a partir del código de cuenta legado de 9 dígitos.
 
-        Devuelve (partner_o_None, msg_error_o_None).
-        La descripción de la línea en el legado no es fiable como nombre de partner,
-        por eso no bloqueamos el asiento si no se encuentra: se deja sin partner.
+        Los últimos 5 dígitos del código identifican al tercero en el sistema legado.
+        El prefijo de letra se determina por el tipo de cuenta:
+          430/431/436 → "C" (cliente)
+          400/401     → "P" (proveedor)
+
+        Nota: el módulo aicia_importer almacena el ref con prefijo "C" tanto para
+        clientes como para proveedores. _resolve_partner lo tiene en cuenta.
+
+        Ejemplos:
+          "430003604" → "C03604"
+          "400001234" → "P01234"
         """
-        if not name:
-            return None, None
+        prefix = code[:3] if code else ""
+        last5 = code[-5:] if len(code) >= 5 else code
+        tipo = "C" if prefix in {"430", "431", "436"} else "P"
+        return f"{tipo}{last5}"
 
-        partner = self.env["res.partner"].search(
-            [("name", "ilike", name)], limit=1
-        )
-        if partner:
-            return partner, None
+    def _resolve_partner(self, ref_code: str):
+        """Busca el partner en res.partner para el ref_code derivado de la cuenta legada.
 
-        if self.create_missing_partners:
-            partner = self.env["res.partner"].create({"name": name})
-            _logger.info(
-                "Partner '%s' creado automáticamente durante la importación.", name
+        Los últimos 5 dígitos de la cuenta contable corresponden al ID del contacto
+        en el sistema legado. El módulo aicia_importer almacena los partners así:
+          - clientes:    campo ``codigo_cliente``  = "C{id}"  y  ``ref`` = "C{id}"
+          - proveedores: campo ``codigo_proveedor`` = "C{id}"  y  ``ref`` = "C{id}"
+            (el importer usa prefijo 'C' para ambos tipos de contacto)
+
+        El campo puede o no tener los ceros de relleno del legado
+        (ej: tanto "C03604" como "C3604" son válidos).
+
+        Cadena de búsqueda (en orden, sin duplicados):
+          Paso 1 — campo específico ``codigo_cliente`` ó ``codigo_proveedor``:
+            · "C{digits}"     — con ceros (como guarda el importer para ambos tipos)
+            · "C{id_entero}"  — sin ceros de relleno
+            · "P{digits}"     — por si se importó con prefijo P
+            · "P{id_entero}"  — sin ceros con prefijo P
+            · solo dígitos con y sin ceros
+          Paso 2 — campo estándar ``ref`` (mismo conjunto ampliado de candidatos):
+            · prefijo propio con/sin ceros, prefijo contrario con/sin ceros,
+              solo dígitos con y sin ceros
+        """
+        if not ref_code:
+            return None
+
+        tipo = ref_code[0]    # "C" o "P"
+        digits = ref_code[1:]  # "03604" — últimos 5 dígitos de la cuenta
+        # Versión sin ceros de relleno: "03604" → "3604", "00050" → "50"
+        digits_int = str(int(digits)) if digits.isdigit() else digits.lstrip("0") or "0"
+        tipo_contrario = "P" if tipo == "C" else "C"
+
+        # Candidatos para el campo específico (preservando orden, sin duplicados)
+        candidatos_especificos = list(dict.fromkeys([
+            f"C{digits}",           # C03604 — prefijo C con ceros (como guarda el importer)
+            f"C{digits_int}",       # C3604  — prefijo C sin ceros
+            f"C{digits.zfill(6)}", # C003604 — prefijo C con 6 dígitos rellenos
+            f"P{digits}",           # P03604 — por si se importó con prefijo P
+            f"P{digits_int}",       # P3604  — prefijo P sin ceros
+            f"P{digits.zfill(6)}", # P003604 — prefijo P con 6 dígitos rellenos
+            digits,                 # 03604  — solo dígitos con ceros
+            digits_int,             # 3604   — solo dígitos sin ceros
+        ]))
+
+        # Candidatos para el campo ref estándar
+        candidatos_ref = list(dict.fromkeys([
+            ref_code,                               # C03604 / P01234
+            f"{tipo}{digits_int}",                  # C3604  / P1234
+            f"{tipo}{digits.zfill(6)}",             # C003604 ← relleno 6 dígitos
+            f"{tipo_contrario}{digits}",            # P03604 / C01234
+            f"{tipo_contrario}{digits_int}",        # P3604  / C1234
+            f"{tipo_contrario}{digits.zfill(6)}",   # P003604 / C003604
+            digits,                                 # 03604  / 01234
+            digits_int,                             # 3604   / 1234
+        ]))
+
+        # ── Paso 1: buscar por campo específico del contacto ─────────────────
+        # El importer usa codigo_cliente para clientes y codigo_proveedor para
+        # proveedores, ambos con prefijo "C" independientemente del tipo.
+        campo_especifico = "codigo_cliente" if tipo == "C" else "codigo_proveedor"
+        for val in candidatos_especificos:
+            partner = self.env["res.partner"].search(
+                [(campo_especifico, "=", val)], limit=1
             )
-            return partner, None
+            if partner:
+                _logger.debug(
+                    "Partner encontrado por %s='%s' (ref_code='%s').",
+                    campo_especifico, val, ref_code,
+                )
+                return partner
 
-        return None, None  # Sin partner pero sin bloquear el asiento
+        # ── Paso 2: buscar por campo estándar ref (fallback) ─────────────────
+        for ref in candidatos_ref:
+            partner = self.env["res.partner"].search(
+                [("ref", "=", ref)], limit=1
+            )
+            if partner:
+                _logger.debug(
+                    "Partner encontrado por ref='%s' (ref_code='%s').",
+                    ref, ref_code,
+                )
+                return partner
+
+        return None
+
+    def _create_partner(self, ref_code: str, account_code: str, name: str):
+        """Crea un partner a partir del ref_code y el código de cuenta legado.
+
+        - Cuentas 430/431/436 → customer_rank=1
+        - Cuentas 400/401    → supplier_rank=1
+        - Nombre: descripción de la línea o ref_code si no hay descripción.
+        """
+        # Antes de crear, verificar si ya fue creado en esta misma sesión
+        existing = self.env["res.partner"].search(
+            [("ref", "=", ref_code)], limit=1
+        )
+        if existing:
+            return existing
+
+        prefix = account_code[:3] if account_code else ""
+        is_customer = prefix in {"430", "431", "436"}
+        is_supplier = prefix in {"400", "401"}
+        vals = {
+            "name": name or ref_code,
+            "ref": ref_code,
+            "customer_rank": 1 if is_customer else 0,
+            "supplier_rank": 1 if is_supplier else 0,
+        }
+        partner = self.env["res.partner"].create(vals)
+        _logger.info(
+            "Partner '%s' (ref=%s) creado automáticamente.", vals["name"], ref_code
+        )
+        return partner
 
     # ── Utilidades ────────────────────────────────────────────────────────────
 
@@ -488,18 +828,13 @@ class AiciaAccountImporterWizard(models.TransientModel):
 
     @staticmethod
     def _parse_fecha_contable(value) -> date:
-        """Convierte el campo Fecha_Contable del legado a datetime.date.
-
-        El campo viene como entero YYYYMMDD (ej: 20250103).
-        También acepta datetime, date o string con separadores.
-        """
+        """Convierte el campo Fecha_Contable del legado a datetime.date."""
         if value is None:
             return date.today()
         if isinstance(value, datetime):
             return value.date()
         if isinstance(value, date):
             return value
-        # Entero YYYYMMDD
         try:
             return datetime.strptime(str(int(value)), "%Y%m%d").date()
         except (ValueError, TypeError):
@@ -516,21 +851,28 @@ class AiciaAccountImporterWizard(models.TransientModel):
 
     # ── Generación del log HTML ───────────────────────────────────────────────
 
-    def _build_log_html(self, results: list, missing_accounts: set = None) -> str:
+    def _build_log_html(
+        self,
+        results: list,
+        missing_accounts: set = None,
+        missing_partners: dict = None,
+    ) -> str:
         """Genera el HTML del resumen de la importación."""
         created = [r for r in results if r["status"] == "created"]
         skipped = [r for r in results if r["status"] == "skipped"]
         errors = [r for r in results if r["status"] == "error"]
+        warn_results = [r for r in results if r["status"] == "warning"]
 
         html = "<div style='font-family: monospace; font-size: 12px;'>"
         html += (
             "<p><strong>Resumen:</strong> "
             f"<span style='color:green'>{len(created)} creados</span> | "
             f"<span style='color:orange'>{len(skipped)} omitidos</span> | "
+            f"<span style='color:#e67e00'>{len(warn_results)} con socios no resueltos (borrador)</span> | "
             f"<span style='color:red'>{len(errors)} errores</span></p>"
         )
 
-        # ── Cuentas no encontradas (resumen al inicio del log) ────────────────
+        # ── Cuentas no encontradas ────────────────────────────────────────────
         missing = missing_accounts or set()
         if missing:
             html += (
@@ -546,6 +888,25 @@ class AiciaAccountImporterWizard(models.TransientModel):
                     f"<code>{code}</code></li>"
                 )
             html += "</ul>"
+
+        # ── Socios no encontrados ─────────────────────────────────────────────
+        missing_p = missing_partners or {}
+        if missing_p:
+            html += (
+                "<hr/>"
+                f"<p><strong style='color:#7B3F00'>👤 Socios no encontrados por ref "
+                f"({len(missing_p)} únicos — sus asientos quedaron en borrador):"
+                f"</strong></p>"
+                "<ul style='columns:3; column-gap:24px; list-style:none; padding:0;'>"
+            )
+            for ref_code, cuenta in sorted(missing_p.items()):
+                html += (
+                    f"<li style='color:#7B3F00; padding:2px 0;'>"
+                    f"<code>{ref_code}</code>"
+                    f"<span style='color:#999; font-size:10px;'> (cta: {cuenta})</span>"
+                    f"</li>"
+                )
+            html += '</ul>'
         # ─────────────────────────────────────────────────────────────────────
 
         if errors:
@@ -554,10 +915,19 @@ class AiciaAccountImporterWizard(models.TransientModel):
                 html += f"<li style='color:red'>{r['msg']}</li>"
             html += "</ul>"
 
+        if warn_results:
+            html += (
+                "<hr/><p><strong style='color:#e67e00'>"
+                "⚠️ Con socios no resueltos (borrador):</strong></p><ul>"
+            )
+            for r in warn_results:
+                html += f"<li style='color:#e67e00'>{r['msg']}</li>"
+            html += "</ul>"
+
         if skipped:
             html += (
                 "<hr/><p><strong style='color:orange'>"
-                "⚠️ Omitidos (ya existían):</strong></p><ul>"
+                "⏭️ Omitidos (ya existían):</strong></p><ul>"
             )
             for r in skipped:
                 html += f"<li style='color:orange'>{r['msg']}</li>"
