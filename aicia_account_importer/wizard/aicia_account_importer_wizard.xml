@@ -8,7 +8,6 @@
         <field name="view_mode">form</field>
         <field name="target">new</field>
     </record>
-
     <!-- Vista de lista para el modelo de mapeo de cuentas -->
     <record id="view_aicia_account_importer_account_mapping_list" model="ir.ui.view">
         <field name="name">aicia.account.importer.account.mapping.list</field>
@@ -16,20 +15,18 @@
         <field name="arch" type="xml">
             <list editable="bottom">
                 <field name="source_code" placeholder="Ej: 478 ó 478000000"/>
-                <field name="target_account_id"/>
+                <field name="target_account_id" required="1"/>
             </list>
         </field>
     </record>
-
     <record id="view_aicia_account_importer_wizard_form" model="ir.ui.view">
         <field name="name">aicia.account.importer.wizard.form</field>
         <field name="model">aicia.account.importer.wizard</field>
         <field name="arch" type="xml">
             <form string="Importador de Apuntes Contables">
                 <field name="state" invisible="1"/>
-
-                <!-- Formulario de entrada (solo en estado draft) -->
-                <group invisible="state == 'done'">
+                <!-- Formulario de entrada -->
+                <group>
                     <group string="Archivos Excel">
                         <field name="file_apuntes" widget="binary" filename="filename_apuntes"/>
                         <field name="filename_apuntes" invisible="1"/>
@@ -43,20 +40,18 @@
                         <field name="skip_anulados"/>
                     </group>
                 </group>
-
-                <!-- Resultado (solo en estado done) -->
-                <group invisible="state == 'draft'">
-                    <group string="Resumen">
-                        <field name="total_created" readonly="1"/>
-                        <field name="total_skipped" readonly="1"/>
-                        <field name="total_warnings" readonly="1"/>
-                        <field name="total_errors" readonly="1"/>
-                    </group>
-                    <field name="import_log" nolabel="1" colspan="2" readonly="1"/>
-                </group>
-
-                <!-- Ayuda sobre el formato esperado / Mapeo de cuentas -->
-                <notebook invisible="state == 'done'">
+                <notebook>
+                    <!-- Pestaña Resumen: solo visible tras importar -->
+                    <page string="Resumen" name="import_summary" invisible="not import_log">
+                        <group string="Contadores">
+                            <field name="total_created" readonly="1"/>
+                            <field name="total_skipped" readonly="1"/>
+                            <field name="total_warnings" readonly="1"/>
+                            <field name="total_errors" readonly="1"/>
+                        </group>
+                        <field name="import_log" nolabel="1" colspan="2" readonly="1"/>
+                    </page>
+                    <!-- Pestaña Cuentas: mapeo legado → Odoo -->
                     <page string="Cuentas" name="account_mapping">
                         <div style="padding: 4px 0 8px 0;">
                             <p style="color: #555; margin: 0 0 8px 0;">
@@ -65,12 +60,15 @@
                                 <strong>Ejemplo:</strong> código origen <code>478</code>
                                 → cuenta destino <code>477 - H.P. IVA repercutido</code>.<br/>
                                 El código origen puede ser un prefijo (ej: <code>478</code>)
-                                o el código completo de 9 dígitos (ej: <code>478000000</code>).
+                                o el código completo de 9 dígitos (ej: <code>478000000</code>).<br/>
+                                <em>Tras cada importación, las cuentas no encontradas se añaden
+                                automáticamente a esta lista para que las mapees.</em>
                             </p>
                         </div>
                         <field name="account_mapping_ids" nolabel="1"
                                context="{'list_view_ref': 'aicia_account_importer.view_aicia_account_importer_account_mapping_list'}"/>
                     </page>
+                    <!-- Pestaña Formato del Excel -->
                     <page string="Formato del Excel" name="help">
                         <div style="padding: 8px;">
                             <p><strong>Archivo 1 — Apuntes2025.xlsx</strong> (cabecera de los asientos):</p>
@@ -110,26 +108,18 @@
                         </div>
                     </page>
                 </notebook>
-
                 <footer>
                     <button name="action_import"
                             string="Importar"
                             type="object"
-                            class="btn-primary"
-                            invisible="state == 'done'"/>
+                            class="btn-primary"/>
                     <button name="action_delete_draft_moves"
                             string="Limpiar borradores"
                             type="object"
                             class="btn-danger"
-                            invisible="state == 'done'"
                             confirm="¿Eliminar todos los asientos en borrador del diario seleccionado?"/>
                     <button string="Cerrar"
-                            class="btn-primary"
-                            special="cancel"
-                            invisible="state == 'draft'"/>
-                    <button string="Cancelar"
-                            special="cancel"
-                            invisible="state == 'done'"/>
+                            special="cancel"/>
                 </footer>
             </form>
         </field>

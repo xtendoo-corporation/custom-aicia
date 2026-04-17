@@ -117,7 +117,7 @@ class AiciaAccountImporterAccountMapping(models.TransientModel):
     target_account_id = fields.Many2one(
         "account.account",
         string="Cuenta destino (Odoo)",
-        required=True,
+        required=False,  # required=True se aplica solo en la vista XML
     )
 
 
@@ -304,7 +304,7 @@ class AiciaAccountImporterWizard(models.TransientModel):
 
         self.write(
             {
-                "state": "done",
+                "state": "draft",
                 "total_created": created,
                 "total_skipped": skipped,
                 "total_errors": errors,
@@ -314,7 +314,24 @@ class AiciaAccountImporterWizard(models.TransientModel):
                 ),
             }
         )
-        # Reabrir el mismo wizard para mostrar el log de resultados
+
+        # ── Poblar pestaña Cuentas con las cuentas no encontradas ────────────
+        # Solo añadir las que aún no tienen fila en el mapeo (con o sin destino)
+        existing_sources = {
+            m.source_code.strip()
+            for m in self.account_mapping_ids
+            if m.source_code
+        }
+        new_mappings = []
+        for code in sorted(missing_accounts):
+            if code not in existing_sources:
+                new_mappings.append(
+                    (0, 0, {"wizard_id": self.id, "source_code": code})
+                )
+        if new_mappings:
+            self.write({"account_mapping_ids": new_mappings})
+
+        # Reabrir el mismo wizard (estado draft) para mostrar log + pestaña Cuentas
         return {
             "type": "ir.actions.act_window",
             "res_model": self._name,
