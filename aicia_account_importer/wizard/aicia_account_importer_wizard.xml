@@ -34,7 +34,6 @@
                         <field name="filename_lineas" invisible="1"/>
                     </group>
                     <group string="Configuración de importación">
-                        <field name="journal_id"/>
                         <field name="move_state"/>
                         <field name="create_missing_partners"/>
                         <field name="skip_anulados"/>
