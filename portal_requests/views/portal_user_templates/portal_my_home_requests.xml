@@ -71,6 +71,16 @@
                     <t t-set="config_card" t-value="True"/>
                 </t>
             </xpath>
+            <xpath expr="//div[@id='portal_common_category']/t[1]" position="after">
+                <t t-call="portal.portal_docs_entry">
+                    <t t-set="icon" t-value="'/portal_requests/static/description/payment.png'"/>
+                    <t t-set="icon_style" t-value="'max-width: 64px; max-height: 64px;'"/>
+                    <t t-set="title">Pagos</t>
+                    <t t-set="text">Consulta tus pagos realizados</t>
+                    <t t-set="url" t-value="'/my/payments'"/>
+                    <t t-set="config_card" t-value="True"/>
+                </t>
+            </xpath>
         </template>
     </data>
 </odoo>

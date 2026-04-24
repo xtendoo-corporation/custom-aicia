@@ -8,4 +8,4 @@ from . import portal_project_end_request_controller
 from . import portal_project_requests_controller
 from . import portal_purchase_order_requests_controller
 from . import portal_utils
-
+from . import portal_payment_requests_controller

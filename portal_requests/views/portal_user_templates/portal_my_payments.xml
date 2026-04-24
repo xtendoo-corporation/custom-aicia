@@ -1,0 +1,61 @@
+<?xml version="1.0" encoding="utf-8"?>
+<odoo>
+    <data>
+        <!-- Listado de Pagos -->
+        <template id="portal_my_payments" name="Mis Pagos">
+            <t t-call="portal.portal_layout">
+                <t t-set="breadcrumbs_searchbar" t-value="True"/>
+                <t t-call="portal.portal_searchbar">
+                    <t t-set="title">Mis Pagos</t>
+                </t>
+                <t t-set="page_name" t-value="'payments'"/>
+                <t t-if="not payments">
+                    <div class="alert alert-info" role="alert">
+                        No tienes pagos registrados.
+                    </div>
+                </t>
+                <t t-if="payments" t-call="portal.portal_table">
+                    <thead>
+                        <tr class="active">
+                            <th>Referencia</th>
+                            <th>Fecha</th>
+                            <th>Importe</th>
+                            <th>Estado</th>
+                            <th>Factura</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        <t t-foreach="payments" t-as="payment">
+                            <tr>
+                                <td>
+                                    <a t-attf-href="/my/payments/#{payment.id}">
+                                        <span t-esc="payment.name"/>
+                                    </a>
+                                </td>
+                                <td>
+                                    <span t-esc="payment.date"/>
+                                </td>
+                                <td>
+                                    <span t-esc="payment.amount"/>
+                                </td>
+                                <td>
+                                    <span t-esc="payment.state"/>
+                                </td>
+                                <td>
+                                    <t t-if="payment.invoice_ids">
+                                        <t t-foreach="payment.invoice_ids" t-as="inv" t-separator=", ">
+                                            <span t-esc="inv.name"/>
+                                        </t>
+                                    </t>
+                                    <t t-if="not payment.invoice_ids">
+                                        -
+                                    </t>
+                                </td>
+                            </tr>
+                        </t>
+                    </tbody>
+                </t>
+            </t>
+        </template>
+    </data>
+</odoo>
