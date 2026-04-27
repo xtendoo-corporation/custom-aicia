@@ -1,6 +1,7 @@
 from odoo import http
 from odoo.addons.portal.controllers.portal import CustomerPortal
 from odoo.http import request, route
+import base64
 
 
 class PortalRequestsCustomerPortal(CustomerPortal):
@@ -517,6 +518,33 @@ class PortalRequestsCustomerPortal(CustomerPortal):
         # Redirigir de vuelta al detalle
         return request.redirect(f'/my/documents/{document_id}?success=message_posted')
 
+    @http.route(['/my/documents/<int:document_id>/add_attachment'], type='http', auth="user", website=True, methods=['POST'], csrf=True)
+    def portal_document_add_attachment(self, document_id, **post):
+        user = request.env.user
+        document = request.env['document.approval'].sudo().browse(document_id)
+        # Comprobar acceso: propietario o jefe de grupo
+        is_owner = document.user_id == user
+        is_boss_of_group = user.has_group('portal_requests.group_equip_boss') and document.work_group_id and document.work_group_id.equip_boss == user
+        if not is_owner and not is_boss_of_group:
+            return request.redirect('/my')
+        file_storage = request.httprequest.files.get('attachment')
+        if not file_storage or not hasattr(file_storage, 'filename'):
+            return request.redirect(f'/my/documents/{document_id}')
+        filename = file_storage.filename
+        mimetype = file_storage.content_type
+        file_data = file_storage.read()
+        if not file_data:
+            return request.redirect(f'/my/documents/{document_id}')
+        datas_b64 = base64.b64encode(file_data).decode('ascii')
+        request.env['ir.attachment'].sudo().create({
+            'name': filename,
+            'datas': datas_b64,
+            'res_model': 'document.approval',
+            'res_id': document.id,
+            'mimetype': mimetype,
+        })
+        return request.redirect(f'/my/documents/{document_id}')
+
     # ==========================================
     # Rutas para Proyectos (Cuentas Analíticas)
     # ==========================================
@@ -863,14 +891,55 @@ class PortalRequestsCustomerPortal(CustomerPortal):
         ], order='date desc')
         messages = self._enrich_messages(raw_messages)
 
+        # Obtener los adjuntos generales de la solicitud
+        attachments = request.env['ir.attachment'].sudo().search([
+            ('res_model', '=', 'portal.project.request'),
+            ('res_id', '=', request_id)
+        ])
+
         values = {
             'project_request': project_request.sudo(),
             'messages': messages,
             'page_name': 'project_request_detail',
             'success_message': success,
+            'attachments': attachments,
         }
 
         return request.render("portal_requests.portal_my_project_request_detail", values)
+
+    @http.route(['/my/project_requests/<int:request_id>/add_attachment'], type='http', auth="user", website=True, methods=['POST'], csrf=True)
+    def portal_project_request_add_attachment(self, request_id, **post):
+        """Permite al usuario portal subir un adjunto a la solicitud de proyecto"""
+        # Solo los jefes de equipo pueden acceder
+        if not request.env.user.has_group('portal_requests.group_equip_boss'):
+            return request.redirect('/my')
+
+        # Buscar la solicitud del usuario
+        project_request = request.env['portal.project.request'].search([
+            ('id', '=', request_id),
+            ('user_id', '=', request.env.user.id)
+        ], limit=1)
+        if not project_request:
+            return request.redirect('/my')
+
+        file_storage = request.httprequest.files.get('attachment')
+        if not file_storage or not hasattr(file_storage, 'filename'):
+            return request.redirect(f'/my/project_requests/{request_id}')
+        filename = file_storage.filename
+        mimetype = file_storage.content_type
+        file_data = file_storage.read()
+        if not file_data:
+            return request.redirect(f'/my/project_requests/{request_id}')
+        import base64
+        datas_b64 = base64.b64encode(file_data).decode('ascii')
+        request.env['ir.attachment'].sudo().create({
+            'name': filename,
+            'datas': datas_b64,
+            'res_model': 'portal.project.request',
+            'res_id': project_request.id,
+            'mimetype': mimetype,
+        })
+        return request.redirect(f'/my/project_requests/{request_id}')
 
     @http.route(['/my/project_requests/<int:request_id>/post_message'], type='http', auth="user", website=True, methods=['POST'], csrf=True)
     def portal_project_request_post_message(self, request_id, message, **kw):
@@ -928,3 +997,54 @@ class PortalRequestsCustomerPortal(CustomerPortal):
         })
         return request.redirect(f'/my/analytic_projects/{project_id}?success=attachment_uploaded')
 
+    @http.route(['/my/invoices/<int:invoice_request_id>/add_attachment'], type='http', auth="user", website=True, methods=['POST'], csrf=True)
+    def portal_invoice_add_attachment(self, invoice_request_id, **post):
+        user = request.env.user
+        invoice_request = request.env['portal.invoice.request'].sudo().browse(invoice_request_id)
+        # Comprobar acceso: propietario o jefe de grupo
+        if not self._can_access_invoice_request(invoice_request):
+            return request.redirect('/my')
+        file_storage = request.httprequest.files.get('attachment')
+        if not file_storage or not hasattr(file_storage, 'filename'):
+            return request.redirect(f'/my/invoices/{invoice_request_id}')
+        filename = file_storage.filename
+        mimetype = file_storage.content_type
+        file_data = file_storage.read()
+        if not file_data:
+            return request.redirect(f'/my/invoices/{invoice_request_id}')
+        datas_b64 = base64.b64encode(file_data).decode('ascii')
+        request.env['ir.attachment'].sudo().create({
+            'name': filename,
+            'datas': datas_b64,
+            'res_model': 'portal.invoice.request',
+            'res_id': invoice_request.id,
+            'mimetype': mimetype,
+        })
+        return request.redirect(f'/my/invoices/{invoice_request_id}')
+
+    @http.route(['/my/expenses/<int:expense_id>/add_attachment'], type='http', auth="user", website=True, methods=['POST'], csrf=True)
+    def portal_expense_add_attachment(self, expense_id, **post):
+        """Permite al usuario portal subir un adjunto a la solicitud de gastos"""
+        expense = request.env['portal.hr.expensive.request'].sudo().browse(expense_id)
+        user = request.env.user
+        # Validar acceso: propietario o jefe de grupo (opcional, aquí solo comprobamos existencia)
+        if not expense:
+            return request.redirect('/my/expenses')
+        file_storage = request.httprequest.files.get('attachment')
+        if not file_storage or not hasattr(file_storage, 'filename'):
+            return request.redirect(f'/my/expenses/{expense_id}')
+        filename = file_storage.filename
+        mimetype = file_storage.content_type
+        file_data = file_storage.read()
+        if not file_data:
+            return request.redirect(f'/my/expenses/{expense_id}')
+        import base64
+        datas_b64 = base64.b64encode(file_data).decode('ascii')
+        request.env['ir.attachment'].sudo().create({
+            'name': filename,
+            'datas': datas_b64,
+            'res_model': 'portal.hr.expensive.request',
+            'res_id': expense.id,
+            'mimetype': mimetype,
+        })
+        return request.redirect(f'/my/expenses/{expense_id}')

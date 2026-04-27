@@ -22,7 +22,7 @@
                             <div class="d-flex justify-content-between align-items-center mb-3">
                                 <h3>Mis Solicitudes de Proyectos</h3>
                                 <a href="/portal/project_request" class="btn btn-primary">
-                                    <i class="fa fa-plus me-2"></i>Nueva Solicitud
+                                    <i class="fa fa-plus me-2"/>Nueva Solicitud
                                 </a>
                             </div>
                         </div>
@@ -108,7 +108,7 @@
                         <div class="alert alert-success alert-dismissible fade show" role="alert">
                             <strong>¡Éxito!</strong>
                             <span t-if="success_message == 'message_posted'">Tu mensaje ha sido enviado correctamente.</span>
-                            <button type="button" class="btn-close" data-bs-dismiss="alert" aria-label="Close"></button>
+                            <button type="button" class="btn-close" data-bs-dismiss="alert" aria-label="Close"/>
                         </div>
                     </t>
 
@@ -117,7 +117,7 @@
                             <div class="card mb-4">
                                 <div class="card-header bg-primary text-white">
                                     <h4 class="mb-0">
-                                        <i class="fa fa-folder-open me-2"></i>
+                                        <i class="fa fa-folder-open me-2"/>
                                         Solicitud: <span t-esc="project_request.project_name"/>
                                     </h4>
                                 </div>
@@ -188,26 +188,79 @@
                                     </t>
 
                                     <!-- Adjuntos -->
-                                    <t t-if="project_request.signed_contract or project_request.budget_file">
-                                        <hr/>
-                                        <h5 class="mb-3">Archivos Adjuntos</h5>
-                                        <div class="list-group">
-                                            <t t-if="project_request.signed_contract">
-                                                <a t-attf-href="/web/content/portal.project.request/#{project_request.id}/signed_contract/#{project_request.signed_contract_filename}?download=true"
-                                                   class="list-group-item list-group-item-action">
-                                                    <i class="fa fa-file-pdf-o me-2"></i>
-                                                    <span t-esc="project_request.signed_contract_filename or 'Contrato Firmado'"/>
-                                                </a>
+<!--                                    <t t-if="project_request.signed_contract or project_request.budget_file">-->
+<!--                                        <hr/>-->
+<!--                                        <h5 class="mb-3">Archivos Adjuntos</h5>-->
+<!--                                                              &lt;!&ndash; Formulario de subida de adjunto SIEMPRE visible &ndash;&gt;-->
+<!--                                            <form method="POST" enctype="multipart/form-data" t-attf-action="/my/project_requests/#{project_request.id}/add_attachment" class="mb-3">-->
+<!--                                                <input type="hidden" name="csrf_token" t-att-value="request.csrf_token()"/>-->
+<!--                                                <div class="input-group">-->
+<!--                                                    <input type="file" name="attachment" class="form-control" required="required"/>-->
+<!--                                                    <button type="submit" class="btn btn-outline-primary">-->
+<!--                                                        <i class="fa fa-upload me-1"/> Subir archivo-->
+<!--                                                    </button>-->
+<!--                                                </div>-->
+<!--                                            </form>-->
+<!--                                        <div class="list-group">-->
+<!--                                            <t t-if="project_request.signed_contract">-->
+<!--                                                <a t-attf-href="/web/content/portal.project.request/#{project_request.id}/signed_contract/#{project_request.signed_contract_filename}?download=true"-->
+<!--                                                   class="list-group-item list-group-item-action">-->
+<!--                                                    <i class="fa fa-file-pdf-o me-2"/>-->
+<!--                                                    <span t-esc="project_request.signed_contract_filename or 'Contrato Firmado'"/>-->
+<!--                                                </a>-->
+<!--                                            </t>-->
+<!--                                            <t t-if="project_request.budget_file">-->
+<!--                                                <a t-attf-href="/web/content/portal.project.request/#{project_request.id}/budget_file/#{project_request.budget_file_filename}?download=true"-->
+<!--                                                   class="list-group-item list-group-item-action">-->
+<!--                                                    <i class="fa fa-file-pdf-o me-2"/>-->
+<!--                                                    <span t-esc="project_request.budget_file_filename or 'Presupuesto'"/>-->
+<!--                                                </a>-->
+<!--                                            </t>-->
+<!--                                        </div>-->
+<!--                                    </t>-->
+                                    <!-- NUEVO: Adjuntos generales -->
+                                    <div class="card mb-4 mt-3">
+                                        <div class="card-header bg-light">
+                                            <h5 class="mb-0">
+                                                <i class="fa fa-paperclip me-2"></i>
+                                                Archivos Adjuntos
+                                            </h5>
+                                        </div>
+                                        <div class="card-body">
+                                            <!-- Formulario de subida de adjunto SIEMPRE visible -->
+                                            <form method="POST" enctype="multipart/form-data" t-attf-action="/my/project_requests/#{project_request.id}/add_attachment" class="mb-3">
+                                                <input type="hidden" name="csrf_token" t-att-value="request.csrf_token()"/>
+                                                <div class="input-group">
+                                                    <input type="file" name="attachment" class="form-control" required="required"/>
+                                                    <button type="submit" class="btn btn-outline-primary">
+                                                        <i class="fa fa-upload me-1"/> Subir archivo
+                                                    </button>
+                                                </div>
+                                            </form>
+                                            <t t-if="attachments and len(attachments) &gt; 0">
+                                                <div class="list-group">
+                                                    <t t-foreach="attachments" t-as="attachment">
+                                                        <a t-attf-href="/web/content/#{attachment.id}?download=true"
+                                                           class="list-group-item list-group-item-action d-flex justify-content-between align-items-center">
+                                                            <div>
+                                                                <i class="fa fa-file-o me-2"/>
+                                                                <span t-esc="attachment.name"/>
+                                                            </div>
+                                                            <span class="badge bg-primary rounded-pill">
+                                                                <i class="fa fa-download"/>
+                                                            </span>
+                                                        </a>
+                                                    </t>
+                                                </div>
                                             </t>
-                                            <t t-if="project_request.budget_file">
-                                                <a t-attf-href="/web/content/portal.project.request/#{project_request.id}/budget_file/#{project_request.budget_file_filename}?download=true"
-                                                   class="list-group-item list-group-item-action">
-                                                    <i class="fa fa-file-pdf-o me-2"></i>
-                                                    <span t-esc="project_request.budget_file_filename or 'Presupuesto'"/>
-                                                </a>
+                                            <t t-else="">
+                                                <div class="alert alert-info mb-0" role="alert">
+                                                    <i class="fa fa-info-circle me-2"/>
+                                                    No hay archivos adjuntos en esta solicitud.
+                                                </div>
                                             </t>
                                         </div>
-                                    </t>
+                                    </div>
 
                                     <!-- Enlace al proyecto creado -->
                                     <t t-if="project_request.created_analytic_id">
@@ -228,7 +281,7 @@
                             <div class="card">
                                 <div class="card-header bg-light">
                                     <h5 class="mb-0">
-                                        <i class="fa fa-comments me-2"></i>
+                                        <i class="fa fa-comments me-2"/>
                                         Comunicaciones
                                     </h5>
                                 </div>
@@ -246,7 +299,7 @@
                                                                      alt="Avatar"/>
                                                             </t>
                                                             <t t-else="">
-                                                                <i class="fa fa-user-circle fa-3x text-muted"></i>
+                                                                <i class="fa fa-user-circle fa-3x text-muted"/>
                                                             </t>
                                                         </div>
                                                         <div class="flex-grow-1">
@@ -256,7 +309,7 @@
                                                                     <strong t-else="">Sistema</strong>
                                                                     <br/>
                                                                     <small class="text-muted">
-                                                                        <i class="fa fa-clock-o me-1"></i>
+                                                                        <i class="fa fa-clock-o me-1"/>
                                                                         <span t-esc="message['date']"/>
                                                                     </small>
                                                                 </div>
@@ -284,10 +337,10 @@
                                                 <input type="hidden" name="csrf_token" t-att-value="request.csrf_token()"/>
                                                 <div class="mb-3">
                                                     <textarea name="message" class="form-control" rows="4"
-                                                              placeholder="Escribe tu mensaje aquí..." required="required"></textarea>
+                                                              placeholder="Escribe tu mensaje aquí..." required="required"> </textarea>
                                                 </div>
                                                 <button type="submit" class="btn btn-primary">
-                                                    <i class="fa fa-paper-plane me-2"></i>
+                                                    <i class="fa fa-paper-plane me-2"/>
                                                     Enviar Mensaje
                                                 </button>
                                             </form>
@@ -301,7 +354,7 @@
                     <div class="row mt-3">
                         <div class="col-12">
                             <a href="/my/project_requests" class="btn btn-secondary">
-                                <i class="fa fa-arrow-left me-2"></i>
+                                <i class="fa fa-arrow-left me-2"/>
                                 Volver a Solicitudes
                             </a>
                         </div>

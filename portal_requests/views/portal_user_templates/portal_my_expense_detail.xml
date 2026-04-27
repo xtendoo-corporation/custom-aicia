@@ -99,6 +99,15 @@
                                         <h5 class="mb-0">Archivos Adjuntos</h5>
                                     </div>
                                     <div class="card-body">
+                                        <!-- Formulario para subir un adjunto -->
+                                        <form method="POST" enctype="multipart/form-data" t-attf-action="/my/expenses/#{expense.id}/add_attachment">
+                                            <input type="hidden" name="csrf_token" t-att-value="request.csrf_token()"/>
+                                            <div class="input-group mb-2">
+                                                <input type="file" name="attachment" class="form-control" required="required"/>
+                                                <button type="submit" class="btn btn-primary">Subir adjunto</button>
+                                            </div>
+                                        </form>
+                                        <!-- Fin formulario adjunto -->
                                         <div class="list-group">
                                             <t t-foreach="attachments" t-as="attachment">
                                                 <a t-attf-href="/web/content/#{attachment.id}?download=true"
