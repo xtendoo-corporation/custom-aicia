@@ -1,4 +1,7 @@
 from odoo.http import request, Controller, route
+import logging
+
+_logger = logging.getLogger(__name__)
 
 class PortalInvoiceController(Controller):
     @route('/portal/invoice_request', auth='user', website=True)
@@ -112,3 +115,59 @@ class PortalInvoiceController(Controller):
             mail.send()
 
         return request.render("portal.email_sent_confirmation")
+
+    @route('/my/invoices/<int:invoice_id>/add_attachment', auth='user', website=True, methods=['POST'], csrf=True)
+    def portal_invoice_add_attachment(self, invoice_id, **post):
+        """Permite al usuario portal subir un adjunto a la factura (account.move)"""
+        user = request.env.user
+        invoice = request.env['account.move'].sudo().browse(invoice_id)
+        # Validar acceso: el usuario debe poder ver la factura (igual que en pagos, adaptar si hay lógica de visibilidad)
+        # Aquí se asume que si llega aquí, tiene acceso (ajustar si hay lógica específica)
+        # Procesar archivo
+        _logger.warning(f"[PORTAL INVOICES][DEBUG] POST keys: {list(post.keys())}")
+        file_storage = post.get('attachment')
+        _logger.warning(f"[PORTAL INVOICES][DEBUG] file_storage: {file_storage}")
+        if not file_storage or not hasattr(file_storage, 'filename'):
+            return request.redirect(f'/my/invoices/{invoice_id}?error=missing_file')
+        filename = file_storage.filename
+        _logger.warning(f"[PORTAL INVOICES][DEBUG] filename: {filename}")
+        max_size = 10 * 1024 * 1024  # 10MB
+        mimetype = file_storage.content_type
+        _logger.warning(f"[PORTAL INVOICES][DEBUG] mimetype: {mimetype}")
+        file_storage.stream.seek(0, 2)
+        size = file_storage.stream.tell()
+        file_storage.stream.seek(0)
+        _logger.warning(f"[PORTAL INVOICES][DEBUG] size: {size}")
+        if size > max_size:
+            return request.redirect(f'/my/invoices/{invoice_id}?error=invalid_file')
+        import base64
+        file_data = file_storage.read()
+        datas_b64 = base64.b64encode(file_data).decode('ascii')
+        _logger.warning(f"[PORTAL INVOICES][DEBUG] datas_b64 length: {len(datas_b64)}")
+        attachment = request.env['ir.attachment'].sudo().create({
+            'name': filename,
+            'datas': datas_b64,
+            'res_model': 'account.move',
+            'res_id': invoice.id,
+            'mimetype': mimetype,
+        })
+        return request.redirect(f'/my/invoices/{invoice_id}?success=attachment_uploaded')
+
+    @route('/my/invoices/<int:invoice_id>', auth='user', website=True)
+    def portal_my_invoice_detail(self, invoice_id, **kwargs):
+        user = request.env.user
+        invoice = request.env['account.move'].sudo().browse(invoice_id)
+        # Acceso: aquí puedes replicar la lógica de visibilidad si es necesario
+        attachments = request.env['ir.attachment'].sudo().search([
+            ('res_model', '=', 'account.move'),
+            ('res_id', '=', invoice.id)
+        ])
+        # Buscar mensajes igual que en pagos si se requiere
+        # raw_messages = ...
+        # messages = ...
+        return request.render('portal_requests.portal_my_invoice_detail', {
+            'invoice_request': invoice,
+            'attachments': attachments,
+            'page_name': 'invoice_request',  # Para breadcrumbs y visibilidad
+            # 'messages': messages,  # Si se implementa el chatter
+        })

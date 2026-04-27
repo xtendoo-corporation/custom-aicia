@@ -1,6 +1,6 @@
 from odoo import http
-from odoo.http import request
 from odoo.addons.portal.controllers.portal import CustomerPortal
+from odoo.http import request, route
 
 
 class PortalRequestsCustomerPortal(CustomerPortal):
@@ -707,6 +707,11 @@ class PortalRequestsCustomerPortal(CustomerPortal):
         # Si la factura no existe, redirigir al listado
         if not invoice.exists():
             return request.redirect(f'/my/analytic_projects/{project_id}/invoices_list')
+        attachments = request.env['ir.attachment'].sudo().search([
+            ('res_model', '=', 'account.move'),
+            ('res_id', '=', invoice.id)
+        ])
+
 
         # Obtener los mensajes del chatter de la factura
         raw_messages = request.env['mail.message'].sudo().search([
@@ -722,9 +727,64 @@ class PortalRequestsCustomerPortal(CustomerPortal):
             'messages': messages,
             'page_name': 'analytic_project_invoice_detail',
             'success_message': success,
+            'attachments': attachments,
         }
 
         return request.render("portal_requests.portal_project_invoice_detail", values)
+
+    @route('/my/analytic_projects/<int:project_id>/invoices_list/<int:invoice_id>/add_attachment', auth='user', website=True, methods=['POST'], csrf=True)
+    def portal_invoice_add_attachment(self,project_id, invoice_id, **post):
+        """Permite al usuario portal subir un adjunto al pago"""
+        user = request.env.user
+        payment = request.env['account.payment'].sudo().browse(invoice_id)
+        # Validar acceso igual que en portal_my_payment_detail
+        analytic_domain = [('responsible_id', '=', user.id)]
+        if user.has_group('portal_requests.group_equip_boss'):
+            work_groups = user.work_group_ids
+            if work_groups:
+                analytic_domain = ['|', ('responsible_id', '=', user.id), ('work_group_id', 'in', work_groups.ids)]
+        projects = request.env['account.analytic.account'].sudo().search(analytic_domain)
+        project_ids = projects.ids
+        paid_invoices = request.env['account.move'].sudo().search([
+            ('analytic_distribution', '!=', False),
+            ('move_type', 'in', ['out_invoice', 'out_refund', 'in_invoice', 'in_refund']),
+            ('state', '=', 'posted'),
+            ('payment_state', '=', 'paid'),
+        ])
+        visible_invoice_ids = []
+        for inv in paid_invoices:
+            analytic_dist = inv.analytic_distribution or {}
+            analytic_ids = set(int(id_str) for key in analytic_dist.keys() for id_str in key.split(','))
+            if any(pid in analytic_ids for pid in project_ids):
+                visible_invoice_ids.append(inv.id)
+        if not payment.invoice_ids.filtered(lambda inv: inv.id in visible_invoice_ids):
+            return request.not_found()
+        # Procesar archivo
+        # DEBUG: log post y file_storage
+        file_storage = post.get('attachment')
+        if not file_storage or not hasattr(file_storage, 'filename'):
+            return request.redirect(f'/my/payments/{invoice_id}?error=missing_file')
+        filename = file_storage.filename
+        # Permitir cualquier tipo de archivo, solo limitar tamaño
+        max_size = 10 * 1024 * 1024  # 10MB
+        mimetype = file_storage.content_type
+        file_storage.stream.seek(0, 2)
+        size = file_storage.stream.tell()
+        file_storage.stream.seek(0)
+        if size > max_size:
+            return request.redirect(f'/my/payments/{invoice_id}?error=invalid_file')
+        # Crear attachment
+        import base64
+        file_data = file_storage.read()
+        datas_b64 = base64.b64encode(file_data).decode('ascii')
+        attachment = request.env['ir.attachment'].sudo().create({
+            'name': filename,
+            'datas': datas_b64,
+            'res_model': 'account.payment',
+            'res_id': payment.id,
+            'mimetype': mimetype,
+        })
+        return request.redirect(f'/my/analytic_projects/<int:project_id>/invoices_list/<int:invoice_id>?success=attachment_uploaded')
 
     @http.route(['/my/analytic_projects/<int:project_id>/invoices_list/<int:invoice_id>/post_message'], type='http', auth="user", website=True, methods=['POST'], csrf=True)
     def portal_project_invoice_post_message(self, project_id, invoice_id, message, **kw):
@@ -840,3 +900,31 @@ class PortalRequestsCustomerPortal(CustomerPortal):
 
         # Redirigir de vuelta al detalle
         return request.redirect(f'/my/project_requests/{request_id}?success=message_posted')
+
+    @http.route(['/my/analytic_projects/<int:project_id>/add_attachment'], type='http', auth="user", website=True, methods=['POST'], csrf=True)
+    def portal_project_add_attachment(self, project_id, **post):
+        """Permite al usuario portal subir un adjunto al proyecto analítico"""
+        project = request.env['account.analytic.account'].sudo().browse(project_id)
+        # Validar acceso: responsable o jefe de grupo
+        user = request.env.user
+        domain = [('id', '=', project_id)] + self._get_accessible_analytic_project_domain(user)
+        accessible = request.env['account.analytic.account'].search(domain, limit=1)
+        if not accessible:
+            return request.redirect('/my')
+        file_storage = post.get('attachment')
+        if not file_storage or not hasattr(file_storage, 'filename'):
+            return request.redirect(f'/my/analytic_projects/{project_id}?error=missing_file')
+        filename = file_storage.filename
+        mimetype = file_storage.content_type
+        file_data = file_storage.read()
+        import base64
+        datas_b64 = base64.b64encode(file_data).decode('ascii')
+        request.env['ir.attachment'].sudo().create({
+            'name': filename,
+            'datas': datas_b64,
+            'res_model': 'account.analytic.account',
+            'res_id': project.id,
+            'mimetype': mimetype,
+        })
+        return request.redirect(f'/my/analytic_projects/{project_id}?success=attachment_uploaded')
+
