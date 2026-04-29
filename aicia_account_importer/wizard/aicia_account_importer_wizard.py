@@ -5,10 +5,11 @@ import logging
 from base64 import b64decode
 from collections import defaultdict
 from datetime import date, datetime
+from html import escape
 from io import BytesIO
 
-from odoo import models, fields, api, _
-from odoo.exceptions import UserError
+from odoo import _, api, fields, models
+from odoo.exceptions import UserError, ValidationError
 
 _logger = logging.getLogger(__name__)
 
@@ -116,14 +117,64 @@ class AiciaAccountImporterAccountMapping(models.Model):
             "Se aplica por coincidencia exacta o por prefijo."
         ),
     )
+    source_code_normalized = fields.Char(
+        string="Código origen normalizado",
+        compute="_compute_source_code_normalized",
+        store=True,
+        index=True,
+    )
     target_account_id = fields.Many2one(
         "account.account",
         string="Cuenta destino (Odoo)",
         required=False,
     )
-    # Opcional: campos de auditoría
-    write_uid = fields.Many2one('res.users', string='Modificado por', readonly=True)
-    write_date = fields.Datetime(string='Fecha modificación', readonly=True)
+
+    @api.depends("source_code")
+    def _compute_source_code_normalized(self):
+        for mapping in self:
+            mapping.source_code_normalized = mapping._normalize_source_code(
+                mapping.source_code
+            )
+
+    @api.constrains("source_code")
+    def _check_source_code(self):
+        for mapping in self:
+            normalized_code = mapping._normalize_source_code(mapping.source_code)
+            if not normalized_code:
+                raise ValidationError(
+                    _("Debes indicar un código origen válido para el mapeo.")
+                )
+            duplicated = self.search(
+                [
+                    ("source_code_normalized", "=", normalized_code),
+                    ("id", "!=", mapping.id),
+                ],
+                limit=1,
+            )
+            if duplicated:
+                raise ValidationError(
+                    _("Ya existe un mapeo para el código origen '%s'.")
+                    % normalized_code
+                )
+
+    @api.model_create_multi
+    def create(self, vals_list):
+        for vals in vals_list:
+            if "source_code" in vals:
+                vals["source_code"] = self._normalize_source_code(vals["source_code"])
+        return super().create(vals_list)
+
+    def write(self, vals):
+        if "source_code" in vals:
+            vals = dict(
+                vals,
+                source_code=self._normalize_source_code(vals["source_code"]),
+            )
+        return super().write(vals)
+
+    @api.model
+    def _normalize_source_code(self, code):
+        return str(code or "").strip().replace(" ", "")
 
 
 class AiciaAccountImporterWizard(models.TransientModel):
@@ -133,12 +184,10 @@ class AiciaAccountImporterWizard(models.TransientModel):
     # ── Ficheros ─────────────────────────────────────────────────────────────
     file_apuntes = fields.Binary(
         string="Apuntes2025.xlsx  (cabecera de asientos)",
-        required=True,
     )
     filename_apuntes = fields.Char()
     file_lineas = fields.Binary(
         string="Lineas_Apunte2025.xlsx  (líneas contables)",
-        required=True,
     )
     filename_lineas = fields.Char()
 
@@ -180,13 +229,10 @@ class AiciaAccountImporterWizard(models.TransientModel):
     def default_get(self, fields_list):
         res = super().default_get(fields_list)
         # Cargar todos los mapeos existentes al abrir el wizard
-        res['account_mapping_ids'] = [(6, 0, self.env['aicia.account.importer.account.mapping'].search([]).ids)]
+        res["account_mapping_ids"] = [
+            (6, 0, self.env["aicia.account.importer.account.mapping"].search([]).ids)
+        ]
         return res
-
-    def write(self, vals):
-        # Si se modifica el mapeo desde el wizard, propagar cambios al modelo persistente
-        # El Many2many solo refleja la selección, no crea ni borra registros globales
-        return super().write(vals)
 
     # ── Estado y log ─────────────────────────────────────────────────────────
     state = fields.Selection(
@@ -202,6 +248,55 @@ class AiciaAccountImporterWizard(models.TransientModel):
     )
 
     # ── Acción principal ─────────────────────────────────────────────────────
+
+    def _reload_account_mapping_ids(self):
+        self.write(
+            {
+                "account_mapping_ids": [
+                    (
+                        6,
+                        0,
+                        self.env["aicia.account.importer.account.mapping"].search([]).ids,
+                    )
+                ]
+            }
+        )
+
+    def action_open_account_mappings(self):
+        """Abre la tabla persistente global de mapeos de cuentas."""
+        self.ensure_one()
+        return {
+            "type": "ir.actions.act_window",
+            "name": _("Mapeo de cuentas AICIA"),
+            "res_model": "aicia.account.importer.account.mapping",
+            "view_mode": "list,form",
+            "views": [(False, "list"), (False, "form")],
+            "target": "current",
+            "context": {"default_target_account_id": False},
+        }
+
+    def action_reload_account_mappings(self):
+        """Recarga en el wizard los mapeos persistentes guardados."""
+        self.ensure_one()
+        self._reload_account_mapping_ids()
+        return {
+            "type": "ir.actions.client",
+            "tag": "display_notification",
+            "params": {
+                "title": _("Mapeos recargados"),
+                "message": _("Se han recargado los mapeos globales guardados."),
+                "type": "success",
+                "sticky": False,
+            },
+        }
+
+    def action_clear_account_mappings(self):
+        """Borra todos los mapeos globales de cuentas AICIA."""
+        self.ensure_one()
+        AccountMapping = self.env["aicia.account.importer.account.mapping"]
+        AccountMapping.search([]).unlink()
+        self.write({"account_mapping_ids": [(5, 0, 0)]})
+        return False
 
     def action_delete_draft_moves(self):
         """Elimina todos los asientos en borrador de los diarios de importación."""
@@ -232,6 +327,7 @@ class AiciaAccountImporterWizard(models.TransientModel):
                     "res_model": self._name,
                     "res_id": self.id,
                     "view_mode": "form",
+                    "views": [(False, "form")],
                     "target": "new",
                 },
             },
@@ -240,6 +336,12 @@ class AiciaAccountImporterWizard(models.TransientModel):
     def action_import(self):
         """Punto de entrada: cruza los dos Excel y crea los account.move."""
         self.ensure_one()
+        activity_log = []
+        self._append_import_activity(
+            activity_log,
+            "info",
+            _("Iniciando importación de apuntes contables AICIA."),
+        )
         if not openpyxl:
             raise UserError(
                 _("La librería 'openpyxl' no está instalada en el servidor.")
@@ -249,41 +351,69 @@ class AiciaAccountImporterWizard(models.TransientModel):
                 _("Debes subir los dos archivos Excel antes de importar.")
             )
 
+        self._append_import_activity(activity_log, "info", _("Leyendo archivo de apuntes."))
         apuntes = self._parse_apuntes(b64decode(self.file_apuntes))
+        self._append_import_activity(
+            activity_log,
+            "success",
+            _("%d cabeceras de asiento válidas leídas.") % len(apuntes),
+        )
+
+        self._append_import_activity(activity_log, "info", _("Leyendo archivo de líneas."))
         lineas_by_apunte = self._parse_lineas(b64decode(self.file_lineas))
+        total_lineas = sum(len(lineas) for lineas in lineas_by_apunte.values())
+        self._append_import_activity(
+            activity_log,
+            "success",
+            _("%d líneas contables leídas.") % total_lineas,
+        )
 
         # Construir diccionario de mapeo de cuentas {source_code: account_record}
-        account_mapping = {
-            m.source_code.strip(): m.target_account_id
-            for m in self.env['aicia.account.importer.account.mapping'].search([])
-            if m.source_code and m.target_account_id
-        }
+        account_mapping = self._get_account_mapping_rules()
+        self._append_import_activity(
+            activity_log,
+            "info",
+            _("%d reglas de mapeo de cuentas cargadas.") % len(account_mapping),
+        )
 
         results = []
         created = skipped = errors = warnings = 0
         missing_accounts = set()
         missing_partners = {}
+        total_apuntes = len(apuntes)
 
-        for id_apunte, cabecera in apuntes.items():
+        for index, (id_apunte, cabecera) in enumerate(apuntes.items(), start=1):
             numero_key = cabecera["numero"]
             # Join por ID_Apunte (col 0 de ambos ficheros)
             lineas = lineas_by_apunte.get(id_apunte) or []
+            self._append_import_activity(
+                activity_log,
+                "info",
+                _("Procesando asiento %(index)d/%(total)d — ID=%(id)s, Nº=%(num)s, líneas=%(lines)d.")
+                % {
+                    "index": index,
+                    "total": total_apuntes,
+                    "id": id_apunte,
+                    "num": numero_key,
+                    "lines": len(lineas),
+                },
+            )
             if not lineas:
                 # Diagnóstico: muestra los IDs disponibles en el fichero de líneas
                 ids_lineas = sorted(lineas_by_apunte.keys())
                 ids_str = ", ".join(str(x) for x in ids_lineas[:20])
                 if len(ids_lineas) > 20:
                     ids_str += f" … ({len(ids_lineas)} en total)"
-                results.append(
-                    {
-                        "status": "error",
-                        "ref": str(numero_key),
-                        "msg": _(
-                            "Asiento ID=%s (Nº %s) no tiene líneas contables. "
-                            "IDs encontrados en Lineas_Apunte: [%s]"
-                        ) % (id_apunte, numero_key, ids_str or "ninguno"),
-                    }
-                )
+                result = {
+                    "status": "error",
+                    "ref": str(numero_key),
+                    "msg": _(
+                        "Asiento ID=%s (Nº %s) no tiene líneas contables. "
+                        "IDs encontrados en Lineas_Apunte: [%s]"
+                    ) % (id_apunte, numero_key, ids_str or "ninguno"),
+                }
+                results.append(result)
+                self._append_import_activity(activity_log, "error", result["msg"])
                 errors += 1
                 continue
 
@@ -293,12 +423,61 @@ class AiciaAccountImporterWizard(models.TransientModel):
             results.append(result)
             if result["status"] == "created":
                 created += 1
+                activity_status = "success"
             elif result["status"] == "skipped":
                 skipped += 1
+                activity_status = "warning"
             elif result["status"] == "warning":
                 warnings += 1
+                activity_status = "warning"
             else:
                 errors += 1
+                activity_status = "error"
+            self._append_import_activity(activity_log, activity_status, result["msg"])
+
+        # ── Poblar pestaña Cuentas con las cuentas no encontradas ────────────
+        # Solo añadir las que aún no tienen fila en el mapeo (con o sin destino)
+        AccountMapping = self.env["aicia.account.importer.account.mapping"]
+        existing_sources = set(
+            AccountMapping.search([]).mapped("source_code_normalized")
+        )
+        new_mappings = []
+        for code in sorted(missing_accounts):
+            norm_code = AccountMapping._normalize_source_code(code)
+            if norm_code and norm_code not in existing_sources:
+                new_mappings.append({"source_code": norm_code})
+                existing_sources.add(norm_code)
+        if new_mappings:
+            AccountMapping.create(new_mappings)
+            self._append_import_activity(
+                activity_log,
+                "warning",
+                _("%d cuentas no encontradas añadidas al mapeo global.")
+                % len(new_mappings),
+            )
+        elif missing_accounts:
+            self._append_import_activity(
+                activity_log,
+                "info",
+                _("Las cuentas no encontradas ya existían en el mapeo global."),
+            )
+
+        # Forzar recarga del Many2many account_mapping_ids desde el modelo persistente
+        self._reload_account_mapping_ids()
+        self._append_import_activity(
+            activity_log,
+            "success" if not errors else "warning",
+            _(
+                "Importación finalizada: %(created)d creados, %(skipped)d omitidos, "
+                "%(warnings)d avisos y %(errors)d errores."
+            )
+            % {
+                "created": created,
+                "skipped": skipped,
+                "warnings": warnings,
+                "errors": errors,
+            },
+        )
 
         self.write(
             {
@@ -308,41 +487,10 @@ class AiciaAccountImporterWizard(models.TransientModel):
                 "total_errors": errors,
                 "total_warnings": warnings,
                 "import_log": self._build_log_html(
-                    results, missing_accounts, missing_partners
+                    results, missing_accounts, missing_partners, activity_log
                 ),
             }
         )
-
-        # ── Poblar pestaña Cuentas con las cuentas no encontradas ────────────
-        # Solo añadir las que aún no tienen fila en el mapeo (con o sin destino)
-        existing_sources = {
-            m.source_code.strip()
-            for m in self.account_mapping_ids
-            if m.source_code
-        }
-        new_mappings = []
-        for code in sorted(missing_accounts):
-            if code not in existing_sources:
-                new_mappings.append((0, 0, {"source_code": code}))
-        if new_mappings:
-            self.write({"account_mapping_ids": new_mappings})
-
-        # ── Poblar tabla global de mapeo con las cuentas no encontradas ──────
-        AccountMapping = self.env['aicia.account.importer.account.mapping']
-        # Normalizar los códigos existentes (sin espacios, sin ceros finales)
-        def normalize_code(c):
-            return (c or '').strip().rstrip('0')
-
-        existing_sources = set(normalize_code(c) for c in AccountMapping.search([]).mapped('source_code'))
-        for code in sorted(missing_accounts):
-            norm_code = normalize_code(code)
-            if norm_code and norm_code not in existing_sources:
-                AccountMapping.create({'source_code': code.strip()})
-                existing_sources.add(norm_code)
-
-        # Forzar recarga del Many2many account_mapping_ids desde el modelo persistente
-        all_mapping_ids = self.env['aicia.account.importer.account.mapping'].search([]).ids
-        self.write({'account_mapping_ids': [(6, 0, all_mapping_ids)]})
 
         # Reabrir el mismo wizard (estado draft) para mostrar log + pestaña Cuentas actualizada
         return {
@@ -350,6 +498,7 @@ class AiciaAccountImporterWizard(models.TransientModel):
             "res_model": self._name,
             "res_id": self.id,
             "view_mode": "form",
+            "views": [(False, "form")],
             "target": "new",
         }
 
@@ -741,20 +890,9 @@ class AiciaAccountImporterWizard(models.TransientModel):
             return None
 
         # ── 0. Mapeo manual definido por el usuario ───────────────────────────
-        if account_mapping:
-            normalized_for_map = code[:6].rstrip("0") or code[:3]
-            for src, target_acc in account_mapping.items():
-                if (
-                    code == src
-                    or normalized_for_map == src
-                    or code.startswith(src)
-                    or normalized_for_map.startswith(src)
-                ):
-                    _logger.debug(
-                        "Cuenta '%s' redirigida a '%s' por mapeo de usuario.",
-                        code, target_acc.code,
-                    )
-                    return target_acc
+        mapped_account = self._match_account_mapping(code, account_mapping)
+        if mapped_account:
+            return mapped_account
 
         # ── 1. Prefijo colectivo ──────────────────────────────────────────────
         # Se omite en nóminas para que 640xxxxxx → 640000 por normalización directa
@@ -787,6 +925,51 @@ class AiciaAccountImporterWizard(models.TransientModel):
         if not account and missing_accounts is not None:
             missing_accounts.add(code)
         return account
+
+    def _get_account_mapping_rules(self):
+        """Devuelve reglas persistentes ordenadas: exactas antes que prefijos."""
+        mappings = self.env["aicia.account.importer.account.mapping"].search(
+            [("target_account_id", "!=", False)]
+        )
+        rules = []
+        for mapping in mappings:
+            source_code = mapping.source_code_normalized or mapping.source_code
+            if source_code:
+                rules.append((source_code, mapping.target_account_id))
+        return sorted(rules, key=lambda rule: len(rule[0]), reverse=True)
+
+    def _match_account_mapping(self, code: str, account_mapping=None):
+        if not code:
+            return None
+
+        normalized_code = self.env[
+            "aicia.account.importer.account.mapping"
+        ]._normalize_source_code(code)
+        normalized_for_map = normalized_code[:6].rstrip("0") or normalized_code[:3]
+        mapping_rules = account_mapping or self._get_account_mapping_rules()
+
+        for source_code, target_account in mapping_rules:
+            if normalized_code == source_code or normalized_for_map == source_code:
+                _logger.debug(
+                    "Cuenta '%s' redirigida a '%s' por mapeo exacto.",
+                    code,
+                    target_account.code,
+                )
+                return target_account
+
+        for source_code, target_account in mapping_rules:
+            if normalized_code.startswith(source_code) or normalized_for_map.startswith(
+                source_code
+            ):
+                _logger.debug(
+                    "Cuenta '%s' redirigida a '%s' por prefijo de usuario '%s'.",
+                    code,
+                    target_account.code,
+                    source_code,
+                )
+                return target_account
+
+        return None
 
     def _get_or_create_account(self, code: str, name: str, account_type: str):
         """Obtiene la cuenta colectiva; la crea si no existe en el plan contable."""
@@ -1023,6 +1206,7 @@ class AiciaAccountImporterWizard(models.TransientModel):
         results: list,
         missing_accounts: set = None,
         missing_partners: dict = None,
+        activity_log: list = None,
     ) -> str:
         """Genera el HTML del resumen de la importación."""
         created = [r for r in results if r["status"] == "created"]
@@ -1038,6 +1222,31 @@ class AiciaAccountImporterWizard(models.TransientModel):
             f"<span style='color:#e67e00'>{len(warn_results)} con socios no resueltos (borrador)</span> | "
             f"<span style='color:red'>{len(errors)} errores</span></p>"
         )
+
+        # ── Actividad cronológica de importación ─────────────────────────────
+        if activity_log:
+            status_styles = {
+                "info": ("#1f4e79", "ℹ️"),
+                "success": ("green", "✅"),
+                "warning": ("#e67e00", "⚠️"),
+                "error": ("red", "❌"),
+            }
+            html += (
+                "<hr/>"
+                "<p><strong style='color:#1f4e79'>📋 Actividad de importación:"
+                "</strong></p>"
+                "<div style='max-height:360px; overflow:auto; border:1px solid #ddd; "
+                "padding:8px; background:#fafafa;'>"
+                "<ul style='list-style:none; padding-left:0; margin:0;'>"
+            )
+            for entry in activity_log:
+                color, icon = status_styles.get(entry["level"], status_styles["info"])
+                html += (
+                    f"<li style='color:{color}; padding:2px 0;'>"
+                    f"<span style='color:#777'>[{escape(entry['time'])}]</span> "
+                    f"{icon} {escape(entry['message'])}</li>"
+                )
+            html += "</ul></div>"
 
         # ── Cuentas no encontradas ────────────────────────────────────────────
         missing = missing_accounts or set()

@@ -30,7 +30,7 @@ from base64 import b64encode
 from datetime import date, datetime
 from io import BytesIO
 
-from odoo.exceptions import UserError
+from odoo.exceptions import UserError, ValidationError
 from odoo.tests.common import TransactionCase
 
 
@@ -104,13 +104,14 @@ class TestAiciaAccountImporterWizard(TransactionCase):
             [("code", "=", code), ("company_ids", "in", [self.env.company.id])],
             limit=1,
         )
-        if not existing:
-            self.env["account.account"].create({
-                "code": code,
-                "name": name,
-                "account_type": account_type,
-                "company_ids": [(4, self.env.company.id)],
-            })
+        if existing:
+            return existing
+        return self.env["account.account"].create({
+            "code": code,
+            "name": name,
+            "account_type": account_type,
+            "company_ids": [(4, self.env.company.id)],
+        })
 
     # ── Tests: parseo de Fecha_Contable ──────────────────────────────────────
 
@@ -202,6 +203,80 @@ class TestAiciaAccountImporterWizard(TransactionCase):
     def test_get_account_empty_returns_none(self):
         wizard = self._make_wizard()
         self.assertIsNone(wizard._get_account(""))
+
+    # ── Tests: mapeo persistente de cuentas ─────────────────────────────────
+
+    def test_account_mapping_source_code_is_unique(self):
+        """No permite dos mapeos con el mismo código origen normalizado."""
+        target_account = self._ensure_account(
+            "477000", "Cuenta destino test", "income"
+        )
+        Mapping = self.env["aicia.account.importer.account.mapping"]
+        Mapping.create({
+            "source_code": "478000000",
+            "target_account_id": target_account.id,
+        })
+
+        with self.assertRaises(ValidationError):
+            Mapping.create({
+                "source_code": " 478000000 ",
+                "target_account_id": target_account.id,
+            })
+
+    def test_account_mapping_persists_between_wizards(self):
+        """Un mapeo guardado aparece al abrir un nuevo wizard."""
+        target_account = self._ensure_account(
+            "477001", "Cuenta destino persistente", "income"
+        )
+        mapping = self.env["aicia.account.importer.account.mapping"].create({
+            "source_code": "478000001",
+            "target_account_id": target_account.id,
+        })
+
+        wizard = self._make_wizard()
+        defaults = wizard.default_get(["account_mapping_ids"])
+        command = defaults["account_mapping_ids"][0]
+
+        self.assertIn(mapping.id, command[2])
+
+    def test_get_account_mapping_exact_has_priority_over_prefix(self):
+        """El mapeo exacto gana frente al prefijo global más genérico."""
+        prefix_account = self._ensure_account(
+            "477002", "Cuenta destino por prefijo", "income"
+        )
+        exact_account = self._ensure_account(
+            "475002", "Cuenta destino exacta", "income"
+        )
+        Mapping = self.env["aicia.account.importer.account.mapping"]
+        Mapping.create({
+            "source_code": "478",
+            "target_account_id": prefix_account.id,
+        })
+        Mapping.create({
+            "source_code": "478000000",
+            "target_account_id": exact_account.id,
+        })
+
+        wizard = self._make_wizard()
+        account = wizard._get_account("478000000")
+
+        self.assertEqual(account.id, exact_account.id)
+
+    def test_clear_account_mappings_removes_all_global_mappings(self):
+        """El botón de borrado vacía la tabla persistente global."""
+        target_account = self._ensure_account(
+            "477003", "Cuenta destino borrado", "income"
+        )
+        self.env["aicia.account.importer.account.mapping"].create([
+            {"source_code": "478000003", "target_account_id": target_account.id},
+            {"source_code": "479000003", "target_account_id": target_account.id},
+        ])
+
+        wizard = self._make_wizard()
+        wizard.action_clear_account_mappings()
+
+        count = self.env["aicia.account.importer.account.mapping"].search_count([])
+        self.assertEqual(count, 0)
 
     # ── Tests: partners ───────────────────────────────────────────────────────
 

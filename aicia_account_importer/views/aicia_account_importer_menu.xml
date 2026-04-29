@@ -18,4 +18,12 @@
         action="action_aicia_account_importer_wizard"
         sequence="10"
     />
+
+    <menuitem
+        id="menu_aicia_account_importer_account_mapping"
+        name="Mapeo de cuentas"
+        parent="menu_aicia_account_importer_root"
+        action="action_aicia_account_importer_account_mapping"
+        sequence="20"
+    />
 </odoo>

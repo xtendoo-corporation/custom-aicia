@@ -15,8 +15,49 @@
         <field name="arch" type="xml">
             <list editable="bottom">
                 <field name="source_code" placeholder="Ej: 478 ó 478000000"/>
+                <field name="source_code_normalized" optional="hide" readonly="1"/>
                 <field name="target_account_id" required="1"/>
             </list>
+        </field>
+    </record>
+    <record id="view_aicia_account_importer_account_mapping_form" model="ir.ui.view">
+        <field name="name">aicia.account.importer.account.mapping.form</field>
+        <field name="model">aicia.account.importer.account.mapping</field>
+        <field name="arch" type="xml">
+            <form string="Mapeo de cuenta AICIA">
+                <sheet>
+                    <group>
+                        <field name="source_code" placeholder="Ej: 478 ó 478000000"/>
+                        <field name="target_account_id" required="1"/>
+                        <field name="source_code_normalized" readonly="1"/>
+                    </group>
+                </sheet>
+            </form>
+        </field>
+    </record>
+    <record id="view_aicia_account_importer_account_mapping_search" model="ir.ui.view">
+        <field name="name">aicia.account.importer.account.mapping.search</field>
+        <field name="model">aicia.account.importer.account.mapping</field>
+        <field name="arch" type="xml">
+            <search string="Buscar mapeos AICIA">
+                <field name="source_code"/>
+                <field name="source_code_normalized"/>
+                <field name="target_account_id"/>
+            </search>
+        </field>
+    </record>
+    <record id="action_aicia_account_importer_account_mapping" model="ir.actions.act_window">
+        <field name="name">Mapeo de cuentas</field>
+        <field name="res_model">aicia.account.importer.account.mapping</field>
+        <field name="view_mode">list,form</field>
+        <field name="search_view_id" ref="view_aicia_account_importer_account_mapping_search"/>
+        <field name="help" type="html">
+            <p class="o_view_nocontent_smiling_face">
+                Crea el primer mapeo de cuenta AICIA.
+            </p>
+            <p>
+                Los mapeos son globales y se reutilizan automáticamente en próximas importaciones.
+            </p>
         </field>
     </record>
     <record id="view_aicia_account_importer_wizard_form" model="ir.ui.view">
@@ -63,8 +104,22 @@
                                 <em>Tras cada importación, las cuentas no encontradas se añaden
                                 automáticamente a esta lista para que las mapees.</em>
                             </p>
+                                <button name="action_open_account_mappings"
+                                    string="Gestionar mapeos"
+                                    type="object"
+                                    class="btn-primary"/>
+                                <button name="action_reload_account_mappings"
+                                    string="Recargar mapeos"
+                                    type="object"
+                                    class="btn-secondary"/>
+                                <button name="action_clear_account_mappings"
+                                    string="Borrar todos los mapeos"
+                                    type="object"
+                                    class="btn-danger"
+                                    confirm="¿Seguro que quieres borrar todos los mapeos globales de cuentas AICIA?"/>
                         </div>
                         <field name="account_mapping_ids" nolabel="1"
+                                   readonly="1"
                                context="{'list_view_ref': 'aicia_account_importer.view_aicia_account_importer_account_mapping_list'}"/>
                     </page>
                     <!-- Pestaña Formato del Excel -->

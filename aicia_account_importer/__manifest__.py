@@ -4,7 +4,7 @@
     "name": "AICIA - Importador de Apuntes Contables",
     "author": "Xtendoo",
     "category": "Accounting",
-    "version": "19.0.1.0.1",
+    "version": "19.0.1.0.2",
     "depends": ["account"],
     "license": "AGPL-3",
     "application": True,
