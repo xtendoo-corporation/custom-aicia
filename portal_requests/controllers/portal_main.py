@@ -748,10 +748,14 @@ class PortalRequestsCustomerPortal(CustomerPortal):
             ('subtype_id.internal', '!=', True),
         ], order='date desc')
         messages = self._enrich_messages(raw_messages)
+        invoice_payments = request.env['account.payment'].sudo().search([
+            ('invoice_ids', 'in', [invoice.id]),
+        ])
 
         values = {
             'project': project.sudo(),
             'invoice': invoice,
+            'invoice_payments': invoice_payments,
             'messages': messages,
             'page_name': 'analytic_project_invoice_detail',
             'success_message': success,
@@ -759,6 +763,33 @@ class PortalRequestsCustomerPortal(CustomerPortal):
         }
 
         return request.render("portal_requests.portal_project_invoice_detail", values)
+
+    @http.route(['/my/analytic_projects/<int:project_id>/invoices_list/<int:invoice_id>/payments_list'], type='http', auth="user", website=True)
+    def portal_project_invoice_payments(self, project_id, invoice_id, **kw):
+        """Muestra los pagos asociados a una factura asociada a un proyecto"""
+        project = request.env['account.analytic.account'].search(
+            [('id', '=', project_id)] + self._get_accessible_analytic_project_domain(request.env.user),
+            limit=1
+        )
+
+        if not project:
+            return request.redirect('/my')
+
+        invoice = request.env['account.move'].sudo().browse(invoice_id)
+
+        if not invoice.exists():
+            return request.redirect(f'/my/analytic_projects/{project_id}/invoices_list')
+
+        payments = request.env['account.payment'].sudo().search([
+            ('invoice_ids', 'in', [invoice.id]),
+        ])
+
+        return request.render("portal_requests.portal_project_invoice_payments", {
+            'project': project.sudo(),
+            'invoice': invoice,
+            'payments': payments,
+            'page_name': 'analytic_project_invoice_payments',
+        })
 
     @route('/my/analytic_projects/<int:project_id>/invoices_list/<int:invoice_id>/add_attachment', auth='user', website=True, methods=['POST'], csrf=True)
     def portal_invoice_add_attachment(self,project_id, invoice_id, **post):

@@ -21,7 +21,7 @@
 <!--                            <th>Código</th>-->
                             <th>Nombre del Proyecto</th>
                             <th>Cliente</th>
-                            <th>Compañía</th>
+                            <th>Saldo</th>
                             <th>Estado</th>
                         </tr>
                     </thead>
@@ -42,7 +42,7 @@
                                     <span t-esc="project.partner_id.name if project.partner_id else '-'"/>
                                 </td>
                                 <td>
-                                    <span t-esc="project.company_id.name if project.company_id else '-'"/>
+                                    <span t-esc="project.balance" t-options='{"widget": "monetary", "display_currency": project.currency_id}'/>
                                 </td>
                                 <td>
                                     <span t-if="project.active" class="badge bg-success">Activo</span>
@@ -110,11 +110,11 @@
                                             </div>
                                             <div class="mb-3">
                                                 <strong>Saldo:</strong>
-                                                <p><span t-esc="project.balance"/>€</p>
+                                                <p><span t-esc="project.balance" t-options='{"widget": "monetary", "display_currency": project.currency_id}'/></p>
                                             </div>
                                             <div class="mb-3">
                                                 <strong>Presupuesto:</strong>
-                                                <p><span t-esc="project.presupuesto"/>€</p>
+                                                <p><span t-esc="project.presupuesto" t-options='{"widget": "monetary", "display_currency": project.currency_id}'/></p>
                                             </div>
                                         </div>
                                         <div class="col-md-6">
@@ -402,11 +402,17 @@
                     <div class="row">
                         <div class="col-12">
                             <div class="card mb-4">
-                                <div class="card-header bg-primary text-white">
+                                <div class="card-header bg-primary text-white d-flex justify-content-between align-items-center">
                                     <h4 class="mb-0">
                                         <i class="fa fa-file-invoice me-2"></i>
                                         Factura: <span t-esc="invoice.name"/>
                                     </h4>
+                                    <a t-if="invoice_payments"
+                                       t-attf-href="/my/analytic_projects/#{project.id}/invoices_list/#{invoice.id}/payments_list"
+                                       class="btn btn-light btn-sm">
+                                        <i class="fa fa-credit-card me-1"></i>
+                                        Ver Pagos Asociados
+                                    </a>
                                 </div>
                                 <div class="card-body">
                                     <div class="row">
@@ -638,6 +644,90 @@
                             <a t-attf-href="/my/analytic_projects/#{project.id}/invoices_list" class="btn btn-secondary">
                                 <i class="fa fa-arrow-left me-2"></i>
                                 Volver a Facturas
+                            </a>
+                        </div>
+                    </div>
+                </div>
+            </t>
+        </template>
+
+        <template id="portal_project_invoice_payments" name="Pagos de la Factura del Proyecto">
+            <t t-call="portal.portal_layout">
+                <t t-set="no_breadcrumbs" t-value="True"/>
+
+                <div class="container">
+                    <div class="row mt-3">
+                        <div class="col-12">
+                            <ol class="breadcrumb">
+                                <li class="breadcrumb-item"><a href="/my"><i class="fa fa-home"/></a></li>
+                                <li class="breadcrumb-item"><a href="/my/analytic_projects">Mis Proyectos</a></li>
+                                <li class="breadcrumb-item"><a t-attf-href="/my/analytic_projects/#{project.id}"><span t-esc="project.name"/></a></li>
+                                <li class="breadcrumb-item"><a t-attf-href="/my/analytic_projects/#{project.id}/invoices_list">Facturas</a></li>
+                                <li class="breadcrumb-item"><a t-attf-href="/my/analytic_projects/#{project.id}/invoices_list/#{invoice.id}"><span t-esc="invoice.name"/></a></li>
+                                <li class="breadcrumb-item active" aria-current="page">Pagos Asociados</li>
+                            </ol>
+                        </div>
+                    </div>
+
+                    <div class="row">
+                        <div class="col-12">
+                            <div class="card mb-4">
+                                <div class="card-header bg-primary text-white">
+                                    <h4 class="mb-0">
+                                        <i class="fa fa-credit-card me-2"></i>
+                                        Pagos de la Factura: <span t-esc="invoice.name"/>
+                                    </h4>
+                                </div>
+                                <div class="card-body">
+                                    <t t-if="not payments">
+                                        <div class="alert alert-info" role="alert">
+                                            No hay pagos asociados a esta factura.
+                                        </div>
+                                    </t>
+                                    <t t-if="payments">
+                                        <div class="table-responsive">
+                                            <table class="table table-hover">
+                                                <thead class="table-light">
+                                                    <tr>
+                                                        <th>Referencia</th>
+                                                        <th>Fecha</th>
+                                                        <th>Importe</th>
+                                                        <th>Estado</th>
+                                                    </tr>
+                                                </thead>
+                                                <tbody>
+                                                    <t t-foreach="payments" t-as="pay">
+                                                        <tr>
+                                                            <td>
+                                                                <a t-attf-href="/my/payments/#{pay.id}">
+                                                                    <span t-esc="pay.name"/>
+                                                                </a>
+                                                            </td>
+                                                            <td>
+                                                                <span t-esc="pay.date"/>
+                                                            </td>
+                                                            <td>
+                                                                <span t-esc="pay.amount"/>
+                                                            </td>
+                                                            <td>
+                                                                <span t-esc="pay.state"/>
+                                                            </td>
+                                                        </tr>
+                                                    </t>
+                                                </tbody>
+                                            </table>
+                                        </div>
+                                    </t>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+
+                    <div class="row mt-3">
+                        <div class="col-12">
+                            <a t-attf-href="/my/analytic_projects/#{project.id}/invoices_list/#{invoice.id}" class="btn btn-secondary">
+                                <i class="fa fa-arrow-left me-2"></i>
+                                Volver a la Factura
                             </a>
                         </div>
                     </div>

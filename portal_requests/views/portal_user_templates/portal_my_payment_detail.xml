@@ -30,8 +30,13 @@
                 <t t-set="breadcrumbs_searchbar" t-value="True"/>
                 <t t-call="portal.portal_breadcrumbs"/>
                 <div class="card mt-3">
-                    <div class="card-header">
-                        <h4>Detalle del Pago <span t-esc="payment.name"/></h4>
+                    <div class="card-header d-flex justify-content-between align-items-center">
+                        <h4 class="mb-0">Detalle del Pago <span t-esc="payment.name"/></h4>
+                        <a t-if="payment_visible_invoices"
+                           t-attf-href="/my/payments/#{payment.id}/invoices_list"
+                           class="btn btn-outline-primary btn-sm">
+                            <i class="fa fa-file-invoice me-1"/> Ver Facturas Asociadas
+                        </a>
                     </div>
                     <div class="card-body">
                         <dl class="row">
@@ -45,12 +50,14 @@
                             <dd class="col-sm-9"><span t-esc="payment.state"/></dd>
                             <dt class="col-sm-3">Factura</dt>
                             <dd class="col-sm-9">
-                                <t t-if="payment.invoice_ids">
-                                    <t t-foreach="payment.invoice_ids" t-as="inv" t-separator=", ">
-                                        <span t-esc="inv.name"/>
+                                <t t-if="payment_visible_invoices">
+                                    <t t-foreach="payment_visible_invoices" t-as="inv" t-separator=", ">
+                                        <a t-attf-href="/my/payments/#{payment.id}/invoices_list/#{inv.id}">
+                                            <span t-esc="inv.name"/>
+                                        </a>
                                     </t>
                                 </t>
-                                <t t-if="not payment.invoice_ids">
+                                <t t-if="not payment_visible_invoices">
                                     -
                                 </t>
                             </dd>
@@ -164,6 +171,346 @@
                                     </div>
                                 </t>
                             </div>
+                        </div>
+                    </div>
+                </div>
+            </t>
+        </template>
+
+        <template id="portal_payment_invoices" name="Facturas del Pago">
+            <t t-call="portal.portal_layout">
+                <t t-set="no_breadcrumbs" t-value="True"/>
+
+                <div class="container">
+                    <div class="row mt-3">
+                        <div class="col-12">
+                            <ol class="breadcrumb">
+                                <li class="breadcrumb-item"><a href="/my"><i class="fa fa-home"/></a></li>
+                                <li class="breadcrumb-item"><a href="/my/payments">Mis Pagos</a></li>
+                                <li class="breadcrumb-item"><a t-attf-href="/my/payments/#{payment.id}"><span t-esc="payment.name"/></a></li>
+                                <li class="breadcrumb-item active" aria-current="page">Facturas Asociadas</li>
+                            </ol>
+                        </div>
+                    </div>
+
+                    <div class="row">
+                        <div class="col-12">
+                            <div class="card mb-4">
+                                <div class="card-header bg-primary text-white">
+                                    <h4 class="mb-0">
+                                        <i class="fa fa-file-invoice me-2"></i>
+                                        Facturas del Pago: <span t-esc="payment.name"/>
+                                    </h4>
+                                </div>
+                                <div class="card-body">
+                                    <t t-if="not invoices">
+                                        <div class="alert alert-info" role="alert">
+                                            No hay facturas asociadas a este pago.
+                                        </div>
+                                    </t>
+                                    <t t-if="invoices">
+                                        <div class="table-responsive">
+                                            <table class="table table-hover">
+                                                <thead class="table-light">
+                                                    <tr>
+                                                        <th>Número</th>
+                                                        <th>Tipo</th>
+                                                        <th>Cliente/Proveedor</th>
+                                                        <th>Fecha</th>
+                                                        <th>Importe Total</th>
+                                                        <th>Estado</th>
+                                                    </tr>
+                                                </thead>
+                                                <tbody>
+                                                    <t t-foreach="invoices" t-as="invoice">
+                                                        <tr>
+                                                            <td>
+                                                                <a t-attf-href="/my/payments/#{payment.id}/invoices_list/#{invoice.id}">
+                                                                    <span t-esc="invoice.name"/>
+                                                                </a>
+                                                            </td>
+                                                            <td>
+                                                                <span t-if="invoice.move_type == 'out_invoice'">Factura Cliente</span>
+                                                                <span t-elif="invoice.move_type == 'out_refund'">Nota Crédito Cliente</span>
+                                                                <span t-elif="invoice.move_type == 'in_invoice'">Factura Proveedor</span>
+                                                                <span t-elif="invoice.move_type == 'in_refund'">Nota Crédito Proveedor</span>
+                                                            </td>
+                                                            <td>
+                                                                <span t-esc="invoice.partner_id.name"/>
+                                                            </td>
+                                                            <td>
+                                                                <span t-field="invoice.invoice_date"/>
+                                                            </td>
+                                                            <td>
+                                                                <span t-field="invoice.amount_total"
+                                                                      t-options='{"widget": "monetary", "display_currency": invoice.currency_id}'/>
+                                                            </td>
+                                                            <td>
+                                                                <span t-if="invoice.payment_state == 'paid'" class="badge bg-success">Pagada</span>
+                                                                <span t-elif="invoice.payment_state == 'partial'" class="badge bg-warning">Pago Parcial</span>
+                                                                <span t-elif="invoice.state == 'posted'" class="badge bg-info">Publicada</span>
+                                                                <span t-elif="invoice.state == 'draft'" class="badge bg-secondary">Borrador</span>
+                                                                <span t-else="" class="badge bg-secondary" t-esc="invoice.state"/>
+                                                            </td>
+                                                        </tr>
+                                                    </t>
+                                                </tbody>
+                                            </table>
+                                        </div>
+                                    </t>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+
+                    <div class="row mt-3">
+                        <div class="col-12">
+                            <a t-attf-href="/my/payments/#{payment.id}" class="btn btn-secondary">
+                                <i class="fa fa-arrow-left me-2"></i>
+                                Volver al Pago
+                            </a>
+                        </div>
+                    </div>
+                </div>
+            </t>
+        </template>
+
+        <template id="portal_payment_invoice_detail" name="Detalle de Factura del Pago">
+            <t t-call="portal.portal_layout">
+                <t t-set="no_breadcrumbs" t-value="True"/>
+
+                <div class="container">
+                    <div class="row mt-3">
+                        <div class="col-12">
+                            <ol class="breadcrumb">
+                                <li class="breadcrumb-item"><a href="/my"><i class="fa fa-home"/></a></li>
+                                <li class="breadcrumb-item"><a href="/my/payments">Mis Pagos</a></li>
+                                <li class="breadcrumb-item"><a t-attf-href="/my/payments/#{payment.id}"><span t-esc="payment.name"/></a></li>
+                                <li class="breadcrumb-item"><a t-attf-href="/my/payments/#{payment.id}/invoices_list">Facturas</a></li>
+                                <li class="breadcrumb-item active" aria-current="page">
+                                    <span t-esc="invoice.name"/>
+                                </li>
+                            </ol>
+                        </div>
+                    </div>
+
+                    <div class="row">
+                        <div class="col-12">
+                            <div class="card mb-4">
+                                <div class="card-header bg-primary text-white d-flex justify-content-between align-items-center">
+                                    <h4 class="mb-0">
+                                        <i class="fa fa-file-invoice me-2"></i>
+                                        Factura: <span t-esc="invoice.name"/>
+                                    </h4>
+                                    <a t-if="invoice_payments"
+                                       t-attf-href="/my/payments/#{payment.id}/invoices_list/#{invoice.id}/payments_list"
+                                       class="btn btn-light btn-sm">
+                                        <i class="fa fa-credit-card me-1"></i>
+                                        Ver Pagos Asociados
+                                    </a>
+                                </div>
+                                <div class="card-body">
+                                    <div class="row">
+                                        <div class="col-md-6">
+                                            <div class="mb-3">
+                                                <strong>Tipo de Documento:</strong>
+                                                <p>
+                                                    <span t-if="invoice.move_type == 'out_invoice'" class="badge bg-primary">Factura Cliente</span>
+                                                    <span t-elif="invoice.move_type == 'out_refund'" class="badge bg-warning">Nota Crédito Cliente</span>
+                                                    <span t-elif="invoice.move_type == 'in_invoice'" class="badge bg-info">Factura Proveedor</span>
+                                                    <span t-elif="invoice.move_type == 'in_refund'" class="badge bg-secondary">Nota Crédito Proveedor</span>
+                                                </p>
+                                            </div>
+                                            <div class="mb-3">
+                                                <strong>Cliente/Proveedor:</strong>
+                                                <p><span t-esc="invoice.partner_id.name"/></p>
+                                            </div>
+                                            <div class="mb-3">
+                                                <strong>Fecha de Factura:</strong>
+                                                <p><span t-field="invoice.invoice_date"/></p>
+                                            </div>
+                                            <div class="mb-3">
+                                                <strong>Fecha de Vencimiento:</strong>
+                                                <p>
+                                                    <span t-if="invoice.invoice_date_due" t-field="invoice.invoice_date_due"/>
+                                                    <span t-else="">-</span>
+                                                </p>
+                                            </div>
+                                        </div>
+                                        <div class="col-md-6">
+                                            <div class="mb-3">
+                                                <strong>Estado:</strong>
+                                                <p>
+                                                    <span t-if="invoice.state == 'draft'" class="badge bg-secondary">Borrador</span>
+                                                    <span t-elif="invoice.state == 'posted'" class="badge bg-success">Publicada</span>
+                                                    <span t-elif="invoice.state == 'cancel'" class="badge bg-danger">Cancelada</span>
+                                                    <span t-else="" class="badge bg-info" t-esc="invoice.state"/>
+                                                </p>
+                                            </div>
+                                            <div class="mb-3">
+                                                <strong>Estado de Pago:</strong>
+                                                <p>
+                                                    <span t-if="invoice.payment_state == 'paid'" class="badge bg-success">Pagada</span>
+                                                    <span t-elif="invoice.payment_state == 'partial'" class="badge bg-warning">Pago Parcial</span>
+                                                    <span t-elif="invoice.payment_state == 'not_paid'" class="badge bg-danger">No Pagada</span>
+                                                    <span t-else="" class="badge bg-secondary" t-esc="invoice.payment_state"/>
+                                                </p>
+                                            </div>
+                                            <div class="mb-3">
+                                                <strong>Base Imponible:</strong>
+                                                <p>
+                                                    <span t-field="invoice.amount_untaxed"
+                                                          t-options='{"widget": "monetary", "display_currency": invoice.currency_id}'/>
+                                                </p>
+                                            </div>
+                                            <div class="mb-3">
+                                                <strong>Impuestos:</strong>
+                                                <p>
+                                                    <span t-field="invoice.amount_tax"
+                                                          t-options='{"widget": "monetary", "display_currency": invoice.currency_id}'/>
+                                                </p>
+                                            </div>
+                                            <div class="mb-3">
+                                                <strong>Total:</strong>
+                                                <p>
+                                                    <strong>
+                                                        <span t-field="invoice.amount_total"
+                                                              t-options='{"widget": "monetary", "display_currency": invoice.currency_id}'/>
+                                                    </strong>
+                                                </p>
+                                            </div>
+                                        </div>
+                                    </div>
+
+                                    <hr/>
+                                    <h5 class="mb-3">Líneas de Factura</h5>
+                                    <div class="table-responsive">
+                                        <table class="table table-sm table-striped">
+                                            <thead class="table-light">
+                                                <tr>
+                                                    <th>Descripción</th>
+                                                    <th class="text-end">Cantidad</th>
+                                                    <th class="text-end">Precio Unitario</th>
+                                                    <th class="text-end">Impuestos</th>
+                                                    <th class="text-end">Subtotal</th>
+                                                </tr>
+                                            </thead>
+                                            <tbody>
+                                                <t t-foreach="invoice.invoice_line_ids" t-as="line">
+                                                    <tr t-if="line.display_type == 'product'">
+                                                        <td><span t-esc="line.name"/></td>
+                                                        <td class="text-end"><span t-esc="line.quantity"/></td>
+                                                        <td class="text-end">
+                                                            <span t-field="line.price_unit"
+                                                                  t-options='{"widget": "monetary", "display_currency": invoice.currency_id}'/>
+                                                        </td>
+                                                        <td class="text-end">
+                                                            <span t-esc="', '.join(line.tax_ids.mapped('name')) if line.tax_ids else '-'"/>
+                                                        </td>
+                                                        <td class="text-end">
+                                                            <span t-field="line.price_subtotal"
+                                                                  t-options='{"widget": "monetary", "display_currency": invoice.currency_id}'/>
+                                                        </td>
+                                                    </tr>
+                                                </t>
+                                            </tbody>
+                                        </table>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+
+                    <div class="row mt-3">
+                        <div class="col-12">
+                            <a t-attf-href="/my/payments/#{payment.id}/invoices_list" class="btn btn-secondary">
+                                <i class="fa fa-arrow-left me-2"></i>
+                                Volver a Facturas
+                            </a>
+                        </div>
+                    </div>
+                </div>
+            </t>
+        </template>
+
+        <template id="portal_invoice_payments" name="Pagos de la Factura">
+            <t t-call="portal.portal_layout">
+                <t t-set="no_breadcrumbs" t-value="True"/>
+
+                <div class="container">
+                    <div class="row mt-3">
+                        <div class="col-12">
+                            <ol class="breadcrumb">
+                                <li class="breadcrumb-item"><a href="/my"><i class="fa fa-home"/></a></li>
+                                <li class="breadcrumb-item"><a href="/my/payments">Mis Pagos</a></li>
+                                <li class="breadcrumb-item"><a t-attf-href="/my/payments/#{payment.id}"><span t-esc="payment.name"/></a></li>
+                                <li class="breadcrumb-item"><a t-attf-href="/my/payments/#{payment.id}/invoices_list">Facturas</a></li>
+                                <li class="breadcrumb-item"><a t-attf-href="/my/payments/#{payment.id}/invoices_list/#{invoice.id}"><span t-esc="invoice.name"/></a></li>
+                                <li class="breadcrumb-item active" aria-current="page">Pagos Asociados</li>
+                            </ol>
+                        </div>
+                    </div>
+
+                    <div class="row">
+                        <div class="col-12">
+                            <div class="card mb-4">
+                                <div class="card-header bg-primary text-white">
+                                    <h4 class="mb-0">
+                                        <i class="fa fa-credit-card me-2"></i>
+                                        Pagos de la Factura: <span t-esc="invoice.name"/>
+                                    </h4>
+                                </div>
+                                <div class="card-body">
+                                    <t t-if="not payments">
+                                        <div class="alert alert-info" role="alert">
+                                            No hay pagos asociados a esta factura.
+                                        </div>
+                                    </t>
+                                    <t t-if="payments">
+                                        <div class="table-responsive">
+                                            <table class="table table-hover">
+                                                <thead class="table-light">
+                                                    <tr>
+                                                        <th>Referencia</th>
+                                                        <th>Fecha</th>
+                                                        <th>Importe</th>
+                                                        <th>Estado</th>
+                                                    </tr>
+                                                </thead>
+                                                <tbody>
+                                                    <t t-foreach="payments" t-as="pay">
+                                                        <tr>
+                                                            <td>
+                                                                <a t-attf-href="/my/payments/#{pay.id}">
+                                                                    <span t-esc="pay.name"/>
+                                                                </a>
+                                                            </td>
+                                                            <td>
+                                                                <span t-esc="pay.date"/>
+                                                            </td>
+                                                            <td>
+                                                                <span t-esc="pay.amount"/>
+                                                            </td>
+                                                            <td>
+                                                                <span t-esc="pay.state"/>
+                                                            </td>
+                                                        </tr>
+                                                    </t>
+                                                </tbody>
+                                            </table>
+                                        </div>
+                                    </t>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+
+                    <div class="row mt-3">
+                        <div class="col-12">
+                            <a t-attf-href="/my/payments/#{payment.id}/invoices_list/#{invoice.id}" class="btn btn-secondary">
+                                <i class="fa fa-arrow-left me-2"></i>
+                                Volver a la Factura
+                            </a>
                         </div>
                     </div>
                 </div>

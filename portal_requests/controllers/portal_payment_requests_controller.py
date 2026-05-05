@@ -39,30 +39,63 @@ class PortalPaymentController(Controller):
             })
         return messages
 
-    @route('/my/payments', auth='user', website=True)
-    def portal_my_payments(self, **kwargs):
-        user = request.env.user
+    def _get_accessible_project_ids(self, user):
         analytic_domain = [('responsible_id', '=', user.id)]
         if user.has_group('portal_requests.group_equip_boss'):
             work_groups = user.work_group_ids
             if work_groups:
                 analytic_domain = ['|', ('responsible_id', '=', user.id), ('work_group_id', 'in', work_groups.ids)]
-        projects = request.env['account.analytic.account'].sudo().search(analytic_domain)
-        project_ids = projects.ids
-        _logger.warning(f"[PORTAL PAYMENTS] Proyectos accesibles: {project_ids}")
-        # Buscar facturas pagadas asociadas a esos proyectos (cabecera)
+        return request.env['account.analytic.account'].sudo().search(analytic_domain).ids
+
+    def _get_visible_invoice_ids(self, user):
+        project_ids = self._get_accessible_project_ids(user)
+        if not project_ids:
+            return set()
         paid_invoices = request.env['account.move'].sudo().search([
             ('analytic_distribution', '!=', False),
             ('move_type', 'in', ['out_invoice', 'out_refund', 'in_invoice', 'in_refund']),
             ('state', '=', 'posted'),
             ('payment_state', '=', 'paid'),
         ])
-        visible_invoice_ids = []
+        visible_invoice_ids = set()
         for inv in paid_invoices:
             analytic_dist = inv.analytic_distribution or {}
             analytic_ids = set(int(id_str) for key in analytic_dist.keys() for id_str in key.split(','))
             if any(pid in analytic_ids for pid in project_ids):
-                visible_invoice_ids.append(inv.id)
+                visible_invoice_ids.add(inv.id)
+        return visible_invoice_ids
+
+    def _get_accessible_payment_and_invoices(self, payment_id, user=None):
+        user = user or request.env.user
+        payment = request.env['account.payment'].sudo().browse(payment_id)
+        if not payment.exists():
+            return request.env['account.payment'], request.env['account.move']
+        visible_invoice_ids = self._get_visible_invoice_ids(user)
+        visible_invoices = payment.invoice_ids.filtered(lambda inv: inv.id in visible_invoice_ids).sudo()
+        if not visible_invoices:
+            return request.env['account.payment'], request.env['account.move']
+        return payment, visible_invoices
+
+    def _get_accessible_invoice_related_payments(self, payment_id, invoice_id, user=None):
+        user = user or request.env.user
+        payment, visible_invoices = self._get_accessible_payment_and_invoices(payment_id, user)
+        if not payment:
+            return request.env['account.payment'], request.env['account.move'], request.env['account.payment']
+        invoice = visible_invoices.filtered(lambda inv: inv.id == invoice_id)
+        if not invoice:
+            return request.env['account.payment'], request.env['account.move'], request.env['account.payment']
+        related_payments = request.env['account.payment'].sudo().search([
+            ('invoice_ids', 'in', [invoice.id]),
+        ])
+        return payment, invoice, related_payments
+
+    @route('/my/payments', auth='user', website=True)
+    def portal_my_payments(self, **kwargs):
+        user = request.env.user
+        project_ids = self._get_accessible_project_ids(user)
+        _logger.warning(f"[PORTAL PAYMENTS] Proyectos accesibles: {project_ids}")
+        # Buscar facturas pagadas asociadas a esos proyectos (cabecera)
+        visible_invoice_ids = list(self._get_visible_invoice_ids(user))
         _logger.warning(f"[PORTAL PAYMENTS] Facturas pagadas visibles: {visible_invoice_ids}")
         # Log temporal: mostrar los campos de relación en todos los pagos
         all_payments = request.env['account.payment'].sudo().search([])
@@ -82,29 +115,8 @@ class PortalPaymentController(Controller):
     @route('/my/payments/<int:payment_id>', auth='user', website=True)
     def portal_my_payment_detail(self, payment_id, **kwargs):
         user = request.env.user
-        payment = request.env['account.payment'].sudo().browse(payment_id)
-        analytic_domain = [('responsible_id', '=', user.id)]
-        if user.has_group('portal_requests.group_equip_boss'):
-            work_groups = user.work_group_ids
-            if work_groups:
-                analytic_domain = ['|', ('responsible_id', '=', user.id), ('work_group_id', 'in', work_groups.ids)]
-        projects = request.env['account.analytic.account'].sudo().search(analytic_domain)
-        project_ids = projects.ids
-        # Buscar facturas pagadas asociadas a esos proyectos
-        paid_invoices = request.env['account.move'].sudo().search([
-            ('analytic_distribution', '!=', False),
-            ('move_type', 'in', ['out_invoice', 'out_refund', 'in_invoice', 'in_refund']),
-            ('state', '=', 'posted'),
-            ('payment_state', '=', 'paid'),
-        ])
-        visible_invoice_ids = []
-        for inv in paid_invoices:
-            analytic_dist = inv.analytic_distribution or {}
-            analytic_ids = set(int(id_str) for key in analytic_dist.keys() for id_str in key.split(','))
-            if any(pid in analytic_ids for pid in project_ids):
-                visible_invoice_ids.append(inv.id)
-        # Comprobar si el pago está asociado a alguna de esas facturas
-        if not payment.invoice_ids.filtered(lambda inv: inv.id in visible_invoice_ids):
+        payment, visible_invoices = self._get_accessible_payment_and_invoices(payment_id, user)
+        if not payment:
             return request.not_found()
         attachments = request.env['ir.attachment'].sudo().search([
             ('res_model', '=', 'account.payment'),
@@ -119,37 +131,57 @@ class PortalPaymentController(Controller):
         messages = self._enrich_messages(raw_messages)
         return request.render('portal_requests.portal_my_payment_detail', {
             'payment': payment,
+            'payment_visible_invoices': visible_invoices,
             'attachments': attachments,
             'messages': messages,
             'page_name': 'payment',  # Necesario para breadcrumbs
+            'success_message': kwargs.get('success'),
+        })
+
+    @route('/my/payments/<int:payment_id>/invoices_list', auth='user', website=True)
+    def portal_my_payment_invoices(self, payment_id, **kwargs):
+        payment, visible_invoices = self._get_accessible_payment_and_invoices(payment_id)
+        if not payment:
+            return request.not_found()
+        return request.render('portal_requests.portal_payment_invoices', {
+            'payment': payment,
+            'invoices': visible_invoices,
+            'page_name': 'payment_invoices',
+        })
+
+    @route('/my/payments/<int:payment_id>/invoices_list/<int:invoice_id>', auth='user', website=True)
+    def portal_my_payment_invoice_detail(self, payment_id, invoice_id, **kwargs):
+        payment, invoice, invoice_payments = self._get_accessible_invoice_related_payments(payment_id, invoice_id)
+        if not payment:
+            return request.not_found()
+        if not invoice:
+            return request.not_found()
+        return request.render('portal_requests.portal_payment_invoice_detail', {
+            'payment': payment,
+            'invoice': invoice,
+            'invoice_payments': invoice_payments,
+            'page_name': 'payment_invoice_detail',
+            'success_message': kwargs.get('success'),
+        })
+
+    @route('/my/payments/<int:payment_id>/invoices_list/<int:invoice_id>/payments_list', auth='user', website=True)
+    def portal_my_payment_invoice_payments(self, payment_id, invoice_id, **kwargs):
+        payment, invoice, invoice_payments = self._get_accessible_invoice_related_payments(payment_id, invoice_id)
+        if not payment or not invoice:
+            return request.not_found()
+        return request.render('portal_requests.portal_invoice_payments', {
+            'payment': payment,
+            'invoice': invoice,
+            'payments': invoice_payments,
+            'page_name': 'invoice_payments',
         })
 
     @route('/my/payments/<int:payment_id>/post_message', auth='user', website=True, methods=['POST'], csrf=True)
     def portal_payment_post_message(self, payment_id, message, **kw):
         """Permite al usuario portal enviar un mensaje en el pago"""
         user = request.env.user
-        payment = request.env['account.payment'].sudo().browse(payment_id)
-        # Comprobar acceso: el usuario debe poder ver el pago (como en portal_my_payment_detail)
-        analytic_domain = [('responsible_id', '=', user.id)]
-        if user.has_group('portal_requests.group_equip_boss'):
-            work_groups = user.work_group_ids
-            if work_groups:
-                analytic_domain = ['|', ('responsible_id', '=', user.id), ('work_group_id', 'in', work_groups.ids)]
-        projects = request.env['account.analytic.account'].sudo().search(analytic_domain)
-        project_ids = projects.ids
-        paid_invoices = request.env['account.move'].sudo().search([
-            ('analytic_distribution', '!=', False),
-            ('move_type', 'in', ['out_invoice', 'out_refund', 'in_invoice', 'in_refund']),
-            ('state', '=', 'posted'),
-            ('payment_state', '=', 'paid'),
-        ])
-        visible_invoice_ids = []
-        for inv in paid_invoices:
-            analytic_dist = inv.analytic_distribution or {}
-            analytic_ids = set(int(id_str) for key in analytic_dist.keys() for id_str in key.split(','))
-            if any(pid in analytic_ids for pid in project_ids):
-                visible_invoice_ids.append(inv.id)
-        if not payment.invoice_ids.filtered(lambda inv: inv.id in visible_invoice_ids):
+        payment, visible_invoices = self._get_accessible_payment_and_invoices(payment_id, user)
+        if not payment or not visible_invoices:
             return request.not_found()
         # Publicar el mensaje
         if message and message.strip():
@@ -166,28 +198,8 @@ class PortalPaymentController(Controller):
     def portal_payment_add_attachment(self, payment_id, **post):
         """Permite al usuario portal subir un adjunto al pago"""
         user = request.env.user
-        payment = request.env['account.payment'].sudo().browse(payment_id)
-        # Validar acceso igual que en portal_my_payment_detail
-        analytic_domain = [('responsible_id', '=', user.id)]
-        if user.has_group('portal_requests.group_equip_boss'):
-            work_groups = user.work_group_ids
-            if work_groups:
-                analytic_domain = ['|', ('responsible_id', '=', user.id), ('work_group_id', 'in', work_groups.ids)]
-        projects = request.env['account.analytic.account'].sudo().search(analytic_domain)
-        project_ids = projects.ids
-        paid_invoices = request.env['account.move'].sudo().search([
-            ('analytic_distribution', '!=', False),
-            ('move_type', 'in', ['out_invoice', 'out_refund', 'in_invoice', 'in_refund']),
-            ('state', '=', 'posted'),
-            ('payment_state', '=', 'paid'),
-        ])
-        visible_invoice_ids = []
-        for inv in paid_invoices:
-            analytic_dist = inv.analytic_distribution or {}
-            analytic_ids = set(int(id_str) for key in analytic_dist.keys() for id_str in key.split(','))
-            if any(pid in analytic_ids for pid in project_ids):
-                visible_invoice_ids.append(inv.id)
-        if not payment.invoice_ids.filtered(lambda inv: inv.id in visible_invoice_ids):
+        payment, visible_invoices = self._get_accessible_payment_and_invoices(payment_id, user)
+        if not payment or not visible_invoices:
             return request.not_found()
         # Procesar archivo
         # DEBUG: log post y file_storage

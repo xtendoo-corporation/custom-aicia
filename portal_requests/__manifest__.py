@@ -22,6 +22,11 @@
         "xtendoo_invoice_import_gemini_ai"
     ],
     "license": "AGPL-3",
+    "assets": {
+        "web.assets_frontend": [
+            "portal_requests/static/src/css/portal_detail_views.css",
+        ],
+    },
     "data": [
         'security/ir.model.access.csv',
         'data/res_group_data.xml',
