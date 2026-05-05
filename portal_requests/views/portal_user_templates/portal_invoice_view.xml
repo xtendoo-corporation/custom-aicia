@@ -76,7 +76,7 @@
                                         <div class="row mb-3">
                                             <div class="col-12">
                                                 <strong>Importe Total:</strong>
-                                                <p class="h4 text-primary"><span t-field="invoice.amount_total"/></p>
+                                                <p class="h4 text-primary"><span t-field="invoice.amount_total" t-options='{"widget": "monetary", "display_currency": invoice.currency_id}'/></p>
                                             </div>
                                         </div>
                                     </div>

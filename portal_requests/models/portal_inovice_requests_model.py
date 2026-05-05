@@ -17,6 +17,7 @@ class PortalInvoiceRequest(models.Model):
     partner_id = fields.Many2one('res.partner', string='Client', required=True)
     amount = fields.Float(string='Amount', required=True)
     notes = fields.Text(string='Invoice Concept')
+    currency_id = fields.Many2one(string="Currency", related='user_id.company_id.currency_id', readonly=True)
     move_type = fields.Selection([
         ('out_invoice', 'Customer Invoice'),
         ('out_refund', 'Customer Credit Note'),

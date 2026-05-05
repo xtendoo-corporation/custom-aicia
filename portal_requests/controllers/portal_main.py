@@ -791,6 +791,47 @@ class PortalRequestsCustomerPortal(CustomerPortal):
             'page_name': 'analytic_project_invoice_payments',
         })
 
+    @http.route(['/my/analytic_projects/<int:project_id>/invoices_list/<int:invoice_id>/payments_list/<int:payment_id>'], type='http', auth="user", website=True)
+    def portal_project_invoice_payment_detail(self, project_id, invoice_id, payment_id, success=None, **kw):
+        """Muestra el detalle de un pago asociado a una factura asociada a un proyecto"""
+        project = request.env['account.analytic.account'].search(
+            [('id', '=', project_id)] + self._get_accessible_analytic_project_domain(request.env.user),
+            limit=1
+        )
+
+        if not project:
+            return request.redirect('/my')
+
+        invoice = request.env['account.move'].sudo().browse(invoice_id)
+        if not invoice.exists():
+            return request.redirect(f'/my/analytic_projects/{project_id}/invoices_list')
+
+        payment = request.env['account.payment'].sudo().browse(payment_id)
+        if not payment.exists() or invoice.id not in payment.invoice_ids.ids:
+            return request.redirect(f'/my/analytic_projects/{project_id}/invoices_list/{invoice_id}/payments_list')
+
+        attachments = request.env['ir.attachment'].sudo().search([
+            ('res_model', '=', 'account.payment'),
+            ('res_id', '=', payment.id)
+        ])
+        raw_messages = request.env['mail.message'].sudo().search([
+            ('model', '=', 'account.payment'),
+            ('res_id', '=', payment.id),
+            ('subtype_id.internal', '!=', True),
+        ], order='date desc')
+        messages = self._enrich_messages(raw_messages)
+
+        return request.render("portal_requests.portal_project_invoice_payment_detail", {
+            'project': project.sudo(),
+            'invoice': invoice,
+            'payment': payment,
+            'payment_visible_invoices': payment.invoice_ids.filtered(lambda inv: inv.id == invoice.id).sudo(),
+            'attachments': attachments,
+            'messages': messages,
+            'page_name': 'analytic_project_invoice_payment_detail',
+            'success_message': success,
+        })
+
     @route('/my/analytic_projects/<int:project_id>/invoices_list/<int:invoice_id>/add_attachment', auth='user', website=True, methods=['POST'], csrf=True)
     def portal_invoice_add_attachment(self,project_id, invoice_id, **post):
         """Permite al usuario portal subir un adjunto al pago"""

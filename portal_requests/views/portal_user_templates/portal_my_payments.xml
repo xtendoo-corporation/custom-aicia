@@ -9,52 +9,143 @@
                     <t t-set="title">Mis Pagos</t>
                 </t>
                 <t t-set="page_name" t-value="'payments'"/>
-                <t t-if="not payments">
-                    <div class="alert alert-info" role="alert">
-                        No tienes pagos registrados.
+                <div class="row g-4">
+                    <div class="col-lg-6">
+                        <div class="card h-100 shadow-sm">
+                            <div class="card-header bg-light">
+                                <h5 class="mb-0">
+                                    <i class="fa fa-file-invoice-dollar me-2"/>
+                                    Pagos de Facturas de Clientes
+                                </h5>
+                            </div>
+                            <div class="card-body">
+                                <t t-if="customer_payment_entries">
+                                    <div class="table-responsive">
+                                        <table class="table table-hover align-middle mb-0">
+                                            <thead>
+                                                <tr>
+                                                    <th>Referencia</th>
+                                                    <th>Fecha</th>
+                                                    <th>Importe</th>
+                                                    <th>Estado</th>
+                                                    <th>Factura</th>
+                                                </tr>
+                                            </thead>
+                                            <tbody>
+                                                <t t-foreach="customer_payment_entries" t-as="entry">
+                                                    <t t-set="payment" t-value="entry['payment']"/>
+                                                    <t t-set="invoices" t-value="entry['invoices']"/>
+                                                    <tr>
+                                                        <td>
+                                                            <a t-attf-href="/my/payments/#{payment.id}">
+                                                                <span t-esc="payment.name"/>
+                                                            </a>
+                                                        </td>
+                                                        <td>
+                                                            <span t-field="payment.date"/>
+                                                        </td>
+                                                        <td>
+                                                            <span t-field="payment.amount" t-options='{"widget": "monetary", "display_currency": payment.currency_id}'/>
+                                                        </td>
+                                                        <td>
+                                                            <span t-if="payment.state == 'draft'" class="badge bg-secondary">Borrador</span>
+                                                            <span t-elif="payment.state == 'in_process'" class="badge bg-warning">En proceso</span>
+                                                            <span t-elif="payment.state == 'paid'" class="badge bg-success">Pagado</span>
+                                                            <span t-elif="payment.state == 'posted'" class="badge bg-primary">Publicado</span>
+                                                            <span t-elif="payment.state in ['cancel', 'cancelled']" class="badge bg-danger">Cancelado</span>
+                                                            <span t-else="" class="badge bg-info" t-esc="payment.state"/>
+                                                        </td>
+                                                        <td>
+                                                            <t t-if="invoices">
+                                                                <t t-foreach="invoices" t-as="inv" t-separator=", ">
+                                                                    <span t-esc="inv.name"/>
+                                                                </t>
+                                                            </t>
+                                                            <t t-else="">-</t>
+                                                        </td>
+                                                    </tr>
+                                                </t>
+                                            </tbody>
+                                        </table>
+                                    </div>
+                                </t>
+                                <t t-else="">
+                                    <div class="alert alert-light border mb-0" role="alert">
+                                        No hay pagos asociados de clientes.
+                                    </div>
+                                </t>
+                            </div>
+                        </div>
                     </div>
-                </t>
-                <t t-if="payments" t-call="portal.portal_table">
-                    <thead>
-                        <tr class="active">
-                            <th>Referencia</th>
-                            <th>Fecha</th>
-                            <th>Importe</th>
-                            <th>Estado</th>
-                            <th>Factura</th>
-                        </tr>
-                    </thead>
-                    <tbody>
-                        <t t-foreach="payments" t-as="payment">
-                            <tr>
-                                <td>
-                                    <a t-attf-href="/my/payments/#{payment.id}">
-                                        <span t-esc="payment.name"/>
-                                    </a>
-                                </td>
-                                <td>
-                                    <span t-esc="payment.date"/>
-                                </td>
-                                <td>
-                                    <span t-esc="payment.amount"/>
-                                </td>
-                                <td>
-                                    <span t-esc="payment.state"/>
-                                </td>
-                                <td>
-                                    <t t-if="payment.invoice_ids">
-                                        <t t-foreach="payment.invoice_ids" t-as="inv" t-separator=", ">
-                                            <span t-esc="inv.name"/>
-                                        </t>
-                                    </t>
-                                    <t t-if="not payment.invoice_ids">
-                                        -
-                                    </t>
-                                </td>
-                            </tr>
-                        </t>
-                    </tbody>
-                </t>
+
+                    <div class="col-lg-6">
+                        <div class="card h-100 shadow-sm">
+                            <div class="card-header bg-light">
+                                <h5 class="mb-0">
+                                    <i class="fa fa-credit-card me-2"/>
+                                    Pagos de Proveedores
+                                </h5>
+                            </div>
+                            <div class="card-body">
+                                <t t-if="supplier_payment_entries">
+                                    <div class="table-responsive">
+                                        <table class="table table-hover align-middle mb-0">
+                                            <thead>
+                                                <tr>
+                                                    <th>Referencia</th>
+                                                    <th>Fecha</th>
+                                                    <th>Importe</th>
+                                                    <th>Estado</th>
+                                                    <th>Factura</th>
+                                                </tr>
+                                            </thead>
+                                            <tbody>
+                                                <t t-foreach="supplier_payment_entries" t-as="entry">
+                                                    <t t-set="payment" t-value="entry['payment']"/>
+                                                    <t t-set="invoices" t-value="entry['invoices']"/>
+                                                    <tr>
+                                                        <td>
+                                                            <a t-attf-href="/my/payments/#{payment.id}">
+                                                                <span t-esc="payment.name"/>
+                                                            </a>
+                                                        </td>
+                                                        <td>
+                                                            <span t-field="payment.date"/>
+                                                        </td>
+                                                        <td>
+                                                            <span t-field="payment.amount" t-options='{"widget": "monetary", "display_currency": payment.currency_id}'/>
+                                                        </td>
+                                                        <td>
+                                                            <span t-if="payment.state == 'draft'" class="badge bg-secondary">Borrador</span>
+                                                            <span t-elif="payment.state == 'in_process'" class="badge bg-warning">En proceso</span>
+                                                            <span t-elif="payment.state == 'paid'" class="badge bg-success">Pagado</span>
+                                                            <span t-elif="payment.state == 'posted'" class="badge bg-primary">Publicado</span>
+                                                            <span t-elif="payment.state in ['cancel', 'cancelled']" class="badge bg-danger">Cancelado</span>
+                                                            <span t-else="" class="badge bg-info" t-esc="payment.state"/>
+                                                        </td>
+                                                        <td>
+                                                            <t t-if="invoices">
+                                                                <t t-foreach="invoices" t-as="inv" t-separator=", ">
+                                                                    <span t-esc="inv.name"/>
+                                                                </t>
+                                                            </t>
+                                                            <t t-else="">-</t>
+                                                        </td>
+                                                    </tr>
+                                                </t>
+                                            </tbody>
+                                        </table>
+                                    </div>
+                                </t>
+                                <t t-else="">
+                                    <div class="alert alert-light border mb-0" role="alert">
+                                        No hay pagos asociados de proveedores.
+                                    </div>
+                                </t>
+                            </div>
+                        </div>
+                    </div>
+                </div>
             </t>
         </template>
     </data>

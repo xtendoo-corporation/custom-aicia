@@ -54,7 +54,7 @@
                         </div>
 
                         <div class="row">
-                            <div class="col-lg-8">
+                            <div class="col-12">
                                 <div class="card mb-3 portal-detail-main-card">
                                     <div class="card-header">
                                         <h5 class="mb-0">Información General</h5>
@@ -66,14 +66,22 @@
                                                 <p><span t-field="document.type_id"/></p>
                                             </div>
                                             <div class="col-md-6">
-                                                <strong>Grupo de Trabajo:</strong>
-                                                <p><span t-field="document.work_group_id"/></p>
+                                                <strong>Estado:</strong>
+                                                <p>
+                                                    <span t-attf-class="badge {{ 'bg-danger' if document.status == 'rejected' else ('bg-success' if document.status == 'approve' else 'bg-info') }}">
+                                                        <span t-field="document.status"/>
+                                                    </span>
+                                                </p>
                                             </div>
                                         </div>
                                         <div class="row mb-3">
-                                            <div class="col-12">
+                                            <div class="col-md-6">
                                                 <strong>Descripción:</strong>
                                                 <p><span t-field="document.description"/></p>
+                                            </div>
+                                            <div class="col-md-6">
+                                                <strong>Grupo de Trabajo:</strong>
+                                                <p><span t-field="document.work_group_id"/></p>
                                             </div>
                                         </div>
                                         <div class="row mb-3">
@@ -148,24 +156,6 @@
                                 </div>
                             </div>
 
-                            <!-- Sidebar con información adicional -->
-                            <div class="col-lg-4">
-                                <div class="card">
-                                    <div class="card-header">
-                                        <h5 class="mb-0">Estado de la Solicitud</h5>
-                                    </div>
-                                    <div class="card-body">
-                                        <div t-attf-class="alert {{ 'alert-danger' if document.status == 'rejected' else ('alert-success' if document.status == 'approve' else 'alert-info') }}" role="alert">
-                                            <strong>Estado Actual:</strong><br/>
-                                            <span t-field="document.status" class="h5"/>
-                                        </div>
-                                        <p class="text-muted small">
-                                            La solicitud será procesada por el equipo correspondiente.
-                                            Recibirás una notificación cuando cambie el estado.
-                                        </p>
-                                    </div>
-                                </div>
-                            </div>
                         </div>
 
                         <!-- Sección del Chatter (Historial de Mensajes) -->

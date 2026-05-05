@@ -74,7 +74,7 @@
                         </div>
 
                         <div class="row">
-                            <div class="col-lg-8">
+                            <div class="col-12">
                                 <div class="card mb-3 portal-detail-main-card">
                                     <div class="card-header">
                                         <h5 class="mb-0">Información General</h5>
@@ -89,18 +89,32 @@
                                                 </p>
                                             </div>
                                             <div class="col-md-6">
-                                                <strong>Cliente:</strong>
-                                                <p><span t-field="invoice_request.partner_id"/></p>
+                                                <strong>Estado:</strong>
+                                                <p>
+                                                    <span t-attf-class="badge {{ 'bg-danger' if invoice_request.status in ['to_revise', 'rejected'] else ('bg-success' if invoice_request.status == 'approve' else 'bg-info') }}">
+                                                        <span t-field="invoice_request.status"/>
+                                                    </span>
+                                                </p>
                                             </div>
                                         </div>
                                         <div class="row mb-3">
                                             <div class="col-md-6">
+                                                <strong>Cliente:</strong>
+                                                <p><span t-field="invoice_request.partner_id"/></p>
+                                            </div>
+                                            <div class="col-md-6">
                                                 <strong>Proyecto:</strong>
                                                 <p><span t-field="invoice_request.analytic_id"/></p>
                                             </div>
+                                        </div>
+                                        <div class="row mb-3">
                                             <div class="col-md-6">
                                                 <strong>Importe:</strong>
-                                                <p><span t-field="invoice_request.amount"/></p>
+                                                <p><span t-field="invoice_request.amount" t-options='{"widget": "monetary", "display_currency": invoice_request.currency_id}'/></p>
+                                            </div>
+                                            <div class="col-md-6">
+                                                <strong>Usuario:</strong>
+                                                <p><span t-field="invoice_request.user_id"/></p>
                                             </div>
                                         </div>
                                         <div class="row mb-3">
@@ -109,20 +123,14 @@
                                                 <p><span t-field="invoice_request.date"/></p>
                                             </div>
                                             <div class="col-md-6">
-                                                <strong>Usuario:</strong>
-                                                <p><span t-field="invoice_request.user_id"/></p>
+                                                <strong>Fecha de Creación:</strong>
+                                                <p><span t-field="invoice_request.create_date" t-options='{"widget": "datetime"}'/></p>
                                             </div>
                                         </div>
                                         <div class="row mb-3" t-if="invoice_request.notes">
                                             <div class="col-12">
                                                 <strong>Concepto de Factura:</strong>
                                                 <p><span t-field="invoice_request.notes"/></p>
-                                            </div>
-                                        </div>
-                                        <div class="row mb-3">
-                                            <div class="col-md-6">
-                                                <strong>Fecha de Creación:</strong>
-                                                <p><span t-field="invoice_request.create_date" t-options='{"widget": "datetime"}'/></p>
                                             </div>
                                         </div>
                                     </div>
@@ -167,24 +175,6 @@
                                 </div>
                             </div>
 
-                            <!-- Sidebar con información adicional -->
-                            <div class="col-lg-4">
-                                <div class="card">
-                                    <div class="card-header">
-                                        <h5 class="mb-0">Estado de la Solicitud</h5>
-                                    </div>
-                                    <div class="card-body">
-                                        <div t-attf-class="alert {{ 'alert-danger' if invoice_request.status in ['to_revise', 'rejected'] else ('alert-success' if invoice_request.status == 'approve' else 'alert-info') }}" role="alert">
-                                            <strong>Estado Actual:</strong><br/>
-                                            <span t-field="invoice_request.status" class="h5"/>
-                                        </div>
-                                        <p class="text-muted small">
-                                            La solicitud será procesada por el equipo correspondiente.
-                                            Recibirás una notificación cuando cambie el estado.
-                                        </p>
-                                    </div>
-                                </div>
-                            </div>
                         </div>
 
                         <!-- Sección del Chatter (Historial de Mensajes) -->

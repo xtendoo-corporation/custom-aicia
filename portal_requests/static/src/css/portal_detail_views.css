@@ -90,14 +90,19 @@
     display: none;
 }
 
+.o_portal_wrap .card-header,
 .card-header.bg-primary.text-white,
 .card-header.bg-primary,
-.card-header.text-white {
+.card-header.text-white,
+.card-header.bg-light {
     background-color: #343a40 !important;
     border-color: #343a40 !important;
     color: #ffffff !important;
 }
 
+.o_portal_wrap .card-header h4,
+.o_portal_wrap .card-header h5,
+.o_portal_wrap .card-header strong,
 .card-header.bg-primary.text-white h4,
 .card-header.bg-primary h4,
 .card-header.text-white h4,
@@ -107,6 +112,8 @@
     color: #ffffff !important;
 }
 
+.o_portal_wrap .card-header .btn-light,
+.o_portal_wrap .card-header .btn-outline-primary,
 .card-header.bg-primary .btn-light,
 .card-header.text-white .btn-light,
 .card-header.bg-primary .btn-outline-primary,
@@ -116,6 +123,8 @@
     color: #343a40;
 }
 
+.o_portal_wrap .card-header .btn-light:hover,
+.o_portal_wrap .card-header .btn-outline-primary:hover,
 .card-header.bg-primary .btn-light:hover,
 .card-header.text-white .btn-light:hover,
 .card-header.bg-primary .btn-outline-primary:hover,
@@ -137,11 +146,6 @@
     padding: 1rem;
 }
 
-.card-header.bg-light {
-    background-color: #f8f9fa !important;
-    color: #212529 !important;
-    border-color: #dee2e6 !important;
-}
 
 .table-responsive .table {
     margin-bottom: 0;

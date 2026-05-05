@@ -63,7 +63,7 @@
                                 </td>
                                 <td>
                                     <a t-attf-href="/my/invoices/#{invoice_request.id}">
-                                        <span t-field="invoice_request.amount"/>
+                                        <span t-field="invoice_request.amount" t-options='{"widget": "monetary", "display_currency": invoice_request.currency_id}'/>
                                     </a>
                                 </td>
                                 <td>
