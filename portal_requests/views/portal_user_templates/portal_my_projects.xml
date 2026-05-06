@@ -127,6 +127,7 @@
                         </div>
                     </div>
 
+
                     <div class="row">
                         <div class="col-12">
                             <div class="card mb-4">
@@ -334,6 +335,44 @@
                         </div>
                     </div>
 
+                    <div class="portal-project-searchbar-wrapper mb-4">
+                        <div class="portal-project-searchbar d-flex flex-column flex-lg-row justify-content-center align-items-stretch align-items-lg-center gap-2">
+                            <div class="btn-group portal-project-groupby">
+                                <button id="portal_project_invoice_groupby" data-bs-toggle="dropdown" class="btn btn-light dropdown-toggle" type="button">
+                                    Agrupar por: <t t-esc="searchbar_groupby[groupby].get('label', 'Sin agrupar')"/>
+                                </button>
+                                <div class="dropdown-menu" aria-labelledby="portal_project_invoice_groupby">
+                                    <t t-foreach="searchbar_groupby" t-as="option">
+                                        <a t-att-href="default_url + '?' + keep_query('*', groupby=option)"
+                                           t-attf-class="dropdown-item#{groupby == option and ' active' or ''}">
+                                            <span t-esc="searchbar_groupby[option].get('label')"/>
+                                        </a>
+                                    </t>
+                                </div>
+                            </div>
+
+                            <form class="o_portal_search_panel portal-project-search-form">
+                                <input type="hidden" name="groupby" t-att-value="groupby"/>
+                                <input type="hidden" name="search_in" t-att-value="search_in"/>
+                                <div class="input-group w-100">
+                                    <button type="button" class="btn btn-light border-end dropdown-toggle" data-bs-toggle="dropdown"/>
+                                    <div class="dropdown-menu" role="menu">
+                                        <t t-foreach="searchbar_inputs" t-as="input">
+                                            <a t-att-href="default_url + '?' + keep_query('*', search_in=searchbar_inputs[input]['input'])"
+                                               t-attf-class="dropdown-item#{search_in == searchbar_inputs[input]['input'] and ' active' or ''}">
+                                                <span t-esc="searchbar_inputs[input]['label']"/>
+                                            </a>
+                                        </t>
+                                    </div>
+                                    <input type="search" class="form-control border-0 bg-light" t-att-value="search" name="search" t-att-placeholder="searchbar_inputs[search_in].get('label', 'Buscar...')"/>
+                                    <button class="btn btn-light" type="submit">
+                                        <span class="oi oi-search"/>
+                                    </button>
+                                </div>
+                            </form>
+                        </div>
+                    </div>
+
                     <div class="row">
                         <div class="col-12">
                             <div class="card mb-4">
@@ -363,8 +402,14 @@
                                                     </tr>
                                                 </thead>
                                                 <tbody>
-                                                    <t t-foreach="invoices" t-as="invoice">
-                                                        <tr>
+                                                    <t t-foreach="invoice_groups" t-as="invoice_group">
+                                                        <tr t-if="groupby != 'none'" class="table-secondary">
+                                                            <td colspan="6">
+                                                                <strong t-esc="invoice_group['label']"/>
+                                                            </td>
+                                                        </tr>
+                                                        <t t-foreach="invoice_group['invoices']" t-as="invoice">
+                                                            <tr>
                                                             <td>
                                                                 <a t-attf-href="/my/analytic_projects/#{project.id}/invoices_list/#{invoice.id}">
                                                                     <span t-esc="invoice.name"/>
@@ -393,7 +438,8 @@
                                                                 <span t-elif="invoice.state == 'draft'" class="badge bg-secondary">Borrador</span>
                                                                 <span t-else="" class="badge bg-secondary" t-esc="invoice.state"/>
                                                             </td>
-                                                        </tr>
+                                                            </tr>
+                                                        </t>
                                                     </t>
                                                 </tbody>
                                             </table>
@@ -716,6 +762,44 @@
                         </div>
                     </div>
 
+                    <div class="portal-project-searchbar-wrapper mb-4">
+                        <div class="portal-project-searchbar d-flex flex-column flex-lg-row justify-content-center align-items-stretch align-items-lg-center gap-2">
+                            <div class="btn-group portal-project-groupby">
+                                <button id="portal_project_invoice_payment_groupby" data-bs-toggle="dropdown" class="btn btn-light dropdown-toggle" type="button">
+                                    Agrupar por: <t t-esc="searchbar_groupby[groupby].get('label', 'Sin agrupar')"/>
+                                </button>
+                                <div class="dropdown-menu" aria-labelledby="portal_project_invoice_payment_groupby">
+                                    <t t-foreach="searchbar_groupby" t-as="option">
+                                        <a t-att-href="default_url + '?' + keep_query('*', groupby=option)"
+                                           t-attf-class="dropdown-item#{groupby == option and ' active' or ''}">
+                                            <span t-esc="searchbar_groupby[option].get('label')"/>
+                                        </a>
+                                    </t>
+                                </div>
+                            </div>
+
+                            <form class="o_portal_search_panel portal-project-search-form">
+                                <input type="hidden" name="groupby" t-att-value="groupby"/>
+                                <input type="hidden" name="search_in" t-att-value="search_in"/>
+                                <div class="input-group w-100">
+                                    <button type="button" class="btn btn-light border-end dropdown-toggle" data-bs-toggle="dropdown"/>
+                                    <div class="dropdown-menu" role="menu">
+                                        <t t-foreach="searchbar_inputs" t-as="input">
+                                            <a t-att-href="default_url + '?' + keep_query('*', search_in=searchbar_inputs[input]['input'])"
+                                               t-attf-class="dropdown-item#{search_in == searchbar_inputs[input]['input'] and ' active' or ''}">
+                                                <span t-esc="searchbar_inputs[input]['label']"/>
+                                            </a>
+                                        </t>
+                                    </div>
+                                    <input type="search" class="form-control border-0 bg-light" t-att-value="search" name="search" t-att-placeholder="searchbar_inputs[search_in].get('label', 'Buscar...')"/>
+                                    <button class="btn btn-light" type="submit">
+                                        <span class="oi oi-search"/>
+                                    </button>
+                                </div>
+                            </form>
+                        </div>
+                    </div>
+
                     <div class="row">
                         <div class="col-12">
                             <div class="card mb-4">
@@ -743,8 +827,14 @@
                                                     </tr>
                                                 </thead>
                                                 <tbody>
-                                                    <t t-foreach="payments" t-as="pay">
-                                                        <tr>
+                                                    <t t-foreach="payment_groups" t-as="payment_group">
+                                                        <tr t-if="groupby != 'none'" class="table-secondary">
+                                                            <td colspan="4">
+                                                                <strong t-esc="payment_group['label']"/>
+                                                            </td>
+                                                        </tr>
+                                                        <t t-foreach="payment_group['payments']" t-as="pay">
+                                                            <tr>
                                                             <td>
                                                                 <a t-attf-href="/my/analytic_projects/#{project.id}/invoices_list/#{invoice.id}/payments_list/#{pay.id}">
                                                                     <span t-esc="pay.name"/>
@@ -764,7 +854,8 @@
                                                                 <span t-elif="pay.state in ['cancel', 'cancelled']" class="badge bg-danger">Cancelado</span>
                                                                 <span t-else="" class="badge bg-info" t-esc="pay.state"/>
                                                             </td>
-                                                        </tr>
+                                                            </tr>
+                                                        </t>
                                                     </t>
                                                 </tbody>
                                             </table>

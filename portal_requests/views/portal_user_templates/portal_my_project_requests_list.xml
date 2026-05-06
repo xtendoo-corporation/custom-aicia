@@ -16,11 +16,9 @@
                             </ol>
                         </div>
                     </div>
-
-                    <div class="row">
+                     <div class="row">
                         <div class="col-12">
-                            <div class="d-flex justify-content-between align-items-center mb-3">
-                                <h3>Mis Solicitudes de Proyectos</h3>
+                            <div class="d-flex justify-content-end align-items-center mb-3">
                                 <a href="/portal/project_request" class="btn btn-primary">
                                     <i class="fa fa-plus me-2"/>Nueva Solicitud
                                 </a>
@@ -28,6 +26,43 @@
                         </div>
                     </div>
 
+                    <div class="portal-project-searchbar-wrapper mb-4">
+                        <div class="portal-project-searchbar d-flex flex-column flex-lg-row justify-content-center align-items-stretch align-items-lg-center gap-2">
+                            <div class="btn-group portal-project-groupby">
+                                <button id="portal_project_request_groupby" data-bs-toggle="dropdown" class="btn btn-light dropdown-toggle" type="button">
+                                    Agrupar por: <t t-esc="searchbar_groupby[groupby].get('label', 'Sin agrupar')"/>
+                                </button>
+                                <div class="dropdown-menu" aria-labelledby="portal_project_request_groupby">
+                                    <t t-foreach="searchbar_groupby" t-as="option">
+                                        <a t-att-href="default_url + '?' + keep_query('*', groupby=option)"
+                                           t-attf-class="dropdown-item#{groupby == option and ' active' or ''}">
+                                            <span t-esc="searchbar_groupby[option].get('label')"/>
+                                        </a>
+                                    </t>
+                                </div>
+                            </div>
+
+                            <form class="o_portal_search_panel portal-project-search-form">
+                                <input type="hidden" name="groupby" t-att-value="groupby"/>
+                                <input type="hidden" name="search_in" t-att-value="search_in"/>
+                                <div class="input-group w-100">
+                                    <button type="button" class="btn btn-light border-end dropdown-toggle" data-bs-toggle="dropdown"/>
+                                    <div class="dropdown-menu" role="menu">
+                                        <t t-foreach="searchbar_inputs" t-as="input">
+                                            <a t-att-href="default_url + '?' + keep_query('*', search_in=searchbar_inputs[input]['input'])"
+                                               t-attf-class="dropdown-item#{search_in == searchbar_inputs[input]['input'] and ' active' or ''}">
+                                                <span t-esc="searchbar_inputs[input]['label']"/>
+                                            </a>
+                                        </t>
+                                    </div>
+                                    <input type="search" class="form-control border-0 bg-light" t-att-value="search" name="search" t-att-placeholder="searchbar_inputs[search_in].get('label', 'Buscar...')"/>
+                                    <button class="btn btn-light" type="submit">
+                                        <span class="oi oi-search"/>
+                                    </button>
+                                </div>
+                            </form>
+                        </div>
+                    </div>
                     <t t-if="not project_requests">
                         <div class="alert alert-info" role="alert">
                             No tienes solicitudes de proyectos. Puedes crear una nueva haciendo clic en el botón "Nueva Solicitud".
@@ -39,15 +74,21 @@
                             <tr>
                                 <th>Solicitud</th>
                                 <th>Tipo</th>
-                                <th>Compañía</th>
+<!--                                <th>Compañía</th>-->
                                 <th>Grupo de Trabajo</th>
                                 <th>Estado</th>
                                 <th>Fecha Creación</th>
                             </tr>
                         </thead>
                         <tbody>
-                            <t t-foreach="project_requests" t-as="project_request">
-                                <tr>
+                            <t t-foreach="project_request_groups" t-as="project_request_group">
+                                <tr t-if="groupby != 'none'" class="table-secondary">
+                                    <td colspan="6">
+                                        <strong t-esc="project_request_group['label']"/>
+                                    </td>
+                                </tr>
+                                <t t-foreach="project_request_group['project_requests']" t-as="project_request">
+                                    <tr>
                                     <td>
                                         <a t-attf-href="/my/project_requests/#{project_request.id}">
                                             <span t-esc="project_request.project_name"/>
@@ -57,7 +98,7 @@
                                         <span t-if="project_request.type == 'new'" class="badge bg-primary">Nuevo Proyecto</span>
                                         <span t-elif="project_request.type == 'end'" class="badge bg-warning">Finalizar Proyecto</span>
                                     </td>
-                                    <td><span t-esc="project_request.company_id.name"/></td>
+<!--                                    <td><span t-esc="project_request.company_id.name"/></td>-->
                                     <td>
                                         <span t-if="project_request.work_group_id" t-esc="project_request.work_group_id.name"/>
                                         <span t-else="">-</span>
@@ -76,7 +117,8 @@
                                     <td>
                                         <span t-field="project_request.create_date" t-options='{"widget": "date"}'/>
                                     </td>
-                                </tr>
+                                    </tr>
+                                </t>
                             </t>
                         </tbody>
                     </t>

@@ -14,15 +14,57 @@
         <!-- Vista del listado de solicitudes de facturas -->
         <template id="portal_my_invoices" name="Mis Solicitudes de Facturas">
             <t t-call="portal.portal_layout">
-                <t t-set="breadcrumbs_searchbar" t-value="True"/>
+                <t t-set="no_breadcrumbs" t-value="True"/>
 
-                <div class="d-flex justify-content-between align-items-center mb-3">
-                    <t t-call="portal.portal_searchbar">
-                        <t t-set="title">Solicitudes de Facturas</t>
-                    </t>
+                <div class="portal-project-breadcrumbs mb-3">
+                    <ol class="breadcrumb">
+                        <li class="breadcrumb-item"><a href="/my"><i class="fa fa-home"/></a></li>
+                        <li class="breadcrumb-item active" aria-current="page">Solicitudes de Facturas</li>
+                    </ol>
+                </div>
+
+                <div class="d-flex justify-content-end align-items-center mb-3">
                     <a href="/portal/invoice_request" class="btn btn-primary">
                         <i class="fa fa-plus me-1"/> Nueva Solicitud
                     </a>
+                </div>
+
+                <div class="portal-project-searchbar-wrapper mb-4">
+                    <div class="portal-project-searchbar d-flex flex-column flex-lg-row justify-content-center align-items-stretch align-items-lg-center gap-2">
+                        <div class="btn-group portal-project-groupby">
+                            <button id="portal_invoice_request_groupby" data-bs-toggle="dropdown" class="btn btn-light dropdown-toggle" type="button">
+                                Agrupar por: <t t-esc="searchbar_groupby[groupby].get('label', 'Sin agrupar')"/>
+                            </button>
+                            <div class="dropdown-menu" aria-labelledby="portal_invoice_request_groupby">
+                                <t t-foreach="searchbar_groupby" t-as="option">
+                                    <a t-att-href="default_url + '?' + keep_query('*', groupby=option)"
+                                       t-attf-class="dropdown-item#{groupby == option and ' active' or ''}">
+                                        <span t-esc="searchbar_groupby[option].get('label')"/>
+                                    </a>
+                                </t>
+                            </div>
+                        </div>
+
+                        <form class="o_portal_search_panel portal-project-search-form">
+                            <input type="hidden" name="groupby" t-att-value="groupby"/>
+                            <input type="hidden" name="search_in" t-att-value="search_in"/>
+                            <div class="input-group w-100">
+                                <button type="button" class="btn btn-light border-end dropdown-toggle" data-bs-toggle="dropdown"/>
+                                <div class="dropdown-menu" role="menu">
+                                    <t t-foreach="searchbar_inputs" t-as="input">
+                                        <a t-att-href="default_url + '?' + keep_query('*', search_in=searchbar_inputs[input]['input'])"
+                                           t-attf-class="dropdown-item#{search_in == searchbar_inputs[input]['input'] and ' active' or ''}">
+                                            <span t-esc="searchbar_inputs[input]['label']"/>
+                                        </a>
+                                    </t>
+                                </div>
+                                <input type="search" class="form-control border-0 bg-light" t-att-value="search" name="search" t-att-placeholder="searchbar_inputs[search_in].get('label', 'Buscar...')"/>
+                                <button class="btn btn-light" type="submit">
+                                    <span class="oi oi-search"/>
+                                </button>
+                            </div>
+                        </form>
+                    </div>
                 </div>
 
                 <t t-if="not invoice_requests">
@@ -43,40 +85,47 @@
                         </tr>
                     </thead>
                     <tbody>
-                        <t t-foreach="invoice_requests" t-as="invoice_request">
-                            <tr style="cursor: pointer;">
-                                <td>
-                                    <a t-attf-href="/my/invoices/#{invoice_request.id}">
-                                        <span t-if="invoice_request.move_type == 'out_invoice'">Factura</span>
-                                        <span t-else="">Factura Rectificativa</span>
-                                    </a>
-                                </td>
-                                <td>
-                                    <a t-attf-href="/my/invoices/#{invoice_request.id}">
-                                        <span t-field="invoice_request.partner_id"/>
-                                    </a>
-                                </td>
-                                <td>
-                                    <a t-attf-href="/my/invoices/#{invoice_request.id}">
-                                        <span t-field="invoice_request.analytic_id"/>
-                                    </a>
-                                </td>
-                                <td>
-                                    <a t-attf-href="/my/invoices/#{invoice_request.id}">
-                                        <span t-field="invoice_request.amount" t-options='{"widget": "monetary", "display_currency": invoice_request.currency_id}'/>
-                                    </a>
-                                </td>
-                                <td>
-                                    <a t-attf-href="/my/invoices/#{invoice_request.id}">
-                                        <span t-field="invoice_request.status"/>
-                                    </a>
-                                </td>
-                                <td class="text-end">
-                                    <a t-attf-href="/my/invoices/#{invoice_request.id}">
-                                        <span t-field="invoice_request.create_date" t-options='{"widget": "date"}'/>
-                                    </a>
+                        <t t-foreach="invoice_request_groups" t-as="invoice_request_group">
+                            <tr t-if="groupby != 'none'" class="table-secondary">
+                                <td colspan="6">
+                                    <strong t-esc="invoice_request_group['label']"/>
                                 </td>
                             </tr>
+                            <t t-foreach="invoice_request_group['invoice_requests']" t-as="invoice_request">
+                                <tr style="cursor: pointer;">
+                                    <td>
+                                        <a t-attf-href="/my/invoices/#{invoice_request.id}">
+                                            <span t-if="invoice_request.move_type == 'out_invoice'">Factura</span>
+                                            <span t-else="">Factura Rectificativa</span>
+                                        </a>
+                                    </td>
+                                    <td>
+                                        <a t-attf-href="/my/invoices/#{invoice_request.id}">
+                                            <span t-field="invoice_request.partner_id"/>
+                                        </a>
+                                    </td>
+                                    <td>
+                                        <a t-attf-href="/my/invoices/#{invoice_request.id}">
+                                            <span t-field="invoice_request.analytic_id"/>
+                                        </a>
+                                    </td>
+                                    <td>
+                                        <a t-attf-href="/my/invoices/#{invoice_request.id}">
+                                            <span t-field="invoice_request.amount" t-options='{"widget": "monetary", "display_currency": invoice_request.currency_id}'/>
+                                        </a>
+                                    </td>
+                                    <td>
+                                        <a t-attf-href="/my/invoices/#{invoice_request.id}">
+                                            <span t-field="invoice_request.status"/>
+                                        </a>
+                                    </td>
+                                    <td class="text-end">
+                                        <a t-attf-href="/my/invoices/#{invoice_request.id}">
+                                            <span t-field="invoice_request.create_date" t-options='{"widget": "date"}'/>
+                                        </a>
+                                    </td>
+                                </tr>
+                            </t>
                         </t>
                     </tbody>
                 </t>

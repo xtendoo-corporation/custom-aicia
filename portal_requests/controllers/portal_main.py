@@ -110,19 +110,119 @@ class PortalRequestsCustomerPortal(CustomerPortal):
         return values
 
     @http.route(['/my/expenses', '/my/expenses/page/<int:page>'], type='http', auth="user", website=True)
-    def portal_my_expenses(self, page=1, sortby=None, filterby=None, **kw):
+    def portal_my_expenses(self, page=1, sortby=None, filterby=None, search=None, search_in='all', groupby='none', **kw):
         """Muestra el listado de solicitudes de gastos del usuario"""
         user = request.env.user
+
+        searchbar_inputs = {
+            'all': {'input': 'all', 'label': 'Buscar en todo'},
+            'type': {'input': 'type', 'label': 'Tipo'},
+            'project': {'input': 'project', 'label': 'Proyecto'},
+            'amount': {'input': 'amount', 'label': 'Importe'},
+            'status': {'input': 'status', 'label': 'Estado'},
+            'date': {'input': 'date', 'label': 'Fecha Creación'},
+        }
+        if search_in not in searchbar_inputs:
+            search_in = 'all'
+
+        searchbar_groupby = {
+            'none': {'input': 'none', 'label': 'Sin agrupar'},
+            'type': {'input': 'type', 'label': 'Tipo'},
+            'project': {'input': 'project', 'label': 'Proyecto'},
+            'status': {'input': 'status', 'label': 'Estado'},
+            'date': {'input': 'date', 'label': 'Fecha Creación'},
+        }
+        if groupby not in searchbar_groupby:
+            groupby = 'none'
+
+        ExpenseRequest = request.env['portal.hr.expensive.request']
+        type_labels = dict(ExpenseRequest._fields['type']._description_selection(request.env))
+        status_labels = dict(ExpenseRequest._fields['status']._description_selection(request.env))
+
+        def _expense_type_label(expense):
+            return type_labels.get(expense.type, expense.type or 'Sin tipo')
+
+        def _expense_status_label(expense):
+            return status_labels.get(expense.status, expense.status or 'Sin estado')
+
+        def _expense_date_label(expense):
+            return expense.create_date.date().strftime('%d/%m/%Y') if expense.create_date else 'Sin fecha'
+
+        def _expense_project_label(expense):
+            project = expense.project.sudo()
+            return project.name if project else 'Sin proyecto'
+
+        def _expense_amount_search_values(expense):
+            if not expense.invoice_created:
+                return []
+            amount = expense.invoice_created.sudo().amount_total or 0.0
+            fixed_amount = f'{amount:.2f}'
+            spanish_amount = f'{amount:,.2f}'.replace(',', 'X').replace('.', ',').replace('X', '.')
+            values = [str(amount), fixed_amount, fixed_amount.replace('.', ','), spanish_amount, f'{spanish_amount} €']
+            if float(amount).is_integer():
+                values.append(str(int(amount)))
+            return values
 
         # Búsqueda de solicitudes de gastos del usuario
         expenses = request.env['portal.hr.expensive.request'].search([
             ('user_id', '=', user.id)
         ], order='create_date desc')
 
+        if search:
+            needle = search.strip().lower()
+
+            def _expense_matches(expense):
+                values = []
+                if search_in in ('all', 'type'):
+                    values.append(_expense_type_label(expense))
+                if search_in in ('all', 'project'):
+                    values.append(_expense_project_label(expense))
+                if search_in in ('all', 'amount'):
+                    values.extend(_expense_amount_search_values(expense))
+                if search_in in ('all', 'status'):
+                    values.append(_expense_status_label(expense))
+                    values.append(expense.status or '')
+                if search_in in ('all', 'date'):
+                    values.append(str(expense.create_date.date() if expense.create_date else ''))
+                    values.append(_expense_date_label(expense))
+                return any(needle in str(value).lower() for value in values)
+
+            expenses = expenses.filtered(_expense_matches)
+
+        if groupby == 'none':
+            expense_groups = [{'label': '', 'expenses': expenses}]
+        else:
+            group_map = {}
+            expense_groups = []
+            for expense in expenses:
+                if groupby == 'type':
+                    label = _expense_type_label(expense)
+                elif groupby == 'project':
+                    label = _expense_project_label(expense)
+                elif groupby == 'status':
+                    label = _expense_status_label(expense)
+                else:
+                    label = _expense_date_label(expense)
+
+                if label not in group_map:
+                    group_map[label] = {'label': label, 'expenses': request.env['portal.hr.expensive.request']}
+                    expense_groups.append(group_map[label])
+                group_map[label]['expenses'] |= expense
+
         values = {
             'expenses': expenses,
+            'expense_groups': expense_groups,
+            'expense_project_names': {
+                expense.id: _expense_project_label(expense)
+                for expense in expenses
+            },
             'page_name': 'expense',
             'default_url': '/my/expenses',
+            'searchbar_inputs': searchbar_inputs,
+            'searchbar_groupby': searchbar_groupby,
+            'search_in': search_in,
+            'search': search,
+            'groupby': groupby,
         }
 
         return request.render("portal_requests.portal_my_expenses", values)
@@ -211,21 +311,120 @@ class PortalRequestsCustomerPortal(CustomerPortal):
     # ==========================================
 
     @http.route(['/my/invoices', '/my/invoices/page/<int:page>'], type='http', auth="user", website=True)
-    def portal_my_invoices(self, page=1, sortby=None, filterby=None, **kw):
+    def portal_my_invoices(self, page=1, sortby=None, filterby=None, search=None, search_in='all', groupby='none', **kw):
         """Muestra el listado de solicitudes de facturas del usuario"""
         user = request.env.user
 
+        searchbar_inputs = {
+            'all': {'input': 'all', 'label': 'Buscar en todo'},
+            'type': {'input': 'type', 'label': 'Tipo'},
+            'partner': {'input': 'partner', 'label': 'Cliente'},
+            'project': {'input': 'project', 'label': 'Proyecto'},
+            'amount': {'input': 'amount', 'label': 'Importe'},
+            'status': {'input': 'status', 'label': 'Estado'},
+            'date': {'input': 'date', 'label': 'Fecha Creación'},
+        }
+        if search_in not in searchbar_inputs:
+            search_in = 'all'
+
+        searchbar_groupby = {
+            'none': {'input': 'none', 'label': 'Sin agrupar'},
+            'type': {'input': 'type', 'label': 'Tipo'},
+            'partner': {'input': 'partner', 'label': 'Cliente'},
+            'project': {'input': 'project', 'label': 'Proyecto'},
+            'status': {'input': 'status', 'label': 'Estado'},
+            'date': {'input': 'date', 'label': 'Fecha Creación'},
+        }
+        if groupby not in searchbar_groupby:
+            groupby = 'none'
+
+        type_labels = {
+            'out_invoice': 'Factura',
+            'out_refund': 'Factura Rectificativa',
+        }
+        InvoiceRequest = request.env['portal.invoice.request'].sudo()
+        status_labels = dict(InvoiceRequest._fields['status']._description_selection(request.env))
+
+        def _invoice_request_type_label(invoice_request):
+            return type_labels.get(invoice_request.move_type, invoice_request.move_type or 'Sin tipo')
+
+        def _invoice_request_status_label(invoice_request):
+            return status_labels.get(invoice_request.status, invoice_request.status or 'Sin estado')
+
+        def _invoice_request_date_label(invoice_request):
+            return invoice_request.create_date.date().strftime('%d/%m/%Y') if invoice_request.create_date else 'Sin fecha'
+
+        def _invoice_request_amount_search_values(invoice_request):
+            amount = invoice_request.amount or 0.0
+            fixed_amount = f'{amount:.2f}'
+            spanish_amount = f'{amount:,.2f}'.replace(',', 'X').replace('.', ',').replace('X', '.')
+            values = [str(amount), fixed_amount, fixed_amount.replace('.', ','), spanish_amount, f'{spanish_amount} €']
+            if float(amount).is_integer():
+                values.append(str(int(amount)))
+            return values
+
         # Búsqueda de solicitudes de facturas: propias + las del equipo si es jefe
-        invoice_requests = request.env['portal.invoice.request'].sudo().search([
+        invoice_requests = InvoiceRequest.search([
             '|',
             ('user_id', '=', user.id),
             ('equip_boss', '=', user.id),
         ], order='create_date desc')
 
+        if search:
+            needle = search.strip().lower()
+
+            def _invoice_request_matches(invoice_request):
+                values = []
+                if search_in in ('all', 'type'):
+                    values.append(_invoice_request_type_label(invoice_request))
+                if search_in in ('all', 'partner'):
+                    values.append(invoice_request.partner_id.name or '')
+                if search_in in ('all', 'project'):
+                    values.append(invoice_request.analytic_id.display_name or invoice_request.analytic_id.name or '')
+                if search_in in ('all', 'amount'):
+                    values.extend(_invoice_request_amount_search_values(invoice_request))
+                if search_in in ('all', 'status'):
+                    values.append(_invoice_request_status_label(invoice_request))
+                    values.append(invoice_request.status or '')
+                if search_in in ('all', 'date'):
+                    values.append(str(invoice_request.create_date.date() if invoice_request.create_date else ''))
+                    values.append(_invoice_request_date_label(invoice_request))
+                return any(needle in str(value).lower() for value in values)
+
+            invoice_requests = invoice_requests.filtered(_invoice_request_matches)
+
+        if groupby == 'none':
+            invoice_request_groups = [{'label': '', 'invoice_requests': invoice_requests}]
+        else:
+            group_map = {}
+            invoice_request_groups = []
+            for invoice_request in invoice_requests:
+                if groupby == 'type':
+                    label = _invoice_request_type_label(invoice_request)
+                elif groupby == 'partner':
+                    label = invoice_request.partner_id.name or 'Sin cliente'
+                elif groupby == 'project':
+                    label = invoice_request.analytic_id.display_name or invoice_request.analytic_id.name or 'Sin proyecto'
+                elif groupby == 'status':
+                    label = _invoice_request_status_label(invoice_request)
+                else:
+                    label = _invoice_request_date_label(invoice_request)
+
+                if label not in group_map:
+                    group_map[label] = {'label': label, 'invoice_requests': InvoiceRequest.browse()}
+                    invoice_request_groups.append(group_map[label])
+                group_map[label]['invoice_requests'] |= invoice_request
+
         values = {
             'invoice_requests': invoice_requests,
+            'invoice_request_groups': invoice_request_groups,
             'page_name': 'invoice_request',
             'default_url': '/my/invoices',
+            'searchbar_inputs': searchbar_inputs,
+            'searchbar_groupby': searchbar_groupby,
+            'search_in': search_in,
+            'search': search,
+            'groupby': groupby,
         }
 
         return request.render("portal_requests.portal_my_invoices", values)
@@ -398,10 +597,38 @@ class PortalRequestsCustomerPortal(CustomerPortal):
     # ==========================================
 
     @http.route(['/my/documents', '/my/documents/page/<int:page>'], type='http', auth="user", website=True)
-    def portal_my_documents(self, page=1, sortby=None, filterby=None, **kw):
+    def portal_my_documents(self, page=1, sortby=None, filterby=None, search=None, search_in='all', groupby='none', **kw):
         """Muestra el listado de solicitudes de documentos del usuario.
         Si es jefe de equipo, también ve las solicitudes de los grupos que lidera."""
         user = request.env.user
+
+        searchbar_inputs = {
+            'all': {'input': 'all', 'label': 'Buscar en todo'},
+            'description': {'input': 'description', 'label': 'Descripción'},
+            'work_group': {'input': 'work_group', 'label': 'Grupo de Trabajo'},
+            'status': {'input': 'status', 'label': 'Estado'},
+            'date': {'input': 'date', 'label': 'Fecha Creación'},
+        }
+        if search_in not in searchbar_inputs:
+            search_in = 'all'
+
+        searchbar_groupby = {
+            'none': {'input': 'none', 'label': 'Sin agrupar'},
+            'work_group': {'input': 'work_group', 'label': 'Grupo de Trabajo'},
+            'status': {'input': 'status', 'label': 'Estado'},
+            'date': {'input': 'date', 'label': 'Fecha Creación'},
+        }
+        if groupby not in searchbar_groupby:
+            groupby = 'none'
+
+        DocumentApproval = request.env['document.approval']
+        status_labels = dict(DocumentApproval._fields['status']._description_selection(request.env))
+
+        def _document_status_label(document):
+            return status_labels.get(document.status, document.status or 'Sin estado')
+
+        def _document_date_label(document):
+            return document.create_date.date().strftime('%d/%m/%Y') if document.create_date else 'Sin fecha'
 
         if user.has_group('portal_requests.group_equip_boss'):
             # Grupos de los que este usuario es jefe
@@ -419,10 +646,53 @@ class PortalRequestsCustomerPortal(CustomerPortal):
                 ('user_id', '=', user.id)
             ], order='create_date desc')
 
+        if search:
+            needle = search.strip().lower()
+
+            def _document_matches(document):
+                values = []
+                if search_in in ('all', 'description'):
+                    values.append(document.description or '')
+                if search_in in ('all', 'work_group'):
+                    values.append(document.work_group_id.name or '')
+                if search_in in ('all', 'status'):
+                    values.append(_document_status_label(document))
+                    values.append(document.status or '')
+                if search_in in ('all', 'date'):
+                    values.append(str(document.create_date.date() if document.create_date else ''))
+                    values.append(_document_date_label(document))
+                return any(needle in str(value).lower() for value in values)
+
+            documents = documents.filtered(_document_matches)
+
+        if groupby == 'none':
+            document_groups = [{'label': '', 'documents': documents}]
+        else:
+            group_map = {}
+            document_groups = []
+            for document in documents:
+                if groupby == 'work_group':
+                    label = document.work_group_id.name or 'Sin grupo de trabajo'
+                elif groupby == 'status':
+                    label = _document_status_label(document)
+                else:
+                    label = _document_date_label(document)
+
+                if label not in group_map:
+                    group_map[label] = {'label': label, 'documents': documents.browse()}
+                    document_groups.append(group_map[label])
+                group_map[label]['documents'] |= document
+
         values = {
             'documents': documents,
+            'document_groups': document_groups,
             'page_name': 'document_approval',
             'default_url': '/my/documents',
+            'searchbar_inputs': searchbar_inputs,
+            'searchbar_groupby': searchbar_groupby,
+            'search_in': search_in,
+            'search': search,
+            'groupby': groupby,
         }
 
         return request.render("portal_requests.portal_my_documents", values)
@@ -740,7 +1010,7 @@ class PortalRequestsCustomerPortal(CustomerPortal):
         return request.redirect(f'/my/analytic_projects/{project_id}?success=message_posted')
 
     @http.route(['/my/analytic_projects/<int:project_id>/invoices_list'], type='http', auth="user", website=True)
-    def portal_project_invoices(self, project_id, **kw):
+    def portal_project_invoices(self, project_id, search=None, search_in='all', groupby='none', **kw):
         """Muestra las facturas asociadas a un proyecto (cuenta analítica)"""
         # Buscar el proyecto accesible para el usuario portal (responsable o jefe de su grupo)
         project = request.env['account.analytic.account'].search(
@@ -771,13 +1041,126 @@ class PortalRequestsCustomerPortal(CustomerPortal):
                         invoice_ids.add(line.move_id.id)
                         break
 
+        searchbar_inputs = {
+            'all': {'input': 'all', 'label': 'Buscar en todo'},
+            'name': {'input': 'name', 'label': 'Número'},
+            'partner': {'input': 'partner', 'label': 'Cliente/Proveedor'},
+            'type': {'input': 'type', 'label': 'Tipo'},
+            'date': {'input': 'date', 'label': 'Fecha'},
+            'amount': {'input': 'amount', 'label': 'Importe Total'},
+            'state': {'input': 'state', 'label': 'Estado'},
+            'payment_state': {'input': 'payment_state', 'label': 'Estado de pago'},
+        }
+        if search_in not in searchbar_inputs:
+            search_in = 'all'
+
+        searchbar_groupby = {
+            'none': {'input': 'none', 'label': 'Sin agrupar'},
+            'type': {'input': 'type', 'label': 'Tipo'},
+            'partner': {'input': 'partner', 'label': 'Cliente/Proveedor'},
+            'date': {'input': 'date', 'label': 'Fecha'},
+            'state': {'input': 'state', 'label': 'Estado'},
+            'payment_state': {'input': 'payment_state', 'label': 'Estado de pago'},
+        }
+        if groupby not in searchbar_groupby:
+            groupby = 'none'
+
+        type_labels = {
+            'out_invoice': 'Factura Cliente',
+            'out_refund': 'Nota Crédito Cliente',
+            'in_invoice': 'Factura Proveedor',
+            'in_refund': 'Nota Crédito Proveedor',
+        }
+        state_labels = {
+            'draft': 'Borrador',
+            'posted': 'Publicada',
+            'cancel': 'Cancelada',
+        }
+        payment_state_labels = {
+            'paid': 'Pagada',
+            'partial': 'Pago Parcial',
+            'not_paid': 'No Pagada',
+            'in_payment': 'En pago',
+            'reversed': 'Revertida',
+            'blocked': 'Bloqueada',
+            'invoicing_legacy': 'Sistema anterior',
+        }
+
+        def _invoice_date_value(inv):
+            return inv.invoice_date or inv.date or (inv.create_date.date() if inv.create_date else False)
+
+        def _invoice_date_label(inv):
+            invoice_date = _invoice_date_value(inv)
+            return invoice_date.strftime('%d/%m/%Y') if invoice_date else 'Sin fecha'
+
+        def _invoice_amount_search_values(inv):
+            amount = inv.amount_total or 0.0
+            fixed_amount = f'{amount:.2f}'
+            spanish_amount = f'{amount:,.2f}'.replace(',', 'X').replace('.', ',').replace('X', '.')
+            values = [str(amount), fixed_amount, fixed_amount.replace('.', ','), spanish_amount, f'{spanish_amount} €']
+            if float(amount).is_integer():
+                values.append(str(int(amount)))
+            return values
+
         # Obtener las facturas con sudo para poder verlas
-        invoices = request.env['account.move'].sudo().browse(list(invoice_ids))
+        invoices = request.env['account.move'].sudo().browse(list(invoice_ids)).sorted(lambda inv: (str(inv.invoice_date or inv.date or inv.create_date or ''), inv.name or ''), reverse=True)
+        if search:
+            needle = search.strip().lower()
+
+            def _invoice_matches(inv):
+                values = []
+                if search_in in ('all', 'name'):
+                    values.append(inv.name or '')
+                if search_in in ('all', 'partner'):
+                    values.append(inv.partner_id.name or '')
+                if search_in in ('all', 'type'):
+                    values.append(type_labels.get(inv.move_type, inv.move_type or ''))
+                if search_in in ('all', 'date'):
+                    values.append(str(_invoice_date_value(inv) or ''))
+                    values.append(_invoice_date_label(inv))
+                if search_in in ('all', 'amount'):
+                    values.extend(_invoice_amount_search_values(inv))
+                if search_in in ('all', 'state'):
+                    values.append(state_labels.get(inv.state, inv.state or ''))
+                if search_in in ('all', 'payment_state'):
+                    values.append(payment_state_labels.get(inv.payment_state, inv.payment_state or ''))
+                return any(needle in str(value).lower() for value in values)
+
+            invoices = invoices.filtered(_invoice_matches)
+
+        if groupby == 'none':
+            invoice_groups = [{'label': '', 'invoices': invoices}]
+        else:
+            group_map = {}
+            invoice_groups = []
+            for invoice in invoices:
+                if groupby == 'type':
+                    label = type_labels.get(invoice.move_type, invoice.move_type or 'Sin tipo')
+                elif groupby == 'partner':
+                    label = invoice.partner_id.name or 'Sin cliente/proveedor'
+                elif groupby == 'date':
+                    label = _invoice_date_label(invoice)
+                elif groupby == 'state':
+                    label = state_labels.get(invoice.state, invoice.state or 'Sin estado')
+                else:
+                    label = payment_state_labels.get(invoice.payment_state, invoice.payment_state or 'Sin estado de pago')
+
+                if label not in group_map:
+                    group_map[label] = {'label': label, 'invoices': request.env['account.move'].sudo()}
+                    invoice_groups.append(group_map[label])
+                group_map[label]['invoices'] |= invoice
 
         values = {
             'project': project.sudo(),
             'invoices': invoices,
+            'invoice_groups': invoice_groups,
             'page_name': 'analytic_project_invoices',
+            'default_url': f'/my/analytic_projects/{project_id}/invoices_list',
+            'searchbar_inputs': searchbar_inputs,
+            'searchbar_groupby': searchbar_groupby,
+            'search_in': search_in,
+            'search': search,
+            'groupby': groupby,
         }
 
         return request.render("portal_requests.portal_project_invoices", values)
@@ -831,7 +1214,7 @@ class PortalRequestsCustomerPortal(CustomerPortal):
         return request.render("portal_requests.portal_project_invoice_detail", values)
 
     @http.route(['/my/analytic_projects/<int:project_id>/invoices_list/<int:invoice_id>/payments_list'], type='http', auth="user", website=True)
-    def portal_project_invoice_payments(self, project_id, invoice_id, **kw):
+    def portal_project_invoice_payments(self, project_id, invoice_id, search=None, search_in='all', groupby='none', **kw):
         """Muestra los pagos asociados a una factura asociada a un proyecto"""
         project = request.env['account.analytic.account'].search(
             [('id', '=', project_id)] + self._get_accessible_analytic_project_domain(request.env.user),
@@ -846,15 +1229,86 @@ class PortalRequestsCustomerPortal(CustomerPortal):
         if not invoice.exists():
             return request.redirect(f'/my/analytic_projects/{project_id}/invoices_list')
 
+        searchbar_inputs = {
+            'all': {'input': 'all', 'label': 'Buscar en todo'},
+            'name': {'input': 'name', 'label': 'Referencia'},
+            'date': {'input': 'date', 'label': 'Fecha'},
+            'amount': {'input': 'amount', 'label': 'Importe'},
+            'state': {'input': 'state', 'label': 'Estado'},
+        }
+        if search_in not in searchbar_inputs:
+            search_in = 'all'
+
+        searchbar_groupby = {
+            'none': {'input': 'none', 'label': 'Sin agrupar'},
+            'state': {'input': 'state', 'label': 'Estado'},
+            'date': {'input': 'date', 'label': 'Fecha'},
+        }
+        if groupby not in searchbar_groupby:
+            groupby = 'none'
+
+        state_labels = {
+            'draft': 'Borrador',
+            'in_process': 'En proceso',
+            'paid': 'Pagado',
+            'posted': 'Publicado',
+            'cancel': 'Cancelado',
+            'cancelled': 'Cancelado',
+        }
+
+        def _payment_date_label(payment):
+            return payment.date.strftime('%d/%m/%Y') if payment.date else 'Sin fecha'
+
         payments = request.env['account.payment'].sudo().search([
             ('invoice_ids', 'in', [invoice.id]),
-        ])
+        ], order='date desc, name desc')
+
+        if search:
+            needle = search.strip().lower()
+
+            def _payment_matches(payment):
+                values = []
+                if search_in in ('all', 'name'):
+                    values.append(payment.name or '')
+                if search_in in ('all', 'date'):
+                    values.append(str(payment.date or ''))
+                    values.append(_payment_date_label(payment))
+                if search_in in ('all', 'amount'):
+                    values.append(str(payment.amount or ''))
+                if search_in in ('all', 'state'):
+                    values.append(state_labels.get(payment.state, payment.state or ''))
+                return any(needle in str(value).lower() for value in values)
+
+            payments = payments.filtered(_payment_matches)
+
+        if groupby == 'none':
+            payment_groups = [{'label': '', 'payments': payments}]
+        else:
+            group_map = {}
+            payment_groups = []
+            for payment in payments:
+                if groupby == 'state':
+                    label = state_labels.get(payment.state, payment.state or 'Sin estado')
+                else:
+                    label = _payment_date_label(payment)
+
+                if label not in group_map:
+                    group_map[label] = {'label': label, 'payments': request.env['account.payment'].sudo()}
+                    payment_groups.append(group_map[label])
+                group_map[label]['payments'] |= payment
 
         return request.render("portal_requests.portal_project_invoice_payments", {
             'project': project.sudo(),
             'invoice': invoice,
             'payments': payments,
+            'payment_groups': payment_groups,
             'page_name': 'analytic_project_invoice_payments',
+            'default_url': f'/my/analytic_projects/{project_id}/invoices_list/{invoice_id}/payments_list',
+            'searchbar_inputs': searchbar_inputs,
+            'searchbar_groupby': searchbar_groupby,
+            'search_in': search_in,
+            'search': search,
+            'groupby': groupby,
         })
 
     @http.route(['/my/analytic_projects/<int:project_id>/invoices_list/<int:invoice_id>/payments_list/<int:payment_id>'], type='http', auth="user", website=True)
@@ -984,7 +1438,7 @@ class PortalRequestsCustomerPortal(CustomerPortal):
     # =====================================
 
     @http.route(['/my/project_requests', '/my/project_requests/page/<int:page>'], type='http', auth="user", website=True)
-    def portal_my_project_requests(self, page=1, sortby=None, **kw):
+    def portal_my_project_requests(self, page=1, sortby=None, search=None, search_in='all', groupby='none', **kw):
         """Muestra el listado de solicitudes de proyectos del usuario"""
         # Solo los jefes de equipo pueden acceder
         if not request.env.user.has_group('portal_requests.group_equip_boss'):
@@ -992,14 +1446,102 @@ class PortalRequestsCustomerPortal(CustomerPortal):
 
         user = request.env.user
 
+        searchbar_inputs = {
+            'all': {'input': 'all', 'label': 'Buscar en todo'},
+            'project_name': {'input': 'project_name', 'label': 'Solicitud'},
+            'type': {'input': 'type', 'label': 'Tipo'},
+            'company': {'input': 'company', 'label': 'Compañía'},
+            'work_group': {'input': 'work_group', 'label': 'Grupo de Trabajo'},
+            'state': {'input': 'state', 'label': 'Estado'},
+            'date': {'input': 'date', 'label': 'Fecha Creación'},
+        }
+        if search_in not in searchbar_inputs:
+            search_in = 'all'
+
+        searchbar_groupby = {
+            'none': {'input': 'none', 'label': 'Sin agrupar'},
+            'company': {'input': 'company', 'label': 'Compañía'},
+            'work_group': {'input': 'work_group', 'label': 'Grupo de Trabajo'},
+            'state': {'input': 'state', 'label': 'Estado'},
+            'date': {'input': 'date', 'label': 'Fecha Creación'},
+        }
+        if groupby not in searchbar_groupby:
+            groupby = 'none'
+
+        type_labels = {
+            'new': 'Nuevo Proyecto',
+            'end': 'Finalizar Proyecto',
+        }
+
+        def _project_request_state_label(project_request):
+            if project_request.approved and project_request.is_revised:
+                return 'Aprobada'
+            if not project_request.approved and project_request.is_revised:
+                return 'Rechazada'
+            return 'Pendiente'
+
+        def _project_request_date_label(project_request):
+            return project_request.create_date.date().strftime('%d/%m/%Y') if project_request.create_date else 'Sin fecha'
+
         # Buscar solicitudes de proyectos del usuario
         project_requests = request.env['portal.project.request'].search([
             ('user_id', '=', user.id)
         ], order='create_date desc')
 
+        if search:
+            needle = search.strip().lower()
+
+            def _project_request_matches(project_request):
+                values = []
+                if search_in in ('all', 'project_name'):
+                    values.append(project_request.project_name or '')
+                if search_in in ('all', 'type'):
+                    values.append(type_labels.get(project_request.type, project_request.type or ''))
+                if search_in in ('all', 'company'):
+                    values.append(project_request.company_id.name or '')
+                if search_in in ('all', 'work_group'):
+                    values.append(project_request.work_group_id.name or '')
+                if search_in in ('all', 'state'):
+                    values.append(_project_request_state_label(project_request))
+                if search_in in ('all', 'date'):
+                    values.append(str(project_request.create_date.date() if project_request.create_date else ''))
+                    values.append(_project_request_date_label(project_request))
+                return any(needle in str(value).lower() for value in values)
+
+            project_requests = project_requests.filtered(_project_request_matches)
+
+        if groupby == 'none':
+            project_request_groups = [{'label': '', 'project_requests': project_requests}]
+        else:
+            group_map = {}
+            project_request_groups = []
+            for project_request in project_requests:
+                if groupby == 'type':
+                    label = type_labels.get(project_request.type, project_request.type or 'Sin tipo')
+                elif groupby == 'company':
+                    label = project_request.company_id.name or 'Sin compañía'
+                elif groupby == 'work_group':
+                    label = project_request.work_group_id.name or 'Sin grupo de trabajo'
+                elif groupby == 'state':
+                    label = _project_request_state_label(project_request)
+                else:
+                    label = _project_request_date_label(project_request)
+
+                if label not in group_map:
+                    group_map[label] = {'label': label, 'project_requests': request.env['portal.project.request']}
+                    project_request_groups.append(group_map[label])
+                group_map[label]['project_requests'] |= project_request
+
         values = {
             'project_requests': project_requests,
+            'project_request_groups': project_request_groups,
             'page_name': 'project_request',
+            'default_url': '/my/project_requests',
+            'searchbar_inputs': searchbar_inputs,
+            'searchbar_groupby': searchbar_groupby,
+            'search_in': search_in,
+            'search': search,
+            'groupby': groupby,
         }
 
         return request.render("portal_requests.portal_my_project_requests", values)
