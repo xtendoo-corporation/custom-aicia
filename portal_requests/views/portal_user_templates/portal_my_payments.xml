@@ -4,144 +4,152 @@
         <!-- Listado de Pagos -->
         <template id="portal_my_payments" name="Mis Pagos">
             <t t-call="portal.portal_layout">
-                <t t-set="breadcrumbs_searchbar" t-value="True"/>
-                <t t-call="portal.portal_searchbar">
-                    <t t-set="title">Mis Pagos</t>
-                </t>
-                <t t-set="page_name" t-value="'payments'"/>
-                <div class="row g-4">
-                    <div class="col-lg-6">
-                        <div class="card h-100 shadow-sm">
-                            <div class="card-header bg-light">
-                                <h5 class="mb-0">
-                                    <i class="fa fa-file-invoice-dollar me-2"/>
-                                    Pagos de Facturas de Clientes
-                                </h5>
-                            </div>
-                            <div class="card-body">
-                                <t t-if="customer_payment_entries">
-                                    <div class="table-responsive">
-                                        <table class="table table-hover align-middle mb-0">
-                                            <thead>
-                                                <tr>
-                                                    <th>Referencia</th>
-                                                    <th>Fecha</th>
-                                                    <th>Importe</th>
-                                                    <th>Estado</th>
-                                                    <th>Factura</th>
-                                                </tr>
-                                            </thead>
-                                            <tbody>
-                                                <t t-foreach="customer_payment_entries" t-as="entry">
-                                                    <t t-set="payment" t-value="entry['payment']"/>
-                                                    <t t-set="invoices" t-value="entry['invoices']"/>
-                                                    <tr>
-                                                        <td>
-                                                            <a t-attf-href="/my/payments/#{payment.id}">
-                                                                <span t-esc="payment.name"/>
-                                                            </a>
-                                                        </td>
-                                                        <td>
-                                                            <span t-field="payment.date"/>
-                                                        </td>
-                                                        <td>
-                                                            <span t-field="payment.amount" t-options='{"widget": "monetary", "display_currency": payment.currency_id}'/>
-                                                        </td>
-                                                        <td>
-                                                            <span t-if="payment.state == 'draft'" class="badge bg-secondary">Borrador</span>
-                                                            <span t-elif="payment.state == 'in_process'" class="badge bg-warning">En proceso</span>
-                                                            <span t-elif="payment.state == 'paid'" class="badge bg-success">Pagado</span>
-                                                            <span t-elif="payment.state == 'posted'" class="badge bg-primary">Publicado</span>
-                                                            <span t-elif="payment.state in ['cancel', 'cancelled']" class="badge bg-danger">Cancelado</span>
-                                                            <span t-else="" class="badge bg-info" t-esc="payment.state"/>
-                                                        </td>
-                                                        <td>
-                                                            <t t-if="invoices">
-                                                                <t t-foreach="invoices" t-as="inv" t-separator=", ">
-                                                                    <span t-esc="inv.name"/>
-                                                                </t>
-                                                            </t>
-                                                            <t t-else="">-</t>
-                                                        </td>
-                                                    </tr>
-                                                </t>
-                                            </tbody>
-                                        </table>
-                                    </div>
-                                </t>
-                                <t t-else="">
-                                    <div class="alert alert-light border mb-0" role="alert">
-                                        No hay pagos asociados de clientes.
-                                    </div>
-                                </t>
-                            </div>
+                <t t-set="no_breadcrumbs" t-value="True"/>
+
+                <div class="container">
+                    <div class="row mt-3">
+                        <div class="col-12">
+                            <ol class="breadcrumb">
+                                <li class="breadcrumb-item"><a href="/my"><i class="fa fa-home"/></a></li>
+                                <li class="breadcrumb-item active" aria-current="page">Mis Pagos</li>
+                            </ol>
                         </div>
                     </div>
 
-                    <div class="col-lg-6">
-                        <div class="card h-100 shadow-sm">
-                            <div class="card-header bg-light">
-                                <h5 class="mb-0">
-                                    <i class="fa fa-credit-card me-2"/>
-                                    Pagos de Proveedores
-                                </h5>
+                    <div class="portal-project-searchbar-wrapper mb-4">
+                        <div class="portal-project-searchbar d-flex flex-column flex-lg-row justify-content-center align-items-stretch align-items-lg-center gap-2">
+                            <div class="btn-group portal-project-groupby">
+                                <button id="portal_payment_filter" data-bs-toggle="dropdown" class="btn btn-light dropdown-toggle" type="button">
+                                    Filtrar por: <t t-esc="searchbar_filters[filterby].get('label', 'Todos')"/>
+                                </button>
+                                <div class="dropdown-menu" aria-labelledby="portal_payment_filter">
+                                    <t t-foreach="searchbar_filters" t-as="option">
+                                        <a t-att-href="default_url + '?' + keep_query('*', filterby=option)"
+                                           t-attf-class="dropdown-item#{filterby == option and ' active' or ''}">
+                                            <span t-esc="searchbar_filters[option].get('label')"/>
+                                        </a>
+                                    </t>
+                                </div>
                             </div>
-                            <div class="card-body">
-                                <t t-if="supplier_payment_entries">
-                                    <div class="table-responsive">
-                                        <table class="table table-hover align-middle mb-0">
-                                            <thead>
-                                                <tr>
-                                                    <th>Referencia</th>
-                                                    <th>Fecha</th>
-                                                    <th>Importe</th>
-                                                    <th>Estado</th>
-                                                    <th>Factura</th>
-                                                </tr>
-                                            </thead>
-                                            <tbody>
-                                                <t t-foreach="supplier_payment_entries" t-as="entry">
-                                                    <t t-set="payment" t-value="entry['payment']"/>
-                                                    <t t-set="invoices" t-value="entry['invoices']"/>
+
+                            <div class="btn-group portal-project-groupby">
+                                <button id="portal_payment_groupby" data-bs-toggle="dropdown" class="btn btn-light dropdown-toggle" type="button">
+                                    Agrupar por: <t t-esc="searchbar_groupby[groupby].get('label', 'Sin agrupar')"/>
+                                </button>
+                                <div class="dropdown-menu" aria-labelledby="portal_payment_groupby">
+                                    <t t-foreach="searchbar_groupby" t-as="option">
+                                        <a t-att-href="default_url + '?' + keep_query('*', groupby=option)"
+                                           t-attf-class="dropdown-item#{groupby == option and ' active' or ''}">
+                                            <span t-esc="searchbar_groupby[option].get('label')"/>
+                                        </a>
+                                    </t>
+                                </div>
+                            </div>
+
+                            <form class="o_portal_search_panel portal-project-search-form">
+                                <input type="hidden" name="filterby" t-att-value="filterby"/>
+                                <input type="hidden" name="groupby" t-att-value="groupby"/>
+                                <input type="hidden" name="search_in" t-att-value="search_in"/>
+                                <div class="input-group w-100">
+                                    <button type="button" class="btn btn-light border-end dropdown-toggle" data-bs-toggle="dropdown"/>
+                                    <div class="dropdown-menu" role="menu">
+                                        <t t-foreach="searchbar_inputs" t-as="input">
+                                            <a t-att-href="default_url + '?' + keep_query('*', search_in=searchbar_inputs[input]['input'])"
+                                               t-attf-class="dropdown-item#{search_in == searchbar_inputs[input]['input'] and ' active' or ''}">
+                                                <span t-esc="searchbar_inputs[input]['label']"/>
+                                            </a>
+                                        </t>
+                                    </div>
+                                    <input type="search" class="form-control border-0 bg-light"
+                                           t-att-value="search" name="search"
+                                           t-att-placeholder="searchbar_inputs[search_in].get('label', 'Buscar...')"/>
+                                    <button class="btn btn-light" type="submit">
+                                        <span class="oi oi-search"/>
+                                    </button>
+                                </div>
+                            </form>
+                        </div>
+                    </div>
+
+                    <div class="row">
+                        <div class="col-12">
+                            <div class="card mb-4 shadow-sm">
+                                <div class="card-header bg-light">
+                                    <h5 class="mb-0">
+                                        <i class="fa fa-credit-card me-2"/>
+                                        <t t-esc="payments_header_title"/>
+                                    </h5>
+                                </div>
+                                <div class="card-body">
+                                    <t t-if="not payment_entries">
+                                        <div class="alert alert-light border mb-0" role="alert">
+                                            No hay pagos asociados.
+                                        </div>
+                                    </t>
+
+                                    <t t-if="payment_entries">
+                                        <div class="table-responsive">
+                                            <table class="table table-hover align-middle mb-0">
+                                                <thead class="table-light">
                                                     <tr>
-                                                        <td>
-                                                            <a t-attf-href="/my/payments/#{payment.id}">
-                                                                <span t-esc="payment.name"/>
-                                                            </a>
-                                                        </td>
-                                                        <td>
-                                                            <span t-field="payment.date"/>
-                                                        </td>
-                                                        <td>
-                                                            <span t-field="payment.amount" t-options='{"widget": "monetary", "display_currency": payment.currency_id}'/>
-                                                        </td>
-                                                        <td>
-                                                            <span t-if="payment.state == 'draft'" class="badge bg-secondary">Borrador</span>
-                                                            <span t-elif="payment.state == 'in_process'" class="badge bg-warning">En proceso</span>
-                                                            <span t-elif="payment.state == 'paid'" class="badge bg-success">Pagado</span>
-                                                            <span t-elif="payment.state == 'posted'" class="badge bg-primary">Publicado</span>
-                                                            <span t-elif="payment.state in ['cancel', 'cancelled']" class="badge bg-danger">Cancelado</span>
-                                                            <span t-else="" class="badge bg-info" t-esc="payment.state"/>
-                                                        </td>
-                                                        <td>
-                                                            <t t-if="invoices">
-                                                                <t t-foreach="invoices" t-as="inv" t-separator=", ">
-                                                                    <span t-esc="inv.name"/>
-                                                                </t>
-                                                            </t>
-                                                            <t t-else="">-</t>
-                                                        </td>
+                                                        <th>Referencia</th>
+                                                        <th>Tipo</th>
+                                                        <th>Fecha</th>
+                                                        <th>Importe</th>
+                                                        <th>Estado</th>
+                                                        <th>Factura</th>
                                                     </tr>
-                                                </t>
-                                            </tbody>
-                                        </table>
-                                    </div>
-                                </t>
-                                <t t-else="">
-                                    <div class="alert alert-light border mb-0" role="alert">
-                                        No hay pagos asociados de proveedores.
-                                    </div>
-                                </t>
+                                                </thead>
+                                                <tbody>
+                                                    <t t-foreach="payment_groups" t-as="payment_group">
+                                                        <tr t-if="groupby != 'none'" class="table-secondary">
+                                                            <td colspan="6">
+                                                                <strong t-esc="payment_group['label']"/>
+                                                            </td>
+                                                        </tr>
+
+                                                        <t t-foreach="payment_group['entries']" t-as="entry">
+                                                            <t t-set="payment" t-value="entry['payment']"/>
+                                                            <t t-set="invoices" t-value="entry['invoices']"/>
+                                                            <tr>
+                                                                <td>
+                                                                    <a t-attf-href="/my/payments/#{payment.id}">
+                                                                        <span t-esc="payment.name"/>
+                                                                    </a>
+                                                                </td>
+                                                                <td>
+                                                                    <span t-esc="entry['type_label']"/>
+                                                                </td>
+                                                                <td>
+                                                                    <span t-field="payment.date"/>
+                                                                </td>
+                                                                <td>
+                                                                    <span t-field="payment.amount" t-options='{"widget": "monetary", "display_currency": payment.currency_id}'/>
+                                                                </td>
+                                                                <td>
+                                                                    <span t-if="payment.state == 'draft'" class="badge bg-secondary">Borrador</span>
+                                                                    <span t-elif="payment.state == 'in_process'" class="badge bg-warning">En proceso</span>
+                                                                    <span t-elif="payment.state == 'paid'" class="badge bg-success">Pagado</span>
+                                                                    <span t-elif="payment.state == 'posted'" class="badge bg-primary">Publicado</span>
+                                                                    <span t-elif="payment.state in ['cancel', 'cancelled']" class="badge bg-danger">Cancelado</span>
+                                                                    <span t-else="" class="badge bg-info" t-esc="payment.state"/>
+                                                                </td>
+                                                                <td>
+                                                                    <t t-if="invoices">
+                                                                        <t t-foreach="invoices" t-as="inv" t-separator=", ">
+                                                                            <span t-esc="inv.name"/>
+                                                                        </t>
+                                                                    </t>
+                                                                    <t t-else="">-</t>
+                                                                </td>
+                                                            </tr>
+                                                        </t>
+                                                    </t>
+                                                </tbody>
+                                            </table>
+                                        </div>
+                                    </t>
+                                </div>
                             </div>
                         </div>
                     </div>

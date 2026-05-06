@@ -121,8 +121,53 @@ class PortalPaymentController(Controller):
 
         return customer_entries, supplier_entries
 
+    def _build_payment_entries(self, payments, visible_invoice_ids=None):
+        visible_invoice_ids = set(visible_invoice_ids or [])
+        customer_move_types = {'out_invoice', 'out_refund'}
+        supplier_move_types = {'in_invoice', 'in_refund'}
+        entries = []
+
+        for payment in payments:
+            visible_invoices = payment.invoice_ids
+            if visible_invoice_ids:
+                visible_invoices = visible_invoices.filtered(lambda inv: inv.id in visible_invoice_ids)
+
+            customer_invoices = visible_invoices.filtered(lambda inv: inv.move_type in customer_move_types)
+            supplier_invoices = visible_invoices.filtered(lambda inv: inv.move_type in supplier_move_types)
+
+            if customer_invoices and not supplier_invoices:
+                payment_type = 'customer'
+                invoices = customer_invoices
+            elif supplier_invoices and not customer_invoices:
+                payment_type = 'supplier'
+                invoices = supplier_invoices
+            elif customer_invoices and supplier_invoices:
+                if payment.partner_type == 'supplier':
+                    payment_type = 'supplier'
+                    invoices = supplier_invoices
+                else:
+                    payment_type = 'customer'
+                    invoices = customer_invoices
+            elif visible_invoices:
+                if payment.partner_type == 'supplier':
+                    payment_type = 'supplier'
+                else:
+                    payment_type = 'customer'
+                invoices = visible_invoices
+            else:
+                continue
+
+            entries.append({
+                'payment': payment,
+                'invoices': invoices,
+                'payment_type': payment_type,
+                'type_label': 'Cliente' if payment_type == 'customer' else 'Proveedor',
+            })
+
+        return entries
+
     @route('/my/payments', auth='user', website=True)
-    def portal_my_payments(self, **kwargs):
+    def portal_my_payments(self, search=None, search_in='all', groupby='none', filterby='all', **kwargs):
         user = request.env.user
         project_ids = self._get_accessible_project_ids(user)
         _logger.warning(f"[PORTAL PAYMENTS] Proyectos accesibles: {project_ids}")
@@ -137,14 +182,124 @@ class PortalPaymentController(Controller):
         payments = request.env['account.payment'].sudo().search([
             ('invoice_ids', 'in', visible_invoice_ids),
             # Quitar filtro de estado para mostrar todos los pagos relacionados
-        ])
+        ], order='date desc, name desc')
         _logger.warning(f"[PORTAL PAYMENTS] Pagos visibles finales: {payments.ids}")
-        customer_payment_entries, supplier_payment_entries = self._split_payment_entries_by_type(payments, visible_invoice_ids)
+        payment_entries = self._build_payment_entries(payments, visible_invoice_ids)
+
+        searchbar_inputs = {
+            'all': {'input': 'all', 'label': 'Buscar en todo'},
+            'name': {'input': 'name', 'label': 'Referencia'},
+            'invoice': {'input': 'invoice', 'label': 'Factura'},
+            'date': {'input': 'date', 'label': 'Fecha'},
+            'amount': {'input': 'amount', 'label': 'Importe'},
+            'state': {'input': 'state', 'label': 'Estado'},
+            'type': {'input': 'type', 'label': 'Tipo'},
+        }
+        if search_in not in searchbar_inputs:
+            search_in = 'all'
+
+        searchbar_filters = {
+            'all': {'input': 'all', 'label': 'Todos'},
+            'customer': {'input': 'customer', 'label': 'Pagos de clientes'},
+            'supplier': {'input': 'supplier', 'label': 'Pagos de proveedores'},
+        }
+        if filterby not in searchbar_filters:
+            filterby = 'all'
+        payments_header_title = 'Mis Pagos' if filterby == 'all' else searchbar_filters.get(filterby, searchbar_filters['all']).get('label', 'Mis Pagos')
+
+        searchbar_groupby = {
+            'none': {'input': 'none', 'label': 'Sin agrupar'},
+            'type': {'input': 'type', 'label': 'Tipo'},
+            'state': {'input': 'state', 'label': 'Estado'},
+            'date': {'input': 'date', 'label': 'Fecha'},
+        }
+        if groupby not in searchbar_groupby:
+            groupby = 'none'
+
+        state_labels = {
+            'draft': 'Borrador',
+            'in_process': 'En proceso',
+            'paid': 'Pagado',
+            'posted': 'Publicado',
+            'cancel': 'Cancelado',
+            'cancelled': 'Cancelado',
+        }
+
+        def _payment_date_label(payment):
+            return payment.date.strftime('%d/%m/%Y') if payment.date else 'Sin fecha'
+
+        def _payment_amount_search_values(payment):
+            amount = payment.amount or 0.0
+            fixed_amount = f'{amount:.2f}'
+            spanish_amount = f'{amount:,.2f}'.replace(',', 'X').replace('.', ',').replace('X', '.')
+            values = [str(amount), fixed_amount, fixed_amount.replace('.', ','), spanish_amount, f'{spanish_amount} €']
+            if float(amount).is_integer():
+                values.append(str(int(amount)))
+            return values
+
+        if filterby != 'all':
+            payment_entries = [entry for entry in payment_entries if entry['payment_type'] == filterby]
+
+        if search:
+            needle = search.strip().lower()
+
+            def _entry_matches(entry):
+                payment = entry['payment']
+                invoices = entry['invoices']
+                values = []
+
+                if search_in in ('all', 'name'):
+                    values.append(payment.name or '')
+                if search_in in ('all', 'invoice'):
+                    values.extend(invoices.mapped('name'))
+                if search_in in ('all', 'date'):
+                    values.append(str(payment.date or ''))
+                    values.append(_payment_date_label(payment))
+                if search_in in ('all', 'amount'):
+                    values.extend(_payment_amount_search_values(payment))
+                if search_in in ('all', 'state'):
+                    values.append(state_labels.get(payment.state, payment.state or ''))
+                    values.append(payment.state or '')
+                if search_in in ('all', 'type'):
+                    values.append(entry['type_label'])
+
+                return any(needle in str(value).lower() for value in values)
+
+            payment_entries = [entry for entry in payment_entries if _entry_matches(entry)]
+
+        if groupby == 'none':
+            payment_groups = [{'label': '', 'entries': payment_entries}]
+        else:
+            group_map = {}
+            payment_groups = []
+            for entry in payment_entries:
+                payment = entry['payment']
+                if groupby == 'type':
+                    label = entry['type_label']
+                elif groupby == 'state':
+                    label = state_labels.get(payment.state, payment.state or 'Sin estado')
+                else:
+                    label = _payment_date_label(payment)
+
+                if label not in group_map:
+                    group_map[label] = {'label': label, 'entries': []}
+                    payment_groups.append(group_map[label])
+                group_map[label]['entries'].append(entry)
+
         return request.render('portal_requests.portal_my_payments', {
             'payments': payments,
-            'customer_payment_entries': customer_payment_entries,
-            'supplier_payment_entries': supplier_payment_entries,
+            'payment_entries': payment_entries,
+            'payment_groups': payment_groups,
             'page_name': 'payments',  # Para breadcrumbs
+            'payments_header_title': payments_header_title,
+            'default_url': '/my/payments',
+            'searchbar_inputs': searchbar_inputs,
+            'searchbar_filters': searchbar_filters,
+            'searchbar_groupby': searchbar_groupby,
+            'search_in': search_in,
+            'search': search,
+            'groupby': groupby,
+            'filterby': filterby,
         })
 
     @route('/my/payments/<int:payment_id>', auth='user', website=True)

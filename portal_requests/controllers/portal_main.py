@@ -139,6 +139,17 @@ class PortalRequestsCustomerPortal(CustomerPortal):
         type_labels = dict(ExpenseRequest._fields['type']._description_selection(request.env))
         status_labels = dict(ExpenseRequest._fields['status']._description_selection(request.env))
 
+        searchbar_filters = {
+            'all': {'input': 'all', 'label': 'Todos'},
+        }
+        for status_key, status_label in status_labels.items():
+            searchbar_filters[status_key] = {
+                'input': status_key,
+                'label': status_label,
+            }
+        if filterby not in searchbar_filters:
+            filterby = 'all'
+
         def _expense_type_label(expense):
             return type_labels.get(expense.type, expense.type or 'Sin tipo')
 
@@ -167,6 +178,9 @@ class PortalRequestsCustomerPortal(CustomerPortal):
         expenses = request.env['portal.hr.expensive.request'].search([
             ('user_id', '=', user.id)
         ], order='create_date desc')
+
+        if filterby != 'all':
+            expenses = expenses.filtered(lambda expense: expense.status == filterby)
 
         if search:
             needle = search.strip().lower()
@@ -219,10 +233,12 @@ class PortalRequestsCustomerPortal(CustomerPortal):
             'page_name': 'expense',
             'default_url': '/my/expenses',
             'searchbar_inputs': searchbar_inputs,
+            'searchbar_filters': searchbar_filters,
             'searchbar_groupby': searchbar_groupby,
             'search_in': search_in,
             'search': search,
             'groupby': groupby,
+            'filterby': filterby,
         }
 
         return request.render("portal_requests.portal_my_expenses", values)
@@ -327,6 +343,20 @@ class PortalRequestsCustomerPortal(CustomerPortal):
         if search_in not in searchbar_inputs:
             search_in = 'all'
 
+        InvoiceRequest = request.env['portal.invoice.request'].sudo()
+        status_labels = dict(InvoiceRequest._fields['status']._description_selection(request.env))
+
+        searchbar_filters = {
+            'all': {'input': 'all', 'label': 'Todos'},
+        }
+        for status_key, status_label in status_labels.items():
+            searchbar_filters[status_key] = {
+                'input': status_key,
+                'label': status_label,
+            }
+        if filterby not in searchbar_filters:
+            filterby = 'all'
+
         searchbar_groupby = {
             'none': {'input': 'none', 'label': 'Sin agrupar'},
             'type': {'input': 'type', 'label': 'Tipo'},
@@ -342,8 +372,6 @@ class PortalRequestsCustomerPortal(CustomerPortal):
             'out_invoice': 'Factura',
             'out_refund': 'Factura Rectificativa',
         }
-        InvoiceRequest = request.env['portal.invoice.request'].sudo()
-        status_labels = dict(InvoiceRequest._fields['status']._description_selection(request.env))
 
         def _invoice_request_type_label(invoice_request):
             return type_labels.get(invoice_request.move_type, invoice_request.move_type or 'Sin tipo')
@@ -369,6 +397,9 @@ class PortalRequestsCustomerPortal(CustomerPortal):
             ('user_id', '=', user.id),
             ('equip_boss', '=', user.id),
         ], order='create_date desc')
+
+        if filterby != 'all':
+            invoice_requests = invoice_requests.filtered(lambda invoice_request: invoice_request.status == filterby)
 
         if search:
             needle = search.strip().lower()
@@ -421,10 +452,12 @@ class PortalRequestsCustomerPortal(CustomerPortal):
             'page_name': 'invoice_request',
             'default_url': '/my/invoices',
             'searchbar_inputs': searchbar_inputs,
+            'searchbar_filters': searchbar_filters,
             'searchbar_groupby': searchbar_groupby,
             'search_in': search_in,
             'search': search,
             'groupby': groupby,
+            'filterby': filterby,
         }
 
         return request.render("portal_requests.portal_my_invoices", values)
@@ -624,6 +657,17 @@ class PortalRequestsCustomerPortal(CustomerPortal):
         DocumentApproval = request.env['document.approval']
         status_labels = dict(DocumentApproval._fields['status']._description_selection(request.env))
 
+        searchbar_filters = {
+            'all': {'input': 'all', 'label': 'Todos'},
+        }
+        for status_key, status_label in status_labels.items():
+            searchbar_filters[status_key] = {
+                'input': status_key,
+                'label': status_label,
+            }
+        if filterby not in searchbar_filters:
+            filterby = 'all'
+
         def _document_status_label(document):
             return status_labels.get(document.status, document.status or 'Sin estado')
 
@@ -645,6 +689,9 @@ class PortalRequestsCustomerPortal(CustomerPortal):
             documents = request.env['document.approval'].search([
                 ('user_id', '=', user.id)
             ], order='create_date desc')
+
+        if filterby != 'all':
+            documents = documents.filtered(lambda document: document.status == filterby)
 
         if search:
             needle = search.strip().lower()
@@ -689,10 +736,12 @@ class PortalRequestsCustomerPortal(CustomerPortal):
             'page_name': 'document_approval',
             'default_url': '/my/documents',
             'searchbar_inputs': searchbar_inputs,
+            'searchbar_filters': searchbar_filters,
             'searchbar_groupby': searchbar_groupby,
             'search_in': search_in,
             'search': search,
             'groupby': groupby,
+            'filterby': filterby,
         }
 
         return request.render("portal_requests.portal_my_documents", values)
@@ -1010,7 +1059,7 @@ class PortalRequestsCustomerPortal(CustomerPortal):
         return request.redirect(f'/my/analytic_projects/{project_id}?success=message_posted')
 
     @http.route(['/my/analytic_projects/<int:project_id>/invoices_list'], type='http', auth="user", website=True)
-    def portal_project_invoices(self, project_id, search=None, search_in='all', groupby='none', **kw):
+    def portal_project_invoices(self, project_id, search=None, search_in='all', groupby='none', filterby='all', **kw):
         """Muestra las facturas asociadas a un proyecto (cuenta analítica)"""
         # Buscar el proyecto accesible para el usuario portal (responsable o jefe de su grupo)
         project = request.env['account.analytic.account'].search(
@@ -1053,6 +1102,14 @@ class PortalRequestsCustomerPortal(CustomerPortal):
         }
         if search_in not in searchbar_inputs:
             search_in = 'all'
+
+        searchbar_filters = {
+            'all': {'input': 'all', 'label': 'Todos'},
+            'customer': {'input': 'customer', 'label': 'Facturas de cliente'},
+            'supplier': {'input': 'supplier', 'label': 'Facturas de proveedores'},
+        }
+        if filterby not in searchbar_filters:
+            filterby = 'all'
 
         searchbar_groupby = {
             'none': {'input': 'none', 'label': 'Sin agrupar'},
@@ -1104,6 +1161,11 @@ class PortalRequestsCustomerPortal(CustomerPortal):
 
         # Obtener las facturas con sudo para poder verlas
         invoices = request.env['account.move'].sudo().browse(list(invoice_ids)).sorted(lambda inv: (str(inv.invoice_date or inv.date or inv.create_date or ''), inv.name or ''), reverse=True)
+        if filterby == 'customer':
+            invoices = invoices.filtered(lambda inv: inv.move_type in ('out_invoice', 'out_refund'))
+        elif filterby == 'supplier':
+            invoices = invoices.filtered(lambda inv: inv.move_type in ('in_invoice', 'in_refund'))
+
         if search:
             needle = search.strip().lower()
 
@@ -1157,10 +1219,12 @@ class PortalRequestsCustomerPortal(CustomerPortal):
             'page_name': 'analytic_project_invoices',
             'default_url': f'/my/analytic_projects/{project_id}/invoices_list',
             'searchbar_inputs': searchbar_inputs,
+            'searchbar_filters': searchbar_filters,
             'searchbar_groupby': searchbar_groupby,
             'search_in': search_in,
             'search': search,
             'groupby': groupby,
+            'filterby': filterby,
         }
 
         return request.render("portal_requests.portal_project_invoices", values)
@@ -1214,7 +1278,7 @@ class PortalRequestsCustomerPortal(CustomerPortal):
         return request.render("portal_requests.portal_project_invoice_detail", values)
 
     @http.route(['/my/analytic_projects/<int:project_id>/invoices_list/<int:invoice_id>/payments_list'], type='http', auth="user", website=True)
-    def portal_project_invoice_payments(self, project_id, invoice_id, search=None, search_in='all', groupby='none', **kw):
+    def portal_project_invoice_payments(self, project_id, invoice_id, search=None, search_in='all', groupby='none', filterby='all', **kw):
         """Muestra los pagos asociados a una factura asociada a un proyecto"""
         project = request.env['account.analytic.account'].search(
             [('id', '=', project_id)] + self._get_accessible_analytic_project_domain(request.env.user),
@@ -1239,6 +1303,14 @@ class PortalRequestsCustomerPortal(CustomerPortal):
         if search_in not in searchbar_inputs:
             search_in = 'all'
 
+        searchbar_filters = {
+            'all': {'input': 'all', 'label': 'Todos'},
+            'customer': {'input': 'customer', 'label': 'Pagos de clientes'},
+            'supplier': {'input': 'supplier', 'label': 'Pagos de proveedores'},
+        }
+        if filterby not in searchbar_filters:
+            filterby = 'all'
+
         searchbar_groupby = {
             'none': {'input': 'none', 'label': 'Sin agrupar'},
             'state': {'input': 'state', 'label': 'Estado'},
@@ -1262,6 +1334,14 @@ class PortalRequestsCustomerPortal(CustomerPortal):
         payments = request.env['account.payment'].sudo().search([
             ('invoice_ids', 'in', [invoice.id]),
         ], order='date desc, name desc')
+
+        invoice_is_customer = invoice.move_type in ('out_invoice', 'out_refund')
+        invoice_is_supplier = invoice.move_type in ('in_invoice', 'in_refund')
+
+        if filterby == 'customer' and not invoice_is_customer:
+            payments = payments.browse()
+        elif filterby == 'supplier' and not invoice_is_supplier:
+            payments = payments.browse()
 
         if search:
             needle = search.strip().lower()
@@ -1306,9 +1386,11 @@ class PortalRequestsCustomerPortal(CustomerPortal):
             'default_url': f'/my/analytic_projects/{project_id}/invoices_list/{invoice_id}/payments_list',
             'searchbar_inputs': searchbar_inputs,
             'searchbar_groupby': searchbar_groupby,
+            'searchbar_filters': searchbar_filters,
             'search_in': search_in,
             'search': search,
             'groupby': groupby,
+            'filterby': filterby,
         })
 
     @http.route(['/my/analytic_projects/<int:project_id>/invoices_list/<int:invoice_id>/payments_list/<int:payment_id>'], type='http', auth="user", website=True)
@@ -1438,7 +1520,7 @@ class PortalRequestsCustomerPortal(CustomerPortal):
     # =====================================
 
     @http.route(['/my/project_requests', '/my/project_requests/page/<int:page>'], type='http', auth="user", website=True)
-    def portal_my_project_requests(self, page=1, sortby=None, search=None, search_in='all', groupby='none', **kw):
+    def portal_my_project_requests(self, page=1, sortby=None, search=None, search_in='all', groupby='none', filterby='all', **kw):
         """Muestra el listado de solicitudes de proyectos del usuario"""
         # Solo los jefes de equipo pueden acceder
         if not request.env.user.has_group('portal_requests.group_equip_boss'):
@@ -1457,6 +1539,15 @@ class PortalRequestsCustomerPortal(CustomerPortal):
         }
         if search_in not in searchbar_inputs:
             search_in = 'all'
+
+        searchbar_filters = {
+            'all': {'input': 'all', 'label': 'Todos'},
+            'pending': {'input': 'pending', 'label': 'Pendiente'},
+            'approved': {'input': 'approved', 'label': 'Aprobada'},
+            'rejected': {'input': 'rejected', 'label': 'Rechazada'},
+        }
+        if filterby not in searchbar_filters:
+            filterby = 'all'
 
         searchbar_groupby = {
             'none': {'input': 'none', 'label': 'Sin agrupar'},
@@ -1487,6 +1578,19 @@ class PortalRequestsCustomerPortal(CustomerPortal):
         project_requests = request.env['portal.project.request'].search([
             ('user_id', '=', user.id)
         ], order='create_date desc')
+
+        if filterby == 'pending':
+            project_requests = project_requests.filtered(
+                lambda project_request: _project_request_state_label(project_request) == 'Pendiente'
+            )
+        elif filterby == 'approved':
+            project_requests = project_requests.filtered(
+                lambda project_request: _project_request_state_label(project_request) == 'Aprobada'
+            )
+        elif filterby == 'rejected':
+            project_requests = project_requests.filtered(
+                lambda project_request: _project_request_state_label(project_request) == 'Rechazada'
+            )
 
         if search:
             needle = search.strip().lower()
@@ -1538,10 +1642,12 @@ class PortalRequestsCustomerPortal(CustomerPortal):
             'page_name': 'project_request',
             'default_url': '/my/project_requests',
             'searchbar_inputs': searchbar_inputs,
+            'searchbar_filters': searchbar_filters,
             'searchbar_groupby': searchbar_groupby,
             'search_in': search_in,
             'search': search,
             'groupby': groupby,
+            'filterby': filterby,
         }
 
         return request.render("portal_requests.portal_my_project_requests", values)

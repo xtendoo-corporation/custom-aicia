@@ -32,6 +32,20 @@
                 <div class="portal-project-searchbar-wrapper mb-4">
                     <div class="portal-project-searchbar d-flex flex-column flex-lg-row justify-content-center align-items-stretch align-items-lg-center gap-2">
                         <div class="btn-group portal-project-groupby">
+                            <button id="portal_document_filter" data-bs-toggle="dropdown" class="btn btn-light dropdown-toggle" type="button">
+                                Filtrar por: <t t-esc="searchbar_filters[filterby].get('label', 'Todos')"/>
+                            </button>
+                            <div class="dropdown-menu" aria-labelledby="portal_document_filter">
+                                <t t-foreach="searchbar_filters" t-as="option">
+                                    <a t-att-href="default_url + '?' + keep_query('*', filterby=option)"
+                                       t-attf-class="dropdown-item#{filterby == option and ' active' or ''}">
+                                        <span t-esc="searchbar_filters[option].get('label')"/>
+                                    </a>
+                                </t>
+                            </div>
+                        </div>
+
+                        <div class="btn-group portal-project-groupby">
                             <button id="portal_document_groupby" data-bs-toggle="dropdown" class="btn btn-light dropdown-toggle" type="button">
                                 Agrupar por: <t t-esc="searchbar_groupby[groupby].get('label', 'Sin agrupar')"/>
                             </button>
@@ -46,6 +60,7 @@
                         </div>
 
                         <form class="o_portal_search_panel portal-project-search-form">
+                            <input type="hidden" name="filterby" t-att-value="filterby"/>
                             <input type="hidden" name="groupby" t-att-value="groupby"/>
                             <input type="hidden" name="search_in" t-att-value="search_in"/>
                             <div class="input-group w-100">
