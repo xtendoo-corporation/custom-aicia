@@ -4,54 +4,101 @@
         <!-- Listado de Proyectos (Cuentas Analíticas) -->
         <template id="portal_my_projects" name="Mis Proyectos">
             <t t-call="portal.portal_layout">
-                <t t-set="breadcrumbs_searchbar" t-value="True"/>
-
-                <t t-call="portal.portal_searchbar">
-                    <t t-set="title">Mis Proyectos</t>
-                </t>
-
-                <t t-if="not projects">
-                    <div class="alert alert-info" role="alert">
-                        No tienes proyectos asignados como responsable.
+                <t t-set="no_breadcrumbs" t-value="True"/>
+                <div class="portal-project-list-container">
+                    <div class="portal-project-breadcrumbs mb-3">
+                        <ol class="breadcrumb">
+                            <li class="breadcrumb-item"><a href="/my"><i class="fa fa-home"/></a></li>
+                            <li class="breadcrumb-item"><a href="/my/analytic_projects">Mis Proyectos</a></li>
+                        </ol>
                     </div>
-                </t>
-                <t t-if="projects" t-call="portal.portal_table">
-                    <thead>
-                        <tr class="active">
+
+                    <div class="portal-project-searchbar-wrapper mb-4">
+                        <div class="portal-project-searchbar d-flex flex-column flex-lg-row justify-content-center align-items-stretch align-items-lg-center gap-2">
+                            <div class="btn-group portal-project-groupby">
+                                <button id="portal_project_groupby" data-bs-toggle="dropdown" class="btn btn-light dropdown-toggle" type="button">
+                                    Agrupar por: <t t-esc="searchbar_groupby[groupby].get('label', 'Sin agrupar')"/>
+                                </button>
+                                <div class="dropdown-menu" aria-labelledby="portal_project_groupby">
+                                    <t t-foreach="searchbar_groupby" t-as="option">
+                                        <a t-att-href="default_url + '?' + keep_query('*', groupby=option)"
+                                           t-attf-class="dropdown-item#{groupby == option and ' active' or ''}">
+                                            <span t-esc="searchbar_groupby[option].get('label')"/>
+                                        </a>
+                                    </t>
+                                </div>
+                            </div>
+
+                            <form class="o_portal_search_panel portal-project-search-form">
+                                <div class="input-group w-100">
+                                    <button type="button" class="btn btn-light border-end dropdown-toggle" data-bs-toggle="dropdown"/>
+                                    <div class="dropdown-menu" role="menu">
+                                        <t t-foreach="searchbar_inputs" t-as="input">
+                                            <a t-att-href="'#' + searchbar_inputs[input]['input']"
+                                               t-attf-class="dropdown-item#{search_in == searchbar_inputs[input]['input'] and ' active' or ''}">
+                                                <span t-esc="searchbar_inputs[input]['label']"/>
+                                            </a>
+                                        </t>
+                                    </div>
+                                    <input type="search" class="form-control border-0 bg-light" t-att-value="search" name="search" placeholder="Buscar..."/>
+                                    <button class="btn btn-light" type="submit">
+                                        <span class="oi oi-search"/>
+                                    </button>
+                                </div>
+                            </form>
+                        </div>
+                    </div>
+
+                    <t t-if="not projects">
+                        <div class="alert alert-info" role="alert">
+                            No tienes proyectos asignados como responsable.
+                        </div>
+                    </t>
+                    <t t-if="projects" t-call="portal.portal_table">
+                        <thead>
+                            <tr class="active">
 <!--                            <th>Código</th>-->
-                            <th>Nombre del Proyecto</th>
-                            <th>Cliente</th>
-                            <th>Saldo</th>
-                            <th>Estado</th>
-                        </tr>
-                    </thead>
-                    <tbody>
-                        <t t-foreach="projects" t-as="project">
-                            <tr>
+                                <th>Nombre del Proyecto</th>
+                                <th>Cliente</th>
+                                <th>Saldo</th>
+                                <th>Estado</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            <t t-foreach="project_groups" t-as="project_group">
+                                <tr t-if="groupby != 'none'" class="table-secondary">
+                                    <td colspan="4">
+                                        <strong t-esc="project_group['label']"/>
+                                    </td>
+                                </tr>
+                                <t t-foreach="project_group['projects']" t-as="project">
+                                    <tr>
 <!--                                <td>-->
 <!--                                    <a t-attf-href="/my/analytic_projects/#{project.id}">-->
 <!--                                        <span t-esc="project.code"/>-->
 <!--                                    </a>-->
 <!--                                </td>-->
-                                <td>
-                                    <a t-attf-href="/my/analytic_projects/#{project.id}">
-                                        <span t-esc="project.name"/>
-                                    </a>
-                                </td>
-                                <td>
-                                    <span t-esc="project.partner_id.name if project.partner_id else '-'"/>
-                                </td>
-                                <td>
-                                    <span t-esc="project.balance" t-options='{"widget": "monetary", "display_currency": project.currency_id}'/>
-                                </td>
-                                <td>
-                                    <span t-if="project.active" class="badge bg-success">Activo</span>
-                                    <span t-else="" class="badge bg-secondary">Inactivo</span>
-                                </td>
-                            </tr>
-                        </t>
-                    </tbody>
-                </t>
+                                        <td>
+                                            <a t-attf-href="/my/analytic_projects/#{project.id}">
+                                                <span t-esc="project.name"/>
+                                            </a>
+                                        </td>
+                                        <td>
+                                            <span t-esc="project.partner_id.name if project.partner_id else '-'"/>
+                                        </td>
+                                        <td>
+                                            <span t-esc="project.balance" t-options='{"widget": "monetary", "display_currency": project.currency_id}'/>
+                                        </td>
+                                        <td>
+                                            <span t-if="project.active" class="badge bg-success">Activo</span>
+                                            <span t-else="" class="badge bg-secondary">Inactivo</span>
+                                        </td>
+                                    </tr>
+                                </t>
+                            </t>
+                        </tbody>
+                    </t>
+                </div>
             </t>
         </template>
 

@@ -157,3 +157,46 @@
     color: #212529;
 }
 
+.portal-project-list-container {
+    width: 100%;
+}
+
+.portal-project-searchbar-wrapper {
+    width: 100%;
+}
+
+.portal-project-searchbar {
+    width: 100%;
+    margin-left: auto;
+    margin-right: auto;
+    justify-content: flex-start !important;
+}
+
+.portal-project-search-form {
+    flex: 1 1 auto;
+    width: 100%;
+    max-width: none;
+    margin: 0;
+}
+
+.portal-project-groupby {
+    flex: 0 0 auto;
+}
+
+.portal-project-groupby > .btn {
+    white-space: nowrap;
+}
+
+.portal-project-groupby .dropdown-menu,
+.portal-project-search-form .dropdown-menu {
+    min-width: 12rem;
+}
+
+@media (max-width: 991.98px) {
+    .portal-project-groupby,
+    .portal-project-groupby > .btn,
+    .portal-project-search-form {
+        width: 100%;
+    }
+}
+

@@ -550,19 +550,85 @@ class PortalRequestsCustomerPortal(CustomerPortal):
     # ==========================================
 
     @http.route(['/my/analytic_projects', '/my/analytic_projects/page/<int:page>'], type='http', auth="user", website=True)
-    def portal_my_projects(self, page=1, sortby=None, filterby=None, **kw):
+    def portal_my_projects(self, page=1, sortby=None, filterby=None, search=None, search_in='all', groupby='none', **kw):
         """Muestra el listado de proyectos visibles para el usuario portal."""
         user = request.env.user
 
+        searchbar_inputs = {
+            'all': {'input': 'all', 'label': 'Buscar en todo'},
+            'name': {'input': 'name', 'label': 'Nombre del Proyecto'},
+            'partner': {'input': 'partner', 'label': 'Cliente'},
+            'responsible': {'input': 'responsible', 'label': 'Responsable'},
+            'work_group': {'input': 'work_group', 'label': 'Grupo de Trabajo'},
+        }
+        if search_in not in searchbar_inputs:
+            search_in = 'all'
+
+        searchbar_groupby = {
+            'none': {'input': 'none', 'label': 'Sin agrupar'},
+            'partner': {'input': 'partner', 'label': 'Cliente'},
+            'responsible': {'input': 'responsible', 'label': 'Responsable'},
+            'work_group': {'input': 'work_group', 'label': 'Grupo de Trabajo'},
+            'state': {'input': 'state', 'label': 'Estado'},
+        }
+        if groupby not in searchbar_groupby:
+            groupby = 'none'
+
+        domain = self._get_accessible_analytic_project_domain(user)
+        if search:
+            if search_in == 'name':
+                domain += [('name', 'ilike', search)]
+            elif search_in == 'partner':
+                domain += [('partner_id.name', 'ilike', search)]
+            elif search_in == 'responsible':
+                domain += [('responsible_id.name', 'ilike', search)]
+            elif search_in == 'work_group':
+                domain += [('work_group_id.name', 'ilike', search)]
+            else:
+                domain += [
+                    '|', '|', '|',
+                    ('name', 'ilike', search),
+                    ('partner_id.name', 'ilike', search),
+                    ('responsible_id.name', 'ilike', search),
+                    ('work_group_id.name', 'ilike', search),
+                ]
+
         projects = request.env['account.analytic.account'].search(
-            self._get_accessible_analytic_project_domain(user),
+            domain,
             order='name asc'
         )
 
+        projects_sudo = projects.sudo()
+        if groupby == 'none':
+            project_groups = [{'label': '', 'projects': projects_sudo}]
+        else:
+            group_map = {}
+            project_groups = []
+            for project in projects_sudo:
+                if groupby == 'partner':
+                    label = project.partner_id.name or 'Sin cliente'
+                elif groupby == 'responsible':
+                    label = project.responsible_id.name or 'Sin responsable'
+                elif groupby == 'work_group':
+                    label = project.work_group_id.name or 'Sin grupo de trabajo'
+                else:
+                    label = 'Activo' if project.active else 'Inactivo'
+
+                if label not in group_map:
+                    group_map[label] = {'label': label, 'projects': request.env['account.analytic.account'].sudo()}
+                    project_groups.append(group_map[label])
+                group_map[label]['projects'] |= project
+
         values = {
-            'projects': projects.sudo(),  # sudo() para renderizar campos relacionados en la vista
+            'projects': projects_sudo,  # sudo() para renderizar campos relacionados en la vista
+            'project_groups': project_groups,
             'page_name': 'analytic_project',
             'default_url': '/my/analytic_projects',
+            'searchbar_inputs': searchbar_inputs,
+            'searchbar_groupby': searchbar_groupby,
+            'search_in': search_in,
+            'search': search,
+            'groupby': groupby,
         }
 
         return request.render("portal_requests.portal_my_projects", values)
