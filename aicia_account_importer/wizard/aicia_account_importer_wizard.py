@@ -900,7 +900,9 @@ class AiciaAccountImporterWizard(models.TransientModel):
             prefix = self._get_collective_prefix(code)
             if prefix:
                 col_code, col_name, col_type = COLLECTIVE_ACCOUNT_MAP[prefix]
-                return self._get_or_create_account(col_code, col_name, col_type)
+                account = self._get_or_create_account(col_code, col_name, col_type)
+                self._register_automatic_account_mapping(code, account)
+                return account
 
         # ── 2. Normalizar a 6 dígitos ─────────────────────────────────────────
         normalized = code[:6].rstrip("0") or code[:3]
@@ -909,6 +911,7 @@ class AiciaAccountImporterWizard(models.TransientModel):
             limit=1,
         )
         if account:
+            self._register_automatic_account_mapping(code, account)
             return account
 
         # ── 3. Búsqueda por prefijo de 3 dígitos ─────────────────────────────
@@ -922,9 +925,36 @@ class AiciaAccountImporterWizard(models.TransientModel):
             )
             or None
         )
+        if account:
+            self._register_automatic_account_mapping(code, account)
         if not account and missing_accounts is not None:
             missing_accounts.add(code)
         return account
+
+    def _register_automatic_account_mapping(self, source_code: str, target_account):
+        """Persiste cambios automáticos de subcuentas para revisión futura."""
+        if not source_code or not target_account:
+            return
+
+        AccountMapping = self.env["aicia.account.importer.account.mapping"]
+        normalized_source = AccountMapping._normalize_source_code(source_code)
+        if not normalized_source:
+            return
+
+        mapping = AccountMapping.search(
+            [("source_code_normalized", "=", normalized_source)], limit=1
+        )
+        if not mapping:
+            AccountMapping.create(
+                {
+                    "source_code": normalized_source,
+                    "target_account_id": target_account.id,
+                }
+            )
+            return
+
+        if not mapping.target_account_id:
+            mapping.write({"target_account_id": target_account.id})
 
     def _get_account_mapping_rules(self):
         """Devuelve reglas persistentes ordenadas: exactas antes que prefijos."""
@@ -1198,6 +1228,19 @@ class AiciaAccountImporterWizard(models.TransientModel):
             "No se pudo parsear Fecha_Contable: %s — se usa fecha de hoy.", value
         )
         return date.today()
+
+    @staticmethod
+    def _append_import_activity(activity_log: list, level: str, message: str):
+        """Añade una entrada cronológica al log de importación."""
+        if activity_log is None:
+            return
+        activity_log.append(
+            {
+                "time": fields.Datetime.now().strftime("%H:%M:%S"),
+                "level": level,
+                "message": str(message or ""),
+            }
+        )
 
     # ── Generación del log HTML ───────────────────────────────────────────────
 

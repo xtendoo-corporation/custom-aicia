@@ -49,7 +49,6 @@ class TestAiciaAccountImporterWizard(TransactionCase):
 
     def _make_wizard(self, **kwargs):
         defaults = {
-            "journal_id": self.journal.id,
             "move_state": "draft",
             "create_missing_partners": True,
             "skip_anulados": True,
@@ -199,6 +198,22 @@ class TestAiciaAccountImporterWizard(TransactionCase):
         wizard = self._make_wizard()
         acc = wizard._get_account("610000000")
         self.assertIsNotNone(acc)
+
+    def test_get_account_normalization_creates_persistent_mapping(self):
+        """115000000 → 115000 deja traza persistente en el mapeo global."""
+        account = self._ensure_account("115000", "Inmovilizado material", "asset_fixed")
+        wizard = self._make_wizard()
+
+        resolved_account = wizard._get_account("115000000")
+        mapping = self.env["aicia.account.importer.account.mapping"].search(
+            [("source_code_normalized", "=", "115000000")], limit=1
+        )
+
+        self.assertEqual(resolved_account.id, account.id)
+        self.assertTrue(mapping)
+        self.assertEqual(mapping.source_code, "115000000")
+        self.assertEqual(mapping.source_code_normalized, "115000000")
+        self.assertEqual(mapping.target_account_id.id, account.id)
 
     def test_get_account_empty_returns_none(self):
         wizard = self._make_wizard()
