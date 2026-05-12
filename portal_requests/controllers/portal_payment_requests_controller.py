@@ -1,4 +1,6 @@
 from odoo.http import request, Controller, route
+import csv
+import io
 import logging
 
 _logger = logging.getLogger(__name__)
@@ -166,22 +168,53 @@ class PortalPaymentController(Controller):
 
         return entries
 
-    @route('/my/payments', auth='user', website=True)
-    def portal_my_payments(self, search=None, search_in='all', groupby='none', filterby='all', **kwargs):
-        user = request.env.user
+    def _payment_state_labels(self):
+        return {
+            'draft': 'Borrador',
+            'in_process': 'En proceso',
+            'paid': 'Pagado',
+            'posted': 'Publicado',
+            'cancel': 'Cancelado',
+            'cancelled': 'Cancelado',
+        }
+
+    def _payment_date_value(self, payment):
+        return payment.date or (payment.create_date.date() if payment.create_date else False)
+
+    def _payment_date_label(self, payment):
+        payment_date = self._payment_date_value(payment)
+        return payment_date.strftime('%d/%m/%Y') if payment_date else 'Sin fecha'
+
+    def _payment_amount_search_values(self, payment):
+        amount = payment.amount or 0.0
+        fixed_amount = f'{amount:.2f}'
+        spanish_amount = f'{amount:,.2f}'.replace(',', 'X').replace('.', ',').replace('X', '.')
+        values = [str(amount), fixed_amount, fixed_amount.replace('.', ','), spanish_amount, f'{spanish_amount} €']
+        if float(amount).is_integer():
+            values.append(str(int(amount)))
+        return values
+
+    def _payment_amount_label(self, payment):
+        amount = payment.amount or 0.0
+        spanish_amount = f'{amount:,.2f}'.replace(',', 'X').replace('.', ',').replace('X', '.')
+        currency = payment.currency_id
+        symbol = currency.symbol if currency and currency.symbol else '€'
+        return f'{spanish_amount} {symbol}'
+
+    def _payment_invoice_names_label(self, invoices):
+        return ', '.join(invoices.mapped('name')) if invoices else '-'
+
+    def _get_payment_listing_values(self, user, search=None, search_in='all', groupby='none', filterby='all'):
+        """Construye una única fuente de verdad para render y exportación de Mis Pagos."""
         project_ids = self._get_accessible_project_ids(user)
         _logger.warning(f"[PORTAL PAYMENTS] Proyectos accesibles: {project_ids}")
-        # Buscar facturas pagadas asociadas a esos proyectos (cabecera)
         visible_invoice_ids = list(self._get_visible_invoice_ids(user))
         _logger.warning(f"[PORTAL PAYMENTS] Facturas pagadas visibles: {visible_invoice_ids}")
-        # Log temporal: mostrar los campos de relación en todos los pagos
         all_payments = request.env['account.payment'].sudo().search([])
         for pay in all_payments:
             _logger.warning(f"[PORTAL PAYMENTS][DEBUG] Pago {pay.id}: invoice_ids={pay.invoice_ids.ids}, reconciled_invoice_ids={getattr(pay, 'reconciled_invoice_ids', False) and pay.reconciled_invoice_ids.ids}")
-        # Buscar pagos asociados a esas facturas
         payments = request.env['account.payment'].sudo().search([
             ('invoice_ids', 'in', visible_invoice_ids),
-            # Quitar filtro de estado para mostrar todos los pagos relacionados
         ], order='date desc, name desc')
         _logger.warning(f"[PORTAL PAYMENTS] Pagos visibles finales: {payments.ids}")
         payment_entries = self._build_payment_entries(payments, visible_invoice_ids)
@@ -216,56 +249,37 @@ class PortalPaymentController(Controller):
         if groupby not in searchbar_groupby:
             groupby = 'none'
 
-        state_labels = {
-            'draft': 'Borrador',
-            'in_process': 'En proceso',
-            'paid': 'Pagado',
-            'posted': 'Publicado',
-            'cancel': 'Cancelado',
-            'cancelled': 'Cancelado',
-        }
-
-        def _payment_date_label(payment):
-            return payment.date.strftime('%d/%m/%Y') if payment.date else 'Sin fecha'
-
-        def _payment_amount_search_values(payment):
-            amount = payment.amount or 0.0
-            fixed_amount = f'{amount:.2f}'
-            spanish_amount = f'{amount:,.2f}'.replace(',', 'X').replace('.', ',').replace('X', '.')
-            values = [str(amount), fixed_amount, fixed_amount.replace('.', ','), spanish_amount, f'{spanish_amount} €']
-            if float(amount).is_integer():
-                values.append(str(int(amount)))
-            return values
+        state_labels = self._payment_state_labels()
 
         if filterby != 'all':
             payment_entries = [entry for entry in payment_entries if entry['payment_type'] == filterby]
 
         if search:
             needle = search.strip().lower()
+            if needle:
+                def _entry_matches(entry):
+                    payment = entry['payment']
+                    invoices = entry['invoices']
+                    values = []
 
-            def _entry_matches(entry):
-                payment = entry['payment']
-                invoices = entry['invoices']
-                values = []
+                    if search_in in ('all', 'name'):
+                        values.append(payment.name or '')
+                    if search_in in ('all', 'invoice'):
+                        values.extend(invoices.mapped('name'))
+                    if search_in in ('all', 'date'):
+                        values.append(str(self._payment_date_value(payment) or ''))
+                        values.append(self._payment_date_label(payment))
+                    if search_in in ('all', 'amount'):
+                        values.extend(self._payment_amount_search_values(payment))
+                    if search_in in ('all', 'state'):
+                        values.append(state_labels.get(payment.state, payment.state or ''))
+                        values.append(payment.state or '')
+                    if search_in in ('all', 'type'):
+                        values.append(entry['type_label'])
 
-                if search_in in ('all', 'name'):
-                    values.append(payment.name or '')
-                if search_in in ('all', 'invoice'):
-                    values.extend(invoices.mapped('name'))
-                if search_in in ('all', 'date'):
-                    values.append(str(payment.date or ''))
-                    values.append(_payment_date_label(payment))
-                if search_in in ('all', 'amount'):
-                    values.extend(_payment_amount_search_values(payment))
-                if search_in in ('all', 'state'):
-                    values.append(state_labels.get(payment.state, payment.state or ''))
-                    values.append(payment.state or '')
-                if search_in in ('all', 'type'):
-                    values.append(entry['type_label'])
+                    return any(needle in str(value).lower() for value in values)
 
-                return any(needle in str(value).lower() for value in values)
-
-            payment_entries = [entry for entry in payment_entries if _entry_matches(entry)]
+                payment_entries = [entry for entry in payment_entries if _entry_matches(entry)]
 
         if groupby == 'none':
             payment_groups = [{'label': '', 'entries': payment_entries}]
@@ -279,20 +293,19 @@ class PortalPaymentController(Controller):
                 elif groupby == 'state':
                     label = state_labels.get(payment.state, payment.state or 'Sin estado')
                 else:
-                    label = _payment_date_label(payment)
+                    label = self._payment_date_label(payment)
 
                 if label not in group_map:
                     group_map[label] = {'label': label, 'entries': []}
                     payment_groups.append(group_map[label])
                 group_map[label]['entries'].append(entry)
 
-        return request.render('portal_requests.portal_my_payments', {
+        # Reutilizamos exactamente los mismos datos para la tabla y la exportación.
+        return {
             'payments': payments,
             'payment_entries': payment_entries,
             'payment_groups': payment_groups,
-            'page_name': 'payments',  # Para breadcrumbs
             'payments_header_title': payments_header_title,
-            'default_url': '/my/payments',
             'searchbar_inputs': searchbar_inputs,
             'searchbar_filters': searchbar_filters,
             'searchbar_groupby': searchbar_groupby,
@@ -300,7 +313,66 @@ class PortalPaymentController(Controller):
             'search': search,
             'groupby': groupby,
             'filterby': filterby,
+        }
+
+    @route('/my/payments', auth='user', website=True)
+    def portal_my_payments(self, search=None, search_in='all', groupby='none', filterby='all', **kwargs):
+        values = self._get_payment_listing_values(
+            request.env.user,
+            search=search,
+            search_in=search_in,
+            groupby=groupby,
+            filterby=filterby,
+        )
+        values.update({
+            'page_name': 'payments',  # Para breadcrumbs
+            'default_url': '/my/payments',
         })
+        return request.render('portal_requests.portal_my_payments', values)
+
+    @route('/my/payments/export', auth='user', website=True)
+    def portal_my_payments_export(self, search=None, search_in='all', groupby='none', filterby='all', **kwargs):
+        """Exporta a CSV los pagos visibles en portal, compatible con Excel."""
+        values = self._get_payment_listing_values(
+            request.env.user,
+            search=search,
+            search_in=search_in,
+            groupby=groupby,
+            filterby=filterby,
+        )
+        state_labels = self._payment_state_labels()
+
+        output = io.StringIO()
+        writer = csv.writer(output, delimiter=';')
+        writer.writerow(['Referencia', 'Tipo', 'Fecha', 'Importe', 'Estado', 'Factura'])
+
+        for payment_group in values['payment_groups']:
+            if values['groupby'] != 'none':
+                writer.writerow([f"Grupo: {payment_group['label']}", '', '', '', '', ''])
+            for entry in payment_group['entries']:
+                payment = entry['payment']
+                writer.writerow([
+                    payment.name or '',
+                    entry['type_label'],
+                    self._payment_date_label(payment),
+                    self._payment_amount_label(payment),
+                    state_labels.get(payment.state, payment.state or ''),
+                    self._payment_invoice_names_label(entry['invoices']),
+                ])
+
+        filename = 'mis_pagos'
+        if values['filterby'] != 'all':
+            filename += f"_{values['filterby']}"
+        if values['groupby'] != 'none':
+            filename += f"_agrupado_{values['groupby']}"
+        filename += '.csv'
+
+        csv_content = '\ufeff' + output.getvalue()
+        headers = [
+            ('Content-Type', 'text/csv; charset=utf-8'),
+            ('Content-Disposition', f'attachment; filename="{filename}"'),
+        ]
+        return request.make_response(csv_content.encode('utf-8'), headers=headers)
 
     @route('/my/payments/<int:payment_id>', auth='user', website=True)
     def portal_my_payment_detail(self, payment_id, **kwargs):

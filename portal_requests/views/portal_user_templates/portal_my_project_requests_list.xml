@@ -18,7 +18,10 @@
                     </div>
                      <div class="row">
                         <div class="col-12">
-                            <div class="d-flex justify-content-end align-items-center mb-3">
+                            <div class="d-flex justify-content-end align-items-center gap-2 mb-3">
+                                <a t-att-href="'/my/project_requests/export?' + keep_query('*')" class="btn btn-outline-secondary">
+                                    <i class="fa fa-download me-2"/>Exportar
+                                </a>
                                 <a href="/portal/project_request" class="btn btn-primary">
                                     <i class="fa fa-plus me-2"/>Nueva Solicitud
                                 </a>
