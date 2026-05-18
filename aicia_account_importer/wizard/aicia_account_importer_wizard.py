@@ -129,6 +129,20 @@ class AiciaAccountImporterAccountMapping(models.Model):
         required=False,
     )
 
+    @api.model
+    def _get_default_mapping_values(self):
+        default_mapping_model = self.env[
+            "aicia.account.importer.account.mapping.default"
+        ].sudo()
+        return [
+            (
+                self._normalize_source_code(record.source_code),
+                str(record.target_account_code or "").strip(),
+            )
+            for record in default_mapping_model.search([], order="source_code")
+            if record.source_code and record.target_account_code
+        ]
+
     @api.depends("source_code")
     def _compute_source_code_normalized(self):
         for mapping in self:
@@ -175,6 +189,129 @@ class AiciaAccountImporterAccountMapping(models.Model):
     @api.model
     def _normalize_source_code(self, code):
         return str(code or "").strip().replace(" ", "")
+
+    @api.model
+    def _load_default_mappings_stats(self):
+        """Carga mapeos por defecto sin sobrescribir configuraciones existentes."""
+        default_mappings = self._get_default_mapping_values()
+        if not default_mappings:
+            return {
+                "created": 0,
+                "updated": 0,
+                "missing_target": 0,
+                "unchanged": 0,
+            }
+
+        source_codes = []
+        seen_sources = set()
+        target_codes = set()
+        for source_code, target_code in default_mappings:
+            normalized_source = self._normalize_source_code(source_code)
+            if not normalized_source or normalized_source in seen_sources:
+                continue
+            source_codes.append(normalized_source)
+            seen_sources.add(normalized_source)
+            target_codes.add(target_code)
+
+        account_by_code = {
+            account.code: account
+            for account in self.env["account.account"].search(
+                [
+                    ("code", "in", sorted(target_codes)),
+                    ("company_ids", "in", [self.env.company.id]),
+                ]
+            )
+        }
+        existing_mappings = {
+            mapping.source_code_normalized: mapping
+            for mapping in self.search(
+                [("source_code_normalized", "in", source_codes)]
+            )
+        }
+
+        vals_list = []
+        queued_sources = set()
+        stats = {
+            "created": 0,
+            "updated": 0,
+            "missing_target": 0,
+            "unchanged": 0,
+        }
+        for source_code, target_code in default_mappings:
+            normalized_source = self._normalize_source_code(source_code)
+            if not normalized_source or normalized_source in queued_sources:
+                continue
+
+            target_account = account_by_code.get(target_code)
+            if not target_account:
+                stats["missing_target"] += 1
+                queued_sources.add(normalized_source)
+                continue
+
+            mapping = existing_mappings.get(normalized_source)
+            if not mapping:
+                vals_list.append(
+                    {
+                        "source_code": normalized_source,
+                        "target_account_id": target_account.id,
+                    }
+                )
+                queued_sources.add(normalized_source)
+                stats["created"] += 1
+                continue
+
+            if not mapping.target_account_id:
+                mapping.write({"target_account_id": target_account.id})
+                stats["updated"] += 1
+            else:
+                stats["unchanged"] += 1
+            queued_sources.add(normalized_source)
+
+        if vals_list:
+            self.create(vals_list)
+        return stats
+
+    @api.model
+    def load_default_mappings(self):
+        self._load_default_mappings_stats()
+        return True
+
+    def action_load_default_mappings(self):
+        stats = self.env[
+            "aicia.account.importer.account.mapping"
+        ]._load_default_mappings_stats()
+        message = _(
+            "Creados: %(created)d, completados: %(updated)d, "
+            "sin cambios: %(unchanged)d, omitidos por cuenta destino inexistente: %(missing)d."
+        ) % {
+            "created": stats["created"],
+            "updated": stats["updated"],
+            "unchanged": stats["unchanged"],
+            "missing": stats["missing_target"],
+        }
+        return {
+            "type": "ir.actions.client",
+            "tag": "display_notification",
+            "params": {
+                "title": _("Mapeos por defecto recargados"),
+                "message": message,
+                "type": "success",
+                "sticky": False,
+                "next": {"type": "ir.actions.client", "tag": "reload"},
+            },
+        }
+
+
+class AiciaAccountImporterAccountMappingDefault(models.Model):
+    """Catálogo técnico de mapeos por defecto cargado desde XML."""
+
+    _name = "aicia.account.importer.account.mapping.default"
+    _description = "Mapeos por defecto para importación AICIA"
+    _rec_name = "source_code"
+    _order = "source_code"
+
+    source_code = fields.Char(required=True)
+    target_account_code = fields.Char(required=True)
 
 
 class AiciaAccountImporterWizard(models.TransientModel):

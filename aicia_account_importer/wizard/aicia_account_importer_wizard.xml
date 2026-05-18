@@ -14,6 +14,12 @@
         <field name="model">aicia.account.importer.account.mapping</field>
         <field name="arch" type="xml">
             <list editable="bottom">
+                <header>
+                    <button name="action_load_default_mappings"
+                            string="Recargar mapeos por defecto"
+                            type="object"
+                            class="btn-secondary"/>
+                </header>
                 <field name="source_code" placeholder="Ej: 478 ó 478000000"/>
                 <field name="source_code_normalized" optional="hide" readonly="1"/>
                 <field name="target_account_id" required="1"/>
@@ -25,6 +31,12 @@
         <field name="model">aicia.account.importer.account.mapping</field>
         <field name="arch" type="xml">
             <form string="Mapeo de cuenta AICIA">
+                <header>
+                    <button name="action_load_default_mappings"
+                            string="Recargar mapeos por defecto"
+                            type="object"
+                            class="btn-secondary"/>
+                </header>
                 <sheet>
                     <group>
                         <field name="source_code" placeholder="Ej: 478 ó 478000000"/>

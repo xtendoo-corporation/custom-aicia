@@ -29,6 +29,7 @@ Cubre:
 from base64 import b64encode
 from datetime import date, datetime
 from io import BytesIO
+from unittest.mock import patch
 
 from odoo.exceptions import UserError, ValidationError
 from odoo.tests.common import TransactionCase
@@ -292,6 +293,110 @@ class TestAiciaAccountImporterWizard(TransactionCase):
 
         count = self.env["aicia.account.importer.account.mapping"].search_count([])
         self.assertEqual(count, 0)
+
+    def test_load_default_mappings_creates_missing_defaults(self):
+        """Carga mapeos por defecto cuando existe la cuenta destino."""
+        mapping_model = self.env["aicia.account.importer.account.mapping"]
+        mapping_model.search(
+            [("source_code_normalized", "=", "991001000")]
+        ).unlink()
+        target_account = self._ensure_account(
+            "991001", "Cuenta destino por defecto", "income"
+        )
+
+        with patch.object(
+            type(mapping_model),
+            "_get_default_mapping_values",
+            autospec=True,
+            return_value=[("991001000", "991001")],
+        ):
+            mapping_model.load_default_mappings()
+
+        mapping = mapping_model.search(
+            [("source_code_normalized", "=", "991001000")], limit=1
+        )
+        self.assertTrue(mapping)
+        self.assertEqual(mapping.target_account_id.id, target_account.id)
+
+    def test_load_default_mappings_skips_missing_targets(self):
+        """No crea mapeos por defecto cuando la cuenta destino no existe."""
+        mapping_model = self.env["aicia.account.importer.account.mapping"]
+        mapping_model.search(
+            [("source_code_normalized", "=", "991002000")]
+        ).unlink()
+        self.env["account.account"].search(
+            [("code", "=", "991002"), ("company_ids", "in", [self.env.company.id])]
+        ).unlink()
+
+        with patch.object(
+            type(mapping_model),
+            "_get_default_mapping_values",
+            autospec=True,
+            return_value=[("991002000", "991002")],
+        ):
+            mapping_model.load_default_mappings()
+
+        mapping = mapping_model.search(
+            [("source_code_normalized", "=", "991002000")], limit=1
+        )
+        self.assertFalse(mapping)
+
+    def test_load_default_mappings_keeps_existing_target(self):
+        """No sobrescribe mapeos ya configurados por el usuario."""
+        mapping_model = self.env["aicia.account.importer.account.mapping"]
+        existing_target = self._ensure_account(
+            "991003", "Cuenta destino manual", "income"
+        )
+        default_target = self._ensure_account(
+            "991004", "Cuenta destino por defecto", "income"
+        )
+        mapping_model.search(
+            [("source_code_normalized", "=", "991003000")]
+        ).unlink()
+        mapping = mapping_model.create(
+            {
+                "source_code": "991003000",
+                "target_account_id": existing_target.id,
+            }
+        )
+
+        with patch.object(
+            type(mapping_model),
+            "_get_default_mapping_values",
+            autospec=True,
+            return_value=[("991003000", "991004")],
+        ):
+            mapping_model.load_default_mappings()
+
+        self.assertEqual(mapping_model.search_count([
+            ("source_code_normalized", "=", "991003000")
+        ]), 1)
+        self.assertEqual(mapping.target_account_id.id, existing_target.id)
+        self.assertNotEqual(mapping.target_account_id.id, default_target.id)
+
+    def test_action_load_default_mappings_updates_empty_targets(self):
+        """La acción manual completa mapeos vacíos y devuelve notificación."""
+        mapping_model = self.env["aicia.account.importer.account.mapping"]
+        target_account = self._ensure_account(
+            "991005", "Cuenta destino recarga", "income"
+        )
+        mapping_model.search(
+            [("source_code_normalized", "=", "991005000")]
+        ).unlink()
+        mapping = mapping_model.create({"source_code": "991005000"})
+
+        with patch.object(
+            type(mapping_model),
+            "_get_default_mapping_values",
+            autospec=True,
+            return_value=[("991005000", "991005")],
+        ):
+            action = mapping.action_load_default_mappings()
+
+        mapping.invalidate_recordset(["target_account_id"])
+        self.assertEqual(mapping.target_account_id.id, target_account.id)
+        self.assertEqual(action["tag"], "display_notification")
+        self.assertEqual(action["params"]["next"]["tag"], "reload")
 
     # ── Tests: partners ───────────────────────────────────────────────────────
 

@@ -1,0 +1,335 @@
+<?xml version="1.0" encoding="utf-8"?>
+<odoo noupdate="1">
+    <record id="mapping_default_100000000" model="aicia.account.importer.account.mapping.default">
+        <field name="source_code">100000000</field>
+        <field name="target_account_code">100000</field>
+    </record>
+    <record id="mapping_default_116000000" model="aicia.account.importer.account.mapping.default">
+        <field name="source_code">116000000</field>
+        <field name="target_account_code">116000</field>
+    </record>
+    <record id="mapping_default_130000000" model="aicia.account.importer.account.mapping.default">
+        <field name="source_code">130000000</field>
+        <field name="target_account_code">130000</field>
+    </record>
+    <record id="mapping_default_135000000" model="aicia.account.importer.account.mapping.default">
+        <field name="source_code">135000000</field>
+        <field name="target_account_code">135000</field>
+    </record>
+    <record id="mapping_default_135000101" model="aicia.account.importer.account.mapping.default">
+        <field name="source_code">135000101</field>
+        <field name="target_account_code">135000</field>
+    </record>
+    <record id="mapping_default_135000223" model="aicia.account.importer.account.mapping.default">
+        <field name="source_code">135000223</field>
+        <field name="target_account_code">135000</field>
+    </record>
+    <record id="mapping_default_135002382" model="aicia.account.importer.account.mapping.default">
+        <field name="source_code">135002382</field>
+        <field name="target_account_code">135000</field>
+    </record>
+    <record id="mapping_default_135002455" model="aicia.account.importer.account.mapping.default">
+        <field name="source_code">135002455</field>
+        <field name="target_account_code">135000</field>
+    </record>
+    <record id="mapping_default_208000100" model="aicia.account.importer.account.mapping.default">
+        <field name="source_code">208000100</field>
+        <field name="target_account_code">208000</field>
+    </record>
+    <record id="mapping_default_208000200" model="aicia.account.importer.account.mapping.default">
+        <field name="source_code">208000200</field>
+        <field name="target_account_code">208000</field>
+    </record>
+    <record id="mapping_default_208000300" model="aicia.account.importer.account.mapping.default">
+        <field name="source_code">208000300</field>
+        <field name="target_account_code">208000</field>
+    </record>
+    <record id="mapping_default_294000000" model="aicia.account.importer.account.mapping.default">
+        <field name="source_code">294000000</field>
+        <field name="target_account_code">294000</field>
+    </record>
+    <record id="mapping_default_294000001" model="aicia.account.importer.account.mapping.default">
+        <field name="source_code">294000001</field>
+        <field name="target_account_code">294000</field>
+    </record>
+    <record id="mapping_default_400000000" model="aicia.account.importer.account.mapping.default">
+        <field name="source_code">400000000</field>
+        <field name="target_account_code">400000</field>
+    </record>
+    <record id="mapping_default_400000002" model="aicia.account.importer.account.mapping.default">
+        <field name="source_code">400000002</field>
+        <field name="target_account_code">400000</field>
+    </record>
+    <record id="mapping_default_400000003" model="aicia.account.importer.account.mapping.default">
+        <field name="source_code">400000003</field>
+        <field name="target_account_code">400000</field>
+    </record>
+    <record id="mapping_default_400000004" model="aicia.account.importer.account.mapping.default">
+        <field name="source_code">400000004</field>
+        <field name="target_account_code">400000</field>
+    </record>
+    <record id="mapping_default_400000006" model="aicia.account.importer.account.mapping.default">
+        <field name="source_code">400000006</field>
+        <field name="target_account_code">400000</field>
+    </record>
+    <record id="mapping_default_401000000" model="aicia.account.importer.account.mapping.default">
+        <field name="source_code">401000000</field>
+        <field name="target_account_code">400000</field>
+    </record>
+    <record id="mapping_default_401000200" model="aicia.account.importer.account.mapping.default">
+        <field name="source_code">401000200</field>
+        <field name="target_account_code">400000</field>
+    </record>
+    <record id="mapping_default_401000300" model="aicia.account.importer.account.mapping.default">
+        <field name="source_code">401000300</field>
+        <field name="target_account_code">400000</field>
+    </record>
+    <record id="mapping_default_401000400" model="aicia.account.importer.account.mapping.default">
+        <field name="source_code">401000400</field>
+        <field name="target_account_code">400000</field>
+    </record>
+    <record id="mapping_default_430000000" model="aicia.account.importer.account.mapping.default">
+        <field name="source_code">430000000</field>
+        <field name="target_account_code">430000</field>
+    </record>
+    <record id="mapping_default_430000006" model="aicia.account.importer.account.mapping.default">
+        <field name="source_code">430000006</field>
+        <field name="target_account_code">430000</field>
+    </record>
+    <record id="mapping_default_430000009" model="aicia.account.importer.account.mapping.default">
+        <field name="source_code">430000009</field>
+        <field name="target_account_code">430000</field>
+    </record>
+    <record id="mapping_default_430000015" model="aicia.account.importer.account.mapping.default">
+        <field name="source_code">430000015</field>
+        <field name="target_account_code">430000</field>
+    </record>
+    <record id="mapping_default_430000017" model="aicia.account.importer.account.mapping.default">
+        <field name="source_code">430000017</field>
+        <field name="target_account_code">430000</field>
+    </record>
+    <record id="mapping_default_436000000" model="aicia.account.importer.account.mapping.default">
+        <field name="source_code">436000000</field>
+        <field name="target_account_code">436000</field>
+    </record>
+    <record id="mapping_default_436000013" model="aicia.account.importer.account.mapping.default">
+        <field name="source_code">436000013</field>
+        <field name="target_account_code">436000</field>
+    </record>
+    <record id="mapping_default_436000026" model="aicia.account.importer.account.mapping.default">
+        <field name="source_code">436000026</field>
+        <field name="target_account_code">436000</field>
+    </record>
+    <record id="mapping_default_436000037" model="aicia.account.importer.account.mapping.default">
+        <field name="source_code">436000037</field>
+        <field name="target_account_code">436000</field>
+    </record>
+    <record id="mapping_default_436000065" model="aicia.account.importer.account.mapping.default">
+        <field name="source_code">436000065</field>
+        <field name="target_account_code">436000</field>
+    </record>
+    <record id="mapping_default_440000000" model="aicia.account.importer.account.mapping.default">
+        <field name="source_code">440000000</field>
+        <field name="target_account_code">440000</field>
+    </record>
+    <record id="mapping_default_440002118" model="aicia.account.importer.account.mapping.default">
+        <field name="source_code">440002118</field>
+        <field name="target_account_code">440000</field>
+    </record>
+    <record id="mapping_default_440002148" model="aicia.account.importer.account.mapping.default">
+        <field name="source_code">440002148</field>
+        <field name="target_account_code">440000</field>
+    </record>
+    <record id="mapping_default_440002466" model="aicia.account.importer.account.mapping.default">
+        <field name="source_code">440002466</field>
+        <field name="target_account_code">440000</field>
+    </record>
+    <record id="mapping_default_440002519" model="aicia.account.importer.account.mapping.default">
+        <field name="source_code">440002519</field>
+        <field name="target_account_code">440000</field>
+    </record>
+    <record id="mapping_default_440002556" model="aicia.account.importer.account.mapping.default">
+        <field name="source_code">440002556</field>
+        <field name="target_account_code">440000</field>
+    </record>
+    <record id="mapping_default_460000014" model="aicia.account.importer.account.mapping.default">
+        <field name="source_code">460000014</field>
+        <field name="target_account_code">460000</field>
+    </record>
+    <record id="mapping_default_460000016" model="aicia.account.importer.account.mapping.default">
+        <field name="source_code">460000016</field>
+        <field name="target_account_code">460000</field>
+    </record>
+    <record id="mapping_default_460000034" model="aicia.account.importer.account.mapping.default">
+        <field name="source_code">460000034</field>
+        <field name="target_account_code">460000</field>
+    </record>
+    <record id="mapping_default_460000037" model="aicia.account.importer.account.mapping.default">
+        <field name="source_code">460000037</field>
+        <field name="target_account_code">460000</field>
+    </record>
+    <record id="mapping_default_460000057" model="aicia.account.importer.account.mapping.default">
+        <field name="source_code">460000057</field>
+        <field name="target_account_code">460000</field>
+    </record>
+    <record id="mapping_default_475000000" model="aicia.account.importer.account.mapping.default">
+        <field name="source_code">475000000</field>
+        <field name="target_account_code">475100</field>
+    </record>
+    <record id="mapping_default_475000200" model="aicia.account.importer.account.mapping.default">
+        <field name="source_code">475000200</field>
+        <field name="target_account_code">475100</field>
+    </record>
+    <record id="mapping_default_600000000" model="aicia.account.importer.account.mapping.default">
+        <field name="source_code">600000000</field>
+        <field name="target_account_code">600000</field>
+    </record>
+    <record id="mapping_default_600000200" model="aicia.account.importer.account.mapping.default">
+        <field name="source_code">600000200</field>
+        <field name="target_account_code">600000</field>
+    </record>
+    <record id="mapping_default_600000300" model="aicia.account.importer.account.mapping.default">
+        <field name="source_code">600000300</field>
+        <field name="target_account_code">600000</field>
+    </record>
+    <record id="mapping_default_610000000" model="aicia.account.importer.account.mapping.default">
+        <field name="source_code">610000000</field>
+        <field name="target_account_code">640000</field>
+    </record>
+    <record id="mapping_default_610000004" model="aicia.account.importer.account.mapping.default">
+        <field name="source_code">610000004</field>
+        <field name="target_account_code">640000</field>
+    </record>
+    <record id="mapping_default_610000007" model="aicia.account.importer.account.mapping.default">
+        <field name="source_code">610000007</field>
+        <field name="target_account_code">640000</field>
+    </record>
+    <record id="mapping_default_610000012" model="aicia.account.importer.account.mapping.default">
+        <field name="source_code">610000012</field>
+        <field name="target_account_code">640000</field>
+    </record>
+    <record id="mapping_default_610000014" model="aicia.account.importer.account.mapping.default">
+        <field name="source_code">610000014</field>
+        <field name="target_account_code">640000</field>
+    </record>
+    <record id="mapping_default_611000004" model="aicia.account.importer.account.mapping.default">
+        <field name="source_code">611000004</field>
+        <field name="target_account_code">475100</field>
+    </record>
+    <record id="mapping_default_611000007" model="aicia.account.importer.account.mapping.default">
+        <field name="source_code">611000007</field>
+        <field name="target_account_code">475100</field>
+    </record>
+    <record id="mapping_default_611000012" model="aicia.account.importer.account.mapping.default">
+        <field name="source_code">611000012</field>
+        <field name="target_account_code">475100</field>
+    </record>
+    <record id="mapping_default_616000000" model="aicia.account.importer.account.mapping.default">
+        <field name="source_code">616000000</field>
+        <field name="target_account_code">629000</field>
+    </record>
+    <record id="mapping_default_616000022" model="aicia.account.importer.account.mapping.default">
+        <field name="source_code">616000022</field>
+        <field name="target_account_code">629000</field>
+    </record>
+    <record id="mapping_default_616000026" model="aicia.account.importer.account.mapping.default">
+        <field name="source_code">616000026</field>
+        <field name="target_account_code">629000</field>
+    </record>
+    <record id="mapping_default_616000049" model="aicia.account.importer.account.mapping.default">
+        <field name="source_code">616000049</field>
+        <field name="target_account_code">629000</field>
+    </record>
+    <record id="mapping_default_616000053" model="aicia.account.importer.account.mapping.default">
+        <field name="source_code">616000053</field>
+        <field name="target_account_code">629000</field>
+    </record>
+    <record id="mapping_default_627000000" model="aicia.account.importer.account.mapping.default">
+        <field name="source_code">627000000</field>
+        <field name="target_account_code">627000</field>
+    </record>
+    <record id="mapping_default_627000100" model="aicia.account.importer.account.mapping.default">
+        <field name="source_code">627000100</field>
+        <field name="target_account_code">627000</field>
+    </record>
+    <record id="mapping_default_627000200" model="aicia.account.importer.account.mapping.default">
+        <field name="source_code">627000200</field>
+        <field name="target_account_code">627000</field>
+    </record>
+    <record id="mapping_default_630000200" model="aicia.account.importer.account.mapping.default">
+        <field name="source_code">630000200</field>
+        <field name="target_account_code">630000</field>
+    </record>
+    <record id="mapping_default_630000300" model="aicia.account.importer.account.mapping.default">
+        <field name="source_code">630000300</field>
+        <field name="target_account_code">630000</field>
+    </record>
+    <record id="mapping_default_642000000" model="aicia.account.importer.account.mapping.default">
+        <field name="source_code">642000000</field>
+        <field name="target_account_code">642000</field>
+    </record>
+    <record id="mapping_default_642000200" model="aicia.account.importer.account.mapping.default">
+        <field name="source_code">642000200</field>
+        <field name="target_account_code">642000</field>
+    </record>
+    <record id="mapping_default_642001000" model="aicia.account.importer.account.mapping.default">
+        <field name="source_code">642001000</field>
+        <field name="target_account_code">642000</field>
+    </record>
+    <record id="mapping_default_645000000" model="aicia.account.importer.account.mapping.default">
+        <field name="source_code">645000000</field>
+        <field name="target_account_code">623000</field>
+    </record>
+    <record id="mapping_default_645001206" model="aicia.account.importer.account.mapping.default">
+        <field name="source_code">645001206</field>
+        <field name="target_account_code">623000</field>
+    </record>
+    <record id="mapping_default_645004060" model="aicia.account.importer.account.mapping.default">
+        <field name="source_code">645004060</field>
+        <field name="target_account_code">623000</field>
+    </record>
+    <record id="mapping_default_645004195" model="aicia.account.importer.account.mapping.default">
+        <field name="source_code">645004195</field>
+        <field name="target_account_code">623000</field>
+    </record>
+    <record id="mapping_default_645004569" model="aicia.account.importer.account.mapping.default">
+        <field name="source_code">645004569</field>
+        <field name="target_account_code">623000</field>
+    </record>
+    <record id="mapping_default_666000000" model="aicia.account.importer.account.mapping.default">
+        <field name="source_code">666000000</field>
+        <field name="target_account_code">666000</field>
+    </record>
+    <record id="mapping_default_666000100" model="aicia.account.importer.account.mapping.default">
+        <field name="source_code">666000100</field>
+        <field name="target_account_code">666000</field>
+    </record>
+    <record id="mapping_default_747000400" model="aicia.account.importer.account.mapping.default">
+        <field name="source_code">747000400</field>
+        <field name="target_account_code">747000</field>
+    </record>
+    <record id="mapping_default_747000502" model="aicia.account.importer.account.mapping.default">
+        <field name="source_code">747000502</field>
+        <field name="target_account_code">747000</field>
+    </record>
+    <record id="mapping_default_747000504" model="aicia.account.importer.account.mapping.default">
+        <field name="source_code">747000504</field>
+        <field name="target_account_code">747000</field>
+    </record>
+    <record id="mapping_default_747000700" model="aicia.account.importer.account.mapping.default">
+        <field name="source_code">747000700</field>
+        <field name="target_account_code">747000</field>
+    </record>
+    <record id="mapping_default_751000000" model="aicia.account.importer.account.mapping.default">
+        <field name="source_code">751000000</field>
+        <field name="target_account_code">751000</field>
+    </record>
+    <record id="mapping_default_751000100" model="aicia.account.importer.account.mapping.default">
+        <field name="source_code">751000100</field>
+        <field name="target_account_code">751000</field>
+    </record>
+    <function
+        model="aicia.account.importer.account.mapping"
+        name="load_default_mappings"
+    />
+</odoo>

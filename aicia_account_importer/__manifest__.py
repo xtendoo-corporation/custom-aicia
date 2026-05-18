@@ -15,6 +15,7 @@
     """,
     "data": [
         "security/ir.model.access.csv",
+        "data/aicia_account_importer_account_mapping.xml",
         "wizard/aicia_account_importer_wizard.xml",
         "views/aicia_account_importer_menu.xml",
     ],
