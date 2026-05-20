@@ -24,7 +24,7 @@ except ImportError:
 #
 #  Apuntes2025.xlsx — hoja "Apuntes"  (cabecera del asiento)
 #    Col 0: ID_Apunte          → clave de unión con Lineas_Apunte
-#    Col 1: Numero_Apunte      → referencia del asiento (account.move.ref)
+#    Col 1: Numero_Apunte      → identificador legado para control de reimportaciones
 #    Col 2: Fecha_Contable     → entero YYYYMMDD  (ej: 20250103)
 #    Col 3: Fecha_Introduccion → datetime (no se usa)
 #    Col 4: Descripcion        → nombre del asiento
@@ -54,7 +54,7 @@ except ImportError:
 #      El resto se normaliza a 6 dígitos quitando ceros finales.
 #    - Los importes están en CÉNTIMOS. Se dividen entre 100.
 #    - Tipo_Contable "D" → debit; "H" → credit.
-#    - Clave de idempotencia: Numero_Apunte (campo ref en account.move).
+#    - Clave de idempotencia: Numero_Apunte (marca técnica en narration).
 #    - Solo se importan apuntes con Validado=True.
 # ---------------------------------------------------------------------------
 
@@ -679,7 +679,8 @@ class AiciaAccountImporterWizard(models.TransientModel):
             clase_apunte = str(clase_raw or "").strip().upper()
 
             # Clave: ID_Apunte (col 0) — es la clave de unión con el fichero de líneas.
-            # Numero_Apunte (col 1) se guarda en "numero" y se usa como ref del asiento en Odoo.
+            # Numero_Apunte (col 1) se guarda en "numero" como identificador legado
+            # para control de reimportaciones, pero no se muestra en el campo ref de Odoo.
             apuntes[id_apunte] = {
                 "id": id_apunte,
                 "numero": numero_key,
@@ -758,19 +759,20 @@ class AiciaAccountImporterWizard(models.TransientModel):
         account_mapping: dict = None,
     ) -> dict:
         """Crea un account.move a partir de la cabecera y sus líneas."""
-        ref = str(cabecera["numero"])
+        legacy_number = str(cabecera["numero"])
         # ── Detectar si es un asiento de nómina ──────────────────────────────
         # Criterio: Numero_Documento empieza por "NO-" (insensible a mayúsculas)
         is_nomina = str(cabecera.get("numero_documento", "") or "").upper().startswith("NO-")
 
         # Detectar el diario automáticamente según las cuentas de las líneas
         journal = self._get_journal_for_lines(lineas, is_nomina=is_nomina)
-        # Idempotencia: busca en el diario detectado
+        # Idempotencia: busca en el diario detectado usando una marca técnica en narration
+        legacy_marker = self._legacy_import_marker(legacy_number)
         existing = self.env["account.move"].search(
             [
-                ("ref", "=", ref),
                 ("journal_id", "=", journal.id),
                 ("state", "in", ["draft", "posted"]),
+                ("narration", "ilike", legacy_marker),
             ],
             limit=1,
         )
@@ -781,11 +783,11 @@ class AiciaAccountImporterWizard(models.TransientModel):
             nomina_tag = " 💼" if is_nomina else ""
             return {
                 "status": "skipped",
-                "ref": ref,
+                "ref": legacy_number,
                 "msg": _(
                     "Asiento Nº %s%s ya existe en Odoo (ID %d, estado: %s). "
                     "Elimínalo o resetéalo a borrador para poder reimportarlo."
-                ) % (ref, nomina_tag, existing.id, state_label),
+                ) % (legacy_number, nomina_tag, existing.id, state_label),
             }
 
         # Construir líneas del asiento
@@ -809,15 +811,15 @@ class AiciaAccountImporterWizard(models.TransientModel):
         if errors:
             return {
                 "status": "error",
-                "ref": ref,
+                "ref": legacy_number,
                 "msg": _("Asiento Nº %s%s — errores en líneas: %s")
-                % (ref, nomina_tag, "; ".join(errors)),
+                % (legacy_number, nomina_tag, "; ".join(errors)),
             }
         if not line_vals:
             return {
                 "status": "error",
-                "ref": ref,
-                "msg": _("Asiento Nº %s%s no generó ninguna línea válida.") % (ref, nomina_tag),
+                "ref": legacy_number,
+                "msg": _("Asiento Nº %s%s no generó ninguna línea válida.") % (legacy_number, nomina_tag),
             }
 
         # ── Propagar partner a TODAS las líneas del mismo asiento ────────────
@@ -837,20 +839,19 @@ class AiciaAccountImporterWizard(models.TransientModel):
         if abs(total_debe - total_haber) > 0.005:
             return {
                 "status": "error",
-                "ref": ref,
+                "ref": legacy_number,
                 "msg": _(
                     "Asiento Nº %s%s no cuadra: Debe=%.2f Haber=%.2f (diferencia=%.2f)"
-                ) % (ref, nomina_tag, total_debe, total_haber, abs(total_debe - total_haber)),
+                ) % (legacy_number, nomina_tag, total_debe, total_haber, abs(total_debe - total_haber)),
             }
 
-        numero_documento = cabecera.get("numero_documento") or ""
         move_vals = {
-            "ref": ref,
-            "name": numero_documento if numero_documento else "/",
+            "ref": self._build_move_ref(cabecera) or False,
+            "name": "/",
             "date": cabecera["fecha"],
             "journal_id": journal.id,
             "line_ids": line_vals,
-            "narration": cabecera["descripcion"] or "/",
+            "narration": self._build_move_narration(cabecera, legacy_number),
         }
 
         try:
@@ -863,22 +864,22 @@ class AiciaAccountImporterWizard(models.TransientModel):
                 refs_str = ", ".join(refs_uniq) if refs_uniq else "; ".join(line_warnings)
                 return {
                     "status": "warning",
-                    "ref": ref,
+                    "ref": legacy_number,
                     "msg": _(
                         "Asiento Nº %s%s creado en BORRADOR (ID Odoo %d) "
                         "— socios no resueltos: %s"
-                    ) % (ref, nomina_tag, move.id, refs_str),
+                    ) % (legacy_number, nomina_tag, move.id, refs_str),
                 }
             return {
                 "status": "created",
-                "ref": ref,
-                "msg": _("Asiento Nº %s%s creado (ID Odoo %d).") % (ref, nomina_tag, move.id),
+                "ref": legacy_number,
+                "msg": _("Asiento Nº %s%s creado (ID Odoo %d).") % (legacy_number, nomina_tag, move.id),
             }
         except Exception as exc:
             return {
                 "status": "error",
-                "ref": ref,
-                "msg": _("Error al crear asiento Nº %s%s: %s") % (ref, nomina_tag, str(exc)),
+                "ref": legacy_number,
+                "msg": _("Error al crear asiento Nº %s%s: %s") % (legacy_number, nomina_tag, str(exc)),
             }
 
     def _build_line_vals(
@@ -1365,6 +1366,31 @@ class AiciaAccountImporterWizard(models.TransientModel):
             "No se pudo parsear Fecha_Contable: %s — se usa fecha de hoy.", value
         )
         return date.today()
+
+    @staticmethod
+    def _legacy_import_marker(legacy_number: str) -> str:
+        """Marca técnica para detectar reimportaciones sin ocupar name/ref."""
+        return f"[AICIA_IMPORT_ID:{legacy_number}]"
+
+    def _build_move_ref(self, cabecera: dict) -> str:
+        """Texto visible en Referencia del asiento Odoo."""
+        descripcion = str(cabecera.get("descripcion") or "").strip()
+        numero_documento = str(cabecera.get("numero_documento") or "").strip()
+        return descripcion or numero_documento or ""
+
+    def _build_move_narration(self, cabecera: dict, legacy_number: str) -> str:
+        """Conserva la descripción y añade la marca técnica del legado."""
+        descripcion = str(cabecera.get("descripcion") or "").strip()
+        numero_documento = str(cabecera.get("numero_documento") or "").strip()
+        marker = self._legacy_import_marker(legacy_number)
+
+        parts = []
+        if descripcion:
+            parts.append(descripcion)
+        if numero_documento and numero_documento != descripcion:
+            parts.append(_("Documento origen: %s") % numero_documento)
+        parts.append(marker)
+        return "\n".join(parts)
 
     @staticmethod
     def _append_import_activity(activity_log: list, level: str, message: str):

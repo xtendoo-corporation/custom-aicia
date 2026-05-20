@@ -57,6 +57,15 @@ class TestAiciaAccountImporterWizard(TransactionCase):
         defaults.update(kwargs)
         return self.env["aicia.account.importer.wizard"].create(defaults)
 
+    def _find_move_by_legacy_number(self, legacy_number):
+        marker = self.env["aicia.account.importer.wizard"]._legacy_import_marker(
+            str(legacy_number)
+        )
+        return self.env["account.move"].search(
+            [("narration", "ilike", marker)],
+            limit=1,
+        )
+
     def _make_apuntes_xlsx(self, rows: list) -> bytes:
         """Genera Apuntes2025.xlsx con la cabecera real del legado."""
         try:
@@ -458,7 +467,7 @@ class TestAiciaAccountImporterWizard(TransactionCase):
         self.assertGreaterEqual(wizard.total_created + wizard.total_warnings, 1)
 
     def test_numero_apunte_float_no_dot_zero(self):
-        """Numero_Apunte como float en Excel → se convierte a int (sin '.0' en ref)."""
+        """Numero_Apunte como float en Excel → se convierte a int (sin '.0' en la marca legado)."""
         self._ensure_account("430000", "Clientes", "asset_receivable")
         self._ensure_account("700000", "Ventas", "income")
 
@@ -475,9 +484,10 @@ class TestAiciaAccountImporterWizard(TransactionCase):
         )
         wizard.action_import()
 
-        # La ref debe ser "102", no "102.0"
-        move = self.env["account.move"].search([("ref", "=", "102")], limit=1)
-        self.assertTrue(move, "El asiento debe tener ref='102', no '102.0'")
+        move = self._find_move_by_legacy_number("102")
+        self.assertTrue(move, "El asiento debe quedar marcado con el número legado '102'")
+        self.assertEqual(move.ref, "Test float ref")
+        self.assertEqual(move.name, "/")
 
     def test_import_creates_journal_entry(self):
         """Importar un asiento cuadrado válido → crea el account.move."""
@@ -506,8 +516,10 @@ class TestAiciaAccountImporterWizard(TransactionCase):
         self.assertEqual(wizard.state, "done")
         self.assertEqual(wizard.total_created, 1)
         self.assertEqual(wizard.total_errors, 0)
-        move = self.env["account.move"].search([("ref", "=", "100")], limit=1)
+        move = self._find_move_by_legacy_number("100")
         self.assertTrue(move)
+        self.assertEqual(move.ref, "Venta enero")
+        self.assertEqual(move.name, "/")
 
     def test_import_converts_cents_to_euros(self):
         """Importe 121000 céntimos → 1210,00 € en la línea del asiento."""
@@ -526,7 +538,7 @@ class TestAiciaAccountImporterWizard(TransactionCase):
         )
         wizard.action_import()
 
-        move = self.env["account.move"].search([("ref", "=", "200")], limit=1)
+        move = self._find_move_by_legacy_number("200")
         self.assertTrue(move)
         debit_line = move.line_ids.filtered(lambda line: line.debit > 0)
         self.assertAlmostEqual(debit_line[0].debit, 1210.0)
@@ -641,28 +653,32 @@ class TestAiciaAccountImporterWizard(TransactionCase):
         )
         wizard.action_import()
 
-        move = self.env["account.move"].search([("ref", "=", "800")], limit=1)
+        move = self._find_move_by_legacy_number("800")
         self.assertEqual(move.state, "posted")
 
-    def test_import_log_html_generated(self):
-        """Tras importar, import_log contiene HTML con el resumen."""
+    def test_import_puts_entry_name_in_ref_and_leaves_name_for_sequence(self):
+        """El texto visible va a ref y el nombre Odoo queda en '/' para la serie."""
         self._ensure_account("430000", "Clientes", "asset_receivable")
         self._ensure_account("700000", "Ventas", "income")
+        self.env["res.partner"].create({"name": "Cliente Test", "ref": "C03604"})
 
         apuntes = self._make_apuntes_xlsx([
-            [9, 900, 20250301, None, "Log test", "DOC", 30000, True, False, "R"],
+            [30, 3000, 20250115, None, "Venta visible en referencia", "DOC-3000", 121000, True, False, "R"],
         ])
         lineas = self._make_lineas_xlsx([
-            [9, 1, "430000001", 0, 0, "Test", 30000, "D"],
-            [9, 2, "700000000", 0, 0, "Test", 30000, "H"],
+            [30, 1, "430003604", 0, 0, "Cliente Test", 121000, "D"],
+            [30, 2, "700000000", 0, 0, "Venta visible en referencia", 121000, "H"],
         ])
         wizard = self._make_wizard(
-            file_apuntes=self._enc(apuntes), file_lineas=self._enc(lineas)
+            file_apuntes=self._enc(apuntes),
+            file_lineas=self._enc(lineas),
         )
         wizard.action_import()
 
-        self.assertIn("Resumen", wizard.import_log)
-        self.assertIn("creados", wizard.import_log)
+        move = self._find_move_by_legacy_number("3000")
+        self.assertTrue(move)
+        self.assertEqual(move.ref, "Venta visible en referencia")
+        self.assertEqual(move.name, "/")
 
     def test_no_files_raises_user_error(self):
         """Sin archivos → UserError."""
