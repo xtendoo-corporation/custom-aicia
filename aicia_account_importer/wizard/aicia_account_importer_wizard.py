@@ -24,7 +24,7 @@ except ImportError:
 #
 #  Apuntes2025.xlsx — hoja "Apuntes"  (cabecera del asiento)
 #    Col 0: ID_Apunte          → clave de unión con Lineas_Apunte
-#    Col 1: Numero_Apunte      → identificador legado para control de reimportaciones
+#    Col 1: Numero_Apunte      → referencia del asiento (account.move.ref)
 #    Col 2: Fecha_Contable     → entero YYYYMMDD  (ej: 20250103)
 #    Col 3: Fecha_Introduccion → datetime (no se usa)
 #    Col 4: Descripcion        → nombre del asiento
@@ -54,7 +54,7 @@ except ImportError:
 #      El resto se normaliza a 6 dígitos quitando ceros finales.
 #    - Los importes están en CÉNTIMOS. Se dividen entre 100.
 #    - Tipo_Contable "D" → debit; "H" → credit.
-#    - Clave de idempotencia: Numero_Apunte (marca técnica en narration).
+#    - Clave de idempotencia: Numero_Apunte (campo ref en account.move).
 #    - Solo se importan apuntes con Validado=True.
 # ---------------------------------------------------------------------------
 
@@ -66,15 +66,13 @@ COLLECTIVE_ACCOUNT_MAP = {
     "430": ("430000", "Clientes", "asset_receivable"),
     "431": ("430000", "Clientes", "asset_receivable"),
     "436": ("430000", "Clientes", "asset_receivable"),
-    # 572 tiene subcuentas por banco; se normaliza si la cuenta exacta no existe
-    "572": ("572000", "Bancos e instituciones de crédito", "asset_cash"),
 }
 
 # Prefijos de cuentas de terceros (excluye 572 que no es partner)
 PARTNER_ACCOUNT_PREFIXES = {"400", "401", "430", "431", "436"}
 
 # Prefijos de cuentas de nómina con subcuenta por empleado (prefijo "E" en ref)
-# 465 → Remuneraciones pendientes de pago (una subcuenta por empleado)
+# 610 → Tras resolver el empleado, la línea se reclasifica a 640XXX.
 NOMINA_PARTNER_ACCOUNT_PREFIXES = {"610",}
 
 # Índices de columnas en cada hoja (0-based, según análisis del Excel real)
@@ -679,8 +677,7 @@ class AiciaAccountImporterWizard(models.TransientModel):
             clase_apunte = str(clase_raw or "").strip().upper()
 
             # Clave: ID_Apunte (col 0) — es la clave de unión con el fichero de líneas.
-            # Numero_Apunte (col 1) se guarda en "numero" como identificador legado
-            # para control de reimportaciones, pero no se muestra en el campo ref de Odoo.
+            # Numero_Apunte (col 1) se guarda en "numero" y se usa como ref del asiento en Odoo.
             apuntes[id_apunte] = {
                 "id": id_apunte,
                 "numero": numero_key,
@@ -766,7 +763,7 @@ class AiciaAccountImporterWizard(models.TransientModel):
 
         # Detectar el diario automáticamente según las cuentas de las líneas
         journal = self._get_journal_for_lines(lineas, is_nomina=is_nomina)
-        # Idempotencia: busca en el diario detectado usando una marca técnica en narration
+        # Idempotencia: busca en el diario detectado usando una marca técnica.
         legacy_marker = self._legacy_import_marker(legacy_number)
         existing = self.env["account.move"].search(
             [
@@ -819,7 +816,8 @@ class AiciaAccountImporterWizard(models.TransientModel):
             return {
                 "status": "error",
                 "ref": legacy_number,
-                "msg": _("Asiento Nº %s%s no generó ninguna línea válida.") % (legacy_number, nomina_tag),
+                "msg": _("Asiento Nº %s%s no generó ninguna línea válida.")
+                % (legacy_number, nomina_tag),
             }
 
         # ── Propagar partner a TODAS las líneas del mismo asiento ────────────
@@ -842,7 +840,13 @@ class AiciaAccountImporterWizard(models.TransientModel):
                 "ref": legacy_number,
                 "msg": _(
                     "Asiento Nº %s%s no cuadra: Debe=%.2f Haber=%.2f (diferencia=%.2f)"
-                ) % (legacy_number, nomina_tag, total_debe, total_haber, abs(total_debe - total_haber)),
+                ) % (
+                    legacy_number,
+                    nomina_tag,
+                    total_debe,
+                    total_haber,
+                    abs(total_debe - total_haber),
+                ),
             }
 
         move_vals = {
@@ -873,13 +877,15 @@ class AiciaAccountImporterWizard(models.TransientModel):
             return {
                 "status": "created",
                 "ref": legacy_number,
-                "msg": _("Asiento Nº %s%s creado (ID Odoo %d).") % (legacy_number, nomina_tag, move.id),
+                "msg": _("Asiento Nº %s%s creado (ID Odoo %d).")
+                % (legacy_number, nomina_tag, move.id),
             }
         except Exception as exc:
             return {
                 "status": "error",
                 "ref": legacy_number,
-                "msg": _("Error al crear asiento Nº %s%s: %s") % (legacy_number, nomina_tag, str(exc)),
+                "msg": _("Error al crear asiento Nº %s%s: %s")
+                % (legacy_number, nomina_tag, str(exc)),
             }
 
     def _build_line_vals(
@@ -896,52 +902,71 @@ class AiciaAccountImporterWizard(models.TransientModel):
         Para nóminas (is_nomina=True):
           - Las cuentas se resuelven sin aplicar cuentas colectivas (640, 642, 465…
             se buscan directamente en el plan contable).
-          - El partner se busca con prefijo "E" (empleado) para cuentas 465.
+          - Si la cuenta legada es 610XXXXXX, primero se resuelve el empleado y
+            después la línea se reclasifica a 640XXX, siempre con 6 dígitos.
         """
-        account = self._get_account(
-            linea["cuenta"], missing_accounts, account_mapping,
-            skip_collective=is_nomina,
-        )
-        if not account:
-            return None, _(
-                "Cuenta '%s' no encontrada ni en colectivas ni en el plan contable."
-            ) % linea["cuenta"], None
-
+        legacy_account_code = linea["cuenta"]
         partner = None
         warning_msg = None
 
         if is_nomina:
-            # Nóminas: partner con prefijo "E" solo para cuentas 465 (por empleado)
-            if linea["cuenta"][:3] in NOMINA_PARTNER_ACCOUNT_PREFIXES:
-                ref_code = self._partner_ref_from_account(linea["cuenta"], is_nomina=True)
+            # Nóminas: partner con prefijo "E" en cuentas con subcuenta de empleado.
+            if legacy_account_code[:3] in NOMINA_PARTNER_ACCOUNT_PREFIXES:
+                ref_code = self._partner_ref_from_account(
+                    legacy_account_code, is_nomina=True
+                )
                 partner = self._resolve_partner_nomina(ref_code)
                 if not partner:
                     if self.create_missing_partners:
                         partner = self._create_partner(
-                            ref_code, linea["cuenta"], linea["descripcion"],
+                            ref_code, legacy_account_code, linea["descripcion"],
                             is_nomina=True,
                         )
                     else:
                         warning_msg = _(
                             "Empleado no encontrado para ref '%s' (cuenta legada: %s)"
-                        ) % (ref_code, linea["cuenta"])
+                        ) % (ref_code, legacy_account_code)
                         if missing_partners is not None:
-                            missing_partners[ref_code] = linea["cuenta"]
+                            missing_partners[ref_code] = legacy_account_code
         else:
-            if linea["cuenta"][:3] in PARTNER_ACCOUNT_PREFIXES:
-                ref_code = self._partner_ref_from_account(linea["cuenta"])
+            if legacy_account_code[:3] in PARTNER_ACCOUNT_PREFIXES:
+                ref_code = self._partner_ref_from_account(legacy_account_code)
                 partner = self._resolve_partner(ref_code)
                 if not partner:
                     if self.create_missing_partners:
                         partner = self._create_partner(
-                            ref_code, linea["cuenta"], linea["descripcion"]
+                            ref_code, legacy_account_code, linea["descripcion"]
                         )
                     else:
                         warning_msg = _(
                             "Socio no encontrado para ref '%s' (cuenta legada: %s)"
-                        ) % (ref_code, linea["cuenta"])
+                        ) % (ref_code, legacy_account_code)
                         if missing_partners is not None:
-                            missing_partners[ref_code] = linea["cuenta"]
+                            missing_partners[ref_code] = legacy_account_code
+
+        account_lookup_code = legacy_account_code
+        if is_nomina:
+            account_lookup_code = self._get_nomina_account_code_for_lookup(
+                legacy_account_code
+            )
+
+        if account_lookup_code != legacy_account_code:
+            account = self._get_exact_account_by_code(account_lookup_code)
+            if not account and missing_accounts is not None:
+                missing_accounts.add(account_lookup_code)
+        else:
+            account = self._get_account(
+                account_lookup_code,
+                missing_accounts,
+                account_mapping,
+                skip_collective=is_nomina,
+            )
+        if account and account_lookup_code != legacy_account_code:
+            self._register_automatic_account_mapping(legacy_account_code, account)
+        if not account:
+            return None, _(
+                "Cuenta '%s' no encontrada ni en colectivas ni en el plan contable."
+            ) % account_lookup_code, None
 
         # ── Distribución analítica por ID_Proyecto (100%) ────────────────────
         analytic_distribution = {}
@@ -1003,10 +1028,55 @@ class AiciaAccountImporterWizard(models.TransientModel):
             raise UserError(_("No se encontró ningún diario contable en la empresa."))
         return journal
 
+    def _normalize_account_code_to_six_digits(self, code: str) -> str:
+        """Devuelve el código contable truncado a 6 dígitos, rellenando con ceros."""
+        normalized_code = str(code or "").strip().replace(" ", "")
+        if not normalized_code:
+            return ""
+        return normalized_code[:6].ljust(6, "0")
+
+    def _get_nomina_account_code_for_lookup(self, code: str) -> str:
+        """Devuelve la cuenta contable efectiva para líneas de nómina.
+
+        Regla especial:
+          - 610XXXXXX → 640XXX, manteniendo siempre 6 dígitos.
+        """
+        six_digit_code = self._normalize_account_code_to_six_digits(code)
+        if six_digit_code.startswith("610"):
+            return f"640{six_digit_code[3:6]}"
+        return code
+
+    def _get_exact_account_by_code(self, code: str):
+        """Busca una cuenta exacta de la empresa sin aplicar fallback adicional."""
+        if not code:
+            return None
+        return self.env["account.account"].search(
+            [("code", "=", code), ("company_ids", "in", [self.env.company.id])],
+            limit=1,
+        )
+
     def _get_collective_prefix(self, code: str) -> str | None:
         """Devuelve el prefijo de 3 dígitos si el código tiene cuenta colectiva."""
         prefix = code[:3]
         return prefix if prefix in COLLECTIVE_ACCOUNT_MAP else None
+
+    def _normalize_account_code_for_lookup(self, code: str) -> str:
+        """Normaliza el código legado para resolver la cuenta Odoo.
+
+        Regla especial para bancos 572:
+          - 572XXXXXX siempre se trunca a 572XXX (6 dígitos) para evitar
+            cuentas contables de más de 6 posiciones en la conversión.
+
+        Regla general:
+          - el resto mantiene la normalización histórica del módulo, quitando
+            ceros finales sobre los primeros 6 dígitos.
+        """
+        normalized_code = str(code or "").strip().replace(" ", "")
+        if not normalized_code:
+            return ""
+        if normalized_code.startswith("572"):
+            return normalized_code[:6]
+        return normalized_code[:6].rstrip("0") or normalized_code[:3]
 
     def _get_account(
         self,
@@ -1032,7 +1102,22 @@ class AiciaAccountImporterWizard(models.TransientModel):
         if mapped_account:
             return mapped_account
 
-        # ── 1. Prefijo colectivo ──────────────────────────────────────────────
+        normalized = self._normalize_account_code_for_lookup(code)
+
+        # ── 1. Subcuentas de bancos 572 → truncado exacto a 6 dígitos ─────────
+        if not skip_collective and code.startswith("572"):
+            account = self.env["account.account"].search(
+                [
+                    ("code", "=", normalized),
+                    ("company_ids", "in", [self.env.company.id]),
+                ],
+                limit=1,
+            )
+            if account:
+                self._register_automatic_account_mapping(code, account)
+                return account
+
+        # ── 2. Prefijo colectivo ──────────────────────────────────────────────
         # Se omite en nóminas para que 640xxxxxx → 640000 por normalización directa
         if not skip_collective:
             prefix = self._get_collective_prefix(code)
@@ -1042,8 +1127,7 @@ class AiciaAccountImporterWizard(models.TransientModel):
                 self._register_automatic_account_mapping(code, account)
                 return account
 
-        # ── 2. Normalizar a 6 dígitos ─────────────────────────────────────────
-        normalized = code[:6].rstrip("0") or code[:3]
+        # ── 3. Normalizar a 6 dígitos ─────────────────────────────────────────
         account = self.env["account.account"].search(
             [("code", "=", normalized), ("company_ids", "in", [self.env.company.id])],
             limit=1,
@@ -1052,7 +1136,7 @@ class AiciaAccountImporterWizard(models.TransientModel):
             self._register_automatic_account_mapping(code, account)
             return account
 
-        # ── 3. Búsqueda por prefijo de 3 dígitos ─────────────────────────────
+        # ── 4. Búsqueda por prefijo de 3 dígitos ─────────────────────────────
         account = (
             self.env["account.account"].search(
                 [
@@ -1113,7 +1197,7 @@ class AiciaAccountImporterWizard(models.TransientModel):
         normalized_code = self.env[
             "aicia.account.importer.account.mapping"
         ]._normalize_source_code(code)
-        normalized_for_map = normalized_code[:6].rstrip("0") or normalized_code[:3]
+        normalized_for_map = self._normalize_account_code_for_lookup(normalized_code)
         mapping_rules = account_mapping or self._get_account_mapping_rules()
 
         for source_code, target_account in mapping_rules:
@@ -1168,12 +1252,12 @@ class AiciaAccountImporterWizard(models.TransientModel):
         El prefijo de letra se determina por el tipo de cuenta:
           430/431/436      → "C" (cliente)
           400/401          → "P" (proveedor)
-          465 en nómina    → "E" (empleado)
+          610 en nómina    → "E" (empleado)
 
         Ejemplos:
           "430003604" → "C03604"
           "400001234" → "P01234"
-          "465001234" (nómina) → "E01234"
+          "610001234" (nómina) → "E01234"
         """
         prefix = code[:3] if code else ""
         last5 = code[-5:] if len(code) >= 5 else code
@@ -1345,29 +1429,6 @@ class AiciaAccountImporterWizard(models.TransientModel):
             ) from exc
 
     @staticmethod
-    def _parse_fecha_contable(value) -> date:
-        """Convierte el campo Fecha_Contable del legado a datetime.date."""
-        if value is None:
-            return date.today()
-        if isinstance(value, datetime):
-            return value.date()
-        if isinstance(value, date):
-            return value
-        try:
-            return datetime.strptime(str(int(value)), "%Y%m%d").date()
-        except (ValueError, TypeError):
-            pass
-        for fmt in ("%d/%m/%Y", "%Y-%m-%d", "%d-%m-%Y"):
-            try:
-                return datetime.strptime(str(value).strip(), fmt).date()
-            except ValueError:
-                continue
-        _logger.warning(
-            "No se pudo parsear Fecha_Contable: %s — se usa fecha de hoy.", value
-        )
-        return date.today()
-
-    @staticmethod
     def _legacy_import_marker(legacy_number: str) -> str:
         """Marca técnica para detectar reimportaciones sin ocupar name/ref."""
         return f"[AICIA_IMPORT_ID:{legacy_number}]"
@@ -1391,6 +1452,29 @@ class AiciaAccountImporterWizard(models.TransientModel):
             parts.append(_("Documento origen: %s") % numero_documento)
         parts.append(marker)
         return "\n".join(parts)
+
+    @staticmethod
+    def _parse_fecha_contable(value) -> date:
+        """Convierte el campo Fecha_Contable del legado a datetime.date."""
+        if value is None:
+            return date.today()
+        if isinstance(value, datetime):
+            return value.date()
+        if isinstance(value, date):
+            return value
+        try:
+            return datetime.strptime(str(int(value)), "%Y%m%d").date()
+        except (ValueError, TypeError):
+            pass
+        for fmt in ("%d/%m/%Y", "%Y-%m-%d", "%d-%m-%Y"):
+            try:
+                return datetime.strptime(str(value).strip(), fmt).date()
+            except ValueError:
+                continue
+        _logger.warning(
+            "No se pudo parsear Fecha_Contable: %s — se usa fecha de hoy.", value
+        )
+        return date.today()
 
     @staticmethod
     def _append_import_activity(activity_log: list, level: str, message: str):

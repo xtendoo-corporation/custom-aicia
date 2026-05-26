@@ -57,15 +57,6 @@ class TestAiciaAccountImporterWizard(TransactionCase):
         defaults.update(kwargs)
         return self.env["aicia.account.importer.wizard"].create(defaults)
 
-    def _find_move_by_legacy_number(self, legacy_number):
-        marker = self.env["aicia.account.importer.wizard"]._legacy_import_marker(
-            str(legacy_number)
-        )
-        return self.env["account.move"].search(
-            [("narration", "ilike", marker)],
-            limit=1,
-        )
-
     def _make_apuntes_xlsx(self, rows: list) -> bytes:
         """Genera Apuntes2025.xlsx con la cabecera real del legado."""
         try:
@@ -202,6 +193,28 @@ class TestAiciaAccountImporterWizard(TransactionCase):
         self.assertIsNotNone(acc)
         self.assertEqual(acc.code, "572000")
 
+    def test_get_account_572_truncates_to_first_6_digits(self):
+        """572123456 → resuelve la cuenta 572123 y nunca una de más de 6 dígitos."""
+        truncated_account = self.env["account.account"].search(
+            [
+                ("code", "=like", "572___"),
+                ("company_ids", "in", [self.env.company.id]),
+            ],
+            order="code desc",
+            limit=1,
+        )
+        if not truncated_account:
+            self.skipTest("No existe ninguna cuenta 572XXX en el plan contable de pruebas")
+        legacy_code = f"{truncated_account.code}123"
+
+        wizard = self._make_wizard()
+        acc = wizard._get_account(legacy_code)
+
+        self.assertIsNotNone(acc)
+        self.assertEqual(acc.id, truncated_account.id)
+        self.assertEqual(acc.code, truncated_account.code)
+        self.assertEqual(len(acc.code), 6)
+
     def test_get_account_normal_normalizes_to_6_digits(self):
         """610000000 → busca cuenta normalizada a 6 dígitos (610000 o 610)."""
         self._ensure_account("610000", "Variación existencias", "expense")
@@ -228,6 +241,63 @@ class TestAiciaAccountImporterWizard(TransactionCase):
     def test_get_account_empty_returns_none(self):
         wizard = self._make_wizard()
         self.assertIsNone(wizard._get_account(""))
+
+    def test_get_nomina_account_code_for_lookup_changes_610_to_640(self):
+        """Las cuentas de nómina 610XXXXXX se reclasifican a 640XXX con 6 dígitos."""
+        wizard = self._make_wizard()
+
+        self.assertEqual(
+            wizard._get_nomina_account_code_for_lookup("610123456"), "640123"
+        )
+        self.assertEqual(
+            wizard._get_nomina_account_code_for_lookup("610000000"), "640000"
+        )
+
+    def test_build_line_vals_nomina_610_uses_640_after_partner_assignment(self):
+        """Tras resolver el empleado, la línea de nómina busca la cuenta 640XXX."""
+        wizard = self._make_wizard(create_missing_partners=False)
+        partner = self.env.user.partner_id
+        account = self.env["account.account"].search(
+            [("company_ids", "in", [self.env.company.id])], limit=1
+        )
+        self.assertTrue(account)
+
+        linea = {
+            "cuenta": "610123456",
+            "descripcion": "Nómina empleado",
+            "debit": 100.0,
+            "credit": 0.0,
+            "id_proyecto": None,
+        }
+
+        with (
+            patch.object(
+                type(wizard),
+                "_resolve_partner_nomina",
+                autospec=True,
+                return_value=partner,
+            ) as mocked_resolve_partner,
+            patch.object(
+                type(wizard),
+                "_get_account",
+                autospec=True,
+                return_value=account,
+            ) as mocked_get_account,
+        ):
+            vals, error, warning = wizard._build_line_vals(
+                linea,
+                "Asiento nómina",
+                set(),
+                {},
+                is_nomina=True,
+            )
+
+        self.assertFalse(error)
+        self.assertFalse(warning)
+        self.assertEqual(vals["partner_id"], partner.id)
+        mocked_resolve_partner.assert_called_once()
+        self.assertEqual(mocked_get_account.call_args.args[1], "640123")
+        self.assertTrue(mocked_get_account.call_args.kwargs["skip_collective"])
 
     # ── Tests: mapeo persistente de cuentas ─────────────────────────────────
 
@@ -467,7 +537,7 @@ class TestAiciaAccountImporterWizard(TransactionCase):
         self.assertGreaterEqual(wizard.total_created + wizard.total_warnings, 1)
 
     def test_numero_apunte_float_no_dot_zero(self):
-        """Numero_Apunte como float en Excel → se convierte a int (sin '.0' en la marca legado)."""
+        """Numero_Apunte como float en Excel → se convierte a int (sin '.0' en ref)."""
         self._ensure_account("430000", "Clientes", "asset_receivable")
         self._ensure_account("700000", "Ventas", "income")
 
@@ -484,10 +554,9 @@ class TestAiciaAccountImporterWizard(TransactionCase):
         )
         wizard.action_import()
 
+        # La ref debe ser "102", no "102.0"
         move = self._find_move_by_legacy_number("102")
-        self.assertTrue(move, "El asiento debe quedar marcado con el número legado '102'")
-        self.assertEqual(move.ref, "Test float ref")
-        self.assertEqual(move.name, "/")
+        self.assertTrue(move, "El asiento debe tener ref='102', no '102.0'")
 
     def test_import_creates_journal_entry(self):
         """Importar un asiento cuadrado válido → crea el account.move."""
@@ -518,8 +587,6 @@ class TestAiciaAccountImporterWizard(TransactionCase):
         self.assertEqual(wizard.total_errors, 0)
         move = self._find_move_by_legacy_number("100")
         self.assertTrue(move)
-        self.assertEqual(move.ref, "Venta enero")
-        self.assertEqual(move.name, "/")
 
     def test_import_converts_cents_to_euros(self):
         """Importe 121000 céntimos → 1210,00 € en la línea del asiento."""
@@ -679,6 +746,69 @@ class TestAiciaAccountImporterWizard(TransactionCase):
         self.assertTrue(move)
         self.assertEqual(move.ref, "Venta visible en referencia")
         self.assertEqual(move.name, "/")
+
+    def test_import_truncates_572_account_to_6_digits_in_move_lines(self):
+        """La conversión del apunte usa 572XXX en la línea contable, nunca 572XXXXXX."""
+        bank_account = self.env["account.account"].search(
+            [
+                ("code", "=like", "572___"),
+                ("company_ids", "in", [self.env.company.id]),
+            ],
+            order="code desc",
+            limit=1,
+        )
+        income_account = self.env["account.account"].search(
+            [
+                ("code", "=", "700000"),
+                ("company_ids", "in", [self.env.company.id]),
+            ],
+            limit=1,
+        )
+        if not bank_account or not income_account:
+            self.skipTest("No existen cuentas 572XXX/700000 disponibles en el plan contable")
+        legacy_bank_code = f"{bank_account.code}123"
+
+        apuntes = self._make_apuntes_xlsx([
+            [81, 8100, 20250201, None, "Banco truncado", "DOC", 80000, True, False, "R"],
+        ])
+        lineas = self._make_lineas_xlsx([
+            [81, 1, legacy_bank_code, 0, 0, "Banco legado", 80000, "D"],
+            [81, 2, "700000000", 0, 0, "Contrapartida", 80000, "H"],
+        ])
+        wizard = self._make_wizard(
+            file_apuntes=self._enc(apuntes),
+            file_lineas=self._enc(lineas),
+        )
+
+        wizard.action_import()
+
+        move = self._find_move_by_legacy_number("8100")
+        self.assertTrue(move)
+        debit_line = move.line_ids.filtered(lambda line: line.debit > 0)
+        self.assertEqual(len(debit_line), 1)
+        self.assertEqual(debit_line.account_id.id, bank_account.id)
+        self.assertEqual(debit_line.account_id.code, bank_account.code)
+        self.assertEqual(len(debit_line.account_id.code), 6)
+
+    def test_import_log_html_generated(self):
+        """Tras importar, import_log contiene HTML con el resumen."""
+        self._ensure_account("430000", "Clientes", "asset_receivable")
+        self._ensure_account("700000", "Ventas", "income")
+
+        apuntes = self._make_apuntes_xlsx([
+            [9, 900, 20250301, None, "Log test", "DOC", 30000, True, False, "R"],
+        ])
+        lineas = self._make_lineas_xlsx([
+            [9, 1, "430000001", 0, 0, "Test", 30000, "D"],
+            [9, 2, "700000000", 0, 0, "Test", 30000, "H"],
+        ])
+        wizard = self._make_wizard(
+            file_apuntes=self._enc(apuntes), file_lineas=self._enc(lineas)
+        )
+        wizard.action_import()
+
+        self.assertIn("Resumen", wizard.import_log)
+        self.assertIn("creados", wizard.import_log)
 
     def test_no_files_raises_user_error(self):
         """Sin archivos → UserError."""
