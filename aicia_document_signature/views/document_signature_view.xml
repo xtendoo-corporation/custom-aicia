@@ -1,0 +1,89 @@
+<?xml version="1.0" encoding="utf-8"?>
+<odoo>
+    <data>
+        <record id="view_document_signature_tree" model="ir.ui.view">
+            <field name="name">document.signature.tree</field>
+            <field name="model">document.signature</field>
+            <field name="arch" type="xml">
+                <list string="Documentos Firmados">
+                    <field name="name"/>
+                    <field name="document_filename"/>
+                    <field name="certificate_id"/>
+                    <field name="user_id"/>
+                    <field name="signature_date"/>
+                    <field name="state"/>
+                </list>
+            </field>
+        </record>
+
+        <record id="view_document_signature_form" model="ir.ui.view">
+            <field name="name">document.signature.form</field>
+            <field name="model">document.signature</field>
+            <field name="arch" type="xml">
+                <form string="Firma de Documento">
+                    <header>
+                        <button
+                            name="action_sign_document"
+                            string="Firmar"
+                            type="object"
+                            class="btn-primary"
+                        />
+                        <field name="state" widget="statusbar" statusbar_visible="draft,signed,error"/>
+                    </header>
+                    <sheet>
+                        <group>
+                            <group>
+                                <field name="document_to_sign" filename="document_filename"/>
+                                <field name="document_filename"/>
+                                <field name="certificate_id" options="{'no_create': True}"/>
+                                <field name="user_id"/>
+                            </group>
+                            <group>
+                                <field name="signature_location"/>
+                                <field name="signature_reason"/>
+                                <field name="signature_pages"/>
+                                <field name="signature_date" readonly="1"/>
+                            </group>
+                        </group>
+                        <group string="Documento firmado">
+                            <field name="signed_document" filename="signed_filename" readonly="1"/>
+                            <field name="signed_filename" readonly="1"/>
+                        </group>
+                    </sheet>
+                    <chatter/>
+                </form>
+            </field>
+        </record>
+
+        <record id="view_document_signature_search" model="ir.ui.view">
+            <field name="name">document.signature.search</field>
+            <field name="model">document.signature</field>
+            <field name="arch" type="xml">
+                <search string="Buscar documentos firmados">
+                    <field name="name"/>
+                    <field name="document_filename"/>
+                    <field name="certificate_id"/>
+                    <field name="user_id"/>
+                    <filter string="Borradores" name="draft" domain="[('state', '=', 'draft')]"/>
+                    <filter string="Firmados" name="signed" domain="[('state', '=', 'signed')]"/>
+                    <filter string="Errores" name="error" domain="[('state', '=', 'error')]"/>
+                </search>
+            </field>
+        </record>
+
+        <record id="action_document_signature" model="ir.actions.act_window">
+            <field name="name">Documentos Firmados</field>
+            <field name="res_model">document.signature</field>
+            <field name="view_mode">list,form</field>
+            <field name="search_view_id" ref="view_document_signature_search"/>
+        </record>
+
+        <menuitem
+            id="menu_document_signature"
+            name="Documentos Firmados"
+            action="action_document_signature"
+            parent="menu_document_signature_root"
+            sequence="30"
+        />
+    </data>
+</odoo>

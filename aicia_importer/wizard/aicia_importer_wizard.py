@@ -1833,10 +1833,10 @@ class AiciaImporterWizard(models.TransientModel):
                                 try:
                                     _logger.info(f">>> Intentando añadir usuario '{jefe_employee.user_id.name}' (ID: {jefe_employee.user_id.id}) al grupo 'Jefe de Proyecto'")
 
-                                    group_project_boss = self.env.ref('portal_requests.group_project_boss', raise_if_not_found=False)
+                                    group_project_boss = self.env.ref('aicia_portal_requests.group_project_boss', raise_if_not_found=False)
 
                                     if not group_project_boss:
-                                        _logger.error(f"✗ No se encontró el grupo 'portal_requests.group_project_boss'")
+                                        _logger.error(f"✗ No se encontró el grupo 'aicia_portal_requests.group_project_boss'")
                                     else:
                                         _logger.info(f">>> Grupo encontrado: {group_project_boss.name} (ID: {group_project_boss.id})")
                                         _logger.info(f">>> Grupos actuales del usuario: {jefe_employee.user_id.group_ids.mapped('name')}")
@@ -1854,9 +1854,9 @@ class AiciaImporterWizard(models.TransientModel):
 
                                         # Añadir SIEMPRE al grupo "Jefe de Equipo" (group_equip_boss)
                                         # El comando (4, id) no duplica de forma nativa en Odoo
-                                        group_equip_boss = self.env.ref('portal_requests.group_equip_boss', raise_if_not_found=False)
+                                        group_equip_boss = self.env.ref('aicia_portal_requests.group_equip_boss', raise_if_not_found=False)
                                         if not group_equip_boss:
-                                            _logger.error(f"✗ No se encontró el grupo 'portal_requests.group_equip_boss'")
+                                            _logger.error(f"✗ No se encontró el grupo 'aicia_portal_requests.group_equip_boss'")
                                         else:
                                             jefe_employee.user_id.sudo().write({
                                                 'group_ids': [(4, group_equip_boss.id)]
@@ -1986,7 +1986,7 @@ class AiciaImporterWizard(models.TransientModel):
     def action_update_project_bosses(self):
         """
         Recorre todos los proyectos (account.analytic.account) con responsible_id
-        y añade ese usuario al grupo 'Jefe de Equipo' (portal_requests.group_equip_boss).
+        y añade ese usuario al grupo 'Jefe de Equipo' (aicia_portal_requests.group_equip_boss).
         Muestra un resumen detallado en el log del wizard.
         """
         self.ensure_one()
@@ -1996,11 +1996,11 @@ class AiciaImporterWizard(models.TransientModel):
         _logger.info("=" * 80)
 
         # Obtener el grupo "Jefe de Equipo"
-        group_equip_boss = self.env.ref('portal_requests.group_equip_boss', raise_if_not_found=False)
+        group_equip_boss = self.env.ref('aicia_portal_requests.group_equip_boss', raise_if_not_found=False)
         if not group_equip_boss:
             self.write({
                 'import_log': '<p style="color:red;">❌ No se encontró el grupo '
-                              '<b>portal_requests.group_equip_boss</b>. '
+                              '<b>aicia_portal_requests.group_equip_boss</b>. '
                               'Verifica que el módulo portal_requests está instalado correctamente.</p>',
                 'state': 'done',
             })

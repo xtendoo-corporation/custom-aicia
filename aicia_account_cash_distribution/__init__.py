@@ -47,12 +47,12 @@ def _create_default_plan(env, company):
 	return plan
 
 
-def post_init_hook(cr, registry):
-	env = api.Environment(cr, SUPERUSER_ID, {})
+def post_init_hook(cr_or_env, registry=None):
+	env = cr_or_env if isinstance(cr_or_env, api.Environment) else api.Environment(cr_or_env, SUPERUSER_ID, {})
 	for company in env['res.company'].sudo().search([]):
 		_ensure_distribution_journal(env, company)
 		plan = _create_default_plan(env, company)
-		if plan and not company.cash_distribution_active:
+		if plan and 'cash_distribution_active' in company._fields and not company.cash_distribution_active:
 			company.sudo().write({'cash_distribution_active': True})
 
 

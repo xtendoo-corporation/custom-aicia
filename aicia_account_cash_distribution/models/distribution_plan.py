@@ -96,6 +96,13 @@ class AiciaDistributionPlan(models.Model):
     @api.model
     def _setup_default_plan(self, company):
         """Crea/actualiza el plan por defecto y sus líneas de forma segura."""
+        if isinstance(company, (list, tuple)):
+            company = company[0] if company else False
+        if isinstance(company, int):
+            company = self.env['res.company'].browse(company)
+        if not company:
+            company = self.env.company
+
         plan = self.search([
             ('company_id', '=', company.id),
             ('name', '=', 'Distribución AICIA por defecto'),

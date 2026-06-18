@@ -4,12 +4,12 @@
         <field name="name">document.approval.tree</field>
         <field name="model">document.approval</field>
         <field name="arch" type="xml">
-            <tree>
+            <list>
                 <field name="type_id"/>
                 <field name="description"/>
                 <field name="approved"/>
                 <field name="group_approval_id" readonly="1"/>
-            </tree>
+            </list>
         </field>
     </record>
 
@@ -38,11 +38,7 @@
     <record id="action_document_approval" model="ir.actions.act_window">
         <field name="name">Document Approvals</field>
         <field name="res_model">document.approval</field>
-        <field name="view_mode">tree,form</field>
+        <field name="view_mode">list,form</field>
     </record>
 
 </odoo>
-
-
-
-

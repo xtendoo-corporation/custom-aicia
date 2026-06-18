@@ -9,7 +9,7 @@
         <!-- Menú principal bajo Contabilidad -->
         <menuitem id="menu_aicia_cash_dist_root"
             name="Distribución de Cobros"
-            parent="account.account_account_menu"
+            parent="aicia_account_menu.menu_aicia_root"
             sequence="90"
             groups="account.group_account_manager"/>
 
@@ -30,4 +30,3 @@
 
     </data>
 </odoo>
-

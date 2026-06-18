@@ -1,0 +1,46 @@
+<?xml version="1.0" encoding="utf-8"?>
+<odoo>
+    <menuitem id="menu_aicia_account_pgc_recode_root"
+              name="Recodificación PGC 2008"
+              parent="aicia_account_menu.menu_aicia_root"
+              sequence="100"/>
+
+    <menuitem id="menu_aicia_account_pgc_recode_simulation"
+              name="Ejecutar recodificación"
+              parent="menu_aicia_account_pgc_recode_root"
+              action="action_aicia_account_pgc_recode_simulation_wizard"
+              sequence="10"/>
+
+    <menuitem id="menu_aicia_account_pgc_recode_rules"
+              name="Reglas de equivalencia"
+              parent="menu_aicia_account_pgc_recode_root"
+              action="action_aicia_account_pgc_recode_rule"
+              sequence="20"/>
+
+    <menuitem id="menu_aicia_account_pgc_recode_batches"
+              name="Lotes de recodificación"
+              parent="menu_aicia_account_pgc_recode_root"
+              action="action_aicia_account_pgc_recode_batch"
+              sequence="30"/>
+
+    <menuitem id="menu_aicia_account_pgc_recode_lines"
+              name="Líneas de propuesta"
+              parent="menu_aicia_account_pgc_recode_root"
+              action="action_aicia_account_pgc_recode_line"
+              sequence="40"/>
+
+    <menuitem id="menu_aicia_account_pgc_recode_import"
+              name="Importar equivalencias"
+              parent="menu_aicia_account_pgc_recode_root"
+              action="action_aicia_account_pgc_recode_import_wizard"
+              sequence="50"/>
+
+    <record id="menu_aicia_account_pgc_recode_batches" model="ir.ui.menu">
+        <field name="active" eval="False"/>
+    </record>
+
+    <record id="menu_aicia_account_pgc_recode_lines" model="ir.ui.menu">
+        <field name="active" eval="False"/>
+    </record>
+
+</odoo>

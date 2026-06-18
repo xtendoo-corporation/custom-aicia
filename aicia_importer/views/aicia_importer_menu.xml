@@ -74,30 +74,6 @@
 <!--        sequence="40"-->
 <!--    />-->
 
-    <!-- Menú AICIA en Contabilidad (Proyectos / Cuentas Analíticas) -->
-<!--    <menuitem-->
-<!--        id="aicia_menu_accounting"-->
-<!--        name="AICIA"-->
-<!--        parent="account.menu_finance"-->
-<!--        sequence="100"-->
-<!--    />-->
-
-<!--    <menuitem-->
-<!--        id="aicia_importer_projects_menu"-->
-<!--        name="Importar Proyectos"-->
-<!--        parent="aicia_menu_hr"-->
-<!--        action="aicia_importer_projects_action"-->
-<!--        sequence="10"-->
-<!--    />-->
-
-<!--    <menuitem-->
-<!--        id="aicia_importer_project_assignments_menu"-->
-<!--        name="Importar Asignación de Proyectos"-->
-<!--        parent="aicia_menu_hr"-->
-<!--        action="aicia_importer_project_assignments_action"-->
-<!--        sequence="20"-->
-<!--    />-->
-
     <menuitem
         id="aicia_importer_payroll_menu"
         name="Importar Nóminas"
@@ -106,4 +82,3 @@
         sequence="50"
     />
 </odoo>
-

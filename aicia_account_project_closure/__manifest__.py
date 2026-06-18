@@ -26,6 +26,7 @@ Características:
     "website": "https://xtendoo.es",
     "category": "Accounting",
     "depends": [
+        "aicia_account_menu",
         "account",
         "analytic",
     ],

@@ -1,0 +1,46 @@
+<?xml version="1.0" encoding="utf-8"?>
+<odoo>
+    <record id="view_aicia_account_pgc_recode_simulation_wizard_form" model="ir.ui.view">
+        <field name="name">aicia.account.pgc.recode.simulation.wizard.form</field>
+        <field name="model">aicia.account.pgc.recode.simulation.wizard</field>
+        <field name="arch" type="xml">
+            <form string="Ejecutar recodificación">
+                <group>
+                    <group>
+                        <field name="company_id" groups="base.group_multi_company"/>
+                        <field name="date_from"/>
+                        <field name="date_to"/>
+                        <field name="journal_ids" widget="many2many_tags"/>
+                    </group>
+                    <group>
+                        <field name="operation_mode"/>
+                        <field name="manual_old_account_id"
+                               domain="[('company_ids', '=', company_id)]"
+                               invisible="operation_mode != 'manual'"
+                               required="operation_mode == 'manual'"/>
+                        <field name="manual_new_account_id"
+                               domain="[('company_ids', '=', company_id)]"
+                               invisible="operation_mode != 'manual'"
+                               required="operation_mode == 'manual'"/>
+                    </group>
+                </group>
+                <group string="Opciones avanzadas" invisible="1">
+                    <field name="posted_only"/>
+                    <field name="include_already_recoded"/>
+                    <field name="account_ids" widget="many2many_tags"/>
+                </group>
+                <footer>
+                    <button name="action_simulate" string="Generar borrador" type="object" class="btn-primary"/>
+                    <button string="Cancelar" class="btn-secondary" special="cancel"/>
+                </footer>
+            </form>
+        </field>
+    </record>
+
+    <record id="action_aicia_account_pgc_recode_simulation_wizard" model="ir.actions.act_window">
+        <field name="name">Ejecutar recodificación</field>
+        <field name="res_model">aicia.account.pgc.recode.simulation.wizard</field>
+        <field name="view_mode">form</field>
+        <field name="target">new</field>
+    </record>
+</odoo>

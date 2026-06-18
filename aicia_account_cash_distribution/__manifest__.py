@@ -5,7 +5,7 @@
     'summary': 'Distribute income based on cash received (reconciliation)',
     'author': 'Xtendoo',
     'license': 'AGPL-3',
-    'depends': ['account', 'analytic'],
+    'depends': ['account', 'analytic', 'aicia_account_menu'],
     'pre_init_hook': 'pre_init_hook',
     'post_init_hook': 'post_init_hook',
     'data': [

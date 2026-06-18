@@ -5,7 +5,7 @@
     "author": "Xtendoo",
     "category": "Accounting",
     "version": "19.0.1.0.2",
-    "depends": ["account"],
+    "depends": ["account", "aicia_account_menu"],
     "license": "AGPL-3",
     "application": True,
     "description": """
