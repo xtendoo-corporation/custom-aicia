@@ -1,0 +1,82 @@
+<?xml version="1.0" encoding="utf-8"?>
+<odoo>
+    <data noupdate="0">
+
+        <!-- Corregir acción con domain inválido guardada en BD -->
+        <record id="action_approved" model="ir.actions.act_window">
+            <field name="name">Documentos Aprobados</field>
+            <field name="res_model">document.approval</field>
+            <field name="view_mode">list,form</field>
+            <field name="domain">[('status', '=', 'approve')]</field>
+        </record>
+
+        <record id="dashboard_documents" model="portal.request.dashboard">
+            <field name="name">Documentos</field>
+            <field name="image" type="base64" file="portal_requests/static/description/document.png"/>
+            <field name="model">document.approval</field>
+             <field name="allowed_group_ids" eval="[
+                (4, ref('portal_requests.group_director_investigation_and_development')),
+                (4, ref('portal_requests.group_director_manager')),
+                (4, ref('portal_requests.group_project_boss')),
+                (4, ref('portal_requests.group_equip_boss')),
+            ]"/>
+        </record>
+        <record id="dashboard_projects" model="portal.request.dashboard">
+            <field name="name">Proyectos</field>
+            <field name="image" type="base64" file="portal_requests/static/description/project.png"/>
+            <field name="model">portal.project.request</field>
+            <field name="allowed_group_ids" eval="[(4, ref('portal_requests.group_director_investigation_and_development'))]"/>
+        </record>
+        <record id="dashboard_out_invoice" model="portal.request.dashboard">
+            <field name="name">Facturas</field>
+            <field name="show_unapproved">False</field>
+            <field name="image" type="base64" file="portal_requests/static/description/invoicing.png"/>
+            <field name="model">portal.invoice.request</field>
+            <field name="type">out_invoice</field>
+            <field name="allowed_group_ids" eval="[
+                (4, ref('portal_requests.group_director_investigation_and_development')),
+                (4, ref('portal_requests.group_director_manager')),
+                (4, ref('portal_requests.group_intern_partner_responsible')),
+                (4, ref('portal_requests.group_equip_boss')),
+                (4, ref('portal_requests.group_project_boss')),
+            ]"/>
+        </record>
+        <record id="dashboard_out_refund" model="portal.request.dashboard">
+            <field name="name">Facturas rectificativas</field>
+            <field name="image" type="base64" file="portal_requests/static/description/invoicing.png"/>
+            <field name="show_unapproved">False</field>
+            <field name="model">portal.invoice.request</field>
+            <field name="type">out_refund</field>
+             <field name="allowed_group_ids" eval="[(4, ref('portal_requests.group_intern_partner_responsible'))]"/>
+        </record>
+        <record id="dashboard_employee" model="portal.request.dashboard">
+            <field name="name">Empleados</field>
+            <field name="image" type="base64" file="portal_requests/static/description/employee.png"/>
+            <field name="model">portal.hr.employee.request</field>
+            <field name="type">employee</field>
+             <field name="allowed_group_ids" eval="[(4, ref('portal_requests.group_personnel_purchase_responsible'))]"/>
+        </record>
+        <record id="dashboard_intern" model="portal.request.dashboard">
+            <field name="name">Becarios</field>
+            <field name="image" type="base64" file="portal_requests/static/description/employee.png"/>
+            <field name="model">portal.hr.employee.intern.request</field>
+            <field name="type">intern</field>
+             <field name="allowed_group_ids" eval="[(4, ref('portal_requests.group_intern_partner_responsible'))]"/>
+        </record>
+        <record id="dashboard_expensive" model="portal.request.dashboard">
+            <field name="name">Gastos</field>
+            <field name="show_unapproved">False</field>
+            <field name="image" type="base64" file="portal_requests/static/description/expensive.png"/>
+            <field name="model">portal.hr.expensive.request</field>
+            <field name="type">expensive</field>
+            <field name="allowed_group_ids" eval="[
+                (4, ref('portal_requests.group_director_investigation_and_development')),
+                (4, ref('portal_requests.group_director_manager')),
+                (4, ref('portal_requests.group_personnel_purchase_responsible')),
+                (4, ref('portal_requests.group_equip_boss')),
+                (4, ref('portal_requests.group_project_boss')),
+            ]"/>
+        </record>
+    </data>
+</odoo>
+
