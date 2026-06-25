@@ -14,6 +14,7 @@
         'views/aicia_account_pgc_recode_line_views.xml',
         'views/aicia_pgc_recode_import_wizard_views.xml',
         'views/aicia_pgc_recode_simulation_wizard_views.xml',
+        'views/aicia_pgc_recode_move_wizard_views.xml',
         'views/aicia_pgc_recode_apply_wizard_views.xml',
         'views/menus.xml',
     ],

@@ -3,7 +3,7 @@ from io import BytesIO
 
 import openpyxl
 
-from odoo.exceptions import ValidationError
+from odoo.exceptions import UserError, ValidationError
 from odoo.tests.common import TransactionCase
 
 
@@ -259,7 +259,7 @@ class TestAiciaAccountPgcRecode(TransactionCase):
 
         self.assertEqual(rule_action.name, 'Reglas de recodificación')
         self.assertEqual(import_action.name, 'Importar equivalencias')
-        self.assertEqual(simulation_action.name, 'Ejecutar recodificación')
+        self.assertEqual(simulation_action.name, 'Recodificación por mapeo')
         self.assertIn('Marcar como automática', rule_form_view.arch_db)
         self.assertIn('Colisión detectada', rule_form_view.arch_db)
         self.assertIn('Aplicar lote de recodificación', apply_wizard_view.arch_db)
@@ -323,6 +323,10 @@ class TestAiciaAccountPgcRecode(TransactionCase):
             'aicia_account_pgc_recode.view_aicia_account_pgc_recode_simulation_wizard_form'
         )
 
+        move_view = self.env.ref(
+            'aicia_account_pgc_recode.view_aicia_account_pgc_recode_move_wizard_form'
+        )
+
         self.assertIn('editable="bottom"', rule_tree_view.arch_db)
         self.assertIn('create="false"', rule_tree_view.arch_db)
         self.assertIn('name="proposed_account_id"', rule_tree_view.arch_db)
@@ -332,9 +336,8 @@ class TestAiciaAccountPgcRecode(TransactionCase):
         self.assertIn('name="new_account_id"', batch_form_view.arch_db)
         self.assertIn('editable="bottom"', batch_form_view.arch_db)
         self.assertIn('name="journal_ids"', simulation_view.arch_db)
-        self.assertIn('name="operation_mode"', simulation_view.arch_db)
-        self.assertIn('name="manual_old_account_id"', simulation_view.arch_db)
-        self.assertIn('name="manual_new_account_id"', simulation_view.arch_db)
+        self.assertIn('name="source_account_id"', move_view.arch_db)
+        self.assertIn('name="target_account_id"', move_view.arch_db)
 
     def test_09_manual_edit_recomputes_status_and_collision(self):
         self._ensure_account('640034', 'Cuenta 640034')
@@ -499,53 +502,111 @@ class TestAiciaAccountPgcRecode(TransactionCase):
         self.assertIn('name="blocking_reason"', line_tree_view.arch_db)
         self.assertIn('name="blocking_reason"', batch_form_view.arch_db)
 
-    def test_13_manual_mode_filters_by_journal_and_prepares_one_to_one_change(self):
+    def test_13_move_wizard_applies_account_change_directly(self):
         target_account = self._ensure_account('642222', 'Cuenta destino puntual')
-        secondary_journal = self.env['account.journal'].create({
-            'name': 'General Test 2',
-            'code': 'GE2',
-            'type': 'general',
+
+        wizard = self.env['aicia.account.pgc.recode.move.wizard'].create({
             'company_id': self.company.id,
+            'source_account_id': self.account_old_1.id,
+            'target_account_id': target_account.id,
         })
-        secondary_move = self.env['account.move'].create({
-            'journal_id': secondary_journal.id,
-            'date': '2026-01-02',
+
+        self.assertEqual(wizard.move_line_count, 1)
+
+        result = wizard.action_apply_move()
+
+        self.assertEqual(result['tag'], 'display_notification')
+        move_line = self.move.line_ids.filtered(
+            lambda line: line.name == 'Test line 1'
+        )
+        self.assertEqual(move_line.account_id, target_account)
+        self.assertTrue(move_line.aicia_pgc_recode_applied)
+        self.assertEqual(move_line.aicia_pgc_recode_original_account_id, self.account_old_1)
+        self.assertFalse(move_line.aicia_pgc_recode_last_batch_id)
+
+    def test_13b_move_wizard_filters_by_date_range(self):
+        target_account = self._ensure_account('642223', 'Cuenta destino por fecha')
+        later_move = self.env['account.move'].create({
+            'journal_id': self.journal.id,
+            'date': '2026-03-15',
             'line_ids': [
                 (0, 0, {
                     'account_id': self.account_old_1.id,
-                    'debit': 50.0,
+                    'debit': 70.0,
                     'credit': 0.0,
-                    'name': 'Test line 3',
+                    'name': 'Out of range line',
                 }),
                 (0, 0, {
                     'account_id': self.account_640.id,
                     'debit': 0.0,
-                    'credit': 50.0,
-                    'name': 'Test line 4',
+                    'credit': 70.0,
+                    'name': 'Out of range counterpart',
                 }),
             ],
         })
-        secondary_move.action_post()
+        later_move.action_post()
 
-        wizard = self.env['aicia.account.pgc.recode.simulation.wizard'].create({
+        wizard = self.env['aicia.account.pgc.recode.move.wizard'].create({
             'company_id': self.company.id,
+            'source_account_id': self.account_old_1.id,
+            'target_account_id': target_account.id,
             'date_from': '2026-01-01',
             'date_to': '2026-01-31',
-            'journal_ids': [(6, 0, self.journal.ids)],
-            'operation_mode': 'manual',
-            'manual_old_account_id': self.account_old_1.id,
-            'manual_new_account_id': target_account.id,
         })
 
-        result = wizard.action_simulate()
-        batch = self.env['aicia.account.pgc.recode.batch'].browse(result['res_id'])
+        self.assertEqual(wizard.move_line_count, 1)
+        wizard.action_apply_move()
 
-        self.assertEqual(batch.state, 'simulated')
-        self.assertIn('Borrador generado sobre 1 líneas', batch.note)
-        self.assertEqual(len(batch.line_ids), 1)
-        self.assertEqual(batch.line_ids.old_account_id, self.account_old_1)
-        self.assertEqual(batch.line_ids.new_account_id, target_account)
-        self.assertEqual(batch.line_ids.status, 'automatic')
+        in_range_line = self.move.line_ids.filtered(lambda line: line.name == 'Test line 1')
+        out_range_line = later_move.line_ids.filtered(lambda line: line.name == 'Out of range line')
+        self.assertEqual(in_range_line.account_id, target_account)
+        self.assertEqual(out_range_line.account_id, self.account_old_1)
+
+    def test_13c_move_wizard_rejects_invalid_configuration(self):
+        target_account = self._ensure_account('642224', 'Cuenta destino inválida')
+
+        same_account_wizard = self.env['aicia.account.pgc.recode.move.wizard'].create({
+            'company_id': self.company.id,
+            'source_account_id': self.account_old_1.id,
+            'target_account_id': self.account_old_1.id,
+        })
+        with self.assertRaises(ValidationError):
+            same_account_wizard.action_apply_move()
+
+        bad_dates_wizard = self.env['aicia.account.pgc.recode.move.wizard'].create({
+            'company_id': self.company.id,
+            'source_account_id': self.account_old_1.id,
+            'target_account_id': target_account.id,
+            'date_from': '2026-02-01',
+            'date_to': '2026-01-01',
+        })
+        with self.assertRaises(ValidationError):
+            bad_dates_wizard.action_apply_move()
+
+    def test_13d_move_wizard_requires_matching_move_lines(self):
+        target_account = self._ensure_account('642225', 'Cuenta destino sin apuntes')
+        empty_account = self._ensure_account('612999', 'Cuenta sin movimientos')
+
+        wizard = self.env['aicia.account.pgc.recode.move.wizard'].create({
+            'company_id': self.company.id,
+            'source_account_id': empty_account.id,
+            'target_account_id': target_account.id,
+        })
+
+        self.assertEqual(wizard.move_line_count, 0)
+        with self.assertRaises(UserError):
+            wizard.action_apply_move()
+
+    def test_13e_move_wizard_menu_and_action_exist(self):
+        move_action = self.env.ref(
+            'aicia_account_pgc_recode.action_aicia_account_pgc_recode_move_wizard'
+        )
+        move_menu = self.env.ref(
+            'aicia_account_pgc_recode.menu_aicia_account_pgc_recode_move'
+        )
+
+        self.assertEqual(move_action.name, 'Mover cuenta a cuenta')
+        self.assertEqual(move_menu.action, move_action)
 
     def test_14_secondary_menus_are_hidden_by_default(self):
         batch_menu = self.env.ref('aicia_account_pgc_recode.menu_aicia_account_pgc_recode_batches')
@@ -553,4 +614,95 @@ class TestAiciaAccountPgcRecode(TransactionCase):
 
         self.assertFalse(batch_menu.active)
         self.assertFalse(line_menu.active)
+
+    def test_15_preview_builds_subaccount_mapping(self):
+        target = self._ensure_account('640034', 'Sueldos y salarios 034')
+        self.rule_model.create({
+            'old_code': '610000034',
+            'target_prefix': '640',
+            'company_id': self.company.id,
+        })
+
+        wizard = self.env['aicia.account.pgc.recode.simulation.wizard'].create({
+            'company_id': self.company.id,
+        })
+        wizard.action_preview()
+
+        self.assertTrue(wizard.preview_generated)
+
+        old_preview = wizard.preview_line_ids.filtered(
+            lambda line: line.old_account_id == self.account_old_1
+        )
+        self.assertEqual(len(old_preview), 1)
+        self.assertEqual(old_preview.new_account_id, target)
+        self.assertEqual(old_preview.status, 'automatic')
+        self.assertEqual(old_preview.move_line_count, 1)
+        self.assertEqual(old_preview.total_balance, 100.0)
+
+        discarded_preview = wizard.preview_line_ids.filtered(
+            lambda line: line.old_account_id == self.account_640
+        )
+        self.assertEqual(discarded_preview.status, 'discarded')
+        self.assertFalse(discarded_preview.new_account_id)
+
+    def test_16_preview_override_changes_generated_batch(self):
+        self._ensure_account('640034', 'Sueldos y salarios 034')
+        override_account = self._ensure_account('641999', 'Cuenta override')
+        self.rule_model.create({
+            'old_code': '610000034',
+            'target_prefix': '640',
+            'company_id': self.company.id,
+        })
+
+        wizard = self.env['aicia.account.pgc.recode.simulation.wizard'].create({
+            'company_id': self.company.id,
+        })
+        wizard.action_preview()
+        preview = wizard.preview_line_ids.filtered(
+            lambda line: line.old_account_id == self.account_old_1
+        )
+        preview.new_account_id = override_account
+
+        res = wizard.action_simulate()
+        batch = self.env['aicia.account.pgc.recode.batch'].browse(res['res_id'])
+        recode_line = batch.line_ids.filtered(
+            lambda line: line.old_account_id == self.account_old_1
+        )
+        self.assertEqual(recode_line.new_account_id, override_account)
+        self.assertEqual(recode_line.new_account_code, '641999')
+        self.assertEqual(recode_line.status, 'automatic')
+
+    def test_17_preview_without_target_marks_line_manual(self):
+        self._ensure_account('640034', 'Sueldos y salarios 034')
+        self.rule_model.create({
+            'old_code': '610000034',
+            'target_prefix': '640',
+            'company_id': self.company.id,
+        })
+
+        wizard = self.env['aicia.account.pgc.recode.simulation.wizard'].create({
+            'company_id': self.company.id,
+        })
+        wizard.action_preview()
+        preview = wizard.preview_line_ids.filtered(
+            lambda line: line.old_account_id == self.account_old_1
+        )
+        preview.new_account_id = False
+
+        res = wizard.action_simulate()
+        batch = self.env['aicia.account.pgc.recode.batch'].browse(res['res_id'])
+        recode_line = batch.line_ids.filtered(
+            lambda line: line.old_account_id == self.account_old_1
+        )
+        self.assertFalse(recode_line.new_account_id)
+        self.assertEqual(recode_line.status, 'manual')
+
+    def test_18_simulation_view_has_mapping_preview_tab(self):
+        simulation_view = self.env.ref(
+            'aicia_account_pgc_recode.view_aicia_account_pgc_recode_simulation_wizard_form'
+        )
+
+        self.assertIn('name="preview_line_ids"', simulation_view.arch_db)
+        self.assertIn('name="action_preview"', simulation_view.arch_db)
+        self.assertIn('Mapeo de subcuentas', simulation_view.arch_db)
 

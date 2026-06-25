@@ -45,9 +45,6 @@ class AiciaAccountPgcRecodeBatch(models.Model):
             batch.manual_line_count = len(batch.line_ids.filtered(lambda l: l.status == 'manual'))
             batch.review_line_count = len(batch.line_ids.filtered(lambda l: l.status == 'review'))
 
-    def action_simulate(self):
-        pass
-
     def action_apply_automatic(self):
         return {
             'name': _('Aplicar propuestas automáticas'),
@@ -89,6 +86,3 @@ class AiciaAccountPgcRecodeBatch(models.Model):
                 line.action_revert()
 
             batch.state = 'reverted'
-
-    def action_export_report(self):
-        pass

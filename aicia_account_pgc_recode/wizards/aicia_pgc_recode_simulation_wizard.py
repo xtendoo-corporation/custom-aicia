@@ -1,9 +1,11 @@
-from odoo import _, fields, models
-from odoo.exceptions import ValidationError
+from odoo import _, api, fields, models
+
+BANK_CASH_TYPES = ('asset_cash', 'liability_credit_card')
+
 
 class AiciaAccountPgcRecodeSimulationWizard(models.TransientModel):
     _name = 'aicia.account.pgc.recode.simulation.wizard'
-    _description = 'Simular recodificación PGC'
+    _description = 'Recodificación PGC por mapeo'
 
     company_id = fields.Many2one('res.company', string='Compañía', required=True, default=lambda self: self.env.company)
     date_from = fields.Date(string='Fecha desde')
@@ -15,34 +17,16 @@ class AiciaAccountPgcRecodeSimulationWizard(models.TransientModel):
         column2='journal_id',
         string='Diarios',
     )
-    operation_mode = fields.Selection([
-        ('rules', 'Usar mapeo'),
-        ('manual', 'Cambio puntual'),
-    ], string='Modo', default='rules', required=True)
-    manual_old_account_id = fields.Many2one(
-        'account.account',
-        string='Cuenta origen',
-    )
-    manual_new_account_id = fields.Many2one(
-        'account.account',
-        string='Cuenta destino',
-    )
     posted_only = fields.Boolean(string='Solo asientos publicados', default=True)
     include_already_recoded = fields.Boolean(string='Incluir ya recodificados', default=False)
     account_ids = fields.Many2many('account.account', relation='aicia_pgc_simulation_account_rel', column1='wizard_id', column2='account_id', string='Cuentas específicas')
 
-    def _check_manual_mode_configuration(self):
-        self.ensure_one()
-        if self.operation_mode != 'manual':
-            return
-        if not self.manual_old_account_id or not self.manual_new_account_id:
-            raise ValidationError(_('Debes indicar la cuenta origen y la cuenta destino para el cambio puntual.'))
-        if self.manual_old_account_id == self.manual_new_account_id:
-            raise ValidationError(_('La cuenta origen y la cuenta destino deben ser distintas.'))
-        if self.company_id not in self.manual_old_account_id.company_ids:
-            raise ValidationError(_('La cuenta origen debe pertenecer al plan contable de la compañía.'))
-        if self.company_id not in self.manual_new_account_id.company_ids:
-            raise ValidationError(_('La cuenta destino debe pertenecer al plan contable de la compañía.'))
+    preview_generated = fields.Boolean(string='Previsualización generada', default=False)
+    preview_line_ids = fields.One2many(
+        'aicia.account.pgc.recode.preview.line',
+        'wizard_id',
+        string='Mapeo de subcuentas',
+    )
 
     def _get_move_line_domain(self):
         self.ensure_one()
@@ -59,148 +43,218 @@ class AiciaAccountPgcRecodeSimulationWizard(models.TransientModel):
             domain.append(('aicia_pgc_recode_applied', '=', False))
         if self.account_ids:
             domain.append(('account_id', 'in', self.account_ids.ids))
-        if self.operation_mode == 'manual' and self.manual_old_account_id:
-            domain.append(('account_id', '=', self.manual_old_account_id.id))
         return domain
 
-    def _build_manual_line_values(self, batch, move_lines):
+    def _get_company_rules(self):
         self.ensure_one()
-        return [{
-            'batch_id': batch.id,
-            'move_line_id': line.id,
-            'old_account_id': line.account_id.id,
-            'new_account_id': self.manual_new_account_id.id,
-            'new_account_code': self.manual_new_account_id.code,
-            'new_account_name': self.manual_new_account_id.name,
-            'status': 'automatic',
-            'confidence': 'high',
-            'notes': _('Cambio puntual preparado desde %s hacia %s.') % (
-                self.manual_old_account_id.code,
-                self.manual_new_account_id.code,
-            ),
-        } for line in move_lines]
+        rules = self.env['aicia.account.pgc.recode.rule'].search([('company_id', '=', self.company_id.id)])
+        rules._recompute_collision_and_status(rules.mapped('company_id'))
+        return rules
+
+    @api.model
+    def _build_rule_maps(self, rules):
+        rule_map = {rule.old_code: rule for rule in rules}
+        prefix_map = {}
+        for rule in rules:
+            prefix = rule.old_code[:4] if len(rule.old_code) > 4 else rule.old_code
+            prefix_map.setdefault(prefix, []).append(rule)
+        return rule_map, prefix_map
+
+    @api.model
+    def _match_rules_for_code(self, old_code, rule_map, prefix_map):
+        if old_code in rule_map:
+            return [rule_map[old_code]]
+        if len(old_code) == 6:
+            for length in range(5, 2, -1):
+                prefix = old_code[:length]
+                if prefix in prefix_map:
+                    matched = [rule for rule in prefix_map[prefix] if old_code.startswith(rule.old_code)]
+                    if matched:
+                        return matched
+        return []
+
+    @api.model
+    def _evaluate_account(self, account, rule_map, prefix_map):
+        old_code = account.code
+        matched_rules = self._match_rules_for_code(old_code, rule_map, prefix_map)
+        result = {
+            'rule_id': False,
+            'new_account_id': False,
+            'new_account_code': False,
+            'new_account_name': False,
+            'status': 'discarded',
+            'confidence': 'none',
+            'notes': '',
+        }
+        notes = []
+        is_bank_cash = account.account_type in BANK_CASH_TYPES
+
+        if len(matched_rules) == 1:
+            rule = matched_rules[0]
+            result['rule_id'] = rule.id
+            result['new_account_code'] = rule.proposed_code
+            result['new_account_name'] = rule.target_label
+            result['new_account_id'] = rule.proposed_account_id.id if rule.proposed_account_id else False
+
+            if rule.status == 'manual':
+                result['status'] = 'manual'
+                if rule.proposed_code and not rule.proposed_account_id:
+                    notes.append(_('La subcuenta propuesta no existe en el plan contable de la compañía.'))
+                else:
+                    notes.append(_('La regla está marcada como manual.'))
+            elif rule.collision:
+                result['status'] = 'review'
+                result['confidence'] = 'medium'
+                notes.append(rule.collision_notes or _('La regla tiene una colisión.'))
+            elif not rule.proposed_code or len(rule.proposed_code) != 6:
+                result['status'] = 'manual'
+                notes.append(_('El código propuesto no es válido.'))
+            elif not rule.proposed_account_id:
+                result['status'] = 'manual'
+                notes.append(_('La subcuenta propuesta no existe en el plan contable de la compañía.'))
+            elif is_bank_cash:
+                result['status'] = 'manual'
+                notes.append(_('Las cuentas de banco o caja requieren validación manual.'))
+            else:
+                result['status'] = 'automatic'
+                result['confidence'] = 'high' if rule.old_code == old_code else 'medium'
+                if result['confidence'] == 'medium':
+                    result['status'] = 'review'
+                    notes.append(_('La regla coincide por prefijo, no de forma exacta.'))
+        elif len(matched_rules) > 1:
+            result['status'] = 'review'
+            result['confidence'] = 'low'
+            notes.append(_('Coinciden varias reglas.'))
+        else:
+            result['status'] = 'discarded'
+            notes.append(_('No se ha encontrado ninguna regla coincidente.'))
+
+        result['notes'] = '\n'.join(notes)
+        return result
+
+    def _resolve_evaluation(self, account, base_eval, preview):
+        if not preview:
+            return base_eval
+
+        result = dict(base_eval)
+        result['rule_id'] = preview.rule_id.id
+        new_account = preview.new_account_id
+
+        if not new_account:
+            result['new_account_id'] = False
+            result['new_account_code'] = preview.new_account_code
+            result['new_account_name'] = preview.new_account_name
+            if base_eval['status'] not in ('manual', 'discarded'):
+                result['status'] = 'manual'
+            result['notes'] = preview.notes or base_eval['notes']
+            return result
+
+        result['new_account_id'] = new_account.id
+        result['new_account_code'] = new_account.code
+        result['new_account_name'] = new_account.name
+
+        if len(new_account.code) != 6:
+            result['status'] = 'manual'
+            result['notes'] = _('El código propuesto no es válido.')
+        elif account.account_type in BANK_CASH_TYPES:
+            result['status'] = 'manual'
+            result['notes'] = _('Las cuentas de banco o caja requieren validación manual.')
+        elif base_eval['status'] == 'review' and new_account.id == base_eval['new_account_id']:
+            result['status'] = 'review'
+            result['confidence'] = base_eval['confidence']
+            result['notes'] = base_eval['notes']
+        else:
+            result['status'] = 'automatic'
+            result['confidence'] = base_eval['confidence'] or 'high'
+            result['notes'] = ''
+        return result
+
+    def action_preview(self):
+        self.ensure_one()
+        self.preview_line_ids.unlink()
+
+        move_lines = self.env['account.move.line'].search(self._get_move_line_domain())
+        rule_map, prefix_map = self._build_rule_maps(self._get_company_rules())
+
+        grouped = {}
+        for line in move_lines:
+            account = line.account_id
+            data = grouped.setdefault(account.id, {'account': account, 'count': 0, 'balance': 0.0})
+            data['count'] += 1
+            data['balance'] += line.balance
+
+        preview_vals = []
+        for data in grouped.values():
+            evaluation = self._evaluate_account(data['account'], rule_map, prefix_map)
+            preview_vals.append({
+                'wizard_id': self.id,
+                'old_account_id': data['account'].id,
+                'move_line_count': data['count'],
+                'total_balance': data['balance'],
+                'new_account_id': evaluation['new_account_id'],
+                'new_account_code': evaluation['new_account_code'],
+                'new_account_name': evaluation['new_account_name'],
+                'rule_id': evaluation['rule_id'],
+                'status': evaluation['status'],
+                'confidence': evaluation['confidence'],
+                'notes': evaluation['notes'],
+            })
+
+        if preview_vals:
+            self.env['aicia.account.pgc.recode.preview.line'].create(preview_vals)
+        self.preview_generated = True
+
+        return {
+            'name': _('Recodificación por mapeo'),
+            'type': 'ir.actions.act_window',
+            'res_model': self._name,
+            'res_id': self.id,
+            'view_mode': 'form',
+            'target': 'new',
+            'context': dict(self.env.context),
+        }
 
     def action_simulate(self):
         self.ensure_one()
-        self._check_manual_mode_configuration()
 
         move_lines = self.env['account.move.line'].search(self._get_move_line_domain())
-
-        if self.operation_mode == 'manual':
-            batch_note = _('Borrador generado sobre %s líneas para trasladar %s a %s.') % (
-                len(move_lines),
-                self.manual_old_account_id.display_name,
-                self.manual_new_account_id.display_name,
-            )
-        else:
-            batch_note = _('Borrador generado sobre %s líneas usando el mapeo configurado.') % len(move_lines)
 
         batch = self.env['aicia.account.pgc.recode.batch'].create({
             'company_id': self.company_id.id,
             'state': 'simulated',
-            'note': batch_note,
+            'note': _('Borrador generado sobre %s líneas usando el mapeo configurado.') % len(move_lines),
         })
 
-        if self.operation_mode == 'manual':
-            lines_data = self._build_manual_line_values(batch, move_lines)
-            if lines_data:
-                self.env['aicia.account.pgc.recode.line'].create(lines_data)
-            return {
-                'name': _('Borrador de recodificación'),
-                'type': 'ir.actions.act_window',
-                'res_model': 'aicia.account.pgc.recode.batch',
-                'view_mode': 'form',
-                'res_id': batch.id,
-            }
+        rule_map, prefix_map = self._build_rule_maps(self._get_company_rules())
+        preview_map = {line.old_account_id.id: line for line in self.preview_line_ids}
 
-        rules = self.env['aicia.account.pgc.recode.rule'].search([('company_id', '=', self.company_id.id)])
-        rules._recompute_collision_and_status(rules.mapped('company_id'))
-        rule_map = {r.old_code: r for r in rules}
-
-        prefix_map = {}
-        for r in rules:
-            prefix = r.old_code[:4] if len(r.old_code) > 4 else r.old_code
-            prefix_map.setdefault(prefix, []).append(r)
-
+        evaluation_cache = {}
         lines_data = []
         rules_used = set()
 
         for line in move_lines:
-            old_code = line.account_id.code
-            matched_rules = []
+            account = line.account_id
+            if account.id not in evaluation_cache:
+                base_eval = self._evaluate_account(account, rule_map, prefix_map)
+                evaluation_cache[account.id] = self._resolve_evaluation(
+                    account, base_eval, preview_map.get(account.id)
+                )
+            evaluation = evaluation_cache[account.id]
 
-            if old_code in rule_map:
-                matched_rules = [rule_map[old_code]]
-            elif len(old_code) == 6:
-                for i in range(5, 2, -1):
-                    prefix = old_code[:i]
-                    if prefix in prefix_map:
-                        matched_rules = [r for r in prefix_map[prefix] if old_code.startswith(r.old_code)]
-                        if matched_rules:
-                            break
-
-            status = 'discarded'
-            rule_id = False
-            new_acc_code = False
-            new_acc_name = False
-            new_acc_id = False
-            confidence = 'none'
-            notes = []
-
-            is_bank_cash = line.account_id.account_type in ('asset_cash', 'liability_credit_card')
-
-            if len(matched_rules) == 1:
-                rule = matched_rules[0]
-                rule_id = rule.id
-                rules_used.add(rule.id)
-                new_acc_code = rule.proposed_code
-                new_acc_name = rule.target_label
-                new_acc_id = rule.proposed_account_id.id if rule.proposed_account_id else False
-
-                if rule.status == 'manual':
-                    status = 'manual'
-                    if rule.proposed_code and not rule.proposed_account_id:
-                        notes.append(_('La subcuenta propuesta no existe en el plan contable de la compañía.'))
-                    else:
-                        notes.append(_('La regla está marcada como manual.'))
-                elif rule.collision:
-                    status = 'review'
-                    confidence = 'medium'
-                    notes.append(rule.collision_notes or _('La regla tiene una colisión.'))
-                elif not rule.proposed_code or len(rule.proposed_code) != 6:
-                    status = 'manual'
-                    notes.append(_('El código propuesto no es válido.'))
-                elif not rule.proposed_account_id:
-                    status = 'manual'
-                    notes.append(_('La subcuenta propuesta no existe en el plan contable de la compañía.'))
-                elif is_bank_cash:
-                    status = 'manual'
-                    notes.append(_('Las cuentas de banco o caja requieren validación manual.'))
-                else:
-                    status = 'automatic'
-                    confidence = 'high' if rule.old_code == old_code else 'medium'
-                    if confidence == 'medium':
-                        status = 'review'
-                        notes.append(_('La regla coincide por prefijo, no de forma exacta.'))
-            elif len(matched_rules) > 1:
-                status = 'review'
-                confidence = 'low'
-                notes.append(_('Coinciden varias reglas.'))
-            else:
-                status = 'discarded'
-                notes.append(_('No se ha encontrado ninguna regla coincidente.'))
+            if evaluation['rule_id']:
+                rules_used.add(evaluation['rule_id'])
 
             lines_data.append({
                 'batch_id': batch.id,
                 'move_line_id': line.id,
-                'old_account_id': line.account_id.id,
-                'new_account_id': new_acc_id,
-                'new_account_code': new_acc_code,
-                'new_account_name': new_acc_name,
-                'rule_id': rule_id,
-                'status': status,
-                'confidence': confidence,
-                'notes': '\n'.join(notes)
+                'old_account_id': account.id,
+                'new_account_id': evaluation['new_account_id'],
+                'new_account_code': evaluation['new_account_code'],
+                'new_account_name': evaluation['new_account_name'],
+                'rule_id': evaluation['rule_id'],
+                'status': evaluation['status'],
+                'confidence': evaluation['confidence'],
+                'notes': evaluation['notes'],
             })
 
         if lines_data:
@@ -214,3 +268,47 @@ class AiciaAccountPgcRecodeSimulationWizard(models.TransientModel):
             'view_mode': 'form',
             'res_id': batch.id,
         }
+
+
+class AiciaAccountPgcRecodePreviewLine(models.TransientModel):
+    _name = 'aicia.account.pgc.recode.preview.line'
+    _description = 'Previsualización del mapeo de subcuentas'
+    _order = 'old_account_code'
+
+    wizard_id = fields.Many2one(
+        'aicia.account.pgc.recode.simulation.wizard',
+        string='Asistente',
+        required=True,
+        ondelete='cascade',
+    )
+    company_id = fields.Many2one(related='wizard_id.company_id', store=True)
+    company_currency_id = fields.Many2one(related='company_id.currency_id')
+
+    old_account_id = fields.Many2one('account.account', string='Subcuenta origen', required=True, readonly=True)
+    old_account_code = fields.Char(related='old_account_id.code', string='Código origen', store=True)
+    old_account_name = fields.Char(related='old_account_id.name', string='Nombre origen')
+
+    move_line_count = fields.Integer(string='Apuntes afectados', readonly=True)
+    total_balance = fields.Monetary(string='Saldo', currency_field='company_currency_id', readonly=True)
+
+    new_account_id = fields.Many2one('account.account', string='Subcuenta destino')
+    new_account_code = fields.Char(string='Código destino propuesto', readonly=True)
+    new_account_name = fields.Char(string='Nombre destino propuesto', readonly=True)
+
+    rule_id = fields.Many2one('aicia.account.pgc.recode.rule', string='Regla', readonly=True)
+
+    status = fields.Selection([
+        ('automatic', 'Automática'),
+        ('review', 'En revisión'),
+        ('manual', 'Manual'),
+        ('discarded', 'Descartada'),
+    ], string='Estado', readonly=True)
+
+    confidence = fields.Selection([
+        ('high', 'Alta'),
+        ('medium', 'Media'),
+        ('low', 'Baja'),
+        ('none', 'Ninguna'),
+    ], string='Confianza', readonly=True)
+
+    notes = fields.Text(string='Observaciones', readonly=True)
