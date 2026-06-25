@@ -9,7 +9,7 @@
         "sale",
         "hr",
         "analytic",
-        "aicia_portal_requests",
+        "portal_requests",
         "aicia_employee_project_percentage",
     ],
     "license": "AGPL-3",

@@ -74,11 +74,11 @@
 <!--        sequence="40"-->
 <!--    />-->
 
-    <menuitem
-        id="aicia_importer_payroll_menu"
-        name="Importar Nóminas"
-        parent="aicia_menu_hr"
-        action="aicia_importer_payroll_action"
-        sequence="50"
-    />
+<!--    <menuitem-->
+<!--        id="aicia_importer_payroll_menu"-->
+<!--        name="Importar Nóminas"-->
+<!--        parent="aicia_menu_hr"-->
+<!--        action="aicia_importer_payroll_action"-->
+<!--        sequence="50"-->
+<!--    />-->
 </odoo>

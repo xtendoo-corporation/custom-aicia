@@ -69,6 +69,7 @@
         'views/portal_user_templates/portal_my_project_requests_list.xml',
         'views/portal_user_templates/project_request_thank_you.xml',
         'views/portal_user_templates/portal_my_payments.xml',
+        'views/portal_user_templates/portal_my_nomina.xml',
         'views/portal_user_templates/portal_my_payment_detail.xml',
         'security/dashboard_permision.xml',
         'wizards/purchase_request_reject_wizard.xml',

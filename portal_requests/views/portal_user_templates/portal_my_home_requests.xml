@@ -73,6 +73,16 @@
             </xpath>
             <xpath expr="//div[@id='portal_common_category']/t[1]" position="after">
                 <t t-call="portal.portal_docs_entry">
+                    <t t-set="icon" t-value="'/portal_requests/static/description/nomina_nuevo.png'"/>
+                    <t t-set="icon_style" t-value="'max-width: 70px; max-height: 70px;'"/>
+                    <t t-set="title">Mis Nóminas</t>
+                    <t t-set="text">Consulta y descargar tus Nóminas</t>
+                    <t t-set="url" t-value="'/my/nomina'"/>
+                    <t t-set="config_card" t-value="True"/>
+                </t>
+            </xpath>
+            <xpath expr="//div[@id='portal_common_category']/t[1]" position="after">
+                <t t-call="portal.portal_docs_entry">
                     <t t-set="icon" t-value="'/portal_requests/static/description/payment.png'"/>
                     <t t-set="icon_style" t-value="'max-width: 64px; max-height: 64px;'"/>
                     <t t-set="title">Pagos</t>
@@ -81,6 +91,8 @@
                     <t t-set="config_card" t-value="True"/>
                 </t>
             </xpath>
+
+
         </template>
     </data>
 </odoo>

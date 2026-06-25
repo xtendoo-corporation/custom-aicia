@@ -27,7 +27,7 @@
     </record>
 
     <menuitem id="aicia_nomina_menu"
-              name="Importar nóminas"
-              parent="hr.menu_hr_root"
+              name="Importar nóminas desde PDF"
+              parent="aicia_importer.aicia_menu_hr"
               action="action_aicia_nomina_import"/>
 </odoo>
