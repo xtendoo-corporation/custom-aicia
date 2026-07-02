@@ -13,6 +13,123 @@ class HrPayrollSepaImportWizard(models.TransientModel):
 
     log = fields.Text(readonly=True)
 
+    @staticmethod
+    def _normalize_iban(iban):
+        """Normaliza IBAN para comparación: elimina espacios y convierte a mayúsculas"""
+        if not iban:
+            return ""
+        return iban.replace(" ", "").upper()
+
+    def _find_employee_and_partner(self, name, iban):
+        """Busca empleado y partner con múltiples estrategias de fallback"""
+        iban_normalized = self._normalize_iban(iban)
+        search_method = ""
+        
+        # Intento 1: Buscar por IBAN exacto
+        if iban:
+            bank = self.env["res.partner.bank"].search([
+                ("acc_number", "=", iban)
+            ], limit=1)
+            if bank and bank.partner_id:
+                partner = bank.partner_id
+                employee = self.env["hr.employee"].search([
+                    ("partner_id", "=", partner.id)
+                ], limit=1)
+                if employee:
+                    search_method = "por IBAN exacto"
+                    return employee, partner, search_method
+        
+        # Intento 2: Buscar por IBAN normalizado (sin espacios)
+        if iban_normalized and iban_normalized != iban:
+            bank = self.env["res.partner.bank"].search([
+                ("acc_number", "like", iban_normalized)
+            ], limit=1)
+            if bank and bank.partner_id:
+                partner = bank.partner_id
+                employee = self.env["hr.employee"].search([
+                    ("partner_id", "=", partner.id)
+                ], limit=1)
+                if employee:
+                    search_method = "por IBAN normalizado"
+                    return employee, partner, search_method
+        
+        # Intento 3: Buscar empleado por nombre exacto
+        if name:
+            employee = self.env["hr.employee"].search([
+                ("name", "=", name)
+            ], limit=1)
+            if employee and employee.partner_id:
+                partner = employee.partner_id
+                search_method = "por nombre exacto"
+                return employee, partner, search_method
+        
+        # Intento 4: Buscar empleado por legal_name exacto
+        if name:
+            employee = self.env["hr.employee"].search([
+                ("legal_name", "=", name)
+            ], limit=1)
+            if employee and employee.partner_id:
+                partner = employee.partner_id
+                search_method = "por legal_name exacto"
+                return employee, partner, search_method
+        
+        # Intento 5: Buscar empleado por nombre similar (búsqueda parcial)
+        if name:
+            employee = self.env["hr.employee"].search([
+                ("name", "ilike", name)
+            ], limit=1)
+            if employee and employee.partner_id:
+                partner = employee.partner_id
+                search_method = "por nombre similar"
+                return employee, partner, search_method
+        
+        # Intento 6: Buscar empleado por legal_name similar
+        if name:
+            employee = self.env["hr.employee"].search([
+                ("legal_name", "ilike", name)
+            ], limit=1)
+            if employee and employee.partner_id:
+                partner = employee.partner_id
+                search_method = "por legal_name similar"
+                return employee, partner, search_method
+        
+        # Intento 7: Búsqueda por palabras clave (para nombres truncados)
+        # Intenta diferentes combinaciones de palabras
+        if name:
+            words = name.split()
+            # Probar diferentes combinaciones de palabras
+            search_terms = []
+            
+            # Primero intenta palabras 1-2, luego 2-3, etc.
+            for i in range(len(words) - 1):
+                search_terms.append(" ".join(words[i:i+2]))
+            
+            # También intenta palabras individuales si hay 3+
+            if len(words) >= 3:
+                for i in range(1, len(words)):
+                    search_terms.append(words[i])
+            
+            # Buscar con cada término
+            for search_term in search_terms:
+                if not search_term:
+                    continue
+                employees = self.env["hr.employee"].search([
+                    "|",
+                    ("name", "ilike", search_term),
+                    ("legal_name", "ilike", search_term)
+                ], limit=5)
+                
+                if employees:
+                    for emp in employees:
+                        if emp.partner_id:
+                            partner = emp.partner_id
+                            employee = emp
+                            search_method = "por palabras clave"
+                            return employee, partner, search_method
+        
+        # Sin resultados
+        return False, False, "no encontrado"
+
     def action_import(self):
         self.ensure_one()
 
@@ -40,9 +157,11 @@ class HrPayrollSepaImportWizard(models.TransientModel):
 
             lines_xml = root.xpath("//ns:CdtTrfTxInf", namespaces=ns)
 
-            log.append("=== IMPORTACIÓN SEPA ===")
-            log.append(f"✔ MessageId: {msg_id}")
-            log.append(f"✔ Líneas XML: {len(lines_xml)}")
+            log.append("╔════════════════════════════════════════════════════════╗")
+            log.append("║       IMPORTACIÓN SEPA - NÓMINAS                       ║")
+            log.append("╚════════════════════════════════════════════════════════╝")
+            log.append(f"\n📋 MessageId: {msg_id}")
+            log.append(f"📊 Total de líneas XML: {len(lines_xml)}\n")
 
             # =========================
             # REMESA
@@ -77,6 +196,12 @@ class HrPayrollSepaImportWizard(models.TransientModel):
 
             move_lines = []
             total = 0.0
+            
+            # Listas para acumular resultados
+            no_encontrados = []
+            encontrados_iban = []
+            encontrados_nombre = []
+            
             # =========================
             # PROCESAR LÍNEAS XML
             # =========================
@@ -94,17 +219,18 @@ class HrPayrollSepaImportWizard(models.TransientModel):
                 end_to_end = end_to_end[0] if end_to_end else ""
 
                 # =========================
-                # BANK → PARTNER → EMPLOYEE (CORRECTO)
+                # BÚSQUEDA DE EMPLEADO Y PARTNER
                 # =========================
-                bank = self.env["res.partner.bank"].search([
-                    ("acc_number", "=", iban)
-                ], limit=1)
-
-                partner = bank.partner_id if bank else False
-
-                employee = self.env["hr.employee"].search([
-                    ("partner_id", "=", partner.id)
-                ], limit=1) if partner else False
+                employee, partner, search_method = self._find_employee_and_partner(name, iban)
+                
+                # Acumular resultados
+                if employee:
+                    if "IBAN" in search_method:
+                        encontrados_iban.append((name, iban[:20] if iban else ""))
+                    else:
+                        encontrados_nombre.append((name, search_method))
+                else:
+                    no_encontrados.append((name, iban))
 
                 # =========================
                 # LÍNEA REMESA
@@ -161,8 +287,53 @@ class HrPayrollSepaImportWizard(models.TransientModel):
                 "state": "done",
             })
 
-            log.append("✔ Asiento creado correctamente")
-            log.append(f"✔ Total: {total:.2f}")
+            # Generar log formateado con estadísticas
+            total_procesados = len(encontrados_iban) + len(encontrados_nombre) + len(no_encontrados)
+            total_encontrados = len(encontrados_iban) + len(encontrados_nombre)
+            
+            log.append("┌────────────────────────────────────────────────────────┐")
+            log.append("│              RESUMEN DE RESULTADOS                     │")
+            log.append("└────────────────────────────────────────────────────────┘")
+            log.append(f"📈 Procesados: {total_procesados} | ✅ Encontrados: {total_encontrados} | ❌ No encontrados: {len(no_encontrados)}")
+            log.append("")
+            
+            # Mostrar primero los NO ENCONTRADOS (son los importantes)
+            if no_encontrados:
+                log.append("┌────────────────────────────────────────────────────────┐")
+                log.append("│  ❌ EMPLEADOS NO ENCONTRADOS ({})                   │".format(len(no_encontrados)))
+                log.append("└────────────────────────────────────────────────────────┘")
+                for name, iban in no_encontrados:
+                    iban_display = iban[:25] + "..." if iban and len(iban) > 25 else (iban or "SIN IBAN")
+                    log.append(f"  • {name}")
+                    if iban:
+                        log.append(f"    └─ IBAN: {iban_display}")
+                log.append("")
+            
+            # Encontrados por IBAN
+            if encontrados_iban:
+                log.append("┌────────────────────────────────────────────────────────┐")
+                log.append("│  ✅ ENCONTRADOS POR IBAN ({})                        │".format(len(encontrados_iban)))
+                log.append("└────────────────────────────────────────────────────────┘")
+                for name, iban_short in encontrados_iban:
+                    log.append(f"  ✓ {name}")
+                log.append("")
+            
+            # Encontrados por nombre
+            if encontrados_nombre:
+                log.append("┌────────────────────────────────────────────────────────┐")
+                log.append("│  ✅ ENCONTRADOS POR NOMBRE ({})                     │".format(len(encontrados_nombre)))
+                log.append("└────────────────────────────────────────────────────────┘")
+                for name, method in encontrados_nombre:
+                    log.append(f"  ✓ {name} ({method})")
+                log.append("")
+            
+            # Resumen final
+            log.append("┌────────────────────────────────────────────────────────┐")
+            log.append("│  PROCESO COMPLETADO                                    │")
+            log.append("└────────────────────────────────────────────────────────┘")
+            log.append(f"💾 Asiento contable creado en BORRADOR")
+            log.append(f"💰 Total procesado: {total:.2f} €")
+            log.append(f"📦 Remesa: {msg_id}")
 
             self.log = "\n".join(log)
 
