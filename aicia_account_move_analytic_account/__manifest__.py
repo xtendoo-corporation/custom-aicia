@@ -11,7 +11,7 @@
     "category": "Accounting",
     "depends": [
         "account",
-        "aicia_portal_requests",
+        "portal_requests",
     ],
     "license": "AGPL-3",
     "data": [
