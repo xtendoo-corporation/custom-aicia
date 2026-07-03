@@ -20,7 +20,7 @@ Cubre:
   - Asientos no cuadrados → error en log
   - Asientos anulados omitidos con skip_anulados=True
   - Asientos no validados omitidos
-  - Sin archivos → UserError
+  - Sin archivos → reaplica el mapeo sobre apuntes existentes
   - Sin líneas para un asiento → error en log
   - Estado draft y posted tras la importación
   - Generación de log HTML con resumen
@@ -29,9 +29,10 @@ Cubre:
 from base64 import b64encode
 from datetime import date, datetime
 from io import BytesIO
+from types import SimpleNamespace
 from unittest.mock import patch
 
-from odoo.exceptions import UserError, ValidationError
+from odoo.exceptions import AccessError, UserError, ValidationError
 from odoo.tests.common import TransactionCase
 
 
@@ -111,6 +112,16 @@ class TestAiciaAccountImporterWizard(TransactionCase):
             "name": name,
             "account_type": account_type,
             "company_ids": [(4, self.env.company.id)],
+        })
+
+    def _create_account_user(self, suffix: str):
+        return self.env["res.users"].create({
+            "name": f"Account User {suffix}",
+            "login": f"account_user_{suffix}",
+            "email": f"account_user_{suffix}@example.com",
+            "group_ids": [(6, 0, [self.env.ref("account.group_account_user").id])],
+            "company_id": self.env.company.id,
+            "company_ids": [(6, 0, [self.env.company.id])],
         })
 
     # ── Tests: parseo de Fecha_Contable ──────────────────────────────────────
@@ -299,6 +310,64 @@ class TestAiciaAccountImporterWizard(TransactionCase):
         self.assertEqual(mocked_get_account.call_args.args[1], "640123")
         self.assertTrue(mocked_get_account.call_args.kwargs["skip_collective"])
 
+    def test_build_line_vals_nomina_610_honors_manual_mapping(self):
+        """El mapeo manual de nóminas gana a la regla automática 610→640XXX."""
+        wizard = self._make_wizard(create_missing_partners=False)
+        partner = self.env.user.partner_id
+        target_account = self._ensure_account("640000", "Sueldos y salarios", "expense")
+        self.env["aicia.account.importer.account.mapping"].create({
+            "source_code": "610",
+            "target_account_id": target_account.id,
+        })
+
+        linea = {
+            "cuenta": "610123456",
+            "descripcion": "Nómina empleado",
+            "debit": 100.0,
+            "credit": 0.0,
+            "id_proyecto": None,
+        }
+
+        with patch.object(
+            type(wizard),
+            "_resolve_partner_nomina",
+            autospec=True,
+            return_value=partner,
+        ):
+            vals, error, warning = wizard._build_line_vals(
+                linea,
+                "Asiento nómina",
+                set(),
+                {},
+                is_nomina=True,
+            )
+
+        self.assertFalse(error)
+        self.assertFalse(warning)
+        self.assertEqual(vals["account_id"], target_account.id)
+        self.assertEqual(vals["partner_id"], partner.id)
+
+    def test_get_employee_partner_prefers_partner_id(self):
+        wizard = self._make_wizard()
+        partner = self.env.user.partner_id
+        employee = SimpleNamespace(
+            _fields={"partner_id": object(), "work_contact_id": object()},
+            partner_id=partner,
+            work_contact_id=False,
+        )
+
+        self.assertEqual(wizard._get_employee_partner(employee).id, partner.id)
+
+    def test_get_employee_partner_falls_back_to_work_contact_id(self):
+        wizard = self._make_wizard()
+        partner = self.env.user.partner_id
+        employee = SimpleNamespace(
+            _fields={"work_contact_id": object()},
+            work_contact_id=partner,
+        )
+
+        self.assertEqual(wizard._get_employee_partner(employee).id, partner.id)
+
     # ── Tests: mapeo persistente de cuentas ─────────────────────────────────
 
     def test_account_mapping_source_code_is_unique(self):
@@ -397,28 +466,52 @@ class TestAiciaAccountImporterWizard(TransactionCase):
         self.assertTrue(mapping)
         self.assertEqual(mapping.target_account_id.id, target_account.id)
 
-    def test_load_default_mappings_skips_missing_targets(self):
-        """No crea mapeos por defecto cuando la cuenta destino no existe."""
+    def test_default_mapping_catalog_is_read_only_for_account_users(self):
+        """El catálogo técnico es legible para contabilidad pero no editable."""
+        account_user = self._create_account_user("default_mapping")
+        default_mapping_model = self.env[
+            "aicia.account.importer.account.mapping.default"
+        ].with_user(account_user)
+
+        self.assertTrue(default_mapping_model.search([], limit=1))
+
+        with self.assertRaises(AccessError):
+            default_mapping_model.create({
+                "source_code": "999998000",
+                "target_account_code": "999998",
+            })
+
+    def test_load_default_mappings_creates_missing_target_account(self):
+        """Crea la cuenta destino ausente y la enlaza al mapeo por defecto."""
         mapping_model = self.env["aicia.account.importer.account.mapping"]
+        target_code = "620999"
         mapping_model.search(
             [("source_code_normalized", "=", "991002000")]
         ).unlink()
         self.env["account.account"].search(
-            [("code", "=", "991002"), ("company_ids", "in", [self.env.company.id])]
+            [("code", "=", target_code), ("company_ids", "in", [self.env.company.id])]
         ).unlink()
 
         with patch.object(
             type(mapping_model),
             "_get_default_mapping_values",
             autospec=True,
-            return_value=[("991002000", "991002")],
+            return_value=[("991002000", target_code)],
         ):
             mapping_model.load_default_mappings()
 
         mapping = mapping_model.search(
             [("source_code_normalized", "=", "991002000")], limit=1
         )
-        self.assertFalse(mapping)
+        target_account = self.env["account.account"].search(
+            [("code", "=", target_code), ("company_ids", "in", [self.env.company.id])],
+            limit=1,
+        )
+        self.assertTrue(mapping)
+        self.assertTrue(target_account)
+        self.assertEqual(target_account.name, "*Cuenta no encontrada")
+        self.assertEqual(target_account.account_type, "expense")
+        self.assertEqual(mapping.target_account_id.id, target_account.id)
 
     def test_load_default_mappings_keeps_existing_target(self):
         """No sobrescribe mapeos ya configurados por el usuario."""
@@ -476,6 +569,155 @@ class TestAiciaAccountImporterWizard(TransactionCase):
         self.assertEqual(mapping.target_account_id.id, target_account.id)
         self.assertEqual(action["tag"], "display_notification")
         self.assertEqual(action["params"]["next"]["tag"], "reload")
+
+    def test_action_load_default_mappings_refreshes_wizard_mappings(self):
+        """La recarga desde el wizard sincroniza la pestaña con los nuevos mapeos."""
+        mapping_model = self.env["aicia.account.importer.account.mapping"]
+        wizard = self._make_wizard()
+        target_account = self._ensure_account(
+            "991006", "Cuenta destino wizard", "income"
+        )
+        mapping_model.search(
+            [("source_code_normalized", "=", "991006000")]
+        ).unlink()
+
+        with patch.object(
+            type(mapping_model),
+            "_get_default_mapping_values",
+            autospec=True,
+            return_value=[("991006000", "991006")],
+        ):
+            action = mapping_model.with_context(
+                active_model=wizard._name,
+                active_id=wizard.id,
+            ).action_load_default_mappings()
+
+        mapping = mapping_model.search(
+            [("source_code_normalized", "=", "991006000")], limit=1
+        )
+        wizard.invalidate_recordset(["account_mapping_ids"])
+
+        self.assertTrue(mapping)
+        self.assertEqual(mapping.target_account_id.id, target_account.id)
+        self.assertIn(mapping.id, wizard.account_mapping_ids.ids)
+        self.assertEqual(action["tag"], "display_notification")
+        self.assertEqual(action["params"]["next"]["res_model"], wizard._name)
+        self.assertEqual(action["params"]["next"]["res_id"], wizard.id)
+
+    def test_action_load_default_mappings_refreshes_wizard_from_field_context(self):
+        """La acción desde el formulario embebido usa el id del wizard en contexto."""
+        mapping_model = self.env["aicia.account.importer.account.mapping"]
+        wizard = self._make_wizard()
+        target_account = self._ensure_account(
+            "991007", "Cuenta destino wizard context", "income"
+        )
+        mapping_model.search(
+            [("source_code_normalized", "=", "991007000")]
+        ).unlink()
+
+        with patch.object(
+            type(mapping_model),
+            "_get_default_mapping_values",
+            autospec=True,
+            return_value=[("991007000", "991007")],
+        ):
+            action = mapping_model.with_context(
+                aicia_account_importer_wizard_id=wizard.id,
+            ).action_load_default_mappings()
+
+        mapping = mapping_model.search(
+            [("source_code_normalized", "=", "991007000")], limit=1
+        )
+        wizard.invalidate_recordset(["account_mapping_ids"])
+
+        self.assertTrue(mapping)
+        self.assertEqual(mapping.target_account_id.id, target_account.id)
+        self.assertIn(mapping.id, wizard.account_mapping_ids.ids)
+        self.assertEqual(action["tag"], "display_notification")
+        self.assertEqual(action["params"]["next"]["res_model"], wizard._name)
+        self.assertEqual(action["params"]["next"]["res_id"], wizard.id)
+
+    def test_action_load_default_account_mappings_refreshes_wizard(self):
+        """El botón del wizard carga el XML y refresca la lista embebida."""
+        mapping_model = self.env["aicia.account.importer.account.mapping"]
+        wizard = self._make_wizard()
+        target_account = self._ensure_account(
+            "991008", "Cuenta destino wizard button", "income"
+        )
+        mapping_model.search(
+            [("source_code_normalized", "=", "991008000")]
+        ).unlink()
+
+        with patch.object(
+            type(mapping_model),
+            "_get_default_mapping_values",
+            autospec=True,
+            return_value=[("991008000", "991008")],
+        ):
+            action = wizard.action_load_default_account_mappings()
+
+        mapping = mapping_model.search(
+            [("source_code_normalized", "=", "991008000")], limit=1
+        )
+        wizard.invalidate_recordset(["account_mapping_ids"])
+
+        self.assertTrue(mapping)
+        self.assertEqual(mapping.target_account_id.id, target_account.id)
+        self.assertIn(mapping.id, wizard.account_mapping_ids.ids)
+        self.assertEqual(action["tag"], "display_notification")
+        self.assertEqual(action["params"]["next"]["res_model"], wizard._name)
+        self.assertEqual(action["params"]["next"]["res_id"], wizard.id)
+
+    def test_default_mapping_catalog_contains_requested_relations(self):
+        """El catálogo XML incluye las relaciones pedidas para el legado."""
+        default_mapping_model = self.env[
+            "aicia.account.importer.account.mapping.default"
+        ]
+        expected_mappings = {
+            "646000000": "625000",
+            "650000000": "624000",
+            "651000000": "650000",
+            "660000000": "602000",
+            "661000000": "628000",
+            "662000100": "627000",
+            "663000000": "627000",
+            "664000000": "623000",
+            "665000000": "629000",
+            "666000000": "629000",
+            "666000100": "629000",
+            "667000000": "629000",
+            "680000000": "682000",
+            "681000000": "681000",
+            "694000000": "699300",
+            "700000000": "705000",
+            "701000000": "705000",
+            "702000000": "705000",
+            "703000000": "705000",
+            "704000000": "705000",
+            "735000100": "705000",
+            "736000000": "705000",
+            "740000000": "705000",
+            "747000400": "763300",
+            "747000502": "763300",
+            "747000504": "763300",
+            "747000700": "763300",
+            "750000000": "740000",
+            "751000000": "740000",
+            "751000100": "740000",
+            "794000000": "795000",
+            "794000100": "794000",
+            "794100000": "778000",
+        }
+
+        default_mappings = default_mapping_model.search(
+            [("source_code", "in", list(expected_mappings))]
+        )
+        mapping_by_source = {
+            mapping.source_code: mapping.target_account_code
+            for mapping in default_mappings
+        }
+
+        self.assertEqual(mapping_by_source, expected_mappings)
 
     # ── Tests: partners ───────────────────────────────────────────────────────
 
@@ -810,11 +1052,56 @@ class TestAiciaAccountImporterWizard(TransactionCase):
         self.assertIn("Resumen", wizard.import_log)
         self.assertIn("creados", wizard.import_log)
 
-    def test_no_files_raises_user_error(self):
-        """Sin archivos → UserError."""
+    def test_no_files_applies_account_mapping_to_existing_move_lines(self):
+        """Sin archivos → aplica el mapeo global sobre apuntes existentes."""
+        source_account = self._ensure_account(
+            "998001", "Cuenta origen remapeo", "expense"
+        )
+        target_account = self._ensure_account(
+            "998002", "Cuenta destino remapeo", "expense"
+        )
+        counterpart_account = self._ensure_account(
+            "998099", "Contrapartida remapeo", "income"
+        )
+        self.env["aicia.account.importer.account.mapping"].create({
+            "source_code": source_account.code,
+            "target_account_id": target_account.id,
+        })
+        move = self.env["account.move"].create({
+            "journal_id": self.journal.id,
+            "date": "2025-01-31",
+            "line_ids": [
+                (0, 0, {
+                    "account_id": source_account.id,
+                    "debit": 100.0,
+                    "credit": 0.0,
+                    "name": "Línea a remapear",
+                }),
+                (0, 0, {
+                    "account_id": counterpart_account.id,
+                    "debit": 0.0,
+                    "credit": 100.0,
+                    "name": "Contrapartida",
+                }),
+            ],
+        })
         wizard = self._make_wizard()
-        with self.assertRaises(UserError):
-            wizard.action_import()
+        action = wizard.action_import()
+
+        move.invalidate_recordset(["line_ids"])
+        remapped_line = move.line_ids.filtered(
+            lambda line: line.name == "Línea a remapear"
+        )
+        counterpart_line = move.line_ids.filtered(
+            lambda line: line.name == "Contrapartida"
+        )
+        self.assertEqual(action["res_id"], wizard.id)
+        self.assertEqual(wizard.state, "done")
+        self.assertEqual(wizard.total_created, 1)
+        self.assertEqual(wizard.total_errors, 0)
+        self.assertEqual(remapped_line.account_id, target_account)
+        self.assertEqual(counterpart_line.account_id, counterpart_account)
+        self.assertIn("aplicado", wizard.import_log)
 
     def test_only_apuntes_file_raises_user_error(self):
         """Solo el archivo de apuntes sin líneas → UserError."""
@@ -824,6 +1111,19 @@ class TestAiciaAccountImporterWizard(TransactionCase):
         wizard = self._make_wizard(file_apuntes=self._enc(apuntes))
         with self.assertRaises(UserError):
             wizard.action_import()
+
+    def test_wizard_allows_inline_account_mapping_edition(self):
+        """La pestaña de cuentas edita el mapeo sin abrir otra ventana."""
+        view = self.env.ref(
+            "aicia_account_importer.view_aicia_account_importer_wizard_form"
+        )
+        field_start = view.arch_db.find('name="account_mapping_ids"')
+        self.assertNotEqual(field_start, -1)
+        field_end = view.arch_db.find("/>", field_start)
+        account_mapping_field = view.arch_db[field_start:field_end]
+
+        self.assertNotIn('readonly="1"', account_mapping_field)
+        self.assertNotIn("action_open_account_mappings", view.arch_db)
 
     # ── Tests: creación automática de partners ────────────────────────────────
 
@@ -945,4 +1245,3 @@ class TestAiciaAccountImporterWizard(TransactionCase):
         found = wizard._resolve_partner("C03604")
         self.assertIsNotNone(found)
         self.assertEqual(found.id, partner.id)
-

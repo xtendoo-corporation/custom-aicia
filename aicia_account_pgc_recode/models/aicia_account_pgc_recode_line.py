@@ -78,6 +78,33 @@ class AiciaAccountPgcRecodeLine(models.Model):
         if self.status in ('manual', 'discarded', 'error'):
             raise UserError(_("No se puede aplicar una línea con estado %s.") % self.status)
 
+        if not self.new_account_id and create_missing and self.new_account_code:
+            if len(self.new_account_code) != 6:
+                self.write({'status': 'error', 'notes': _('La cuenta destino debe tener exactamente 6 dígitos.')})
+                return False
+            account_model = self.env['account.account'].with_company(self.company_id)
+            target_account = account_model.search([
+                ('code', '=', self.new_account_code),
+                ('company_ids', '=', self.company_id.id),
+            ], limit=1)
+            if not target_account:
+                try:
+                    with self.env.cr.savepoint():
+                        target_account = self._create_target_account()
+                except Exception as e:
+                    self.write({
+                        'status': 'error',
+                        'notes': _('No se pudo crear la subcuenta destino %s: %s') % (self.new_account_code, str(e)),
+                    })
+                    return False
+            if not target_account:
+                self.write({
+                    'status': 'error',
+                    'notes': _('No se pudo crear la subcuenta destino %s.') % self.new_account_code,
+                })
+                return False
+            self.new_account_id = target_account
+
         if not self.new_account_id:
             self.write({
                 'status': 'error',

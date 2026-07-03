@@ -195,6 +195,7 @@ class AiciaAccountImporterAccountMapping(models.Model):
         if not default_mappings:
             return {
                 "created": 0,
+                "created_accounts": 0,
                 "updated": 0,
                 "missing_target": 0,
                 "unchanged": 0,
@@ -231,6 +232,7 @@ class AiciaAccountImporterAccountMapping(models.Model):
         queued_sources = set()
         stats = {
             "created": 0,
+            "created_accounts": 0,
             "updated": 0,
             "missing_target": 0,
             "unchanged": 0,
@@ -241,22 +243,23 @@ class AiciaAccountImporterAccountMapping(models.Model):
                 continue
 
             target_account = account_by_code.get(target_code)
-            if not target_account:
-                stats["missing_target"] += 1
+            mapping = existing_mappings.get(normalized_source)
+            if not mapping:
+                if not target_account:
+                    target_account = self._create_missing_target_account(target_code)
+                    account_by_code[target_code] = target_account
+                    stats["created_accounts"] += 1
+                vals = {"source_code": normalized_source}
+                vals["target_account_id"] = target_account.id
+                stats["created"] += 1
+                vals_list.append(vals)
                 queued_sources.add(normalized_source)
                 continue
 
-            mapping = existing_mappings.get(normalized_source)
-            if not mapping:
-                vals_list.append(
-                    {
-                        "source_code": normalized_source,
-                        "target_account_id": target_account.id,
-                    }
-                )
-                queued_sources.add(normalized_source)
-                stats["created"] += 1
-                continue
+            if not target_account:
+                target_account = self._create_missing_target_account(target_code)
+                account_by_code[target_code] = target_account
+                stats["created_accounts"] += 1
 
             if not mapping.target_account_id:
                 mapping.write({"target_account_id": target_account.id})
@@ -274,19 +277,85 @@ class AiciaAccountImporterAccountMapping(models.Model):
         self._load_default_mappings_stats()
         return True
 
+    def _reload_active_wizard_mappings(self):
+        """Sincroniza el M2M del wizard cuando la acción se lanza desde él."""
+        wizard_id = False
+        if self.env.context.get("active_model") == "aicia.account.importer.wizard":
+            wizard_id = self.env.context.get("active_id")
+        if not wizard_id:
+            wizard_id = self.env.context.get("aicia_account_importer_wizard_id")
+        if not wizard_id:
+            return False
+
+        wizard = self.env["aicia.account.importer.wizard"].browse(wizard_id).exists()
+        if not wizard:
+            return False
+
+        wizard._reload_account_mapping_ids()
+        return wizard
+
+    def _guess_account_type_for_code(self, code):
+        """Determina un tipo contable razonable para cuentas creadas automáticamente."""
+        normalized_code = str(code or "").strip()
+        prefix = normalized_code[:3]
+        if prefix in COLLECTIVE_ACCOUNT_MAP:
+            return COLLECTIVE_ACCOUNT_MAP[prefix][2]
+        if prefix == "572":
+            return "asset_cash"
+
+        Account = self.env["account.account"]
+        company_domain = [("company_ids", "in", [self.env.company.id])]
+        for length in (3, 2, 1):
+            if len(normalized_code) < length:
+                continue
+            reference = Account.search(
+                company_domain + [("code", "=like", f"{normalized_code[:length]}%")],
+                order="code",
+                limit=1,
+            )
+            if reference:
+                return reference.account_type
+        return "expense"
+
+    def _create_missing_target_account(self, code):
+        """Crea la cuenta destino ausente para que el mapeo quede operativo."""
+        normalized_code = str(code or "").strip()
+        if not normalized_code:
+            raise ValidationError(_("El código de la cuenta destino por defecto es inválido."))
+
+        return self.env["account.account"].create(
+            {
+                "code": normalized_code,
+                "name": "*Cuenta no encontrada",
+                "account_type": self._guess_account_type_for_code(normalized_code),
+                "company_ids": [(4, self.env.company.id)],
+            }
+        )
+
     def action_load_default_mappings(self):
         stats = self.env[
             "aicia.account.importer.account.mapping"
         ]._load_default_mappings_stats()
+        wizard = self._reload_active_wizard_mappings()
         message = _(
-            "Creados: %(created)d, completados: %(updated)d, "
-            "sin cambios: %(unchanged)d, omitidos por cuenta destino inexistente: %(missing)d."
+            "Creados: %(created)d, cuentas destino creadas: %(created_accounts)d, "
+            "completados: %(updated)d, sin cambios: %(unchanged)d."
         ) % {
             "created": stats["created"],
+            "created_accounts": stats["created_accounts"],
             "updated": stats["updated"],
             "unchanged": stats["unchanged"],
-            "missing": stats["missing_target"],
         }
+        next_action = {"type": "ir.actions.client", "tag": "reload"}
+        if wizard:
+            next_action = {
+                "type": "ir.actions.act_window",
+                "res_model": wizard._name,
+                "res_id": wizard.id,
+                "view_mode": "form",
+                "views": [(False, "form")],
+                "target": "new",
+            }
         return {
             "type": "ir.actions.client",
             "tag": "display_notification",
@@ -295,7 +364,7 @@ class AiciaAccountImporterAccountMapping(models.Model):
                 "message": message,
                 "type": "success",
                 "sticky": False,
-                "next": {"type": "ir.actions.client", "tag": "reload"},
+                "next": next_action,
             },
         }
 
@@ -425,6 +494,41 @@ class AiciaAccountImporterWizard(models.TransientModel):
             },
         }
 
+    def action_load_default_account_mappings(self):
+        """Carga los mapeos por defecto y refresca la pestaña del wizard."""
+        self.ensure_one()
+        stats = self.env[
+            "aicia.account.importer.account.mapping"
+        ]._load_default_mappings_stats()
+        self._reload_account_mapping_ids()
+        message = _(
+            "Creados: %(created)d, cuentas destino creadas: %(created_accounts)d, "
+            "completados: %(updated)d, sin cambios: %(unchanged)d."
+        ) % {
+            "created": stats["created"],
+            "created_accounts": stats["created_accounts"],
+            "updated": stats["updated"],
+            "unchanged": stats["unchanged"],
+        }
+        return {
+            "type": "ir.actions.client",
+            "tag": "display_notification",
+            "params": {
+                "title": _("Mapeos por defecto recargados"),
+                "message": message,
+                "type": "success",
+                "sticky": False,
+                "next": {
+                    "type": "ir.actions.act_window",
+                    "res_model": self._name,
+                    "res_id": self.id,
+                    "view_mode": "form",
+                    "views": [(False, "form")],
+                    "target": "new",
+                },
+            },
+        }
+
     def action_clear_account_mappings(self):
         """Borra todos los mapeos globales de cuentas AICIA."""
         self.ensure_one()
@@ -471,6 +575,13 @@ class AiciaAccountImporterWizard(models.TransientModel):
     def action_import(self):
         """Punto de entrada: cruza los dos Excel y crea los account.move."""
         self.ensure_one()
+        if not self.file_apuntes and not self.file_lineas:
+            return self._action_apply_account_mappings_to_existing_move_lines()
+        if not self.file_apuntes or not self.file_lineas:
+            raise UserError(
+                _("Debes subir los dos archivos Excel antes de importar.")
+            )
+
         activity_log = []
         self._append_import_activity(
             activity_log,
@@ -480,10 +591,6 @@ class AiciaAccountImporterWizard(models.TransientModel):
         if not openpyxl:
             raise UserError(
                 _("La librería 'openpyxl' no está instalada en el servidor.")
-            )
-        if not self.file_apuntes or not self.file_lineas:
-            raise UserError(
-                _("Debes subir los dos archivos Excel antes de importar.")
             )
 
         self._append_import_activity(activity_log, "info", _("Leyendo archivo de apuntes."))
@@ -508,9 +615,12 @@ class AiciaAccountImporterWizard(models.TransientModel):
         self._append_import_activity(
             activity_log,
             "info",
-            _("%d reglas de mapeo de cuentas cargadas.") % len(account_mapping),
+            _("%d reglas de mapeo de cuentas cargadas.")
+            % len(account_mapping.get("prefixes", account_mapping)),
         )
-
+        runtime = self._prepare_import_runtime(
+            apuntes, lineas_by_apunte, account_mapping
+        )
         results = []
         created = skipped = errors = warnings = 0
         missing_accounts = set()
@@ -534,7 +644,6 @@ class AiciaAccountImporterWizard(models.TransientModel):
                 },
             )
             if not lineas:
-                # Diagnóstico: muestra los IDs disponibles en el fichero de líneas
                 ids_lineas = sorted(lineas_by_apunte.keys())
                 ids_str = ", ".join(str(x) for x in ids_lineas[:20])
                 if len(ids_lineas) > 20:
@@ -553,7 +662,12 @@ class AiciaAccountImporterWizard(models.TransientModel):
                 continue
 
             result = self._process_asiento(
-                cabecera, lineas, missing_accounts, missing_partners, account_mapping
+                cabecera,
+                lineas,
+                missing_accounts,
+                missing_partners,
+                account_mapping,
+                runtime=runtime,
             )
             results.append(result)
             if result["status"] == "created":
@@ -570,12 +684,8 @@ class AiciaAccountImporterWizard(models.TransientModel):
                 activity_status = "error"
             self._append_import_activity(activity_log, activity_status, result["msg"])
 
-        # ── Poblar pestaña Cuentas con las cuentas no encontradas ────────────
-        # Solo añadir las que aún no tienen fila en el mapeo (con o sin destino)
         AccountMapping = self.env["aicia.account.importer.account.mapping"]
-        existing_sources = set(
-            AccountMapping.search([]).mapped("source_code_normalized")
-        )
+        existing_sources = set(runtime.get("mapping_sources", set()))
         new_mappings = []
         for code in sorted(missing_accounts):
             norm_code = AccountMapping._normalize_source_code(code)
@@ -583,7 +693,17 @@ class AiciaAccountImporterWizard(models.TransientModel):
                 new_mappings.append({"source_code": norm_code})
                 existing_sources.add(norm_code)
         if new_mappings:
-            AccountMapping.create(new_mappings)
+            created_mappings = AccountMapping.create(new_mappings)
+            runtime.setdefault("mapping_sources", set()).update(
+                created_mappings.mapped("source_code_normalized")
+            )
+            runtime.setdefault("mapping_by_source", {}).update(
+                {
+                    mapping.source_code_normalized: mapping
+                    for mapping in created_mappings
+                    if mapping.source_code_normalized
+                }
+            )
             self._append_import_activity(
                 activity_log,
                 "warning",
@@ -597,7 +717,6 @@ class AiciaAccountImporterWizard(models.TransientModel):
                 _("Las cuentas no encontradas ya existían en el mapeo global."),
             )
 
-        # Forzar recarga del Many2many account_mapping_ids desde el modelo persistente
         self._reload_account_mapping_ids()
         self._append_import_activity(
             activity_log,
@@ -616,7 +735,7 @@ class AiciaAccountImporterWizard(models.TransientModel):
 
         self.write(
             {
-                "state": "draft",
+                "state": "done",
                 "total_created": created,
                 "total_skipped": skipped,
                 "total_errors": errors,
@@ -627,7 +746,121 @@ class AiciaAccountImporterWizard(models.TransientModel):
             }
         )
 
-        # Reabrir el mismo wizard (estado draft) para mostrar log + pestaña Cuentas actualizada
+        return {
+            "type": "ir.actions.act_window",
+            "res_model": self._name,
+            "res_id": self.id,
+            "view_mode": "form",
+            "views": [(False, "form")],
+            "target": "new",
+        }
+
+    def _action_apply_account_mappings_to_existing_move_lines(self):
+        """Aplica los mapeos guardados sobre apuntes contables ya existentes."""
+        self.ensure_one()
+        activity_log = []
+        self._append_import_activity(
+            activity_log,
+            "info",
+            _(
+                "No se han indicado archivos Excel; se revisarán los apuntes "
+                "contables existentes con el mapeo de cuentas guardado."
+            ),
+        )
+
+        results = []
+        moved_count = skipped_count = 0
+        processed_line_ids = set()
+        mapping_rules = self._get_account_mapping_rules()
+        for source_code, target_account in mapping_rules.get("prefixes", mapping_rules):
+            if self.env.company not in target_account.company_ids:
+                skipped_count += 1
+                msg = _(
+                    "Mapeo %(source)s omitido: la cuenta destino %(target)s "
+                    "no pertenece a la compañía actual."
+                ) % {
+                    "source": source_code,
+                    "target": target_account.display_name,
+                }
+                results.append({"status": "skipped", "ref": source_code, "msg": msg})
+                self._append_import_activity(activity_log, "warning", msg)
+                continue
+
+            source_accounts = self._get_source_accounts_for_mapping(
+                source_code, target_account
+            )
+            if not source_accounts:
+                skipped_count += 1
+                msg = _(
+                    "Mapeo %(source)s omitido: no existe ninguna cuenta origen "
+                    "en Odoo para ese código."
+                ) % {"source": source_code}
+                results.append({"status": "skipped", "ref": source_code, "msg": msg})
+                self._append_import_activity(activity_log, "info", msg)
+                continue
+
+            domain = [
+                ("company_id", "=", self.env.company.id),
+                ("account_id", "in", source_accounts.ids),
+            ]
+            if processed_line_ids:
+                domain.append(("id", "not in", list(processed_line_ids)))
+            move_lines = self.env["account.move.line"].search(domain)
+            if not move_lines:
+                skipped_count += 1
+                msg = _(
+                    "Mapeo %(source)s → %(target)s sin apuntes pendientes de mover."
+                ) % {
+                    "source": source_code,
+                    "target": target_account.display_name,
+                }
+                results.append({"status": "skipped", "ref": source_code, "msg": msg})
+                self._append_import_activity(activity_log, "info", msg)
+                continue
+
+            move_lines.with_context(check_move_validity=False).write(
+                {"account_id": target_account.id}
+            )
+            processed_line_ids.update(move_lines.ids)
+            moved_count += len(move_lines)
+            msg = _(
+                "Mapeo %(source)s → %(target)s aplicado a %(count)d apuntes."
+            ) % {
+                "source": source_code,
+                "target": target_account.display_name,
+                "count": len(move_lines),
+            }
+            results.append({"status": "created", "ref": source_code, "msg": msg})
+            self._append_import_activity(activity_log, "success", msg)
+
+        if not mapping_rules.get("prefixes", mapping_rules):
+            msg = _("No hay mapeos de cuentas configurados.")
+            results.append({"status": "skipped", "ref": "-", "msg": msg})
+            self._append_import_activity(activity_log, "warning", msg)
+            skipped_count = 1
+
+        self._append_import_activity(
+            activity_log,
+            "success" if moved_count else "warning",
+            _(
+                "Revisión finalizada: %(moved)d apuntes movidos, "
+                "%(skipped)d mapeos sin cambios."
+            )
+            % {"moved": moved_count, "skipped": skipped_count},
+        )
+        self._reload_account_mapping_ids()
+        self.write(
+            {
+                "state": "done",
+                "total_created": moved_count,
+                "total_skipped": skipped_count,
+                "total_errors": 0,
+                "total_warnings": 0,
+                "import_log": self._build_log_html(
+                    results, set(), {}, activity_log
+                ),
+            }
+        )
         return {
             "type": "ir.actions.act_window",
             "res_model": self._name,
@@ -754,6 +987,7 @@ class AiciaAccountImporterWizard(models.TransientModel):
         missing_accounts: set,
         missing_partners: dict,
         account_mapping: dict = None,
+        runtime: dict | None = None,
     ) -> dict:
         """Crea un account.move a partir de la cabecera y sus líneas."""
         legacy_number = str(cabecera["numero"])
@@ -762,20 +996,33 @@ class AiciaAccountImporterWizard(models.TransientModel):
         is_nomina = str(cabecera.get("numero_documento", "") or "").upper().startswith("NO-")
 
         # Detectar el diario automáticamente según las cuentas de las líneas
-        journal = self._get_journal_for_lines(lineas, is_nomina=is_nomina)
+        journal = self._get_journal_for_lines(lineas, is_nomina=is_nomina, runtime=runtime)
         # Idempotencia: busca en el diario detectado usando una marca técnica.
         legacy_marker = self._legacy_import_marker(legacy_number)
-        existing = self.env["account.move"].search(
-            [
-                ("journal_id", "=", journal.id),
-                ("state", "in", ["draft", "posted"]),
-                ("narration", "ilike", legacy_marker),
-            ],
-            limit=1,
-        )
+        runtime = runtime or {}
+        existing = runtime.get("existing_moves", {}).get((journal.id, legacy_marker))
+        if existing and not isinstance(existing, dict):
+            existing = {
+                "id": existing.id,
+                "state": existing.state,
+            }
+        if not existing:
+            existing_move = self.env["account.move"].search(
+                [
+                    ("journal_id", "=", journal.id),
+                    ("state", "in", ["draft", "posted"]),
+                    ("narration", "ilike", legacy_marker),
+                ],
+                limit=1,
+            )
+            if existing_move:
+                existing = {"id": existing_move.id, "state": existing_move.state}
+                runtime.setdefault("existing_moves", {})[
+                    (journal.id, legacy_marker)
+                ] = existing
         if existing:
             state_label = {"draft": "borrador", "posted": "confirmado"}.get(
-                existing.state, existing.state
+                existing["state"], existing["state"]
             )
             nomina_tag = " 💼" if is_nomina else ""
             return {
@@ -784,7 +1031,7 @@ class AiciaAccountImporterWizard(models.TransientModel):
                 "msg": _(
                     "Asiento Nº %s%s ya existe en Odoo (ID %d, estado: %s). "
                     "Elimínalo o resetéalo a borrador para poder reimportarlo."
-                ) % (legacy_number, nomina_tag, existing.id, state_label),
+                ) % (legacy_number, nomina_tag, existing["id"], state_label),
             }
 
         # Construir líneas del asiento
@@ -794,7 +1041,7 @@ class AiciaAccountImporterWizard(models.TransientModel):
         for linea in lineas:
             vals, error, warning = self._build_line_vals(
                 linea, cabecera["descripcion"], missing_accounts, missing_partners,
-                account_mapping, is_nomina=is_nomina,
+                account_mapping, is_nomina=is_nomina, runtime=runtime,
             )
             if error:
                 errors.append(error)
@@ -860,6 +1107,7 @@ class AiciaAccountImporterWizard(models.TransientModel):
 
         try:
             move = self.env["account.move"].create(move_vals)
+            runtime.setdefault("existing_moves", {})[(journal.id, legacy_marker)] = move
             if not line_warnings and self.move_state == "posted":
                 move.action_post()
 
@@ -896,6 +1144,7 @@ class AiciaAccountImporterWizard(models.TransientModel):
         missing_partners: dict,
         account_mapping: dict = None,
         is_nomina: bool = False,
+        runtime: dict | None = None,
     ) -> tuple:
         """Construye el dict de valores para una account.move.line.
 
@@ -915,12 +1164,12 @@ class AiciaAccountImporterWizard(models.TransientModel):
                 ref_code = self._partner_ref_from_account(
                     legacy_account_code, is_nomina=True
                 )
-                partner = self._resolve_partner_nomina(ref_code)
+                partner = self._resolve_partner_nomina(ref_code, runtime=runtime)
                 if not partner:
                     if self.create_missing_partners:
                         partner = self._create_partner(
                             ref_code, legacy_account_code, linea["descripcion"],
-                            is_nomina=True,
+                            is_nomina=True, runtime=runtime,
                         )
                     else:
                         warning_msg = _(
@@ -931,11 +1180,11 @@ class AiciaAccountImporterWizard(models.TransientModel):
         else:
             if legacy_account_code[:3] in PARTNER_ACCOUNT_PREFIXES:
                 ref_code = self._partner_ref_from_account(legacy_account_code)
-                partner = self._resolve_partner(ref_code)
+                partner = self._resolve_partner(ref_code, runtime=runtime)
                 if not partner:
                     if self.create_missing_partners:
                         partner = self._create_partner(
-                            ref_code, legacy_account_code, linea["descripcion"]
+                            ref_code, legacy_account_code, linea["descripcion"], runtime=runtime
                         )
                     else:
                         warning_msg = _(
@@ -944,25 +1193,32 @@ class AiciaAccountImporterWizard(models.TransientModel):
                         if missing_partners is not None:
                             missing_partners[ref_code] = legacy_account_code
 
+        account = None
         account_lookup_code = legacy_account_code
         if is_nomina:
-            account_lookup_code = self._get_nomina_account_code_for_lookup(
-                legacy_account_code
-            )
+            account = self._match_account_mapping(legacy_account_code, account_mapping)
+            if not account:
+                account_lookup_code = self._get_nomina_account_code_for_lookup(
+                    legacy_account_code
+                )
 
-        if account_lookup_code != legacy_account_code:
-            account = self._get_exact_account_by_code(account_lookup_code)
-            if not account and missing_accounts is not None:
-                missing_accounts.add(account_lookup_code)
-        else:
-            account = self._get_account(
-                account_lookup_code,
-                missing_accounts,
-                account_mapping,
-                skip_collective=is_nomina,
-            )
+        if not account:
+            if account_lookup_code != legacy_account_code:
+                account = self._get_exact_account_by_code(account_lookup_code, runtime=runtime)
+                if not account and missing_accounts is not None:
+                    missing_accounts.add(account_lookup_code)
+            else:
+                account = self._get_account(
+                    account_lookup_code,
+                    missing_accounts,
+                    account_mapping,
+                    skip_collective=is_nomina,
+                    runtime=runtime,
+                )
         if account and account_lookup_code != legacy_account_code:
-            self._register_automatic_account_mapping(legacy_account_code, account)
+            self._register_automatic_account_mapping(
+                legacy_account_code, account, runtime=runtime
+            )
         if not account:
             return None, _(
                 "Cuenta '%s' no encontrada ni en colectivas ni en el plan contable."
@@ -972,9 +1228,13 @@ class AiciaAccountImporterWizard(models.TransientModel):
         analytic_distribution = {}
         id_proyecto = linea.get("id_proyecto")
         if id_proyecto:
-            analytic = self.env["account.analytic.account"].search(
-                [("code", "=", str(id_proyecto))], limit=1
-            )
+            runtime = runtime or {}
+            analytic = runtime.get("analytic_by_code", {}).get(str(id_proyecto))
+            if analytic is None:
+                analytic = self.env["account.analytic.account"].search(
+                    [("code", "=", str(id_proyecto))], limit=1
+                )
+                runtime.setdefault("analytic_by_code", {})[str(id_proyecto)] = analytic
             if analytic:
                 analytic_distribution = {str(analytic.id): 100.0}
             else:
@@ -997,36 +1257,46 @@ class AiciaAccountImporterWizard(models.TransientModel):
 
     # ── Resolución de cuentas contables ──────────────────────────────────────
 
-    def _get_journal_for_lines(self, lineas: list, is_nomina: bool = False):
+    def _get_journal_for_lines(
+        self, lineas: list, is_nomina: bool = False, runtime: dict | None = None
+    ):
         """Determina el diario automáticamente según los prefijos de cuenta.
         - Nóminas (is_nomina=True)  → diario misceláneo (type='general') siempre
         - Cuentas 430/431/436       → diario de ventas (type='sale')
         - Cuentas 400/401           → diario de compras (type='purchase')
         - Ambos o ninguno           → diario misceláneo (type='general')
         """
-        if is_nomina:
-            journal_type = "general"
-        else:
-            prefixes = {l["cuenta"][:3] for l in lineas if l.get("cuenta")}
-            has_customer = bool(prefixes & {"430", "431", "436"})
-            has_supplier = bool(prefixes & {"400", "401"})
-            if has_customer and not has_supplier:
-                journal_type = "sale"
-            elif has_supplier and not has_customer:
-                journal_type = "purchase"
-            else:
-                journal_type = "general"
-        journal = self.env["account.journal"].search(
-            [("type", "=", journal_type), ("company_id", "=", self.env.company.id)],
-            limit=1,
-        )
+        journal_type = self._get_journal_type_for_lines(lineas, is_nomina=is_nomina)
+        runtime = runtime or {}
+        journal = runtime.get("journals_by_type", {}).get(journal_type)
+        if not journal:
+            journal = self.env["account.journal"].search(
+                [("type", "=", journal_type), ("company_id", "=", self.env.company.id)],
+                limit=1,
+            )
+            runtime.setdefault("journals_by_type", {})[journal_type] = journal
+        if not journal:
+            journal = runtime.get("fallback_journal")
         if not journal:
             journal = self.env["account.journal"].search(
                 [("company_id", "=", self.env.company.id)], limit=1
             )
+            runtime["fallback_journal"] = journal
         if not journal:
             raise UserError(_("No se encontró ningún diario contable en la empresa."))
         return journal
+
+    def _get_journal_type_for_lines(self, lineas: list, is_nomina: bool = False) -> str:
+        if is_nomina:
+            return "general"
+        prefixes = {l["cuenta"][:3] for l in lineas if l.get("cuenta")}
+        has_customer = bool(prefixes & {"430", "431", "436"})
+        has_supplier = bool(prefixes & {"400", "401"})
+        if has_customer and not has_supplier:
+            return "sale"
+        if has_supplier and not has_customer:
+            return "purchase"
+        return "general"
 
     def _normalize_account_code_to_six_digits(self, code: str) -> str:
         """Devuelve el código contable truncado a 6 dígitos, rellenando con ceros."""
@@ -1046,14 +1316,22 @@ class AiciaAccountImporterWizard(models.TransientModel):
             return f"640{six_digit_code[3:6]}"
         return code
 
-    def _get_exact_account_by_code(self, code: str):
+    def _get_exact_account_by_code(self, code: str, runtime: dict | None = None):
         """Busca una cuenta exacta de la empresa sin aplicar fallback adicional."""
         if not code:
             return None
-        return self.env["account.account"].search(
+        runtime = runtime or {}
+        account = runtime.get("accounts_by_code", {}).get(code)
+        if account is not None:
+            return account
+        account = self.env["account.account"].search(
             [("code", "=", code), ("company_ids", "in", [self.env.company.id])],
             limit=1,
         )
+        runtime.setdefault("accounts_by_code", {})[code] = account
+        if account and code[:3] not in runtime.setdefault("accounts_by_prefix", {}):
+            runtime["accounts_by_prefix"][code[:3]] = account
+        return account
 
     def _get_collective_prefix(self, code: str) -> str | None:
         """Devuelve el prefijo de 3 dígitos si el código tiene cuenta colectiva."""
@@ -1084,6 +1362,7 @@ class AiciaAccountImporterWizard(models.TransientModel):
         missing_accounts: set = None,
         account_mapping: dict = None,
         skip_collective: bool = False,
+        runtime: dict | None = None,
     ):
         """Resuelve la cuenta Odoo a partir del código legado de 9 dígitos.
 
@@ -1106,15 +1385,9 @@ class AiciaAccountImporterWizard(models.TransientModel):
 
         # ── 1. Subcuentas de bancos 572 → truncado exacto a 6 dígitos ─────────
         if not skip_collective and code.startswith("572"):
-            account = self.env["account.account"].search(
-                [
-                    ("code", "=", normalized),
-                    ("company_ids", "in", [self.env.company.id]),
-                ],
-                limit=1,
-            )
+            account = self._get_exact_account_by_code(normalized, runtime=runtime)
             if account:
-                self._register_automatic_account_mapping(code, account)
+                self._register_automatic_account_mapping(code, account, runtime=runtime)
                 return account
 
         # ── 2. Prefijo colectivo ──────────────────────────────────────────────
@@ -1123,37 +1396,42 @@ class AiciaAccountImporterWizard(models.TransientModel):
             prefix = self._get_collective_prefix(code)
             if prefix:
                 col_code, col_name, col_type = COLLECTIVE_ACCOUNT_MAP[prefix]
-                account = self._get_or_create_account(col_code, col_name, col_type)
-                self._register_automatic_account_mapping(code, account)
+                account = self._get_or_create_account(
+                    col_code, col_name, col_type, runtime=runtime
+                )
+                self._register_automatic_account_mapping(code, account, runtime=runtime)
                 return account
 
         # ── 3. Normalizar a 6 dígitos ─────────────────────────────────────────
-        account = self.env["account.account"].search(
-            [("code", "=", normalized), ("company_ids", "in", [self.env.company.id])],
-            limit=1,
-        )
+        account = self._get_exact_account_by_code(normalized, runtime=runtime)
         if account:
-            self._register_automatic_account_mapping(code, account)
+            self._register_automatic_account_mapping(code, account, runtime=runtime)
             return account
 
         # ── 4. Búsqueda por prefijo de 3 dígitos ─────────────────────────────
-        account = (
-            self.env["account.account"].search(
-                [
-                    ("code", "=like", code[:3] + "%"),
-                    ("company_ids", "in", [self.env.company.id]),
-                ],
-                limit=1,
+        runtime = runtime or {}
+        account = runtime.get("accounts_by_prefix", {}).get(code[:3]) or None
+        if account is None and "accounts_by_prefix" not in runtime:
+            account = (
+                self.env["account.account"].search(
+                    [
+                        ("code", "=like", code[:3] + "%"),
+                        ("company_ids", "in", [self.env.company.id]),
+                    ],
+                    limit=1,
+                )
+                or None
             )
-            or None
-        )
+            runtime.setdefault("accounts_by_prefix", {})[code[:3]] = account
         if account:
-            self._register_automatic_account_mapping(code, account)
+            self._register_automatic_account_mapping(code, account, runtime=runtime)
         if not account and missing_accounts is not None:
             missing_accounts.add(code)
         return account
 
-    def _register_automatic_account_mapping(self, source_code: str, target_account):
+    def _register_automatic_account_mapping(
+        self, source_code: str, target_account, runtime: dict | None = None
+    ):
         """Persiste cambios automáticos de subcuentas para revisión futura."""
         if not source_code or not target_account:
             return
@@ -1163,23 +1441,35 @@ class AiciaAccountImporterWizard(models.TransientModel):
         if not normalized_source:
             return
 
-        mapping = AccountMapping.search(
-            [("source_code_normalized", "=", normalized_source)], limit=1
-        )
+        runtime = runtime or {}
+        mapping = runtime.get("mapping_by_source", {}).get(normalized_source)
+        if mapping is None and normalized_source not in runtime.get("mapping_sources", set()):
+            mapping = AccountMapping.search(
+                [("source_code_normalized", "=", normalized_source)], limit=1
+            )
+            runtime.setdefault("mapping_by_source", {})[normalized_source] = mapping
+            runtime.setdefault("mapping_sources", set()).add(normalized_source)
         if not mapping:
-            AccountMapping.create(
+            mapping = AccountMapping.create(
                 {
                     "source_code": normalized_source,
                     "target_account_id": target_account.id,
                 }
             )
+            runtime.setdefault("mapping_by_source", {})[normalized_source] = mapping
+            runtime.setdefault("mapping_sources", set()).add(normalized_source)
+            self._store_runtime_mapping_rule(normalized_source, target_account, runtime=runtime)
             return
 
         if not mapping.target_account_id:
             mapping.write({"target_account_id": target_account.id})
+            self._store_runtime_mapping_rule(normalized_source, target_account, runtime=runtime)
 
-    def _get_account_mapping_rules(self):
+    def _get_account_mapping_rules(self, runtime: dict | None = None):
         """Devuelve reglas persistentes ordenadas: exactas antes que prefijos."""
+        runtime = runtime or {}
+        if runtime.get("compiled_mapping_rules"):
+            return runtime["compiled_mapping_rules"]
         mappings = self.env["aicia.account.importer.account.mapping"].search(
             [("target_account_id", "!=", False)]
         )
@@ -1188,7 +1478,32 @@ class AiciaAccountImporterWizard(models.TransientModel):
             source_code = mapping.source_code_normalized or mapping.source_code
             if source_code:
                 rules.append((source_code, mapping.target_account_id))
-        return sorted(rules, key=lambda rule: len(rule[0]), reverse=True)
+        compiled = self._compile_account_mapping_rules(rules)
+        runtime["compiled_mapping_rules"] = compiled
+        return compiled
+
+    def _get_source_accounts_for_mapping(self, source_code: str, target_account):
+        """Busca cuentas Odoo que pueden actuar como origen para un mapeo."""
+        Account = self.env["account.account"]
+        normalized_source = self.env[
+            "aicia.account.importer.account.mapping"
+        ]._normalize_source_code(source_code)
+        if not normalized_source:
+            return Account.browse()
+
+        domain = [("company_ids", "in", [self.env.company.id])]
+        if len(normalized_source) < 6:
+            domain.append(("code", "=like", f"{normalized_source}%"))
+        else:
+            candidate_codes = {normalized_source}
+            if len(normalized_source) > 6:
+                candidate_codes.add(normalized_source[:6])
+            domain.append(("code", "in", sorted(candidate_codes)))
+
+        source_accounts = Account.search(domain)
+        if target_account:
+            source_accounts -= target_account
+        return source_accounts
 
     def _match_account_mapping(self, code: str, account_mapping=None):
         if not code:
@@ -1199,6 +1514,27 @@ class AiciaAccountImporterWizard(models.TransientModel):
         ]._normalize_source_code(code)
         normalized_for_map = self._normalize_account_code_for_lookup(normalized_code)
         mapping_rules = account_mapping or self._get_account_mapping_rules()
+
+        if isinstance(mapping_rules, dict):
+            exact_rules = mapping_rules.get("exact", {})
+            target_account = exact_rules.get(normalized_code) or exact_rules.get(
+                normalized_for_map
+            )
+            if target_account:
+                return target_account
+
+            for source_code, target_account in mapping_rules.get("prefixes", []):
+                if normalized_code.startswith(source_code) or normalized_for_map.startswith(
+                    source_code
+                ):
+                    _logger.debug(
+                        "Cuenta '%s' redirigida a '%s' por prefijo de usuario '%s'.",
+                        code,
+                        target_account.code,
+                        source_code,
+                    )
+                    return target_account
+            return None
 
         for source_code, target_account in mapping_rules:
             if normalized_code == source_code or normalized_for_map == source_code:
@@ -1223,12 +1559,17 @@ class AiciaAccountImporterWizard(models.TransientModel):
 
         return None
 
-    def _get_or_create_account(self, code: str, name: str, account_type: str):
+    def _get_or_create_account(
+        self, code: str, name: str, account_type: str, runtime: dict | None = None
+    ):
         """Obtiene la cuenta colectiva; la crea si no existe en el plan contable."""
-        account = self.env["account.account"].search(
-            [("code", "=", code), ("company_ids", "in", [self.env.company.id])],
-            limit=1,
-        )
+        runtime = runtime or {}
+        account = runtime.get("accounts_by_code", {}).get(code)
+        if account is None:
+            account = self.env["account.account"].search(
+                [("code", "=", code), ("company_ids", "in", [self.env.company.id])],
+                limit=1,
+            )
         if not account:
             account = self.env["account.account"].create(
                 {
@@ -1241,6 +1582,8 @@ class AiciaAccountImporterWizard(models.TransientModel):
             _logger.info(
                 "Cuenta colectiva '%s - %s' creada automáticamente.", code, name
             )
+        runtime.setdefault("accounts_by_code", {})[code] = account
+        runtime.setdefault("accounts_by_prefix", {}).setdefault(code[:3], account)
         return account
 
     # ── Resolución de partners ────────────────────────────────────────────────
@@ -1269,7 +1612,7 @@ class AiciaAccountImporterWizard(models.TransientModel):
             tipo = "P"
         return f"{tipo}{last5}"
 
-    def _resolve_partner(self, ref_code: str):
+    def _resolve_partner(self, ref_code: str, runtime: dict | None = None):
         """Busca el partner en res.partner para el ref_code derivado de la cuenta legada.
 
         Cadena de búsqueda (en orden, sin duplicados):
@@ -1278,6 +1621,9 @@ class AiciaAccountImporterWizard(models.TransientModel):
         """
         if not ref_code:
             return None
+        runtime = runtime or {}
+        if ref_code in runtime.get("partner_by_ref", {}):
+            return runtime["partner_by_ref"][ref_code]
 
         tipo = ref_code[0]    # "C" o "P"
         digits = ref_code[1:]
@@ -1300,30 +1646,33 @@ class AiciaAccountImporterWizard(models.TransientModel):
         ]))
 
         campo_especifico = "codigo_cliente" if tipo == "C" else "codigo_proveedor"
-        for val in candidatos_especificos:
-            partner = self.env["res.partner"].search(
-                [(campo_especifico, "=", val)], limit=1
-            )
-            if partner:
-                _logger.debug(
-                    "Partner encontrado por %s='%s' (ref_code='%s').",
-                    campo_especifico, val, ref_code,
+        partner_model = self.env["res.partner"]
+        if campo_especifico in partner_model._fields:
+            for val in candidatos_especificos:
+                partner = partner_model.search(
+                    [(campo_especifico, "=", val)], limit=1
                 )
-                return partner
+                if partner:
+                    _logger.debug(
+                        "Partner encontrado por %s='%s' (ref_code='%s').",
+                        campo_especifico, val, ref_code,
+                    )
+                    runtime.setdefault("partner_by_ref", {})[ref_code] = partner
+                    return partner
 
         for ref in candidatos_ref:
-            partner = self.env["res.partner"].search(
-                [("ref", "=", ref)], limit=1
-            )
+            partner = partner_model.search([("ref", "=", ref)], limit=1)
             if partner:
                 _logger.debug(
                     "Partner encontrado por ref='%s' (ref_code='%s').", ref, ref_code
                 )
+                runtime.setdefault("partner_by_ref", {})[ref_code] = partner
                 return partner
 
+        runtime.setdefault("partner_by_ref", {})[ref_code] = None
         return None
 
-    def _resolve_partner_nomina(self, ref_code: str):
+    def _resolve_partner_nomina(self, ref_code: str, runtime: dict | None = None):
         """Busca el partner del empleado via hr.employee.codigo_empleado.
 
         Construye candidatos a partir del código (prefijo "E" + últimos 5 dígitos),
@@ -1335,6 +1684,9 @@ class AiciaAccountImporterWizard(models.TransientModel):
         """
         if not ref_code:
             return None
+        runtime = runtime or {}
+        if ref_code in runtime.get("nomina_partner_by_ref", {}):
+            return runtime["nomina_partner_by_ref"][ref_code]
 
         digits = ref_code[1:]  # últimos 5 dígitos de la cuenta
         digits_int = str(int(digits)) if digits.isdigit() else digits.lstrip("0") or "0"
@@ -1348,24 +1700,27 @@ class AiciaAccountImporterWizard(models.TransientModel):
         ]))
 
         # ── Buscar primero en hr.employee por codigo_empleado ─────────────────
-        Employee = self.env["hr.employee"]
-        for cand in candidatos:
-            employee = Employee.search(
-                [("codigo_empleado", "=", cand)], limit=1
-            )
-            if employee:
-                partner = employee.partner_id or employee.address_home_id
-                if partner:
-                    _logger.debug(
-                        "Empleado encontrado por codigo_empleado='%s' → partner ID %d.",
-                        cand, partner.id,
-                    )
-                    return partner
-                _logger.debug(
-                    "Empleado encontrado por codigo_empleado='%s' pero sin partner asociado.",
-                    cand,
+        if self.env.registry.models.get("hr.employee"):
+            Employee = self.env["hr.employee"]
+            for cand in candidatos:
+                employee = Employee.search(
+                    [("codigo_empleado", "=", cand)], limit=1
                 )
-                return None
+                if employee:
+                    partner = self._get_employee_partner(employee)
+                    if partner:
+                        _logger.debug(
+                            "Empleado encontrado por codigo_empleado='%s' → partner ID %d.",
+                            cand, partner.id,
+                        )
+                        runtime.setdefault("nomina_partner_by_ref", {})[ref_code] = partner
+                        return partner
+                    _logger.debug(
+                        "Empleado encontrado por codigo_empleado='%s' pero sin partner asociado.",
+                        cand,
+                    )
+                    runtime.setdefault("nomina_partner_by_ref", {})[ref_code] = None
+                    return None
 
         # ── Fallback: buscar en res.partner por campo ref ─────────────────────
         for cand in candidatos:
@@ -1376,7 +1731,24 @@ class AiciaAccountImporterWizard(models.TransientModel):
                 _logger.debug(
                     "Empleado encontrado por ref='%s' (ref_code='%s').", cand, ref_code
                 )
+                runtime.setdefault("nomina_partner_by_ref", {})[ref_code] = partner
                 return partner
+        runtime.setdefault("nomina_partner_by_ref", {})[ref_code] = None
+        return None
+
+    def _get_employee_partner(self, employee):
+        """Devuelve el partner asociado usando los campos disponibles en la versión."""
+        for field_name in (
+            "partner_id",
+            "work_contact_id",
+            "address_home_id",
+            "private_address_id",
+            "home_address_id",
+        ):
+            if field_name in getattr(employee, "_fields", {}):
+                partner = getattr(employee, field_name)
+                if partner:
+                    return partner
         return None
 
     def _create_partner(
@@ -1385,6 +1757,7 @@ class AiciaAccountImporterWizard(models.TransientModel):
         account_code: str,
         name: str,
         is_nomina: bool = False,
+        runtime: dict | None = None,
     ):
         """Crea un partner a partir del ref_code y el código de cuenta legado.
 
@@ -1393,10 +1766,13 @@ class AiciaAccountImporterWizard(models.TransientModel):
         - Nómina (is_nomina) → sin customer_rank ni supplier_rank (empleado)
         - Nombre: descripción de la línea o ref_code si no hay descripción.
         """
-        existing = self.env["res.partner"].search(
-            [("ref", "=", ref_code)], limit=1
-        )
+        runtime = runtime or {}
+        cached_partner = runtime.get("partner_by_ref", {}).get(ref_code)
+        if cached_partner:
+            return cached_partner
+        existing = self.env["res.partner"].search([("ref", "=", ref_code)], limit=1)
         if existing:
+            runtime.setdefault("partner_by_ref", {})[ref_code] = existing
             return existing
 
         prefix = account_code[:3] if account_code else ""
@@ -1413,7 +1789,136 @@ class AiciaAccountImporterWizard(models.TransientModel):
         _logger.info(
             "%s '%s' (ref=%s) creado automáticamente.", tipo_label, vals["name"], ref_code
         )
+        runtime.setdefault("partner_by_ref", {})[ref_code] = partner
+        if is_nomina:
+            runtime.setdefault("nomina_partner_by_ref", {})[ref_code] = partner
         return partner
+
+    def _prepare_import_runtime(self, apuntes, lineas_by_apunte, account_mapping):
+        account_model = self.env["account.account"]
+        accounts = account_model.search([("company_ids", "in", [self.env.company.id])])
+        accounts_by_code = {account.code: account for account in accounts}
+        accounts_by_prefix = {}
+        for account in accounts:
+            accounts_by_prefix.setdefault(account.code[:3], account)
+
+        mapping_model = self.env["aicia.account.importer.account.mapping"]
+        mappings = mapping_model.search([])
+        mapping_by_source = {
+            mapping.source_code_normalized: mapping
+            for mapping in mappings
+            if mapping.source_code_normalized
+        }
+        mapping_sources = set(mapping_by_source)
+
+        journals = self.env["account.journal"].search(
+            [("company_id", "=", self.env.company.id)]
+        )
+        journals_by_type = {}
+        for journal in journals:
+            journals_by_type.setdefault(journal.type, journal)
+
+        project_codes = {
+            str(linea["id_proyecto"])
+            for lineas in lineas_by_apunte.values()
+            for linea in lineas
+            if linea.get("id_proyecto")
+        }
+        analytic_by_code = {}
+        if project_codes:
+            analytics = self.env["account.analytic.account"].search(
+                [("code", "in", sorted(project_codes))]
+            )
+            analytic_by_code = {analytic.code: analytic for analytic in analytics}
+
+        return {
+            "accounts_by_code": accounts_by_code,
+            "accounts_by_prefix": accounts_by_prefix,
+            "mapping_by_source": mapping_by_source,
+            "mapping_sources": mapping_sources,
+            "compiled_mapping_rules": self._compile_account_mapping_rules(account_mapping),
+            "journals_by_type": journals_by_type,
+            "fallback_journal": journals[:1],
+            "analytic_by_code": analytic_by_code,
+            "partner_by_ref": {},
+            "nomina_partner_by_ref": {},
+            "existing_moves": self._prepare_existing_move_index(apuntes, lineas_by_apunte),
+        }
+
+    @staticmethod
+    def _compile_account_mapping_rules(rules):
+        if isinstance(rules, dict):
+            return rules
+        exact = {}
+        prefixes = []
+        for source_code, target_account in sorted(
+            rules or [], key=lambda rule: len(rule[0]), reverse=True
+        ):
+            exact[source_code] = target_account
+            prefixes.append((source_code, target_account))
+        return {"exact": exact, "prefixes": prefixes}
+
+    def _store_runtime_mapping_rule(
+        self, source_code, target_account, runtime: dict | None = None
+    ):
+        runtime = runtime or {}
+        compiled = runtime.get("compiled_mapping_rules")
+        if not compiled or not source_code or not target_account:
+            return
+        compiled.setdefault("exact", {})[source_code] = target_account
+        prefixes = [rule for rule in compiled.get("prefixes", []) if rule[0] != source_code]
+        prefixes.append((source_code, target_account))
+        compiled["prefixes"] = sorted(prefixes, key=lambda rule: len(rule[0]), reverse=True)
+
+    def _prepare_existing_move_index(self, apuntes, lineas_by_apunte):
+        journals = self.env["account.journal"].search(
+            [("company_id", "=", self.env.company.id)]
+        )
+        journals_by_type = {}
+        for journal in journals:
+            journals_by_type.setdefault(journal.type, journal)
+        fallback_journal = journals[:1]
+        journal_ids = set()
+        for id_apunte, cabecera in apuntes.items():
+            lineas = lineas_by_apunte.get(id_apunte) or []
+            is_nomina = str(cabecera.get("numero_documento", "") or "").upper().startswith(
+                "NO-"
+            )
+            journal_type = self._get_journal_type_for_lines(lineas, is_nomina=is_nomina)
+            journal = journals_by_type.get(journal_type) or fallback_journal
+            if journal:
+                journal_ids.add(journal.id)
+
+        if not journal_ids:
+            return {}
+
+        moves = self.env["account.move"].search_read(
+            [
+                ("journal_id", "in", sorted(journal_ids)),
+                ("state", "in", ["draft", "posted"]),
+                ("narration", "ilike", "[AICIA_IMPORT_ID:"),
+            ],
+            ["journal_id", "state", "narration"],
+        )
+        existing_moves = {}
+        for move in moves:
+            marker = self._extract_legacy_marker_from_narration(move.get("narration"))
+            journal_data = move.get("journal_id")
+            journal_id = journal_data[0] if journal_data else False
+            if marker and journal_id:
+                existing_moves[(journal_id, marker)] = move
+        return existing_moves
+
+    @staticmethod
+    def _extract_legacy_marker_from_narration(narration):
+        text = str(narration or "")
+        start = text.find("[AICIA_IMPORT_ID:")
+        if start == -1:
+            return None
+        end = text.find("]", start)
+        if end == -1:
+            return None
+        return text[start : end + 1]
 
     # ── Utilidades ────────────────────────────────────────────────────────────
 

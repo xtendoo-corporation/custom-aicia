@@ -110,8 +110,13 @@ class AiciaAccountPgcRecodeSimulationWizard(models.TransientModel):
                 result['status'] = 'manual'
                 notes.append(_('El código propuesto no es válido.'))
             elif not rule.proposed_account_id:
-                result['status'] = 'manual'
-                notes.append(_('La subcuenta propuesta no existe en el plan contable de la compañía.'))
+                if rule.create_target_account:
+                    result['status'] = 'review'
+                    result['confidence'] = 'medium'
+                    notes.append(_('La subcuenta destino no existe todavía; se creará al aplicar.'))
+                else:
+                    result['status'] = 'manual'
+                    notes.append(_('La subcuenta propuesta no existe en el plan contable de la compañía.'))
             elif is_bank_cash:
                 result['status'] = 'manual'
                 notes.append(_('Las cuentas de banco o caja requieren validación manual.'))
@@ -144,7 +149,12 @@ class AiciaAccountPgcRecodeSimulationWizard(models.TransientModel):
             result['new_account_id'] = False
             result['new_account_code'] = preview.new_account_code
             result['new_account_name'] = preview.new_account_name
-            if base_eval['status'] not in ('manual', 'discarded'):
+            has_creatable_code = bool(preview.new_account_code) and len(preview.new_account_code) == 6
+            if base_eval['status'] in ('manual', 'discarded'):
+                result['status'] = base_eval['status']
+            elif has_creatable_code and base_eval['status'] == 'review':
+                result['status'] = 'review'
+            else:
                 result['status'] = 'manual'
             result['notes'] = preview.notes or base_eval['notes']
             return result

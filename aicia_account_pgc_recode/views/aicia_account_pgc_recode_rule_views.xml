@@ -9,6 +9,7 @@
                 <field name="old_name" readonly="1" optional="show"/>
                 <field name="target_prefix"/>
                 <field name="target_label" optional="hide"/>
+                <field name="create_target_account" optional="hide"/>
                 <field name="proposed_account_id" domain="[('company_ids', '=', company_id)]" options="{'no_create': True, 'no_create_edit': True}"/>
                 <field name="proposed_code" readonly="1" optional="hide"/>
                 <field name="status" widget="badge"/>
@@ -42,6 +43,7 @@
                             <field name="old_name"/>
                             <field name="target_prefix"/>
                             <field name="target_label"/>
+                            <field name="create_target_account"/>
                         </group>
                         <group>
                             <field name="proposed_account_id" domain="[('company_ids', '=', company_id)]" options="{'no_create': True, 'no_create_edit': True}"/>
@@ -50,10 +52,16 @@
                             <field name="company_id" groups="base.group_multi_company"/>
                         </group>
                     </group>
-                    <group invisible="not proposed_code or proposed_account_id">
+                    <group invisible="not proposed_code or proposed_account_id or create_target_account">
                         <div class="alert alert-danger" role="alert">
                             <strong>La subcuenta propuesta no existe.</strong>
                             Debe existir previamente en el plan contable de la compañía para que la regla pueda aplicarse de forma automática.
+                        </div>
+                    </group>
+                    <group invisible="not proposed_code or proposed_account_id or not create_target_account">
+                        <div class="alert alert-info" role="alert">
+                            <strong>La subcuenta destino no existe todavía.</strong>
+                            Se creará automáticamente al aplicar la recodificación.
                         </div>
                     </group>
                     <group invisible="not collision">

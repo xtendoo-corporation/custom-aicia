@@ -1,7 +1,5 @@
-import csv
 import re
 from io import BytesIO
-from pathlib import Path
 from zipfile import is_zipfile
 
 from odoo import _, api, fields, models
@@ -17,9 +15,6 @@ try:
 except ImportError:
     xlrd = None
 
-
-DEFAULT_RULES_FILENAME = 'LISTADODESALDOSDELPLANGENERALORDENADOPORCUENTASEJERCICIO2025 (1).xls'
-DEFAULT_RULES_TEMPLATE_FILENAME = 'aicia_account_pgc_recode_rule_template.csv'
 
 
 class AiciaAccountPgcRecodeRule(models.Model):
@@ -63,6 +58,13 @@ class AiciaAccountPgcRecodeRule(models.Model):
 
     collision = fields.Boolean(string='Colisión', default=False)
     collision_notes = fields.Text(string='Notas de colisión')
+    create_target_account = fields.Boolean(
+        string='Crear subcuenta destino al aplicar',
+        default=False,
+        help='Si se marca, permite mapear la cuenta origen a un código destino que '
+             'todavía no existe en el plan contable. La subcuenta se creará al aplicar '
+             'la recodificación.',
+    )
     notes = fields.Text(string='Notas')
     active = fields.Boolean(default=True)
     is_default_data = fields.Boolean(string='Cargado desde el Excel por defecto', default=False, copy=False, index=True)
@@ -144,6 +146,12 @@ class AiciaAccountPgcRecodeRule(models.Model):
                 raise ValidationError(_('El código propuesto debe tener exactamente 6 dígitos.'))
             if status not in ('automatic', 'review', 'applied') or not rule.proposed_code:
                 continue
+            if rule.create_target_account:
+                if len(rule.proposed_code) != 6:
+                    raise ValidationError(_('El código propuesto debe tener exactamente 6 dígitos.'))
+                if status == 'automatic' and rule.collision:
+                    raise ValidationError(_('No se puede marcar como automática si existe una colisión.'))
+                continue
             if not rule._find_proposed_account():
                 raise ValidationError(
                     _('La subcuenta propuesta debe existir previamente en el plan contable de la compañía.')
@@ -182,14 +190,6 @@ class AiciaAccountPgcRecodeRule(models.Model):
         } & set(vals):
             self._recompute_collision_and_status(previous_companies | self.mapped('company_id'))
         return res
-
-    @api.model
-    def _get_default_rules_file_path(self):
-        return Path(__file__).resolve().parent.parent / 'data' / DEFAULT_RULES_FILENAME
-
-    @api.model
-    def _get_default_rules_template_path(self):
-        return Path(__file__).resolve().parent.parent / 'data' / DEFAULT_RULES_TEMPLATE_FILENAME
 
     @api.model
     def _normalize_cell_value(self, value):
@@ -335,26 +335,6 @@ class AiciaAccountPgcRecodeRule(models.Model):
             return self._parse_aicia_balance_rows(rows)
         return self._parse_generic_rows(rows)
 
-    @api.model
-    def parse_rules_template_file(self, file_content):
-        decoded_content = file_content.decode('utf-8-sig')
-        reader = csv.DictReader(decoded_content.splitlines())
-        parsed_rows = []
-        for row in reader:
-            old_code = (row.get('old_code') or '').strip()
-            if not old_code:
-                continue
-            parsed_rows.append({
-                'old_code': old_code,
-                'old_name': (row.get('old_name') or '').strip() or False,
-                'target_prefix': (row.get('target_prefix') or '').strip() or False,
-                'target_label': (row.get('target_label') or '').strip() or False,
-                'notes': (row.get('notes') or '').strip() or False,
-                'source_row': int((row.get('source_row') or '0').strip() or 0),
-                'status': (row.get('status') or 'draft').strip() or 'draft',
-            })
-        return parsed_rows
-
     def _finalize_import_statuses(self):
         self._recompute_collision_and_status(self.mapped('company_id'))
 
@@ -365,6 +345,8 @@ class AiciaAccountPgcRecodeRule(models.Model):
         if not self.proposed_code or len(self.proposed_code) != 6:
             return 'manual'
         if not self._find_proposed_account():
+            if self.create_target_account:
+                return 'review'
             return 'manual'
         if self.collision:
             return 'review'
@@ -406,12 +388,7 @@ class AiciaAccountPgcRecodeRule(models.Model):
     def load_default_rules_for_company(self, company):
         if not getattr(company, '_name', False):
             company = self.env['res.company'].browse(company)
-        template_path = self._get_default_rules_template_path()
-        if template_path.exists():
-            parsed_rows = self.parse_rules_template_file(template_path.read_bytes())
-        else:
-            file_path = self._get_default_rules_file_path()
-            parsed_rows = self.parse_rules_file(file_path.read_bytes(), filename=file_path.name)
+        parsed_rows = self.env['aicia.account.pgc.recode.rule.template']._get_default_rule_rows()
 
         company_rules = self.search([('company_id', '=', company.id)])
         default_rules = company_rules.filtered('is_default_data')
@@ -438,6 +415,7 @@ class AiciaAccountPgcRecodeRule(models.Model):
                 'old_name': parsed_row['old_name'],
                 'target_prefix': parsed_row['target_prefix'],
                 'target_label': parsed_row['target_label'],
+                'create_target_account': parsed_row.get('create_target_account', False),
                 'notes': parsed_row['notes'],
                 'status': parsed_row['status'],
                 'is_default_data': True,
@@ -453,6 +431,7 @@ class AiciaAccountPgcRecodeRule(models.Model):
                 'old_name': values['old_name'],
                 'target_prefix': values['target_prefix'],
                 'target_label': values['target_label'],
+                'create_target_account': values['create_target_account'],
                 'notes': values['notes'],
                 'status': values['status'],
                 'source_row': values['source_row'],

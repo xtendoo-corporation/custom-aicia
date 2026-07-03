@@ -8,7 +8,9 @@
     'depends': ['account', 'aicia_account_menu'],
     'data': [
         'security/ir.model.access.csv',
+        'data/aicia_account_pgc_recode_rule_template_data.xml',
         'data/aicia_account_pgc_recode_rule_data.xml',
+        'views/aicia_account_pgc_recode_rule_template_views.xml',
         'views/aicia_account_pgc_recode_rule_views.xml',
         'views/aicia_account_pgc_recode_batch_views.xml',
         'views/aicia_account_pgc_recode_line_views.xml',

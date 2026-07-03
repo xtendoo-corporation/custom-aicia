@@ -93,17 +93,18 @@ class TestAiciaAccountPgcRecode(TransactionCase):
         })
         self.assertEqual(rule.proposed_code, '640034')
 
-    def test_02_load_default_rules_from_bundled_excel(self):
+    def test_02_load_default_rules_from_templates(self):
         self._ensure_account('100000', 'Capital social')
         self._ensure_account('628100', 'Teléfono')
 
-        template_path = self.rule_model._get_default_rules_template_path()
-        self.assertTrue(template_path.exists())
+        template_model = self.env['aicia.account.pgc.recode.rule.template']
+        self.assertGreaterEqual(template_model.search_count([]), 1500)
 
-        template_rows = self.rule_model.parse_rules_template_file(template_path.read_bytes())
+        template_rows = template_model._get_default_rule_rows()
         self.assertGreaterEqual(len(template_rows), 1500)
-        self.assertEqual(template_rows[0]['old_code'], '100000000')
-        self.assertEqual(template_rows[0]['target_prefix'], '100')
+        capital_template = template_model.search([('old_code', '=', '100000000')], limit=1)
+        self.assertEqual(capital_template.target_prefix, '100')
+        self.assertEqual(capital_template.target_label, 'CAPITAL SOCIAL')
 
         loaded_rules = self.rule_model.load_default_rules_for_company(self.company)
         first_count = self.rule_model.search_count([
@@ -596,6 +597,130 @@ class TestAiciaAccountPgcRecode(TransactionCase):
         self.assertEqual(wizard.move_line_count, 0)
         with self.assertRaises(UserError):
             wizard.action_apply_move()
+
+    def test_14_create_target_account_on_apply(self):
+        account_model = self.env['account.account'].with_company(self.company)
+        self._ensure_account('130000', 'Subvenciones de capital')
+
+        source_account = account_model.create({
+            'code': '13500234',
+            'name': 'Subvención proyecto X',
+            'account_type': 'expense',
+        })
+        move = self.env['account.move'].create({
+            'journal_id': self.journal.id,
+            'date': '2026-01-10',
+            'line_ids': [
+                (0, 0, {'account_id': source_account.id, 'debit': 50.0, 'credit': 0.0, 'name': 'Mapeo directo'}),
+                (0, 0, {'account_id': self.account_640.id, 'debit': 0.0, 'credit': 50.0, 'name': 'Contrapartida'}),
+            ],
+        })
+        move.action_post()
+
+        rule = self.rule_model.create({
+            'old_code': '13500234',
+            'target_prefix': '130234',
+            'create_target_account': True,
+            'company_id': self.company.id,
+        })
+
+        self.assertEqual(rule.proposed_code, '130234')
+        self.assertFalse(rule.proposed_account_id)
+        self.assertEqual(rule.status, 'review')
+
+        wizard = self.env['aicia.account.pgc.recode.simulation.wizard'].create({
+            'company_id': self.company.id,
+        })
+        res = wizard.action_simulate()
+        batch = self.env['aicia.account.pgc.recode.batch'].browse(res['res_id'])
+        recode_line = batch.line_ids.filtered(lambda line: line.old_account_id == source_account)
+
+        self.assertEqual(recode_line.status, 'review')
+        self.assertEqual(recode_line.new_account_code, '130234')
+        self.assertFalse(recode_line.new_account_id)
+
+        apply_wiz = self.env['aicia.account.pgc.recode.apply.wizard'].create({
+            'batch_id': batch.id,
+            'apply_automatic': True,
+            'apply_review_validated': True,
+            'create_missing_accounts': True,
+        })
+        apply_wiz.action_apply()
+
+        created_account = account_model.search([
+            ('company_ids', '=', self.company.id),
+            ('code', '=', '130234'),
+        ], limit=1)
+        self.assertTrue(created_account)
+        self.assertEqual(recode_line.new_account_id, created_account)
+        self.assertTrue(recode_line.applied)
+        self.assertEqual(recode_line.move_line_id.account_id, created_account)
+
+    def test_14b_apply_without_create_flag_keeps_missing_account_blocked(self):
+        account_model = self.env['account.account'].with_company(self.company)
+        source_account = account_model.create({
+            'code': '13500235',
+            'name': 'Subvención proyecto Y',
+            'account_type': 'expense',
+        })
+        move = self.env['account.move'].create({
+            'journal_id': self.journal.id,
+            'date': '2026-01-11',
+            'line_ids': [
+                (0, 0, {'account_id': source_account.id, 'debit': 30.0, 'credit': 0.0, 'name': 'Sin crear'}),
+                (0, 0, {'account_id': self.account_640.id, 'debit': 0.0, 'credit': 30.0, 'name': 'Contrapartida'}),
+            ],
+        })
+        move.action_post()
+
+        rule = self.rule_model.create({
+            'old_code': '13500235',
+            'target_prefix': '130235',
+            'company_id': self.company.id,
+        })
+        self.assertEqual(rule.status, 'manual')
+
+        wizard = self.env['aicia.account.pgc.recode.simulation.wizard'].create({
+            'company_id': self.company.id,
+        })
+        res = wizard.action_simulate()
+        batch = self.env['aicia.account.pgc.recode.batch'].browse(res['res_id'])
+        recode_line = batch.line_ids.filtered(lambda line: line.old_account_id == source_account)
+
+        self.assertEqual(recode_line.status, 'manual')
+        self.assertFalse(account_model.search_count([
+            ('company_ids', '=', self.company.id),
+            ('code', '=', '130235'),
+        ]))
+
+    def test_15_create_target_account_relaxes_validation_and_propagates(self):
+        rule = self.rule_model.create({
+            'old_code': '13500234',
+            'target_prefix': '130234',
+            'create_target_account': True,
+            'company_id': self.company.id,
+        })
+
+        self.assertEqual(rule.status, 'review')
+
+        rule.write({'status': 'review'})
+        self.assertEqual(rule.status, 'review')
+
+        rule.action_mark_automatic()
+        self.assertEqual(rule.status, 'automatic')
+
+        template_model = self.env['aicia.account.pgc.recode.rule.template']
+        template_model.search([('old_code', '=', '130000999')]).unlink()
+        template_model.create({
+            'old_code': '130000999',
+            'target_prefix': '130299',
+            'create_target_account': True,
+            'status': 'draft',
+        })
+
+        rows = template_model._get_default_rule_rows()
+        propagated_row = next(row for row in rows if row['old_code'] == '130000999')
+        self.assertTrue(propagated_row['create_target_account'])
 
     def test_13e_move_wizard_menu_and_action_exist(self):
         move_action = self.env.ref(
