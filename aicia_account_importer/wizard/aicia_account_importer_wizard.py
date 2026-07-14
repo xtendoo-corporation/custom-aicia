@@ -66,6 +66,9 @@ COLLECTIVE_ACCOUNT_MAP = {
     "430": ("430000", "Clientes", "asset_receivable"),
     "431": ("430000", "Clientes", "asset_receivable"),
     "436": ("430000", "Clientes", "asset_receivable"),
+    # Bancos: se resuelve primero la subcuenta exacta truncada a 6 dígitos
+    # (572XXX, banco concreto). Solo si no existe se usa la colectiva 572000.
+    "572": ("572000", "Bancos", "asset_cash"),
 }
 
 # Prefijos de cuentas de terceros (excluye 572 que no es partner)
@@ -300,8 +303,6 @@ class AiciaAccountImporterAccountMapping(models.Model):
         prefix = normalized_code[:3]
         if prefix in COLLECTIVE_ACCOUNT_MAP:
             return COLLECTIVE_ACCOUNT_MAP[prefix][2]
-        if prefix == "572":
-            return "asset_cash"
 
         Account = self.env["account.account"]
         company_domain = [("company_ids", "in", [self.env.company.id])]
@@ -1103,6 +1104,7 @@ class AiciaAccountImporterWizard(models.TransientModel):
             "journal_id": journal.id,
             "line_ids": line_vals,
             "narration": self._build_move_narration(cabecera, legacy_number),
+            "numero_asiento_aicia": legacy_number,
         }
 
         try:
@@ -1203,18 +1205,13 @@ class AiciaAccountImporterWizard(models.TransientModel):
                 )
 
         if not account:
-            if account_lookup_code != legacy_account_code:
-                account = self._get_exact_account_by_code(account_lookup_code, runtime=runtime)
-                if not account and missing_accounts is not None:
-                    missing_accounts.add(account_lookup_code)
-            else:
-                account = self._get_account(
-                    account_lookup_code,
-                    missing_accounts,
-                    account_mapping,
-                    skip_collective=is_nomina,
-                    runtime=runtime,
-                )
+            account = self._get_account(
+                account_lookup_code,
+                missing_accounts,
+                account_mapping,
+                skip_collective=is_nomina,
+                runtime=runtime,
+            )
         if account and account_lookup_code != legacy_account_code:
             self._register_automatic_account_mapping(
                 legacy_account_code, account, runtime=runtime
@@ -1225,9 +1222,11 @@ class AiciaAccountImporterWizard(models.TransientModel):
             ) % account_lookup_code, None
 
         # ── Distribución analítica por ID_Proyecto (100%) ────────────────────
+        # ID_Proyecto=0 es un proyecto válido ([0] AICIA), por lo que se debe
+        # distinguir explícitamente de la ausencia de valor (None).
         analytic_distribution = {}
         id_proyecto = linea.get("id_proyecto")
-        if id_proyecto:
+        if id_proyecto is not None:
             runtime = runtime or {}
             analytic = runtime.get("analytic_by_code", {}).get(str(id_proyecto))
             if analytic is None:
@@ -1822,7 +1821,7 @@ class AiciaAccountImporterWizard(models.TransientModel):
             str(linea["id_proyecto"])
             for lineas in lineas_by_apunte.values()
             for linea in lineas
-            if linea.get("id_proyecto")
+            if linea.get("id_proyecto") is not None
         }
         analytic_by_code = {}
         if project_codes:

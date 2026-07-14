@@ -124,6 +124,27 @@ class TestAiciaAccountImporterWizard(TransactionCase):
             "company_ids": [(6, 0, [self.env.company.id])],
         })
 
+    def _find_move_by_legacy_number(self, legacy_number: str):
+        """Localiza el asiento importado por su Nº de asiento legado AICIA."""
+        return self.env["account.move"].search(
+            [("numero_asiento_aicia", "=", str(legacy_number))], limit=1
+        )
+
+    def _ensure_analytic_account(self, code: str, name: str):
+        existing = self.env["account.analytic.account"].search(
+            [("code", "=", code)], limit=1
+        )
+        if existing:
+            return existing
+        plan = self.env["account.analytic.plan"].search([], limit=1)
+        if not plan:
+            plan = self.env["account.analytic.plan"].create({"name": "AICIA Plan"})
+        return self.env["account.analytic.account"].create({
+            "name": name,
+            "code": code,
+            "plan_id": plan.id,
+        })
+
     # ── Tests: parseo de Fecha_Contable ──────────────────────────────────────
 
     def test_parse_fecha_contable_entero_yyyymmdd(self):
@@ -185,9 +206,6 @@ class TestAiciaAccountImporterWizard(TransactionCase):
 
     def test_get_account_400_uses_colectiva(self):
         """400000043 → devuelve/crea la cuenta colectiva 400000."""
-        self.env["account.account"].search(
-            [("code", "=", "400000"), ("company_ids", "in", [self.env.company.id])]
-        ).unlink()
         wizard = self._make_wizard()
         acc = wizard._get_account("400000043")
         self.assertIsNotNone(acc)
@@ -1245,3 +1263,105 @@ class TestAiciaAccountImporterWizard(TransactionCase):
         found = wizard._resolve_partner("C03604")
         self.assertIsNotNone(found)
         self.assertEqual(found.id, partner.id)
+
+    # ── Tests: Nº de asiento AICIA y proyecto analítico ──────────────────────
+
+    def test_import_stores_numero_asiento_aicia(self):
+        """El Numero_Apunte del legado se guarda en numero_asiento_aicia."""
+        self._ensure_account("430000", "Clientes", "asset_receivable")
+        self._ensure_account("700000", "Ventas", "income")
+
+        apuntes = self._make_apuntes_xlsx([
+            [40, 4000, 20250115, None, "Ref cruzada", "DOC", 30000, True, False, "R"],
+        ])
+        lineas = self._make_lineas_xlsx([
+            [40, 1, "430000001", 0, 0, "Test", 30000, "D"],
+            [40, 2, "700000000", 0, 0, "Test", 30000, "H"],
+        ])
+        wizard = self._make_wizard(
+            file_apuntes=self._enc(apuntes), file_lineas=self._enc(lineas)
+        )
+        wizard.action_import()
+
+        move = self._find_move_by_legacy_number("4000")
+        self.assertTrue(move, "El asiento debe localizarse por numero_asiento_aicia")
+        self.assertEqual(move.numero_asiento_aicia, "4000")
+
+    def test_import_numero_asiento_aicia_is_idempotent_reference(self):
+        """Reimportar no duplica: la referencia cruzada apunta a un único asiento."""
+        self._ensure_account("430000", "Clientes", "asset_receivable")
+        self._ensure_account("700000", "Ventas", "income")
+
+        apuntes = self._make_apuntes_xlsx([
+            [41, 4100, 20250115, None, "Dup ref", "DOC", 30000, True, False, "R"],
+        ])
+        lineas = self._make_lineas_xlsx([
+            [41, 1, "430000001", 0, 0, "Test", 30000, "D"],
+            [41, 2, "700000000", 0, 0, "Test", 30000, "H"],
+        ])
+        wizard = self._make_wizard(
+            file_apuntes=self._enc(apuntes), file_lineas=self._enc(lineas)
+        )
+        wizard.action_import()
+        wizard2 = self._make_wizard(
+            file_apuntes=self._enc(apuntes), file_lineas=self._enc(lineas)
+        )
+        wizard2.action_import()
+
+        moves = self.env["account.move"].search(
+            [("numero_asiento_aicia", "=", "4100")]
+        )
+        self.assertEqual(len(moves), 1, "No debe duplicarse el asiento reimportado")
+
+    def test_import_project_zero_assigns_aicia_analytic(self):
+        """ID_Proyecto=0 asigna la cuenta analítica [0] AICIA (0 no es 'sin proyecto')."""
+        self._ensure_account("430000", "Clientes", "asset_receivable")
+        self._ensure_account("700000", "Ventas", "income")
+        analytic = self._ensure_analytic_account("0", "AICIA")
+
+        apuntes = self._make_apuntes_xlsx([
+            [42, 4200, 20250115, None, "Proyecto 0", "DOC", 30000, True, False, "R"],
+        ])
+        lineas = self._make_lineas_xlsx([
+            [42, 1, "430000001", 0, 0, "Test", 30000, "D"],
+            [42, 2, "700000000", 0, 0, "Test", 30000, "H"],
+        ])
+        wizard = self._make_wizard(
+            file_apuntes=self._enc(apuntes), file_lineas=self._enc(lineas)
+        )
+        wizard.action_import()
+
+        move = self._find_move_by_legacy_number("4200")
+        self.assertTrue(move)
+        for line in move.line_ids:
+            self.assertEqual(
+                line.analytic_distribution,
+                {str(analytic.id): 100.0},
+                "Toda línea con ID_Proyecto=0 debe imputarse al proyecto AICIA",
+            )
+
+    def test_import_project_empty_leaves_no_analytic(self):
+        """Celda ID_Proyecto vacía (None) → sin distribución analítica."""
+        self._ensure_account("430000", "Clientes", "asset_receivable")
+        self._ensure_account("700000", "Ventas", "income")
+        self._ensure_analytic_account("0", "AICIA")
+
+        apuntes = self._make_apuntes_xlsx([
+            [43, 4300, 20250115, None, "Sin proyecto", "DOC", 30000, True, False, "R"],
+        ])
+        lineas = self._make_lineas_xlsx([
+            [43, 1, "430000001", 0, None, "Test", 30000, "D"],
+            [43, 2, "700000000", 0, None, "Test", 30000, "H"],
+        ])
+        wizard = self._make_wizard(
+            file_apuntes=self._enc(apuntes), file_lineas=self._enc(lineas)
+        )
+        wizard.action_import()
+
+        move = self._find_move_by_legacy_number("4300")
+        self.assertTrue(move)
+        for line in move.line_ids:
+            self.assertFalse(
+                line.analytic_distribution,
+                "Sin ID_Proyecto no debe asignarse distribución analítica",
+            )
