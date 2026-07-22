@@ -1,4 +1,5 @@
 from . import work_group
+from . import portal_request_notify_mixin
 from . import portal_approval_request_model
 from . import portal_hr_employee_request_model
 from . import portal_hr_employee_intern_request_model

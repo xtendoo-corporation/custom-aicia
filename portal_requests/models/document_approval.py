@@ -9,7 +9,11 @@ class DocumentApproval(models.Model):
     _name = 'document.approval'
     _rec_name = 'computed_name'
     _description = 'Solicitud Documentos'
-    _inherit = ['mail.thread', 'mail.activity.mixin', 'portal.mixin']
+    _inherit = ['mail.thread', 'mail.activity.mixin', 'portal.mixin', 'portal.request.notify.mixin']
+
+    _notify_state_field = 'status'
+    _notify_portal_route = '/my/documents'
+
 
     type_id = fields.Many2one('type.approval', string='Tipo', required=True, tracking=True)
     computed_name = fields.Char('Computed Name', compute='_compute_name')

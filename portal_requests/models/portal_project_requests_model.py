@@ -5,7 +5,10 @@ class PortalProjectRequest(models.Model):
     _name = 'portal.project.request'
     _description = 'Portal Project Request'
     _rec_name = 'computed_name'
-    _inherit = ['mail.thread', 'mail.activity.mixin', 'portal.mixin']
+    _inherit = ['mail.thread', 'mail.activity.mixin', 'portal.mixin', 'portal.request.notify.mixin']
+
+    _notify_portal_route = '/my/project_requests'
+
 
     user_id = fields.Many2one('res.users', string='User', required=True)
     company_id = fields.Many2one('res.company', string='Compañía', required=True, tracking=True)
@@ -73,16 +76,19 @@ class PortalProjectRequest(models.Model):
             record.approved = True
             record.is_revised = True
 
+        self._notify_requester_state(_("Aprobada"))
         return self.show_notificacion("¡Solicitud aprobada!", notification_text, "success")
 
     def action_reject(self):
         for record in self:
             record.approved = False
             record.is_revised = True
+        self._notify_requester_state(_("Rechazada"))
 
     def action_to_revise(self):
         for record in self:
             record.is_revised = False
+        self._notify_requester_state(_("En revisión"))
 
     def create_new_project(self):
         # Buscar el plan analítico AICIA

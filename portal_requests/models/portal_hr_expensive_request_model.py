@@ -4,8 +4,12 @@ from odoo import models, fields, api
 class PortalHrExpensiveRequest(models.Model):
     _name = 'portal.hr.expensive.request'
     _description = 'Portal HR Expensive Request'
-    _inherit = ['mail.thread', 'mail.activity.mixin', 'portal.mixin']
+    _inherit = ['mail.thread', 'mail.activity.mixin', 'portal.mixin', 'portal.request.notify.mixin']
     _rec_name = 'computed_name'
+
+    _notify_state_field = 'status'
+    _notify_portal_route = '/my/expenses'
+
 
     computed_name = fields.Char('Computed Name', compute='_compute_name')
     def _compute_name(self):

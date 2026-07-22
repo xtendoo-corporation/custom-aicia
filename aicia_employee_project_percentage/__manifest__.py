@@ -20,6 +20,7 @@
     "data": [
         "security/ir.model.access.csv",
         "views/hr_employee_views.xml",
+        "views/account_analytic_account_views.xml",
     ],
     "installable": True,
 }

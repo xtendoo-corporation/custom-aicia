@@ -5,7 +5,7 @@ from odoo import models, fields, api, _
 class PortalHrEmployeeRequest(models.Model):
     _name = 'portal.hr.employee.request'
     _description = 'Portal HR Employee Request'
-    _inherit = ['mail.thread', 'mail.activity.mixin']
+    _inherit = ['mail.thread', 'mail.activity.mixin', 'portal.request.notify.mixin']
 
     user_id = fields.Many2one('res.users', string='User', required=True)
     name = fields.Char(string='Employee Name', required=True)
@@ -76,6 +76,7 @@ class PortalHrEmployeeRequest(models.Model):
                 notification_text = _("El empleado %s ha sido dado de baja correctamente.") % record.employee_id.name
             record.approved = True
             record.is_revised = True
+        self._notify_requester_state(_("Aprobada"))
         return self.show_notificacion("¡Solicitud aprobada!", notification_text, "success")
 
 
@@ -128,10 +129,12 @@ class PortalHrEmployeeRequest(models.Model):
         for record in self:
             record.approved = False
             record.is_revised = True
+        self._notify_requester_state(_("Rechazada"))
 
     def action_to_revise(self):
         for record in self:
             record.is_revised = False
+        self._notify_requester_state(_("En revisión"))
 
     def action_view_employee(self):
         self.ensure_one()
