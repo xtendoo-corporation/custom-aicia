@@ -233,7 +233,7 @@ class PortalInvoiceRequest(models.Model):
                 } if self.analytic_id else {},
                 'invoice_line_ids': [
                     (0, 0, {
-                        'name': self.notes,
+                        'name': self.notes or self.analytic_id.name,
                         'quantity': 1.0,
                         'price_unit': self.amount,
                         'analytic_distribution': {
@@ -262,7 +262,7 @@ class PortalInvoiceRequest(models.Model):
                 'ref': reason,
                 'invoice_line_ids': [
                     (0, 0, {
-                        'name': self.notes,
+                        'name': self.notes or self.analytic_id.name,
                         'quantity': 1.0,
                         'price_unit': self.amount,
                     })

@@ -9,6 +9,7 @@
                 <field name="sequence" widget="handle"/>
                 <field name="analytic_account_id" string="Proyecto" required="1"/>
                 <field name="percentage" string="Porcentaje (%)"/>
+                <field name="date_start" string="Fecha de inicio"/>
             </list>
         </field>
     </record>
@@ -27,6 +28,7 @@
                         <field name="sequence" widget="handle"/>
                         <field name="analytic_account_id" string="Proyecto" required="1"/>
                         <field name="percentage" string="Porcentaje (%)"/>
+                        <field name="date_start" string="Fecha de inicio"/>
                     </list>
                 </field>
             </xpath>

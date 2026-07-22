@@ -7,6 +7,7 @@
             <list>
                 <field name="type_id"/>
                 <field name="description"/>
+                <field name="create_date" string="Fecha de creación"/>
                 <field name="status"/>
                 <field name="work_group_id" invisible="0"/>
                 <field name="is_company_signed"/>

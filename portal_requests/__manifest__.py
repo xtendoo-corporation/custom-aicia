@@ -25,6 +25,10 @@
     "assets": {
         "web.assets_frontend": [
             "portal_requests/static/src/css/portal_detail_views.css",
+            "portal_requests/static/src/js/thank_you_dialog_patch.js",
+        ],
+        "web.assets_backend": [
+            "portal_requests/static/src/js/thank_you_dialog_patch.js",
         ],
     },
     "data": [

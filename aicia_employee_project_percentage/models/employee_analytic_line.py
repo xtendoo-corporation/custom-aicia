@@ -36,4 +36,7 @@ class EmployeeAnalyticLine(models.Model):
         digits=(5, 2),
         default=0.0,
     )
+    date_start = fields.Date(
+        string="Fecha de inicio",
+    )
 

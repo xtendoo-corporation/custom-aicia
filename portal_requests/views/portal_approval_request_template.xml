@@ -46,9 +46,8 @@
                                                             <option value="business_contract">Solicitud firma contrato
                                                                 con empresa
                                                             </option>
-                                                            <option value="collaboration_pas">Solicitud colaboración
-                                                                PAS
-                                                            </option>
+                                                            <!-- Opción "Solicitud colaboración PAS" ocultada a petición del cliente (reunión 22/07/2026).
+                                                                 Se mantiene el modelo/datos; solo se retira del formulario del portal. -->
                                                             <option value="exit_authorization">Solicitud autorización
                                                                 salida a empresas
                                                             </option>
