@@ -298,7 +298,7 @@ class PortalHrExpensiveRequest(models.Model):
                         'email_to': email,
                         'body_html': body_html,
                     }
-                    mail = self.env['mail.mail'].create(mail_values)
+                    mail = self.env['mail.mail'].sudo().create(mail_values)
                     mail.send()
             elif type == 'approved_by_boss_group':
                 for admin_user in users_to_send:
@@ -317,7 +317,7 @@ class PortalHrExpensiveRequest(models.Model):
                         'email_to': email,
                         'body_html': body_html,
                     }
-                    mail = self.env['mail.mail'].create(mail_values)
+                    mail = self.env['mail.mail'].sudo().create(mail_values)
                     mail.send()
             elif type == 'rejected':
                 portal_link = f"{self.get_base_url()}/my/expenses/{self.id}"
@@ -338,7 +338,7 @@ class PortalHrExpensiveRequest(models.Model):
                         'email_to': email,
                         'body_html': body_html,
                     }
-                    mail = self.env['mail.mail'].create(mail_values)
+                    mail = self.env['mail.mail'].sudo().create(mail_values)
                     mail.send()
             elif type == 'approved_purchase_responsible':
                 for admin_user in users_to_send:
@@ -357,7 +357,7 @@ class PortalHrExpensiveRequest(models.Model):
                         'email_to': email,
                         'body_html': body_html,
                     }
-                    mail = self.env['mail.mail'].create(mail_values)
+                    mail = self.env['mail.mail'].sudo().create(mail_values)
                     mail.send()
 
 

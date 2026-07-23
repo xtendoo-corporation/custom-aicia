@@ -14,3 +14,5 @@ from . import test_document_resubmit
 from . import test_gestor_access
 from . import test_notification_recipients
 from . import test_pdf_restriction_http
+from . import test_state_change_notifications
+from . import test_expense_threshold
