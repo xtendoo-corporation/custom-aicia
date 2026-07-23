@@ -52,14 +52,14 @@
                                 string="Aprobar"
                                 type="object"
                                 class="btn-primary"
-                                groups="portal_requests.group_personnel_purchase_responsible"
+                                groups="portal_requests.group_personnel_purchase_responsible,portal_requests.group_intern_partner_responsible"
                                 invisible="status != 'approved_purchase_responsible'"
                                 />
                         <button name="action_reject"
                                 string="Rechazar"
                                 type="object"
                                 class="btn-primary"
-                                groups="portal_requests.group_personnel_purchase_responsible"
+                                groups="portal_requests.group_personnel_purchase_responsible,portal_requests.group_intern_partner_responsible"
                                 invisible="status != 'approved_purchase_responsible'"
                                 />
                         <!-- Fin botonera del Responsable de personal y compras -->

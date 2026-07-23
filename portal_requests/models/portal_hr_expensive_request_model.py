@@ -20,6 +20,8 @@ class PortalHrExpensiveRequest(models.Model):
     type = fields.Selection([
         ('bienes_servicios', 'Compra de bienes o servicios'),
         ('material_inventariable', 'Pago de material inventariable'),
+        ('liquidacion_gastos', 'Liquidación de gastos'),
+        ('gratificacion', 'Solicitud de gratificación'),
     ], string='Tipo', required=True)
     project = fields.Many2one('account.analytic.account', string='Project', required=True)
     work_group_id = fields.Many2one('portal.work.group', related='project.work_group_id', string='Grupo de Trabajo',
@@ -97,6 +99,18 @@ class PortalHrExpensiveRequest(models.Model):
             else:
                 record.show_group_credit = False
 
+    def _second_approver_group_xmlid(self):
+        """Grupo que actúa como segundo aprobador según el tipo de solicitud.
+
+        La gratificación la revisa el Responsable de Clientes y Becarios
+        (clientes@aicia.es); el resto de tipos, el Responsable de Personal y
+        compras (personal@aicia.es).
+        """
+        self.ensure_one()
+        if self.type == 'gratificacion':
+            return 'portal_requests.group_intern_partner_responsible'
+        return 'portal_requests.group_personnel_purchase_responsible'
+
     def show_notificacion(self, title_char, text, type_char):
         return {
             'type': 'ir.actions.client',
@@ -115,10 +129,10 @@ class PortalHrExpensiveRequest(models.Model):
         if self.env.user.has_group('portal_requests.group_equip_boss') and self.status == 'approved_by_boss_group':
             self.status = 'approved_purchase_responsible'
             user_to_notify = self.env['res.users'].search(
-                [('groups_id', 'in', self.env.ref('portal_requests.group_personnel_purchase_responsible').id)])
+                [('groups_id', 'in', self.env.ref(self._second_approver_group_xmlid()).id)])
             self._send_purchase_request_mail('approved_by_boss_group', user_to_notify, self.user_id.name, self.project.name)
             return self.show_notificacion("¡Aprobación registrada!", "La solicitud ha sido aprobada y enviada al responsable de personal y compras para su revisión.", "success")
-        elif self.env.user.has_group('portal_requests.group_personnel_purchase_responsible') and self.status == 'approved_purchase_responsible':
+        elif self.env.user.has_group(self._second_approver_group_xmlid()) and self.status == 'approved_purchase_responsible':
             # El Director Gerente solo interviene cuando el importe supera los 10.000€.
             if self.is_more:
                 self.status = 'approved_director'
@@ -144,7 +158,7 @@ class PortalHrExpensiveRequest(models.Model):
 
         elif self.status == 'to_revise':
             if self.equip_boss == self.user_id:
-                user_to_notify = self.env['res.users'].search([('groups_id', 'in', self.env.ref('portal_requests.group_personnel_purchase_responsible').id)])
+                user_to_notify = self.env['res.users'].search([('groups_id', 'in', self.env.ref(self._second_approver_group_xmlid()).id)])
                 self.status = 'approved_purchase_responsible'
             else:
                 user_to_notify = [self.work_group_id.equip_boss]
@@ -212,7 +226,7 @@ class PortalHrExpensiveRequest(models.Model):
         print("invoice.gemini_attachment_id:", invoice.gemini_attachment_id)
         print("*"*50)
         invoice._auto_scan_if_configured()
-        if self.type == 'material_inventariable':
+        if self.type in ('material_inventariable', 'liquidacion_gastos'):
             attachments = self.env['ir.attachment'].search(
                 [('res_model', '=', 'portal.hr.expensive.request'), ('res_id', '=', self.id)])
             for attachment in attachments:
@@ -220,9 +234,7 @@ class PortalHrExpensiveRequest(models.Model):
                     'res_model': 'account.move',
                     'res_id': invoice.id,
                 })
-            print("*"*50)
-            print("entra en el post_create")
-            print("*"*50)
+        if self.type == 'material_inventariable':
             for line in invoice.invoice_line_ids:
                 line.account_id = self.inmovilizado_account_id.id
 

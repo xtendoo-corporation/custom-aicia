@@ -43,6 +43,8 @@
                                                             <option value="">Seleccione...</option>
                                                             <option value="bienes_servicios">Compra de bienes o servicios</option>
                                                             <option value="material_inventariable">Pago de material inventariable</option>
+                                                            <option value="liquidacion_gastos">Liquidación de gastos</option>
+                                                            <option value="gratificacion">Solicitud de gratificación</option>
                                                         </select>
                                                     </div>
                                                 </div>
@@ -80,12 +82,12 @@
                                                     <label
                                                         class="col-form-label col-sm-auto s_website_form_label"
                                                         style="width: 200px" for="contact">
-                                                        <span class="s_website_form_label_content">Factura
+                                                        <span class="s_website_form_label_content" id="expense_file_label">Factura
                                                         </span>
                                                         <span class="s_website_form_mark">*</span>
                                                     </label>
                                                     <div class="col-sm">
-                                                        <input type="file" class="form-control" name="file" accept="application/pdf"/>
+                                                        <input type="file" class="form-control" name="file" id="expense_file" accept="application/pdf"/>
                                                     </div>
                                                 </div>
                                             </div>
@@ -195,6 +197,18 @@
                                         } else {
                                             inventory_file_div.style.display = "none";
                                             inventory_file.removeAttribute("required");
+                                        }
+                                        var expense_file = document.getElementById("expense_file");
+                                        var expense_file_label = document.getElementById("expense_file_label");
+                                        if (expensive_type === "liquidacion_gastos") {
+                                            expense_file.setAttribute("multiple", "multiple");
+                                            expense_file_label.textContent = "Documentos";
+                                        } else if (expensive_type === "gratificacion") {
+                                            expense_file.removeAttribute("multiple");
+                                            expense_file_label.textContent = "Formulario";
+                                        } else {
+                                            expense_file.removeAttribute("multiple");
+                                            expense_file_label.textContent = "Factura";
                                         }
                                     });
                                     </script>

@@ -39,7 +39,12 @@ class PortalHrExpensiveRequestController(Controller):
         if int(user_id) == int(work_group_id.equip_boss.id):
             status = 'approved_purchase_responsible'
             # Usar sudo para evitar error de permisos al acceder a grupos desde portal
-            group = request.env.ref('portal_requests.group_personnel_purchase_responsible').sudo()
+            group_xmlid = (
+                'portal_requests.group_intern_partner_responsible'
+                if expensive_type == 'gratificacion'
+                else 'portal_requests.group_personnel_purchase_responsible'
+            )
+            group = request.env.ref(group_xmlid).sudo()
             user_to_notify = group.user_ids
         expensive = request.env['portal.hr.expensive.request'].sudo().create({
             'type': expensive_type,
@@ -49,6 +54,9 @@ class PortalHrExpensiveRequestController(Controller):
             'is_more': is_more,
         })
         attachments = request.httprequest.files.getlist('file')
+        # La gratificación solo admite un documento (el formulario).
+        if expensive_type == 'gratificacion':
+            attachments = attachments[:1]
         inventory_attachment = request.httprequest.files.get('inventory_file')
         ensure_pdf(*attachments, inventory_attachment)
 
