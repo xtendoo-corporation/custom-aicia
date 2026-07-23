@@ -1486,6 +1486,7 @@ class PortalRequestsCustomerPortal(CustomerPortal):
             'page_name': 'document_approval',
             'success_message': success,
             'is_equip_boss': is_boss_of_group,
+            'is_owner': is_owner,
         }
 
         return request.render("portal_requests.portal_my_document_detail", values)
@@ -1566,6 +1567,35 @@ class PortalRequestsCustomerPortal(CustomerPortal):
             'mimetype': mimetype,
         })
         return request.redirect(f'/my/documents/{document_id}')
+
+    @http.route(['/my/documents/<int:document_id>/resubmit'], type='http', auth="user", website=True, methods=['POST'], csrf=True)
+    def portal_document_resubmit(self, document_id, **post):
+        """Permite al solicitante subir una nueva versión de un documento
+        rechazado y reenviar la solicitud dentro del mismo flujo."""
+        user = request.env.user
+        document = request.env['document.approval'].sudo().browse(document_id)
+        if not document.exists() or document.user_id != user:
+            return request.redirect('/my')
+        if document.status != 'rejected':
+            return request.redirect(f'/my/documents/{document_id}')
+        file_storage = request.httprequest.files.get('attachment')
+        if not file_storage or not hasattr(file_storage, 'filename'):
+            return request.redirect(f'/my/documents/{document_id}?error=missing_file')
+        if not is_pdf(file_storage):
+            return request.redirect(f'/my/documents/{document_id}?error=invalid_file')
+        file_data = file_storage.read()
+        if not file_data:
+            return request.redirect(f'/my/documents/{document_id}?error=missing_file')
+        request.env['ir.attachment'].sudo().create({
+            'name': file_storage.filename,
+            'datas': base64.b64encode(file_data),
+            'res_model': 'document.approval',
+            'res_id': document.id,
+            'type': 'binary',
+            'mimetype': file_storage.content_type or 'application/pdf',
+        })
+        document.action_resubmit()
+        return request.redirect(f'/my/documents/{document_id}?success=resubmitted')
 
     # ==========================================
     # Rutas para Proyectos (Cuentas Analíticas)

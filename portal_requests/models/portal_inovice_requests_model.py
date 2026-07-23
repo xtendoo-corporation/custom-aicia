@@ -140,14 +140,15 @@ class PortalInvoiceRequest(models.Model):
                     mail = self.env['mail.mail'].sudo().create(mail_values)
                     mail.send()
             if type == 'rejected':
+                portal_link = f"{self.get_base_url()}/my/invoices/{self.id}"
                 for admin_user in users_to_send:
                     admin_name = admin_user.name
                     body_html = f"""
                                 <p>Estimado/a {admin_name},</p>
                                 <p>La solicitud de {move_text} en el proyecto {company_name} ha sido rechazada por el siguiente motivo:</p>
                                 <p><em>{notes}</em></p>
-                                <p>Puede acceder a ella a traves del siguiente enlace:</p>
-                                <p><strong>Enlace:</strong> <a href="{invoice_request_link}">Solicitud</a></p>
+                                <p>Puede revisar la solicitud y aportar una nueva versión desde su portal:</p>
+                                <p><strong>Enlace:</strong> <a href="{portal_link}">Ver solicitud</a></p>
                                 <p>Saludos cordiales, Odoo</p>
                             """
                     email = admin_user.email

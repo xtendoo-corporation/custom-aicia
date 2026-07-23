@@ -241,6 +241,38 @@ class DocumentApproval(models.Model):
     def action_reject(self):
         for record in self:
             record.status = 'rejected'
+            record.sudo().message_post(
+                body=_(
+                    "Documento rechazado. El solicitante puede subir una nueva "
+                    "versión y reenviar la solicitud sin perder el histórico."
+                ),
+                subtype_id=self.env.ref('mail.mt_note').id,
+            )
+            if record.user_id:
+                record.send_request_email(record.type_id.name, record.user_id, "rejected")
+
+    def action_resubmit(self):
+        """Reabre una solicitud rechazada para que el solicitante aporte una
+        nueva versión del documento dentro del mismo flujo, conservando el
+        histórico en el chatter y reiniciando el circuito de aprobación."""
+        self.ensure_one()
+        if self.status != 'rejected':
+            raise UserError(_("Solo puede reenviar solicitudes rechazadas."))
+        if self.sign_request_id and self.sign_request_id.state != 'signed':
+            self.sign_request_id.cancel()
+        self.write({
+            'status': 'approved_by_director_i_d',
+            'is_company_signed': False,
+        })
+        self.sudo().message_post(
+            body=_(
+                "El solicitante ha aportado una nueva versión y ha reenviado la "
+                "solicitud a revisión."
+            ),
+            subtype_id=self.env.ref('mail.mt_note').id,
+        )
+        group = self.env.ref('portal_requests.group_director_investigation_and_development')
+        self.send_request_email(self.type_id.name, group.sudo().user_ids, "resubmit")
 
     def action_to_revise(self):
         self.ensure_one()
@@ -299,6 +331,32 @@ class DocumentApproval(models.Model):
                 body_html = f"""
                     <p>Estimado/a {admin_name},</p>
                     <p>El jefe de equipo, {user_for_send}, ha confirmado la firma de la empresa en la solicitud:</p>
+                    <ul>
+                        <li><strong>Solicitante:</strong> {user.name}</li>
+                        <li><strong>Tipo:</strong> {move_text}</li>
+                        <li><strong>Enlace:</strong> <a href="{document_request_link}">Solicitud</a></li>
+                    </ul>
+                    <p>Saludos cordiales, Odoo</p>
+                """
+            elif type == "rejected":
+                portal_link = f"/my/documents/{self.id}"
+                body_html = f"""
+                    <p>Estimado/a {admin_name},</p>
+                    <p>Su solicitud de documento ha sido rechazada.</p>
+                    <p>Puede subir una nueva versión del documento y reenviar la
+                    solicitud desde el portal, sin perder el histórico, a través
+                    del siguiente enlace:</p>
+                    <ul>
+                        <li><strong>Tipo:</strong> {move_text}</li>
+                        <li><strong>Enlace:</strong> <a href="{portal_link}">Subir nueva versión</a></li>
+                    </ul>
+                    <p>Saludos cordiales, Odoo</p>
+                """
+            elif type == "resubmit":
+                body_html = f"""
+                    <p>Estimado/a {admin_name},</p>
+                    <p>El solicitante {user.name} ha aportado una nueva versión de un
+                    documento previamente rechazado y lo ha reenviado a revisión:</p>
                     <ul>
                         <li><strong>Solicitante:</strong> {user.name}</li>
                         <li><strong>Tipo:</strong> {move_text}</li>

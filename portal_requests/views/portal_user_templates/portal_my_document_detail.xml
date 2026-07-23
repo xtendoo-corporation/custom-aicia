@@ -28,6 +28,14 @@
                             <strong>¡Mensaje enviado!</strong> Tu comentario ha sido publicado correctamente.
                              <button type="button" class="btn-close" data-bs-dismiss="alert" aria-label="Close">&#160;</button>
                         </div>
+                        <div t-if="success_message == 'resubmitted'" class="alert alert-success alert-dismissible fade show" role="alert">
+                            <strong>¡Solicitud reenviada!</strong> La nueva versión se ha registrado y la solicitud ha vuelto a revisión.
+                             <button type="button" class="btn-close" data-bs-dismiss="alert" aria-label="Close">&#160;</button>
+                        </div>
+                        <div t-if="request.params.get('error') == 'invalid_file'" class="alert alert-danger alert-dismissible fade show" role="alert">
+                            <strong>Archivo no válido.</strong> Solo se permiten documentos en formato PDF.
+                             <button type="button" class="btn-close" data-bs-dismiss="alert" aria-label="Close">&#160;</button>
+                        </div>
 
                         <div class="row">
                             <div class="col-12">
@@ -48,6 +56,29 @@
 <!--                                        <a href="/my/documents" class="btn btn-secondary">-->
 <!--                                            <i class="fa fa-arrow-left"/> Volver al Listado-->
 <!--                                        </a>-->
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+
+                        <!-- Reenvío de nueva versión tras rechazo (solo el solicitante) -->
+                        <div class="row" t-if="document.status == 'rejected' and is_owner">
+                            <div class="col-12">
+                                <div class="card mb-3 border-danger">
+                                    <div class="card-header bg-danger text-white">
+                                        <h5 class="mb-0"><i class="fa fa-refresh me-1"/> Documento rechazado: subir nueva versión</h5>
+                                    </div>
+                                    <div class="card-body">
+                                        <p>Su solicitud fue rechazada. Puede subir una nueva versión del documento (PDF) y reenviarla a revisión sin perder el histórico.</p>
+                                        <form method="POST" enctype="multipart/form-data" t-attf-action="/my/documents/#{document.id}/resubmit">
+                                            <input type="hidden" name="csrf_token" t-att-value="request.csrf_token()"/>
+                                            <div class="input-group">
+                                                <input type="file" name="attachment" class="form-control" accept="application/pdf" required="required"/>
+                                                <button type="submit" class="btn btn-danger">
+                                                    <i class="fa fa-paper-plane me-1"/> Reenviar a revisión
+                                                </button>
+                                            </div>
+                                        </form>
                                     </div>
                                 </div>
                             </div>
