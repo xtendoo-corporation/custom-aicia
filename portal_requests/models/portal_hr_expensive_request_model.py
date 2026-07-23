@@ -32,7 +32,7 @@ class PortalHrExpensiveRequest(models.Model):
                                ('approve', 'Aprobada'), ("rejected", 'Rechazada')
                                ], 'Estado',
                               default='approved_by_boss_group', tracking=True)
-    is_more = fields.Boolean(string='Es más de 10000€', default=True)
+    is_more = fields.Boolean(string='Es más de 10000€', default=False)
     invoice_created = fields.Many2one('account.move', string='Invoice Created')
     invoice_count = fields.Integer(default=1, string='Invoice Count')
     inmovilizado_account_id = fields.Many2one('account.account', string='Cuenta de Inmovilizado')
@@ -119,7 +119,7 @@ class PortalHrExpensiveRequest(models.Model):
             self._send_purchase_request_mail('approved_by_boss_group', user_to_notify, self.user_id.name, self.project.name)
             return self.show_notificacion("¡Aprobación registrada!", "La solicitud ha sido aprobada y enviada al responsable de personal y compras para su revisión.", "success")
         elif self.env.user.has_group('portal_requests.group_personnel_purchase_responsible') and self.status == 'approved_purchase_responsible':
-            #si no supera los 10k o el saldo del equipo es inferior a 0, o el saldo del pryecto es inferior a 0:
+            # El Director Gerente solo interviene cuando el importe supera los 10.000€.
             if self.is_more:
                 self.status = 'approved_director'
                 user_to_notify = self.env['res.users'].search(
@@ -129,30 +129,10 @@ class PortalHrExpensiveRequest(models.Model):
                 return self.show_notificacion("¡Aprobación registrada!",
                                               "La solicitud ha sido aprobada y enviada al director gerente para su revisión.",
                                               "success")
-            if self.project_credit <= 0:
-                self.status = 'approved_director'
-                user_to_notify = self.env['res.users'].search(
-                    [('groups_id', 'in', self.env.ref('portal_requests.group_director_manager').id)])
-                self._send_purchase_request_mail('approved_purchase_responsible', user_to_notify, self.user_id.name,
-                                                 self.project.name)
-                return self.show_notificacion("¡Aprobación registrada!",
-                                              "La solicitud ha sido aprobada y enviada al director gerente para su revisión.",
-                                              "success")
-            # elif balance_group <= 0:
-            #     self.status = 'approved_director'
-            #     user_to_notify = self.env['res.users'].search(
-            #         [('work_group_ids', 'in', self.env.ref('portal_requests.group_director_manager').id)])
-            #     self._send_purchase_request_mail('approved_purchase_responsible', user_to_notify, self.user_id.name,
-            #                                      self.project.name)
-            #     return self.show_notificacion("¡Aprobación registrada!",
-            #                                   "La solicitud ha sido aprobada y enviada al director gerente para su revisión.",
-            #                                   "success")
-            else:
-                self.status = 'approve'
-                self._create_purchase_invoice()
-                return self.show_notificacion("¡Solicitud aprobada!",
-                                              "La factura borrador ha sido creada correctamente.", "success")
-                # CREATE LA FACTURA EN BLANCO CON EL ADJUNTO Y LA DISTRIBUCION CONTABLE
+            self.status = 'approve'
+            self._create_purchase_invoice()
+            return self.show_notificacion("¡Solicitud aprobada!",
+                                          "La factura borrador ha sido creada correctamente.", "success")
 
 
         elif self.env.user.has_group('portal_requests.group_director_manager') and self.status == 'approved_director':
