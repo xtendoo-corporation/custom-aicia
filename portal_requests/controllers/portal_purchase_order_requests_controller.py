@@ -51,7 +51,7 @@ class PortalPurchaseOrderController(Controller):
         company_name = purchase_order.company_id.name
 
         # Obtener los usuarios del grupo de administradores de ajustes (base.group_system)
-        admin_users = request.env['res.users'].search([('groups_id', 'in', request.env.ref('base.group_system').id)])
+        admin_users = request.env['res.users'].search([('group_ids', 'in', request.env.ref('base.group_system').id)])
 
         # Filtrar usuarios que tienen un correo electrónico válido
         email_list = admin_users.mapped('email')

@@ -135,7 +135,7 @@ class PortalHrEmployeeRequestController(Controller):
         user_id = employee.user_id
         if request_type == 'new':
             admin_users = request.env['res.users'].search(
-                [('groups_id', 'in', request.env.ref('portal_requests.group_intern_partner_responsible').id)])
+                [('group_ids', 'in', request.env.ref('portal_requests.group_intern_partner_responsible').id)])
             for admin_user in admin_users:
                 admin_name = admin_user.name
                 body_html = f"""
@@ -163,7 +163,7 @@ class PortalHrEmployeeRequestController(Controller):
                 mail.send()
         elif request_type == 'baja':
             admin_users = request.env['res.users'].search(
-                [('groups_id', 'in', request.env.ref('portal_requests.group_intern_partner_responsible').id)])
+                [('group_ids', 'in', request.env.ref('portal_requests.group_intern_partner_responsible').id)])
             for admin_user in admin_users:
                 admin_name = admin_user.name
                 body_html = f"""
@@ -270,7 +270,7 @@ class PortalHrEmployeeRequestController(Controller):
     #     """
     #
     #     # Obtener los usuarios del grupo de administradores de ajustes (base.group_system)
-    #     admin_users = request.env['res.users'].search([('groups_id', 'in', request.env.ref('base.group_system').id)])
+    #     admin_users = request.env['res.users'].search([('group_ids', 'in', request.env.ref('base.group_system').id)])
     #
     #     # Filtrar usuarios que tienen un correo electrónico válido
     #     email_list = admin_users.mapped('email')
