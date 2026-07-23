@@ -3,6 +3,8 @@ import csv
 import io
 import logging
 
+from .portal_pdf_utils import is_pdf
+
 _logger = logging.getLogger(__name__)
 
 class PortalPaymentController(Controller):
@@ -472,6 +474,8 @@ class PortalPaymentController(Controller):
         _logger.warning(f"[PORTAL PAYMENTS][DEBUG] file_storage: {file_storage}")
         if not file_storage or not hasattr(file_storage, 'filename'):
             return request.redirect(f'{target}?error=missing_file')
+        if not is_pdf(file_storage):
+            return request.redirect(f'{target}?error=invalid_file')
         filename = file_storage.filename
         _logger.warning(f"[PORTAL PAYMENTS][DEBUG] filename: {filename}")
         # Permitir cualquier tipo de archivo, solo limitar tamaño

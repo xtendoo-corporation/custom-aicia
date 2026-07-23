@@ -124,7 +124,7 @@
                                         <form method="POST" enctype="multipart/form-data" t-attf-action="/my/documents/#{document.id}/add_attachment" class="mb-3">
                                             <input type="hidden" name="csrf_token" t-att-value="request.csrf_token()"/>
                                             <div class="input-group">
-                                                <input type="file" name="attachment" class="form-control" required="required"/>
+                                                <input type="file" name="attachment" class="form-control" accept="application/pdf" required="required"/>
                                                 <button type="submit" class="btn btn-outline-primary">
                                                     <i class="fa fa-upload me-1"/> Subir archivo
                                                 </button>

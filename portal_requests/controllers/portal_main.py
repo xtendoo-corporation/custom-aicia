@@ -5,6 +5,8 @@ import base64
 import csv
 import io
 
+from .portal_pdf_utils import is_pdf
+
 
 class PortalRequestsCustomerPortal(CustomerPortal):
 
@@ -1548,6 +1550,8 @@ class PortalRequestsCustomerPortal(CustomerPortal):
         file_storage = request.httprequest.files.get('attachment')
         if not file_storage or not hasattr(file_storage, 'filename'):
             return request.redirect(f'/my/documents/{document_id}')
+        if not is_pdf(file_storage):
+            return request.redirect(f'/my/documents/{document_id}?error=invalid_file')
         filename = file_storage.filename
         mimetype = file_storage.content_type
         file_data = file_storage.read()
@@ -2009,6 +2013,8 @@ class PortalRequestsCustomerPortal(CustomerPortal):
         file_storage = post.get('attachment')
         if not file_storage or not hasattr(file_storage, 'filename'):
             return request.redirect(f'/my/payments/{invoice_id}?error=missing_file')
+        if not is_pdf(file_storage):
+            return request.redirect(f'/my/payments/{invoice_id}?error=invalid_file')
         filename = file_storage.filename
         # Permitir cualquier tipo de archivo, solo limitar tamaño
         max_size = 10 * 1024 * 1024  # 10MB
@@ -2186,6 +2192,8 @@ class PortalRequestsCustomerPortal(CustomerPortal):
         file_storage = request.httprequest.files.get('attachment')
         if not file_storage or not hasattr(file_storage, 'filename'):
             return request.redirect(f'/my/project_requests/{request_id}')
+        if not is_pdf(file_storage):
+            return request.redirect(f'/my/project_requests/{request_id}?error=invalid_file')
         filename = file_storage.filename
         mimetype = file_storage.content_type
         file_data = file_storage.read()
@@ -2244,6 +2252,8 @@ class PortalRequestsCustomerPortal(CustomerPortal):
         file_storage = post.get('attachment')
         if not file_storage or not hasattr(file_storage, 'filename'):
             return request.redirect(f'/my/analytic_projects/{project_id}?error=missing_file')
+        if not is_pdf(file_storage):
+            return request.redirect(f'/my/analytic_projects/{project_id}?error=invalid_file')
         filename = file_storage.filename
         mimetype = file_storage.content_type
         file_data = file_storage.read()
@@ -2268,6 +2278,8 @@ class PortalRequestsCustomerPortal(CustomerPortal):
         file_storage = request.httprequest.files.get('attachment')
         if not file_storage or not hasattr(file_storage, 'filename'):
             return request.redirect(f'/my/invoices/{invoice_request_id}')
+        if not is_pdf(file_storage):
+            return request.redirect(f'/my/invoices/{invoice_request_id}?error=invalid_file')
         filename = file_storage.filename
         mimetype = file_storage.content_type
         file_data = file_storage.read()
@@ -2294,6 +2306,8 @@ class PortalRequestsCustomerPortal(CustomerPortal):
         file_storage = request.httprequest.files.get('attachment')
         if not file_storage or not hasattr(file_storage, 'filename'):
             return request.redirect(f'/my/expenses/{expense_id}')
+        if not is_pdf(file_storage):
+            return request.redirect(f'/my/expenses/{expense_id}?error=invalid_file')
         filename = file_storage.filename
         mimetype = file_storage.content_type
         file_data = file_storage.read()

@@ -103,7 +103,7 @@
                                         <form method="POST" enctype="multipart/form-data" t-attf-action="/my/expenses/#{expense.id}/add_attachment">
                                             <input type="hidden" name="csrf_token" t-att-value="request.csrf_token()"/>
                                             <div class="input-group mb-2">
-                                                <input type="file" name="attachment" class="form-control" required="required"/>
+                                                <input type="file" name="attachment" class="form-control" accept="application/pdf" required="required"/>
                                                 <button type="submit" class="btn btn-primary">Subir adjunto</button>
                                             </div>
                                         </form>

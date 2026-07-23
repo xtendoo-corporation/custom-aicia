@@ -1,6 +1,8 @@
 from odoo.http import request, Controller, route
 import base64
 
+from .portal_pdf_utils import ensure_pdf
+
 
 class PortalApprovalRequestController(Controller):
     @route('/portal/approval_request', auth='user', website=True)
@@ -52,6 +54,7 @@ class PortalApprovalRequestController(Controller):
 
 
         attachments = request.httprequest.files.getlist('file')
+        ensure_pdf(*attachments)
         for attachment in attachments:
             attachment_data = {
                 'name': attachment.filename,

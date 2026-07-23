@@ -286,7 +286,7 @@
                                                             <span class="s_website_form_mark">*</span>
                                                         </label>
                                                         <div class="col-sm">
-                                                            <input type="file" class="form-control" id="prl_annex" name="prl_annex" accept=".pdf,.doc,.docx"/>
+                                                            <input type="file" class="form-control" id="prl_annex" name="prl_annex" accept="application/pdf"/>
                                                         </div>
                                                     </div>
                                                 </div>
@@ -304,7 +304,7 @@
                                                             <span class="s_website_form_mark">*</span>
                                                         </label>
                                                         <div class="col-sm">
-                                                            <input type="file" class="form-control" id="working_life_report" name="working_life_report" accept=".pdf,.doc,.docx"/>
+                                                            <input type="file" class="form-control" id="working_life_report" name="working_life_report" accept="application/pdf"/>
                                                         </div>
                                                     </div>
                                                 </div>
@@ -321,7 +321,7 @@
                                                             <span class="s_website_form_mark">*</span>
                                                         </label>
                                                         <div class="col-sm">
-                                                            <input type="file" class="form-control" id="cv" name="cv" accept=".pdf,.doc,.docx"/>
+                                                            <input type="file" class="form-control" id="cv" name="cv" accept="application/pdf"/>
                                                         </div>
                                                     </div>
                                                 </div>

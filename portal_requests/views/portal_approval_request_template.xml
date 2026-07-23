@@ -72,7 +72,7 @@
                                                         <span class="s_website_form_mark">*</span>
                                                     </label>
                                                     <div class="col-sm">
-                                                        <input type="file" class="form-control" name="file" accept=".pdf,.doc,.docx"/>
+                                                        <input type="file" class="form-control" name="file" accept="application/pdf"/>
                                                     </div>
                                                 </div>
                                             </div>

@@ -208,7 +208,7 @@
                                                         <div class="col-sm">
                                                             <input type="file" class="form-control"
                                                                    name="signed_contract"
-                                                                   accept=".pdf,.doc,.docx"
+                                                                   accept="application/pdf"
                                                                    id="signed_contract"
                                                             />
                                                         </div>
@@ -231,7 +231,7 @@
                                                             <input type="file" class="form-control"
                                                                    id="budget_file"
                                                                    name="budget_file"
-                                                                   accept=".pdf,.doc,.docx"/>
+                                                                   accept="application/pdf"/>
                                                         </div>
                                                     </div>
                                                 </div>

@@ -3,6 +3,8 @@ from odoo import fields
 from datetime import datetime
 import base64
 
+from .portal_pdf_utils import ensure_pdf
+
 class PortalInvoiceController(Controller):
 
     @route('/portal/project_request', auth='user', website=True)
@@ -41,10 +43,12 @@ class PortalInvoiceController(Controller):
 
             # Procesar los archivos usando request.httprequest.files
             signed_contract = request.httprequest.files.get('signed_contract')
+            budget_file = request.httprequest.files.get('budget_file')
+            ensure_pdf(signed_contract, budget_file)
+
             signed_contract_filename = signed_contract.filename if signed_contract else False
             signed_contract_data = signed_contract.read() if signed_contract else False
 
-            budget_file = request.httprequest.files.get('budget_file')
             budget_file_filename = budget_file.filename if budget_file else False
             budget_file_data = budget_file.read() if budget_file else False
 

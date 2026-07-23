@@ -1,6 +1,8 @@
 from odoo.http import request, Controller, route
 import base64
 
+from .portal_pdf_utils import ensure_pdf
+
 
 class PortalHrEmployeeRequestController(Controller):
     @route('/portal/hr_employee_request', auth='user', website=True)
@@ -44,6 +46,7 @@ class PortalHrEmployeeRequestController(Controller):
             working_life_report = request.httprequest.files.get('working_life_report')
             cv = request.httprequest.files.get('cv')
             prl_annex = request.httprequest.files.get('prl_annex')
+            ensure_pdf(working_life_report, cv, prl_annex)
             employee = request.env['portal.hr.employee.request'].sudo().create({
                 'user_id': user_id,
                 'name': name,

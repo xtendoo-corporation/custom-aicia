@@ -1,6 +1,8 @@
 from odoo.http import request, Controller, route
 import base64
 
+from .portal_pdf_utils import ensure_pdf
+
 class PortalHrExpensiveRequestController(Controller):
     @route('/portal/hr_expensive_request', auth='user', website=True)
     def hr_expensive_request_form(self, **kwargs):
@@ -47,6 +49,8 @@ class PortalHrExpensiveRequestController(Controller):
             'is_more': is_more,
         })
         attachments = request.httprequest.files.getlist('file')
+        inventory_attachment = request.httprequest.files.get('inventory_file')
+        ensure_pdf(*attachments, inventory_attachment)
 
         for attachment in attachments:
             attachment_data = {
@@ -58,7 +62,6 @@ class PortalHrExpensiveRequestController(Controller):
                 'mimetype': attachment.content_type or 'application/pdf',
             }
             request.env['ir.attachment'].sudo().create(attachment_data)
-        inventory_attachment = request.httprequest.files.get('inventory_file')
         if inventory_attachment:
             name=inventory_attachment.filename
             name="inventario_" + name
