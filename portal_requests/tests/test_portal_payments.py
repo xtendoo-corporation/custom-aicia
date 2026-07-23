@@ -9,11 +9,13 @@ class TestPortalPayments(HttpCase):
             'name': 'Portal User',
             'login': 'portal_user_test',
             'email': 'portal_user_test@example.com',
-            'groups_id': [(6, 0, [self.env.ref('base.group_portal').id])],
+            'group_ids': [(6, 0, [self.env.ref('base.group_portal').id])],
         })
         # Crear proyecto y factura pagada
+        plan = self.env['account.analytic.plan'].create({'name': 'Plan Test'})
         analytic = self.env['account.analytic.account'].create({
             'name': 'Proyecto Test',
+            'plan_id': plan.id,
             'responsible_id': portal_user.id,
         })
         invoice = self.env['account.move'].create({
