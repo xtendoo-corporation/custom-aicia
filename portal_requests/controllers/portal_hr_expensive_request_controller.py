@@ -35,14 +35,10 @@ class PortalHrExpensiveRequestController(Controller):
         is_more = post.get('is_more')
         #Si solicita el jefe de equipo
         if int(user_id) == int(work_group_id.equip_boss.id):
-            print("*"*50)
-            print("ES JEFE DE EQUIPO")
             status = 'approved_purchase_responsible'
             # Usar sudo para evitar error de permisos al acceder a grupos desde portal
             group = request.env.ref('portal_requests.group_personnel_purchase_responsible').sudo()
             user_to_notify = group.user_ids
-            print("user_to_notify:", user_to_notify)
-            print("*" * 50)
         expensive = request.env['portal.hr.expensive.request'].sudo().create({
             'type': expensive_type,
             'user_id': user_id,
@@ -52,8 +48,6 @@ class PortalHrExpensiveRequestController(Controller):
         })
         attachments = request.httprequest.files.getlist('file')
 
-        print("/"*50)
-        print("attachments:", attachments)
         for attachment in attachments:
             attachment_data = {
                 'name': attachment.filename,
@@ -61,6 +55,7 @@ class PortalHrExpensiveRequestController(Controller):
                 'res_id': expensive.id,
                 'datas': base64.b64encode(attachment.read()),
                 'type': 'binary',
+                'mimetype': attachment.content_type or 'application/pdf',
             }
             request.env['ir.attachment'].sudo().create(attachment_data)
         inventory_attachment = request.httprequest.files.get('inventory_file')
@@ -73,6 +68,7 @@ class PortalHrExpensiveRequestController(Controller):
                 'res_id': expensive.id,
                 'datas': base64.b64encode(inventory_attachment.read()),
                 'type': 'binary',
+                'mimetype': inventory_attachment.content_type or 'application/pdf',
             }
             request.env['ir.attachment'].sudo().create(inventory_attachment_data)
         self.send_request_email(user_to_notify,user_name, company_name, expensive)

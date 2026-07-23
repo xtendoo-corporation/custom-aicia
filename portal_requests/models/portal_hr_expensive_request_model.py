@@ -115,7 +115,7 @@ class PortalHrExpensiveRequest(models.Model):
         if self.env.user.has_group('portal_requests.group_equip_boss') and self.status == 'approved_by_boss_group':
             self.status = 'approved_purchase_responsible'
             user_to_notify = self.env['res.users'].search(
-                [('work_group_ids', 'in', [self.env.ref('portal_requests.group_personnel_purchase_responsible').id])])
+                [('groups_id', 'in', self.env.ref('portal_requests.group_personnel_purchase_responsible').id)])
             self._send_purchase_request_mail('approved_by_boss_group', user_to_notify, self.user_id.name, self.project.name)
             return self.show_notificacion("¡Aprobación registrada!", "La solicitud ha sido aprobada y enviada al responsable de personal y compras para su revisión.", "success")
         elif self.env.user.has_group('portal_requests.group_personnel_purchase_responsible') and self.status == 'approved_purchase_responsible':
@@ -123,7 +123,7 @@ class PortalHrExpensiveRequest(models.Model):
             if self.is_more:
                 self.status = 'approved_director'
                 user_to_notify = self.env['res.users'].search(
-                    [('work_group_ids', 'in', self.env.ref('portal_requests.group_director_manager').id)])
+                    [('groups_id', 'in', self.env.ref('portal_requests.group_director_manager').id)])
                 self._send_purchase_request_mail('approved_purchase_responsible', user_to_notify, self.user_id.name,
                                                  self.project.name)
                 return self.show_notificacion("¡Aprobación registrada!",
@@ -132,7 +132,7 @@ class PortalHrExpensiveRequest(models.Model):
             if self.project_credit <= 0:
                 self.status = 'approved_director'
                 user_to_notify = self.env['res.users'].search(
-                    [('work_group_ids', 'in', self.env.ref('portal_requests.group_director_manager').id)])
+                    [('groups_id', 'in', self.env.ref('portal_requests.group_director_manager').id)])
                 self._send_purchase_request_mail('approved_purchase_responsible', user_to_notify, self.user_id.name,
                                                  self.project.name)
                 return self.show_notificacion("¡Aprobación registrada!",
