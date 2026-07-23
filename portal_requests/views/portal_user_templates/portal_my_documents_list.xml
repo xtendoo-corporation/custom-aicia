@@ -129,6 +129,11 @@
                                         <a t-attf-href="/my/documents/#{document.id}">
                                             <span t-attf-class="badge #{'bg-success' if document.status == 'approve' else 'bg-danger' if document.status == 'rejected' else 'bg-info'}" t-field="document.status"/>
                                         </a>
+                                        <div t-if="document.sign_request_id" class="mt-1">
+                                            <span t-if="document.sign_request_state == 'signed'" class="badge bg-success">Firmado</span>
+                                            <span t-elif="document.sign_request_state == 'sent'" class="badge bg-warning">Pendiente de firma</span>
+                                            <span t-elif="document.sign_request_state == 'canceled'" class="badge bg-danger">Firma cancelada</span>
+                                        </div>
                                     </td>
                                     <td class="text-end">
                                         <a t-attf-href="/my/documents/#{document.id}">
