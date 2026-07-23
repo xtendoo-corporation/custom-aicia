@@ -54,3 +54,37 @@ class SignRequestInherit(models.Model):
                 self._generate_completed_documents()
             return
         return super()._send_completed_documents()
+
+    @staticmethod
+    def _append_signed_suffix(filename):
+        """Añade el sufijo ``_firmado`` antes de la extensión del nombre."""
+        if not filename or '_firmado' in filename:
+            return filename
+        base, dot, ext = filename.rpartition('.')
+        if dot:
+            return f"{base}_firmado.{ext}"
+        return f"{filename}_firmado"
+
+    def _sign(self):
+        """Renombra el documento firmado adjuntado al document.approval con el
+        sufijo ``_firmado`` para distinguirlo del original sin firma dentro del
+        repositorio de documentos."""
+        is_doc_approval = bool(
+            self.reference_doc and self.reference_doc._name == 'document.approval'
+        )
+        previous_attachment_ids = []
+        if is_doc_approval:
+            previous_attachment_ids = self.env['ir.attachment'].sudo().search([
+                ('res_model', '=', 'document.approval'),
+                ('res_id', '=', self.reference_doc.id),
+            ]).ids
+        result = super()._sign()
+        if is_doc_approval:
+            new_attachments = self.env['ir.attachment'].sudo().search([
+                ('res_model', '=', 'document.approval'),
+                ('res_id', '=', self.reference_doc.id),
+                ('id', 'not in', previous_attachment_ids),
+            ])
+            for attachment in new_attachments:
+                attachment.name = self._append_signed_suffix(attachment.name)
+        return result
