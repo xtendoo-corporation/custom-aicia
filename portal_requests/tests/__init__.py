@@ -12,3 +12,4 @@ from . import test_signed_suffix
 from . import test_expense_type
 from . import test_document_resubmit
 from . import test_gestor_access
+from . import test_notification_recipients
