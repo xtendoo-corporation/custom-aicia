@@ -205,5 +205,78 @@
         jefe de equipo -> habra que saignarle un ¿equipo? a que se refiere? equipo de ventas¿
         responsable proyecto -> habra que asociarle un proyecto -->
 
+        <!-- Rol "Gestor": usuario de portal que puede ENVIAR y hacer seguimiento de
+             las solicitudes de su equipo de trabajo, SIN acceso a informacion
+             economica (saldos, presupuestos, historicos) ni a aprobar/rechazar. -->
+        <record id="group_manager" model="res.groups">
+            <field name="name">Gestor</field>
+            <field name="privilege_id" ref="privilege_aicia"/>
+            <field name="implied_ids" eval="[(4, ref('base.group_portal'))]"/>
+        </record>
+
+        <!-- Solicitudes del equipo: documentos -->
+        <record id="rule_manager_document" model="ir.rule">
+            <field name="name">Gestor: documentos de su equipo</field>
+            <field name="model_id" ref="portal_requests.model_document_approval"/>
+            <field name="domain_force">[('work_group_id', 'in', user.work_group_ids.ids)]</field>
+            <field name="groups" eval="[(4, ref('group_manager'))]"/>
+            <field name="perm_read" eval="True"/>
+            <field name="perm_write" eval="True"/>
+            <field name="perm_create" eval="True"/>
+            <field name="perm_unlink" eval="False"/>
+        </record>
+
+        <!-- Solicitudes del equipo: facturas -->
+        <record id="rule_manager_invoice" model="ir.rule">
+            <field name="name">Gestor: facturas de su equipo</field>
+            <field name="model_id" ref="portal_requests.model_portal_invoice_request"/>
+            <field name="domain_force">[('work_group_id', 'in', user.work_group_ids.ids)]</field>
+            <field name="groups" eval="[(4, ref('group_manager'))]"/>
+            <field name="perm_read" eval="True"/>
+            <field name="perm_write" eval="True"/>
+            <field name="perm_create" eval="True"/>
+            <field name="perm_unlink" eval="False"/>
+        </record>
+
+        <!-- Solicitudes del equipo: gastos -->
+        <record id="rule_manager_expensive" model="ir.rule">
+            <field name="name">Gestor: gastos de su equipo</field>
+            <field name="model_id" ref="portal_requests.model_portal_hr_expensive_request"/>
+            <field name="domain_force">[('work_group_id', 'in', user.work_group_ids.ids)]</field>
+            <field name="groups" eval="[(4, ref('group_manager'))]"/>
+            <field name="perm_read" eval="True"/>
+            <field name="perm_write" eval="True"/>
+            <field name="perm_create" eval="True"/>
+            <field name="perm_unlink" eval="False"/>
+        </record>
+
+        <!-- Solicitudes del equipo: proyectos -->
+        <record id="rule_manager_project_request" model="ir.rule">
+            <field name="name">Gestor: solicitudes de proyecto de su equipo</field>
+            <field name="model_id" ref="portal_requests.model_portal_project_request"/>
+            <field name="domain_force">[('work_group_id', 'in', user.work_group_ids.ids)]</field>
+            <field name="groups" eval="[(4, ref('group_manager'))]"/>
+            <field name="perm_read" eval="True"/>
+            <field name="perm_write" eval="True"/>
+            <field name="perm_create" eval="True"/>
+            <field name="perm_unlink" eval="False"/>
+        </record>
+
+        <!-- Lectura de cuentas analiticas de su equipo SOLO para poder
+             seleccionarlas al crear solicitudes. No se le concede acceso a las
+             vistas economicas (saldos/presupuestos/historicos), que siguen
+             restringidas por responsable/jefe de equipo en los controladores. -->
+        <record id="rule_manager_analytic_read" model="ir.rule">
+            <field name="name">Gestor: cuentas analiticas de su equipo (solo lectura)</field>
+            <field name="model_id" ref="analytic.model_account_analytic_account"/>
+            <field name="domain_force">[('work_group_id', 'in', user.work_group_ids.ids)]</field>
+            <field name="global" eval="False"/>
+            <field name="groups" eval="[(4, ref('group_manager'))]"/>
+            <field name="perm_read" eval="True"/>
+            <field name="perm_write" eval="False"/>
+            <field name="perm_create" eval="False"/>
+            <field name="perm_unlink" eval="False"/>
+        </record>
+
     </data>
 </odoo>

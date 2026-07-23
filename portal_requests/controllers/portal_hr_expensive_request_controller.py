@@ -20,6 +20,12 @@ class PortalHrExpensiveRequestController(Controller):
                 [('work_group_id', 'in', allowed_work_groups.ids)]
             )
             allowed_companies = allowed_companies | wg_companies
+        if user.has_group('portal_requests.group_manager'):
+            manager_groups = request.env['portal.work.group'].search([('user_ids', 'in', user.id)])
+            if manager_groups:
+                allowed_companies = allowed_companies | request.env['account.analytic.account'].search(
+                    [('work_group_id', 'in', manager_groups.ids)]
+                )
         return request.render('portal_requests.portal_hr_expensive_request_template', {
             'companies': allowed_companies,
         })
