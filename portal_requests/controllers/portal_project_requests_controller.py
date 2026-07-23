@@ -18,10 +18,6 @@ class PortalInvoiceController(Controller):
             ('active', '=', True)
         ])
 
-        print("*"*100)
-        print("allowed_work_groups", allowed_work_groups)
-        print("project_allowed", project_allowed)
-        print("*"*100)
         # Pasar las compañías permitidas al contexto para que se usen en el formulario
         return request.render('portal_requests.portal_project_request_template', {
             'companies': allowed_companies,
@@ -67,27 +63,26 @@ class PortalInvoiceController(Controller):
                 'budget_file_filename': budget_file_filename,
                 'type': type,
             })
-            print(f"Project created: {project}")
-            # Procesar archivos adjuntos
-            attachments = []
-            if signed_contract:
-                attachments.append(request.env['ir.attachment'].create({
-                    'name': signed_contract.filename,
+            # Adjuntos del chatter: reutilizamos los bytes ya leídos para evitar
+            # un segundo read() sobre un stream ya consumido (adjunto corrupto).
+            if signed_contract_data:
+                request.env['ir.attachment'].create({
+                    'name': signed_contract_filename,
                     'type': 'binary',
-                    'datas': base64.b64encode(signed_contract.read()),
+                    'datas': base64.b64encode(signed_contract_data),
                     'res_model': 'portal.project.request',
                     'res_id': project.id,
-                    'mimetype': 'application/pdf',
-                }))
-                if budget_file:
-                    attachments.append(request.env['ir.attachment'].create({
-                        'name': budget_file.filename,
-                        'type': 'binary',
-                        'datas': base64.b64encode(budget_file.read()),
-                        'res_model': 'portal.project.request',
-                        'res_id': project.id,
-                        'mimetype': 'application/pdf',
-                    }))
+                    'mimetype': signed_contract.content_type or 'application/pdf',
+                })
+            if budget_file_data:
+                request.env['ir.attachment'].create({
+                    'name': budget_file_filename,
+                    'type': 'binary',
+                    'datas': base64.b64encode(budget_file_data),
+                    'res_model': 'portal.project.request',
+                    'res_id': project.id,
+                    'mimetype': budget_file.content_type or 'application/pdf',
+                })
             self.send_project_email(project)
 
         elif type == 'end':
