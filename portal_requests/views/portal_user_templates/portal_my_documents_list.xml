@@ -127,7 +127,7 @@
                                     </td>
                                     <td>
                                         <a t-attf-href="/my/documents/#{document.id}">
-                                            <span t-field="document.status"/>
+                                            <span t-attf-class="badge #{'bg-success' if document.status == 'approve' else 'bg-danger' if document.status == 'rejected' else 'bg-info'}" t-field="document.status"/>
                                         </a>
                                     </td>
                                     <td class="text-end">
