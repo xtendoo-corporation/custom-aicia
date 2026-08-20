@@ -205,7 +205,7 @@
                                             expense_file_label.textContent = "Documentos";
                                         } else if (expensive_type === "gratificacion") {
                                             expense_file.removeAttribute("multiple");
-                                            expense_file_label.textContent = "Formulario";
+                                            expense_file_label.textContent = "Documento";
                                         } else {
                                             expense_file.removeAttribute("multiple");
                                             expense_file_label.textContent = "Factura";
