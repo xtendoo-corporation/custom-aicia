@@ -11,7 +11,9 @@ class PortalInvoiceController(Controller):
         # Obtener el usuario actual
         user = request.env.user
         # Obtener las compañías permitidas para el usuario logueado
-        allowed_work_groups = request.env['portal.work.group'].search([('equip_boss', '=', user.id)])
+        allowed_work_groups = request.env['portal.work.group'].search(
+            request.env['portal.work.group']._boss_or_administrative_domain(user)
+        )
         allowed_companies = request.env['account.analytic.account'].search([
             ('responsible_id', '=', user.id)
         ])
@@ -96,6 +98,7 @@ class PortalInvoiceController(Controller):
     def send_request_email(self,to_notify_users, move_text, user_name,company_name, partner_name, notes, invoice_to_refund, invoice_request):
         invoice_request_link = f"/web#id={invoice_request.id}&cids=1-24-28-29-32-25-30-31&menu_id=899&active_id=1&model=portal.invoice.request&view_type=form"
         project_code = invoice_request.analytic_id.code or ''
+        internal_ref = invoice_request.partner_id.ref or ''
         for admin_user in to_notify_users:
             admin_name = admin_user.name
             body_html = f"""
@@ -106,6 +109,7 @@ class PortalInvoiceController(Controller):
                             <li><strong>Usuario:</strong> {user_name}</li>
                             <li><strong>Proyecto:</strong> {company_name}</li>
                             <li><strong>Código de proyecto:</strong> {project_code}</li>
+                            <li><strong>Referencia interna:</strong> {internal_ref}</li>
                             <li><strong>Cliente:</strong> {partner_name}</li>
                             <li><strong>Concepto:</strong> {notes}</li>
                             <li><strong>Enlace:</strong> <a href="{invoice_request_link}">Solicitud</a></li>

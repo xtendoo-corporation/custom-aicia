@@ -17,6 +17,7 @@ class PortalInvoiceRequest(models.Model):
     responsible_id = fields.Many2one('res.users', related='analytic_id.responsible_id', string='Responsable', store=True)
     work_group_id = fields.Many2one('portal.work.group', related='analytic_id.work_group_id', string='Grupo de Trabajo', store=True)
     equip_boss = fields.Many2one('res.users', related='work_group_id.equip_boss', string='Jefe de Equipo', store=True)
+    administrative_id = fields.Many2one('res.users', related='work_group_id.administrative_id', string='Administrativo', store=True)
 
     partner_id = fields.Many2one('res.partner', string='Client', required=True)
     amount = fields.Float(string='Amount', required=True)
@@ -72,13 +73,13 @@ class PortalInvoiceRequest(models.Model):
         store=False,
     )
 
-    @api.depends('status', 'equip_boss')
+    @api.depends('status', 'equip_boss', 'administrative_id')
     def _compute_show_approve_button(self):
         user = self.env.user
         for rec in self:
             rec.show_approve_button = (
                 rec.status == 'approved_by_boss_group' and
-                rec.equip_boss == user
+                (rec.equip_boss == user or rec.administrative_id == user)
             )
 
     @api.depends('status')
@@ -101,12 +102,18 @@ class PortalInvoiceRequest(models.Model):
 
     def _send_invoice_request_mail(self,type, users_to_send, move_text, user_name, company_name, partner_name, notes=""):
             invoice_request_link = f"/web#id={self.id}&cids=1-24-28-29-32-25-30-31&menu_id=899&active_id=1&model=portal.invoice.request&view_type=form"
+            project_code = self.analytic_id.code or ''
+            internal_ref = self.partner_id.ref or ''
             if type == 'to_revise':
                 for admin_user in users_to_send:
                     admin_name = admin_user.name
                     body_html = f"""
                                 <p>Estimado/a {admin_name},</p>
                                 <p>Se ha solicitado una nueva revisión de {move_text}, por parte de {user_name}.</p>
+                                <ul>
+                                    <li><strong>Código de proyecto:</strong> {project_code}</li>
+                                    <li><strong>Referencia interna:</strong> {internal_ref}</li>
+                                </ul>
                                 <p>Puede acceder a ella a traves del siguiente enlace:</p>
                                 <p><strong>Enlace:</strong> <a href="{invoice_request_link}">Solicitud</a></p>
                                 <p>Saludos cordiales, Odoo</p>
@@ -126,6 +133,10 @@ class PortalInvoiceRequest(models.Model):
                     body_html = f"""
                                 <p>Estimado/a {admin_name},</p>
                                 <p>La solicitud de {move_text} en el proyecto {company_name} ha sido aprobada por el jefe de equipo ({user_name}).</p>
+                                <ul>
+                                    <li><strong>Código de proyecto:</strong> {project_code}</li>
+                                    <li><strong>Referencia interna:</strong> {internal_ref}</li>
+                                </ul>
                                 <p>Puede acceder a ella a traves del siguiente enlace:</p>
                                 <p><strong>Enlace:</strong> <a href="{invoice_request_link}">Solicitud</a></p>
                                 <p>Saludos cordiales, Odoo</p>
@@ -147,6 +158,10 @@ class PortalInvoiceRequest(models.Model):
                                 <p>Estimado/a {admin_name},</p>
                                 <p>La solicitud de {move_text} en el proyecto {company_name} ha sido rechazada por el siguiente motivo:</p>
                                 <p><em>{notes}</em></p>
+                                <ul>
+                                    <li><strong>Código de proyecto:</strong> {project_code}</li>
+                                    <li><strong>Referencia interna:</strong> {internal_ref}</li>
+                                </ul>
                                 <p>Puede revisar la solicitud y aportar una nueva versión desde su portal:</p>
                                 <p><strong>Enlace:</strong> <a href="{portal_link}">Ver solicitud</a></p>
                                 <p>Saludos cordiales, Odoo</p>
@@ -168,15 +183,16 @@ class PortalInvoiceRequest(models.Model):
         type = self.status
         if type == 'to_revise':
             self.status = 'approved_by_boss_group'
-            user_to_send = self.env['res.users'].search([('id', '=', self.equip_boss.id)])
+            user_to_send = self.equip_boss | self.administrative_id
             move_text = self.computed_name
             # Usar sudo() para acceder a partner_id.name para evitar errores de permisos
             self._send_invoice_request_mail(type, user_to_send, move_text, self.user_id.name, self.analytic_id.name, self.partner_id.sudo().name)
             return self.show_notificacion("¡Solicitud enviada!", "La solicitud ha sido enviada al jefe de equipo para su revisión.", "success")
 
         if self.status=='approved_by_boss_group':
-            if self.equip_boss and self.equip_boss.partner_id:
-                self.message_subscribe(partner_ids=[self.equip_boss.partner_id.id])
+            for boss_or_admin in (self.equip_boss, self.administrative_id):
+                if boss_or_admin and boss_or_admin.partner_id:
+                    self.message_subscribe(partner_ids=[boss_or_admin.partner_id.id])
             self.status = 'approved_by_client_responsible'
             user_to_send = self.env['res.users'].search([('work_group_ids', 'in', self.env.ref('portal_requests.group_intern_partner_responsible').id)])
             move_text = "factura" if self.move_type == 'out_invoice' else "factura rectificativa"

@@ -105,6 +105,24 @@
             <field name="perm_unlink" eval="True"/>
         </record>
 
+        <!-- Perfil "Administrativo": mismo rol/funciones que
+             Jefe de Equipo (aprobar/rechazar solicitudes de su equipo, dashboards,
+             ver los mismos proyectos en "Mis Proyectos", etc, vía implied_ids),
+             pero SIN acceso a la información económica de proyectos (saldos,
+             presupuestos). El administrativo SÍ puede leer las cuentas
+             analíticas de su equipo (para verlas en el listado), pero esos
+             campos económicos se ocultan en la plantilla del portal. Esto se
+             aplica explícitamente en:
+             - controllers/portal_main.py: _hide_project_financials() (sección
+               /my/analytic_projects: listado, detalle y exportación CSV)
+             - controllers/portal_payment_requests_controller.py: _get_accessible_project_ids()
+               (histórico de pagos, sección /my/payments, sigue excluido). -->
+        <record id="group_administrative" model="res.groups">
+            <field name="name">Administrativo</field>
+            <field name="privilege_id" ref="privilege_aicia"/>
+            <field name="implied_ids" eval="[(4, ref('group_equip_boss')), (4, ref('base.group_portal'))]"/>
+        </record>
+
          <record id="group_financial_director" model="res.groups">
             <field name="name">Director Financiero</field>
             <field name="privilege_id" ref="privilege_aicia"/>
@@ -140,7 +158,13 @@
         <record id="rule_analytic_account_work_group_boss" model="ir.rule">
             <field name="name">Analytic Account: Boss Work Group (Read Only)</field>
             <field name="model_id" ref="analytic.model_account_analytic_account"/>
-            <field name="domain_force">[('work_group_boss_id.id', '=', user.id)]</field>
+            <!-- group_administrative implica group_equip_boss: hereda el mismo acceso de
+                 lectura a las cuentas analíticas de su equipo, tanto si es Jefe de Equipo
+                 (work_group_boss_id) como si es el Administrativo asignado al grupo
+                 (work_group_administrative_id) -para verlas en "Mis Proyectos". Los campos
+                 económicos (saldo/presupuesto) se ocultan a nivel de plantilla del portal,
+                 no a nivel de acceso al registro. -->
+            <field name="domain_force">['|', ('work_group_boss_id.id', '=', user.id), ('work_group_administrative_id.id', '=', user.id)]</field>
             <field name="global" eval="False"/>
             <field name="groups" eval="[(4, ref('group_equip_boss'))]"/>
             <field name="perm_read" eval="True"/>

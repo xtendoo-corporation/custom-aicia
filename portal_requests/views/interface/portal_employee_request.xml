@@ -9,6 +9,7 @@
                     <field name="name" string="Nombre"/>
                     <field name="company_id" string="Grupo de trabajo"/>
                     <field name="type" string="Tipo"/>
+                    <field name="create_date" string="Fecha de creación"/>
 <!--                    <field name="identification_id" string="Identificación"/>-->
 <!--                    <field name="mobile_phone" String="Móvil"/>-->
 <!--                    <field name="ssnid"/>-->

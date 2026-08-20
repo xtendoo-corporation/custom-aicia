@@ -19,6 +19,7 @@
                 (4, ref('portal_requests.group_director_manager')),
                 (4, ref('portal_requests.group_project_boss')),
                 (4, ref('portal_requests.group_equip_boss')),
+                (4, ref('portal_requests.group_administrative')),
             ]"/>
         </record>
         <record id="dashboard_projects" model="portal.request.dashboard">
@@ -38,6 +39,7 @@
                 (4, ref('portal_requests.group_director_manager')),
                 (4, ref('portal_requests.group_intern_partner_responsible')),
                 (4, ref('portal_requests.group_equip_boss')),
+                (4, ref('portal_requests.group_administrative')),
                 (4, ref('portal_requests.group_project_boss')),
             ]"/>
         </record>
@@ -74,6 +76,7 @@
                 (4, ref('portal_requests.group_director_manager')),
                 (4, ref('portal_requests.group_personnel_purchase_responsible')),
                 (4, ref('portal_requests.group_equip_boss')),
+                (4, ref('portal_requests.group_administrative')),
                 (4, ref('portal_requests.group_project_boss')),
             ]"/>
         </record>

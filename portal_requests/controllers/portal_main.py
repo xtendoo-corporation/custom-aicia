@@ -55,23 +55,32 @@ class PortalRequestsCustomerPortal(CustomerPortal):
         user = request.env.user
         if invoice_request.user_id == user:
             return True
-        if invoice_request.equip_boss == user:
+        if invoice_request.equip_boss == user or invoice_request.administrative_id == user:
             return True
         return False
 
     def _get_accessible_analytic_project_domain(self, user):
         """Dominio de proyectos visibles en portal para el usuario actual.
         - Usuario normal: solo proyectos donde es responsable.
-        - Jefe de equipo: propios + proyectos de grupos donde es equip_boss.
+        - Jefe de equipo (y Administrativo, que implica el mismo grupo): propios
+          + proyectos de grupos donde es equip_boss. El Administrativo ve la
+          misma lista que el Jefe de Equipo; lo que no ve es la info económica
+          (saldos/presupuestos), que se oculta en la plantilla mediante
+          _hide_project_financials().
         """
         domain = [('responsible_id', '=', user.id)]
         if user.has_group('portal_requests.group_equip_boss'):
-            boss_group_ids = request.env['portal.work.group'].sudo().search([
-                ('equip_boss', '=', user.id)
-            ]).ids
+            boss_group_ids = request.env['portal.work.group'].sudo().search(
+                request.env['portal.work.group']._boss_or_administrative_domain(user)
+            ).ids
             if boss_group_ids:
                 domain = ['|', ('responsible_id', '=', user.id), ('work_group_id', 'in', boss_group_ids)]
         return domain
+
+    def _hide_project_financials(self, user):
+        """El perfil Administrativo ve los mismos proyectos que el Jefe de
+        Equipo, pero sin datos económicos (saldo/presupuesto)."""
+        return user.has_group('portal_requests.group_administrative')
 
     def _project_request_type_label(self, project_request):
         type_labels = {
@@ -243,9 +252,9 @@ class PortalRequestsCustomerPortal(CustomerPortal):
             filterby = 'all'
 
         if user.has_group('portal_requests.group_equip_boss'):
-            boss_groups = request.env['portal.work.group'].sudo().search([
-                ('equip_boss', '=', user.id)
-            ])
+            boss_groups = request.env['portal.work.group'].sudo().search(
+                request.env['portal.work.group']._boss_or_administrative_domain(user)
+            )
             member_ids = boss_groups.mapped('user_ids').ids
             documents = request.env['document.approval'].sudo().search([
                 ('user_id', 'in', member_ids + [user.id])
@@ -385,9 +394,10 @@ class PortalRequestsCustomerPortal(CustomerPortal):
 
         InvoiceRequest = request.env['portal.invoice.request'].sudo()
         invoice_requests = InvoiceRequest.search([
-            '|',
+            '|', '|',
             ('user_id', '=', user.id),
             ('equip_boss', '=', user.id),
+            ('administrative_id', '=', user.id),
         ], order='create_date desc')
 
         if filterby != 'all':
@@ -679,6 +689,7 @@ class PortalRequestsCustomerPortal(CustomerPortal):
             'search_in': search_in,
             'search': search,
             'groupby': groupby,
+            'hide_financials': self._hide_project_financials(user),
         }
 
     def _project_invoice_type_labels(self):
@@ -1457,7 +1468,7 @@ class PortalRequestsCustomerPortal(CustomerPortal):
         is_owner = document.user_id == user
         is_boss_of_group = False
         if user.has_group('portal_requests.group_equip_boss') and document.work_group_id:
-            is_boss_of_group = document.work_group_id.equip_boss == user
+            is_boss_of_group = document.work_group_id._is_boss_or_administrative(user)
 
         if not is_owner and not is_boss_of_group:
             return request.redirect('/my')
@@ -1500,7 +1511,7 @@ class PortalRequestsCustomerPortal(CustomerPortal):
         # Solo el jefe de equipo del grupo de trabajo del documento puede ejecutar esto
         is_boss_of_group = False
         if user.has_group('portal_requests.group_equip_boss') and document.work_group_id:
-            is_boss_of_group = document.work_group_id.equip_boss == user
+            is_boss_of_group = document.work_group_id._is_boss_or_administrative(user)
 
         if not is_boss_of_group:
             return request.redirect('/my')
@@ -1522,7 +1533,7 @@ class PortalRequestsCustomerPortal(CustomerPortal):
         is_owner = document.user_id == user
         is_boss_of_group = False
         if user.has_group('portal_requests.group_equip_boss') and document.work_group_id:
-            is_boss_of_group = document.work_group_id.equip_boss == user
+            is_boss_of_group = document.work_group_id._is_boss_or_administrative(user)
 
         if not is_owner and not is_boss_of_group:
             return request.redirect('/my')
@@ -1545,7 +1556,7 @@ class PortalRequestsCustomerPortal(CustomerPortal):
         document = request.env['document.approval'].sudo().browse(document_id)
         # Comprobar acceso: propietario o jefe de grupo
         is_owner = document.user_id == user
-        is_boss_of_group = user.has_group('portal_requests.group_equip_boss') and document.work_group_id and document.work_group_id.equip_boss == user
+        is_boss_of_group = user.has_group('portal_requests.group_equip_boss') and document.work_group_id and document.work_group_id._is_boss_or_administrative(user)
         if not is_owner and not is_boss_of_group:
             return request.redirect('/my')
         file_storage = request.httprequest.files.get('attachment')
@@ -1627,20 +1638,24 @@ class PortalRequestsCustomerPortal(CustomerPortal):
             groupby=groupby,
         )
 
+        hide_financials = values['hide_financials']
         output = io.StringIO()
         writer = csv.writer(output, delimiter=';')
-        writer.writerow(['Nombre del Proyecto', 'Cliente', 'Saldo', 'Estado'])
+        header = ['Nombre del Proyecto', 'Cliente']
+        if not hide_financials:
+            header.append('Saldo')
+        header.append('Estado')
+        writer.writerow(header)
 
         for project_group in values['project_groups']:
             if values['groupby'] != 'none':
-                writer.writerow([f"Grupo: {project_group['label']}", '', '', ''])
+                writer.writerow([f"Grupo: {project_group['label']}", ''] + ([''] if not hide_financials else []) + [''])
             for project in project_group['projects']:
-                writer.writerow([
-                    project.name or '',
-                    project.partner_id.name or '',
-                    self._analytic_project_balance_label(project),
-                    self._analytic_project_state_label(project),
-                ])
+                row = [project.name or '', project.partner_id.name or '']
+                if not hide_financials:
+                    row.append(self._analytic_project_balance_label(project))
+                row.append(self._analytic_project_state_label(project))
+                writer.writerow(row)
 
         filename = 'mis_proyectos'
         if values['groupby'] != 'none':
@@ -1731,6 +1746,7 @@ class PortalRequestsCustomerPortal(CustomerPortal):
             'attachments': attachments,
             'page_name': 'analytic_project',
             'success_message': success,
+            'hide_financials': self._hide_project_financials(request.env.user),
         }
 
         return request.render("portal_requests.portal_my_project_detail", values)
@@ -2018,7 +2034,7 @@ class PortalRequestsCustomerPortal(CustomerPortal):
         payment = request.env['account.payment'].sudo().browse(invoice_id)
         # Validar acceso igual que en portal_my_payment_detail
         analytic_domain = [('responsible_id', '=', user.id)]
-        if user.has_group('portal_requests.group_equip_boss'):
+        if user.has_group('portal_requests.group_equip_boss') and not user.has_group('portal_requests.group_administrative'):
             work_groups = user.work_group_ids
             if work_groups:
                 analytic_domain = ['|', ('responsible_id', '=', user.id), ('work_group_id', 'in', work_groups.ids)]

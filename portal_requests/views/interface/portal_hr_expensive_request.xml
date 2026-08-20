@@ -11,6 +11,7 @@
                     <field name="type"/>
                     <field name="status"/>
                     <field name="is_more"/>
+                    <field name="create_date" string="Fecha de creación"/>
                 </list>
             </field>
         </record>

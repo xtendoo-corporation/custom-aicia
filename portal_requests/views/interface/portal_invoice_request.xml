@@ -13,6 +13,7 @@
                     <field name="amount"/>
                     <field name="move_type"/>
                     <field name="date"/>
+                    <field name="create_date" string="Fecha de creación"/>
                     <field name="l10n_es_edi_facturae_reason_code"/>
                     <field name="approved"/>
                 </list>

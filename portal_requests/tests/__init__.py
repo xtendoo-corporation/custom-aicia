@@ -16,3 +16,4 @@ from . import test_notification_recipients
 from . import test_pdf_restriction_http
 from . import test_state_change_notifications
 from . import test_expense_threshold
+from . import test_administrative_access

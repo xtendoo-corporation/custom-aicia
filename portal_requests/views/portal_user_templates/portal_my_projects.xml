@@ -66,14 +66,14 @@
 <!--                            <th>Código</th>-->
                                 <th>Nombre del Proyecto</th>
                                 <th>Cliente</th>
-                                <th>Saldo</th>
+                                <th t-if="not hide_financials">Saldo</th>
                                 <th>Estado</th>
                             </tr>
                         </thead>
                         <tbody>
                             <t t-foreach="project_groups" t-as="project_group">
                                 <tr t-if="groupby != 'none'" class="table-secondary">
-                                    <td colspan="4">
+                                    <td t-att-colspan="3 if hide_financials else 4">
                                         <strong t-esc="project_group['label']"/>
                                     </td>
                                 </tr>
@@ -92,7 +92,7 @@
                                         <td>
                                             <span t-esc="project.partner_id.name if project.partner_id else '-'"/>
                                         </td>
-                                        <td>
+                                        <td t-if="not hide_financials">
                                             <span t-esc="project.balance" t-options='{"widget": "monetary", "display_currency": project.currency_id}'/>
                                         </td>
                                         <td>
@@ -162,11 +162,11 @@
                                                 <strong>Compañía:</strong>
                                                 <p><span t-esc="project.company_id.name if project.company_id else '-'"/></p>
                                             </div>
-                                            <div class="mb-3">
+                                            <div class="mb-3" t-if="not hide_financials">
                                                 <strong>Saldo:</strong>
                                                 <p><span t-esc="project.balance" t-options='{"widget": "monetary", "display_currency": project.currency_id}'/></p>
                                             </div>
-                                            <div class="mb-3">
+                                            <div class="mb-3" t-if="not hide_financials">
                                                 <strong>Presupuesto:</strong>
                                                 <p><span t-esc="project.presupuesto" t-options='{"widget": "monetary", "display_currency": project.currency_id}'/></p>
                                             </div>

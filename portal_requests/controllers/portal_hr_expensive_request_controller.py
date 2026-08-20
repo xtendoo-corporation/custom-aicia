@@ -10,7 +10,9 @@ class PortalHrExpensiveRequestController(Controller):
         user = request.env.user
         # Obtener las compañías permitidas para el usuario logueado
         # Obtener las compañías permitidas para el usuario logueado
-        allowed_work_groups = request.env['portal.work.group'].search([('equip_boss', '=', user.id)])
+        allowed_work_groups = request.env['portal.work.group'].search(
+            request.env['portal.work.group']._boss_or_administrative_domain(user)
+        )
         allowed_companies = request.env['account.analytic.account'].search([
             ('responsible_id', '=', user.id)
         ])
