@@ -1,0 +1,59 @@
+<?xml version="1.0" encoding="utf-8"?>
+<odoo>
+    <record id="view_aicia_account_pgc_recode_line_tree" model="ir.ui.view">
+        <field name="name">aicia.account.pgc.recode.line.tree</field>
+        <field name="model">aicia.account.pgc.recode.line</field>
+        <field name="arch" type="xml">
+            <list editable="bottom" create="false" decoration-success="applied == True" decoration-warning="status == 'review'" decoration-danger="status == 'error'" decoration-muted="status == 'discarded' or status == 'manual'">
+                <field name="batch_id" readonly="1" optional="hide"/>
+                <field name="date" readonly="1"/>
+                <field name="move_id" readonly="1"/>
+                <field name="old_account_code" readonly="1"/>
+                <field name="old_account_name" readonly="1"/>
+                <field name="name" readonly="1"/>
+                <field name="company_currency_id" column_invisible="True"/>
+                <field name="debit" readonly="1" sum="Total debe"/>
+                <field name="credit" readonly="1" sum="Total haber"/>
+                <field name="new_account_code" readonly="status not in ('review', 'manual') or applied == True"/>
+                <field name="new_account_id" readonly="status not in ('review', 'manual') or applied == True" optional="show"/>
+                <field name="status" readonly="1" widget="badge"/>
+                <field name="blocking_reason" readonly="1" optional="show"/>
+                <field name="confidence" readonly="1" optional="hide"/>
+                <field name="applied" readonly="1" widget="boolean_toggle"/>
+                <field name="notes" readonly="1" optional="show"/>
+                <button name="action_apply" string="Aplicar" type="object" icon="fa-check" invisible="applied == True or status in ('manual', 'discarded', 'error')"/>
+                <button name="action_revert" string="Revertir" type="object" icon="fa-undo" invisible="applied == False"/>
+            </list>
+        </field>
+    </record>
+
+    <record id="view_aicia_account_pgc_recode_line_search" model="ir.ui.view">
+        <field name="name">aicia.account.pgc.recode.line.search</field>
+        <field name="model">aicia.account.pgc.recode.line</field>
+        <field name="arch" type="xml">
+            <search>
+                <field name="old_account_code"/>
+                <field name="new_account_code"/>
+                <field name="move_id"/>
+                <field name="batch_id"/>
+                <filter string="Pendientes de revisión" name="to_review" domain="[('status', '=', 'review')]"/>
+                <filter string="Automáticas" name="automatic" domain="[('status', '=', 'automatic')]"/>
+                <filter string="Manual" name="manual" domain="[('status', '=', 'manual')]"/>
+                <filter string="Aplicadas" name="applied" domain="[('applied', '=', True)]"/>
+                <filter string="No aplicadas" name="not_applied" domain="[('applied', '=', False)]"/>
+                <group>
+                    <filter string="Lote" name="group_batch" context="{'group_by': 'batch_id'}"/>
+                    <filter string="Estado" name="group_status" context="{'group_by': 'status'}"/>
+                    <filter string="Cuenta anterior" name="group_old_account" context="{'group_by': 'old_account_id'}"/>
+                </group>
+            </search>
+        </field>
+    </record>
+
+    <record id="action_aicia_account_pgc_recode_line" model="ir.actions.act_window">
+        <field name="name">Líneas de recodificación</field>
+        <field name="res_model">aicia.account.pgc.recode.line</field>
+        <field name="view_mode">list</field>
+        <field name="context">{'search_default_not_applied': 1, 'search_default_group_batch': 1}</field>
+    </record>
+</odoo>

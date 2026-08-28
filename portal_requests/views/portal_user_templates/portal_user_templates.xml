@@ -1,0 +1,34 @@
+<?xml version="1.0" encoding="utf-8"?>
+<odoo>
+    <data>
+        <template id="portal_my_home_inherit" name="Portal My Home Inherit" inherit_id="portal.portal_my_home">
+            <xpath expr="//div[@class='o_portal_docs row g-2']" position="replace">
+                    <div class="o_portal_docs row g-2">
+                    <div style="display:none">
+                        <div t-if="portal_alert_category_enable" class="o_portal_category row g-2 mt-3" id="portal_alert_category"/>
+                        <div t-if="portal_client_category_enable" class="o_portal_category row g-2 mt-3" id="portal_client_category"/>
+                        <div t-if="portal_service_category_enable" class="o_portal_category row g-2 mt-3" id="portal_service_category"/>
+                        <div t-if="portal_vendor_category_enable" class="o_portal_category row g-2 mt-3" id="portal_vendor_category"/>
+                    </div>
+                    <div class="o_portal_category row g-2 mt-3" id="portal_common_category">
+                        <t t-call="portal.portal_docs_entry">
+                            <t t-set="icon" t-value="'/portal/static/src/img/portal-addresses.svg'"/>
+                            <t t-set="title">Direcciones</t>
+                            <t t-set="text">Añadir, eliminar o modificar tus direcciones</t>
+                            <t t-set="url" t-value="'/my/addresses'"/>
+                            <t t-set="config_card" t-value="True"/>
+                        </t>
+                        <t t-call="portal.portal_docs_entry">
+                            <t t-set="icon" t-value="'/portal/static/src/img/portal-connection.svg'"/>
+                            <t t-set="title">Conexión &amp; Seguridad</t>
+                            <t t-set="text">Configura tus parámetros de conexión</t>
+                            <t t-set="url" t-value="'/my/security'"/>
+                            <t t-set="config_card" t-value="True"/>
+                        </t>
+                    </div>
+                    <div class="o_portal_doc_spinner spinner-border text-o-color-2 align-self-center mt-5"/>
+                </div>
+            </xpath>
+        </template>
+    </data>
+</odoo>

@@ -1,0 +1,431 @@
+<?xml version="1.0" encoding="utf-8"?>
+<odoo>
+    <data>
+        <!-- Listado de Solicitudes de Proyectos -->
+        <template id="portal_my_project_requests" name="Mis Solicitudes de Proyectos">
+            <t t-call="portal.portal_layout">
+                <!-- Deshabilitar breadcrumbs automáticos del portal -->
+                <t t-set="no_breadcrumbs" t-value="True"/>
+
+                <div class="container">
+                    <div class="row mt-3">
+                        <div class="col-12">
+                            <ol class="breadcrumb">
+                                <li class="breadcrumb-item"><a href="/my"><i class="fa fa-home"/></a></li>
+                                <li class="breadcrumb-item active" aria-current="page">Solicitudes de Proyectos</li>
+                            </ol>
+                        </div>
+                    </div>
+                     <div class="row">
+                        <div class="col-12">
+                            <div class="d-flex justify-content-end align-items-center gap-2 mb-3">
+                                <a t-att-href="'/my/project_requests/export?' + keep_query('*')" class="btn btn-outline-secondary">
+                                    <i class="fa fa-download me-2"/>Exportar
+                                </a>
+                                <a href="/portal/project_request" class="btn btn-primary">
+                                    <i class="fa fa-plus me-2"/>Nueva Solicitud
+                                </a>
+                            </div>
+                        </div>
+                    </div>
+
+                    <div class="portal-project-searchbar-wrapper mb-4">
+                        <div class="portal-project-searchbar d-flex flex-column flex-lg-row justify-content-center align-items-stretch align-items-lg-center gap-2">
+                            <div class="btn-group portal-project-groupby">
+                                <button id="portal_project_request_filter" data-bs-toggle="dropdown" class="btn btn-light dropdown-toggle" type="button">
+                                    Filtrar por: <t t-esc="searchbar_filters[filterby].get('label', 'Todos')"/>
+                                </button>
+                                <div class="dropdown-menu" aria-labelledby="portal_project_request_filter">
+                                    <t t-foreach="searchbar_filters" t-as="option">
+                                        <a t-att-href="default_url + '?' + keep_query('*', filterby=option)"
+                                           t-attf-class="dropdown-item#{filterby == option and ' active' or ''}">
+                                            <span t-esc="searchbar_filters[option].get('label')"/>
+                                        </a>
+                                    </t>
+                                </div>
+                            </div>
+
+                            <div class="btn-group portal-project-groupby">
+                                <button id="portal_project_request_groupby" data-bs-toggle="dropdown" class="btn btn-light dropdown-toggle" type="button">
+                                    Agrupar por: <t t-esc="searchbar_groupby[groupby].get('label', 'Sin agrupar')"/>
+                                </button>
+                                <div class="dropdown-menu" aria-labelledby="portal_project_request_groupby">
+                                    <t t-foreach="searchbar_groupby" t-as="option">
+                                        <a t-att-href="default_url + '?' + keep_query('*', groupby=option)"
+                                           t-attf-class="dropdown-item#{groupby == option and ' active' or ''}">
+                                            <span t-esc="searchbar_groupby[option].get('label')"/>
+                                        </a>
+                                    </t>
+                                </div>
+                            </div>
+
+                            <form class="o_portal_search_panel portal-project-search-form">
+                                <input type="hidden" name="filterby" t-att-value="filterby"/>
+                                <input type="hidden" name="groupby" t-att-value="groupby"/>
+                                <input type="hidden" name="search_in" t-att-value="search_in"/>
+                                <div class="input-group w-100">
+                                    <button type="button" class="btn btn-light border-end dropdown-toggle" data-bs-toggle="dropdown"/>
+                                    <div class="dropdown-menu" role="menu">
+                                        <t t-foreach="searchbar_inputs" t-as="input">
+                                            <a t-att-href="default_url + '?' + keep_query('*', search_in=searchbar_inputs[input]['input'])"
+                                               t-attf-class="dropdown-item#{search_in == searchbar_inputs[input]['input'] and ' active' or ''}">
+                                                <span t-esc="searchbar_inputs[input]['label']"/>
+                                            </a>
+                                        </t>
+                                    </div>
+                                    <input type="search" class="form-control border-0 bg-light" t-att-value="search" name="search" t-att-placeholder="searchbar_inputs[search_in].get('label', 'Buscar...')"/>
+                                    <button class="btn btn-light" type="submit">
+                                        <span class="oi oi-search"/>
+                                    </button>
+                                </div>
+                            </form>
+                        </div>
+                    </div>
+                    <t t-if="not project_requests">
+                        <div class="alert alert-info" role="alert">
+                            No tienes solicitudes de proyectos. Puedes crear una nueva haciendo clic en el botón "Nueva Solicitud".
+                        </div>
+                    </t>
+
+                    <t t-if="project_requests" t-call="portal.portal_table">
+                        <thead class="table-light">
+                            <tr>
+                                <th>Solicitud</th>
+                                <th>Tipo</th>
+<!--                                <th>Compañía</th>-->
+                                <th>Grupo de Trabajo</th>
+                                <th>Estado</th>
+                                <th>Fecha Creación</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            <t t-foreach="project_request_groups" t-as="project_request_group">
+                                <tr t-if="groupby != 'none'" class="table-secondary">
+                                    <td colspan="6">
+                                        <strong t-esc="project_request_group['label']"/>
+                                    </td>
+                                </tr>
+                                <t t-foreach="project_request_group['project_requests']" t-as="project_request">
+                                    <tr>
+                                    <td>
+                                        <a t-attf-href="/my/project_requests/#{project_request.id}">
+                                            <span t-esc="project_request.project_name"/>
+                                        </a>
+                                    </td>
+                                    <td>
+                                        <span t-if="project_request.type == 'new'" class="badge bg-primary">Nuevo Proyecto</span>
+                                        <span t-elif="project_request.type == 'end'" class="badge bg-warning">Finalizar Proyecto</span>
+                                    </td>
+<!--                                    <td><span t-esc="project_request.company_id.name"/></td>-->
+                                    <td>
+                                        <span t-if="project_request.work_group_id" t-esc="project_request.work_group_id.name"/>
+                                        <span t-else="">-</span>
+                                    </td>
+                                    <td>
+                                        <t t-if="project_request.approved and project_request.is_revised">
+                                            <span class="badge bg-success">Aprobada</span>
+                                        </t>
+                                        <t t-elif="not project_request.approved and project_request.is_revised">
+                                            <span class="badge bg-danger">Rechazada</span>
+                                        </t>
+                                        <t t-else="">
+                                            <span class="badge bg-warning">Pendiente</span>
+                                        </t>
+                                    </td>
+                                    <td>
+                                        <span t-field="project_request.create_date" t-options='{"widget": "date"}'/>
+                                    </td>
+                                    </tr>
+                                </t>
+                            </t>
+                        </tbody>
+                    </t>
+                </div>
+            </t>
+        </template>
+
+        <!-- Detalle de Solicitud de Proyecto -->
+        <template id="portal_my_project_request_detail" name="Detalle de Solicitud de Proyecto">
+            <t t-call="portal.portal_layout">
+                <!-- Deshabilitar breadcrumbs automáticos del portal -->
+                <t t-set="no_breadcrumbs" t-value="True"/>
+
+                <div class="container">
+                    <div class="row mt-3">
+                        <div class="col-12">
+                            <ol class="breadcrumb">
+                                <li class="breadcrumb-item"><a href="/my"><i class="fa fa-home"/></a></li>
+                                <li class="breadcrumb-item"><a href="/my/project_requests">Solicitudes de Proyectos</a></li>
+                                <li class="breadcrumb-item active" aria-current="page">
+                                    <span t-esc="project_request.project_name"/>
+                                </li>
+                            </ol>
+                        </div>
+                    </div>
+
+                    <!-- Mensaje de éxito -->
+                    <t t-if="success_message">
+                        <div class="alert alert-success alert-dismissible fade show" role="alert">
+                            <strong>¡Éxito!</strong>
+                            <span t-if="success_message == 'message_posted'">Tu mensaje ha sido enviado correctamente.</span>
+                            <button type="button" class="btn-close" data-bs-dismiss="alert" aria-label="Close"/>
+                        </div>
+                    </t>
+
+                    <div class="row">
+                        <div class="col-12">
+                            <div class="card mb-4">
+                                <div class="card-header bg-primary text-white">
+                                    <h4 class="mb-0">
+                                        <i class="fa fa-folder-open me-2"/>
+                                        Solicitud: <span t-esc="project_request.project_name"/>
+                                    </h4>
+                                </div>
+                                <div class="card-body">
+                                    <div class="row">
+                                        <div class="col-md-6">
+                                            <div class="mb-3">
+                                                <strong>Tipo de Solicitud:</strong>
+                                                <p>
+                                                    <span t-if="project_request.type == 'new'" class="badge bg-primary">Nuevo Proyecto</span>
+                                                    <span t-elif="project_request.type == 'end'" class="badge bg-warning">Finalizar Proyecto</span>
+                                                </p>
+                                            </div>
+                                            <div class="mb-3">
+                                                <strong>Compañía:</strong>
+                                                <p><span t-esc="project_request.company_id.name"/></p>
+                                            </div>
+                                            <div class="mb-3" t-if="project_request.work_group_id">
+                                                <strong>Grupo de Trabajo:</strong>
+                                                <p><span t-esc="project_request.work_group_id.name"/></p>
+                                            </div>
+                                            <div class="mb-3" t-if="project_request.partner_id">
+                                                <strong>Cliente:</strong>
+                                                <p><span t-esc="project_request.partner_id.name"/></p>
+                                            </div>
+                                            <div class="mb-3" t-if="project_request.partner_id_char">
+                                                <strong>Cliente:</strong>
+                                                <p><span t-esc="project_request.partner_id_char"/></p>
+                                            </div>
+                                        </div>
+                                        <div class="col-md-6">
+                                            <div class="mb-3">
+                                                <strong>Estado:</strong>
+                                                <p>
+                                                    <t t-if="project_request.approved and project_request.is_revised">
+                                                        <span class="badge bg-success">Aprobada</span>
+                                                    </t>
+                                                    <t t-elif="not project_request.approved and project_request.is_revised">
+                                                        <span class="badge bg-danger">Rechazada</span>
+                                                    </t>
+                                                    <t t-else="">
+                                                        <span class="badge bg-warning">Pendiente de Revisión</span>
+                                                    </t>
+                                                </p>
+                                            </div>
+                                            <div class="mb-3" t-if="project_request.date_start">
+                                                <strong>Fecha de Inicio:</strong>
+                                                <p><span t-field="project_request.date_start"/></p>
+                                            </div>
+                                            <div class="mb-3" t-if="project_request.date_end">
+                                                <strong>Fecha de Fin:</strong>
+                                                <p><span t-field="project_request.date_end"/></p>
+                                            </div>
+                                            <div class="mb-3">
+                                                <strong>Fecha de Creación:</strong>
+                                                <p><span t-field="project_request.create_date" t-options='{"widget": "datetime"}'/></p>
+                                            </div>
+                                        </div>
+                                    </div>
+
+                                    <!-- Concepto (para finalizar proyecto) -->
+                                    <t t-if="project_request.concept">
+                                        <hr/>
+                                        <div class="mb-3">
+                                            <strong>Concepto:</strong>
+                                            <p><span t-esc="project_request.concept"/></p>
+                                        </div>
+                                    </t>
+
+                                    <!-- Adjuntos -->
+<!--                                    <t t-if="project_request.signed_contract or project_request.budget_file">-->
+<!--                                        <hr/>-->
+<!--                                        <h5 class="mb-3">Archivos Adjuntos</h5>-->
+<!--                                                              &lt;!&ndash; Formulario de subida de adjunto SIEMPRE visible &ndash;&gt;-->
+<!--                                            <form method="POST" enctype="multipart/form-data" t-attf-action="/my/project_requests/#{project_request.id}/add_attachment" class="mb-3">-->
+<!--                                                <input type="hidden" name="csrf_token" t-att-value="request.csrf_token()"/>-->
+<!--                                                <div class="input-group">-->
+<!--                                                    <input type="file" name="attachment" class="form-control" accept="application/pdf" required="required"/>-->
+<!--                                                    <button type="submit" class="btn btn-outline-primary">-->
+<!--                                                        <i class="fa fa-upload me-1"/> Subir archivo-->
+<!--                                                    </button>-->
+<!--                                                </div>-->
+<!--                                            </form>-->
+<!--                                        <div class="list-group">-->
+<!--                                            <t t-if="project_request.signed_contract">-->
+<!--                                                <a t-attf-href="/web/content/portal.project.request/#{project_request.id}/signed_contract/#{project_request.signed_contract_filename}?download=true"-->
+<!--                                                   class="list-group-item list-group-item-action">-->
+<!--                                                    <i class="fa fa-file-pdf-o me-2"/>-->
+<!--                                                    <span t-esc="project_request.signed_contract_filename or 'Contrato Firmado'"/>-->
+<!--                                                </a>-->
+<!--                                            </t>-->
+<!--                                            <t t-if="project_request.budget_file">-->
+<!--                                                <a t-attf-href="/web/content/portal.project.request/#{project_request.id}/budget_file/#{project_request.budget_file_filename}?download=true"-->
+<!--                                                   class="list-group-item list-group-item-action">-->
+<!--                                                    <i class="fa fa-file-pdf-o me-2"/>-->
+<!--                                                    <span t-esc="project_request.budget_file_filename or 'Presupuesto'"/>-->
+<!--                                                </a>-->
+<!--                                            </t>-->
+<!--                                        </div>-->
+<!--                                    </t>-->
+                                    <!-- Enlace al proyecto creado -->
+                                    <t t-if="project_request.created_analytic_id">
+                                        <hr/>
+                                        <div class="alert alert-success" role="alert">
+                                            <strong>Proyecto Creado:</strong>
+                                            <span t-esc="project_request.created_analytic_id.name"/>
+                                        </div>
+                                    </t>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- NUEVO: Adjuntos generales -->
+                    <div class="row">
+                        <div class="col-12">
+                            <div class="card mb-4">
+                                <div class="card-header bg-light">
+                                    <h5 class="mb-0">
+                                        <i class="fa fa-paperclip me-2"></i>
+                                        Archivos Adjuntos
+                                    </h5>
+                                </div>
+                                <div class="card-body">
+                                    <!-- Formulario de subida de adjunto SIEMPRE visible -->
+                                    <form method="POST" enctype="multipart/form-data" t-attf-action="/my/project_requests/#{project_request.id}/add_attachment" class="mb-3">
+                                        <input type="hidden" name="csrf_token" t-att-value="request.csrf_token()"/>
+                                        <div class="input-group">
+                                            <input type="file" name="attachment" class="form-control" accept="application/pdf" required="required"/>
+                                            <button type="submit" class="btn btn-outline-primary">
+                                                <i class="fa fa-upload me-1"/> Subir archivo
+                                            </button>
+                                        </div>
+                                    </form>
+                                    <t t-if="attachments and len(attachments) &gt; 0">
+                                        <div class="list-group">
+                                            <t t-foreach="attachments" t-as="attachment">
+                                                <a t-attf-href="/web/content/#{attachment.id}?download=true"
+                                                   class="list-group-item list-group-item-action d-flex justify-content-between align-items-center">
+                                                    <div>
+                                                        <i class="fa fa-file-o me-2"/>
+                                                        <span t-esc="attachment.name"/>
+                                                    </div>
+                                                    <span class="badge bg-primary rounded-pill">
+                                                        <i class="fa fa-download"/>
+                                                    </span>
+                                                </a>
+                                            </t>
+                                        </div>
+                                    </t>
+                                    <t t-else="">
+                                        <div class="alert alert-info mb-0" role="alert">
+                                            <i class="fa fa-info-circle me-2"/>
+                                            No hay archivos adjuntos en esta solicitud.
+                                        </div>
+                                    </t>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- Chatter -->
+                    <div class="row mt-4">
+                        <div class="col-12">
+                            <div class="card">
+                                <div class="card-header bg-light">
+                                    <h5 class="mb-0">
+                                        <i class="fa fa-comments me-2"/>
+                                        Comunicaciones
+                                    </h5>
+                                </div>
+                                <div class="card-body">
+                                    <t t-if="messages">
+                                        <t t-foreach="messages" t-as="message">
+                                            <div class="card mb-3">
+                                                <div class="card-body">
+                                                    <div class="d-flex align-items-start">
+                                                        <div class="flex-shrink-0 me-3">
+                                                            <t t-if="message['author_id'] and message['author_id']['id']">
+                                                                <img t-attf-src="/web/image/res.partner/#{message['author_id']['id']}/avatar_128"
+                                                                     class="rounded-circle"
+                                                                     style="width: 50px; height: 50px;"
+                                                                     alt="Avatar"/>
+                                                            </t>
+                                                            <t t-else="">
+                                                                <i class="fa fa-user-circle fa-3x text-muted"/>
+                                                            </t>
+                                                        </div>
+                                                        <div class="flex-grow-1">
+                                                            <div class="d-flex justify-content-between align-items-start mb-2">
+                                                                <div>
+                                                                    <strong t-if="message['author_id']" t-esc="message['author_id']['name']"/>
+                                                                    <strong t-else="">Sistema</strong>
+                                                                    <br/>
+                                                                    <small class="text-muted">
+                                                                        <i class="fa fa-clock-o me-1"/>
+                                                                        <span t-esc="message['date']"/>
+                                                                    </small>
+                                                                </div>
+                                                            </div>
+                                                            <div class="message-content">
+                                                                <t t-raw="message['body']"/>
+                                                            </div>
+                                                        </div>
+                                                    </div>
+                                                </div>
+                                            </div>
+                                        </t>
+                                    </t>
+                                    <t t-else="">
+                                        <p class="text-muted text-center py-3">No hay mensajes todavía</p>
+                                    </t>
+
+                                    <!-- Formulario para enviar mensajes -->
+                                    <div class="card mt-3">
+                                        <div class="card-header bg-light">
+                                            <strong>Enviar un mensaje</strong>
+                                        </div>
+                                        <div class="card-body">
+                                            <form t-attf-action="/my/project_requests/#{project_request.id}/post_message" method="post">
+                                                <input type="hidden" name="csrf_token" t-att-value="request.csrf_token()"/>
+                                                <div class="mb-3">
+                                                    <textarea name="message" class="form-control" rows="4"
+                                                              placeholder="Escribe tu mensaje aquí..." required="required"> </textarea>
+                                                </div>
+                                                <button type="submit" class="btn btn-primary">
+                                                    <i class="fa fa-paper-plane me-2"/>
+                                                    Enviar Mensaje
+                                                </button>
+                                            </form>
+                                        </div>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+
+                    <div class="row mt-3">
+                        <div class="col-12">
+                            <a href="/my/project_requests" class="btn btn-secondary">
+                                <i class="fa fa-arrow-left me-2"/>
+                                Volver a Solicitudes
+                            </a>
+                        </div>
+                    </div>
+                </div>
+            </t>
+        </template>
+    </data>
+</odoo>
+

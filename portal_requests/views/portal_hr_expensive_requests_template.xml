@@ -1,0 +1,233 @@
+<odoo>
+    <template id="portal_hr_expensive_request_template">
+        <t t-call="website.layout">
+            <!--CABECERA DE LA PÁGINA-->
+            <div id="wrap" class="oe_structure oe_empty">
+                <section class="s_title parallax s_parallax_is_fixed bg-black-50 pt24 pb24" data-vcss="001"
+                         data-snippet="s_title" data-scroll-background-ratio="1" data-name="Título">
+                    <span class="s_parallax_bg oe_img_bg"
+                          style="background-image: url('/web/image/website.s_parallax_default_image'); background-position: 50% 0;"/>
+                    <div class="o_we_bg_filter bg-black-50"/>
+                    <div class="container">
+                        <!--TÍTULO DE LA PÁGINA-->
+                        <h1>Solicitudes de Gastos</h1>
+                    </div>
+                </section>
+                <!--FORMULARIO-->
+                <section class="s_text_block pt40 pb40 o_colored_level" data-snippet="s_text_block" data-name="Texto"
+                         style="background-image: none;">
+                    <div class="s_allow_columns container">
+                        <div class="row">
+                            <div class="col-lg-8 mt-4 mt-lg-0">
+                                <p>
+                                    Por favor, complete el siguiente formulario para enviar una solicitud de gasto.
+                                </p>
+                                <div class="container">
+                                    <form action="/portal/hr_expensive_request/submit" method="POST" enctype="multipart/form-data">
+                                        <input type="hidden" name="csrf_token" t-att-value="request.csrf_token()"/>
+                                        <input type="hidden" name="user_id" t-att-value="request.env.user.id"/>
+                                        <div class="s_website_form_rows row s_col_no_bgcolor">
+                                            <!-- TYPE REQUIRED -->
+                                            <div
+                                                class="mb-0 py-2 col-12 s_website_form_field s_website_form_required s_website_form_model_required"
+                                                data-type="char" data-name="Field">
+                                                <div class="row s_col_no_resize s_col_no_bgcolor">
+                                                    <label class="col-form-label col-sm-auto s_website_form_label"
+                                                           style="width: 200px" for="contact">
+                                                        <span class="s_website_form_label_content">Tipo</span>
+                                                        <span class="s_website_form_mark">*</span>
+                                                    </label>
+                                                    <div class="col-sm">
+                                                        <select id="expensive_type" name="expensive_type"
+                                                                class="form-control s_website_form_input">
+                                                            <option value="">Seleccione...</option>
+                                                            <option value="bienes_servicios">Compra de bienes o servicios</option>
+                                                            <option value="material_inventariable">Pago de material inventariable</option>
+                                                            <option value="liquidacion_gastos">Liquidación de gastos</option>
+                                                            <option value="gratificacion">Solicitud de gratificación</option>
+                                                        </select>
+                                                    </div>
+                                                </div>
+                                            </div>
+                                           <!--COMPANY REQUIRED-->
+                                            <div
+                                                class="mb-0 py-2 col-12 s_website_form_field s_website_form_required s_website_form_model_required"
+                                                data-type="char" data-name="Field">
+                                                <div class="row s_col_no_resize s_col_no_bgcolor">
+                                                    <label
+                                                        class="col-form-label col-sm-auto s_website_form_label"
+                                                        style="width: 200px" for="contact">
+                                                        <span class="s_website_form_label_content">Project
+                                                        </span>
+                                                        <span class="s_website_form_mark">*</span>
+                                                    </label>
+                                                    <div class="col-sm">
+                                                        <select id="company_id" name="company_id"
+                                                                class="form-control s_website_form_input">
+                                                            <option value="0">Selecciona un proyecto</option>
+                                                            <t t-foreach="companies" t-as="company">
+                                                                <option t-att-value="company.id">
+                                                                    <t t-esc="company.name"/>
+                                                                </option>
+                                                            </t>
+                                                        </select>
+                                                    </div>
+                                                </div>
+                                            </div>
+                                            <!--FILE REQUIRED-->
+                                            <div
+                                                class="mb-0 py-2 col-12 s_website_form_field s_website_form_required s_website_form_model_required"
+                                                data-type="binary" data-name="Field">
+                                                <div class="row s_col_no_resize s_col_no_bgcolor">
+                                                    <label
+                                                        class="col-form-label col-sm-auto s_website_form_label"
+                                                        style="width: 200px" for="contact">
+                                                        <span class="s_website_form_label_content" id="expense_file_label">Factura
+                                                        </span>
+                                                        <span class="s_website_form_mark">*</span>
+                                                    </label>
+                                                    <div class="col-sm">
+                                                        <input type="file" class="form-control" name="file" id="expense_file" accept="application/pdf"/>
+                                                    </div>
+                                                </div>
+                                            </div>
+                                            <!--FILE REQUIRED-->
+                                            <div
+                                                class="mb-0 py-2 col-12 s_website_form_field s_website_form_required s_website_form_model_required"
+                                                data-type="binary" data-name="Field" id="inventory_file_div" style="display: none;">
+                                                <div class="row s_col_no_resize s_col_no_bgcolor">
+                                                    <label
+                                                        class="col-form-label col-sm-auto s_website_form_label"
+                                                        style="width: 200px" for="inventory_file">
+                                                        <span class="s_website_form_label_content">Documento de inventario
+                                                        </span>
+                                                        <span class="s_website_form_mark">*</span>
+                                                    </label>
+                                                    <div class="col-sm">
+                                                        <input type="file" class="form-control" name="inventory_file" accept="application/pdf" id="inventory_file"/>
+                                                    </div>
+                                                </div>
+                                            </div>
+                                            <!--COMPANY SIGNED?-->
+                                            <div
+                                                class="mb-0 py-2 col-12 s_website_form_field s_website_form_required s_website_form_model_required"
+                                                data-type="boolean" data-name="Field">
+                                                <div class="row s_col_no_resize s_col_no_bgcolor">
+                                                    <label
+                                                        class="col-form-label col-sm-auto s_website_form_label"
+                                                        style="width: 200px" for="is_more">
+                                                        <span class="s_website_form_label_content">¿Es mas de 10.000€?</span>
+                                                        <span class="s_website_form_mark">*</span>
+                                                    </label>
+                                                    <div class="col-sm">
+                                                        <input type="checkbox" class="form-check-input" id="is_more" name="is_more"/>
+                                                    </div>
+                                                </div>
+                                            </div>
+<!--                                            &lt;!&ndash;NAME REQUIRED&ndash;&gt;-->
+<!--                                            <div-->
+<!--                                                class="mb-0 py-2 col-12 s_website_form_field s_website_form_required s_website_form_model_required"-->
+<!--                                                data-type="text" data-name="Field">-->
+<!--                                                <div class="row s_col_no_resize s_col_no_bgcolor">-->
+<!--                                                    <label-->
+<!--                                                        class="col-form-label col-sm-auto s_website_form_label"-->
+<!--                                                        style="width: 200px" for="contact">-->
+<!--                                                        <span class="s_website_form_label_content">Name-->
+<!--                                                        </span>-->
+<!--                                                        <span class="s_website_form_mark">*</span>-->
+<!--                                                    </label>-->
+<!--                                                    <div class="col-sm">-->
+<!--                                                        <input type="text" class="form-control"-->
+<!--                                                               name="name"-->
+<!--                                                               required="required"/>-->
+<!--                                                    </div>-->
+<!--                                                </div>-->
+<!--                                            </div>-->
+                                            <!--SEND BUTTON-->
+                                            <div class="mb-0 py-2 col-12 s_website_form_submit"
+                                                 data-name="Submit Button">
+                                                <div class="row s_col_no_resize s_col_no_bgcolor align-items-center">
+                                                    <div class="col-sm-auto" style="width: 200px;"/>
+                                                    <div class="col-sm">
+                                                        <button type="submit"
+                                                                class="btn btn-primary s_website_form_send">Submit
+                                                        </button>
+                                                    </div>
+                                                </div>
+                                                <span id="s_website_form_result"/>
+                                            </div>
+                                        </div>
+                                    </form>
+                                    <!-- JavaScript para cerrar modales abiertos -->
+                                    <script type="text/javascript">
+
+                                        function fetchPartnersByCompany() {
+                                        var companyId = document.getElementById("company_id").value;
+
+                                        // Hacer una llamada AJAX a Odoo
+                                        $.ajax({
+                                        url: '/get_partners_by_company', // URL del controlador en Odoo
+                                        type: 'GET',
+                                        data: { company_id: companyId }, // Pasar el company_id como parámetro
+                                        success: function(response) {
+                                        var partnerSelect = document.getElementById("partner_id");
+                                        partnerSelect.innerHTML = '';
+
+                                        // Rellenar el campo con los partners filtrados
+                                        response.partners.forEach(function(partner) {
+                                        var option = document.createElement('option');
+                                        option.value = partner.id;
+                                        option.text = partner.name;
+                                        partnerSelect.appendChild(option);
+                                        });
+                                        },
+                                        error: function(error) {
+                                        console.log("Error fetching partners: ", error);
+                                        }
+                                        });
+                                        }
+                                        //PARTE DE MOSTRAR EL CAMPO DE REASON Y FACTURA CUANDO SE SELECCIONA UNA TIPO FACTURA
+                                        document.getElementById("expensive_type").addEventListener("change", function() {
+                                        var expensive_type = document.getElementById("expensive_type").value;
+                                        var inventory_file_div = document.getElementById("inventory_file_div");
+                                        var inventory_file = document.getElementById("inventory_file");
+                                        if (expensive_type === "material_inventariable") {
+                                            inventory_file_div.style.display = "block";
+                                            inventory_file.setAttribute("required", "required");
+                                        } else {
+                                            inventory_file_div.style.display = "none";
+                                            inventory_file.removeAttribute("required");
+                                        }
+                                        var expense_file = document.getElementById("expense_file");
+                                        var expense_file_label = document.getElementById("expense_file_label");
+                                        if (expensive_type === "liquidacion_gastos") {
+                                            expense_file.setAttribute("multiple", "multiple");
+                                            expense_file_label.textContent = "Documentos";
+                                        } else if (expensive_type === "gratificacion") {
+                                            expense_file.removeAttribute("multiple");
+                                            expense_file_label.textContent = "Documento";
+                                        } else {
+                                            expense_file.removeAttribute("multiple");
+                                            expense_file_label.textContent = "Factura";
+                                        }
+                                    });
+                                    </script>
+                                    <script type="text/javascript" src="/custom-aicia/static/src/js/reason_codes.js"/>
+                                    <script type="text/javascript" src="/custom-aicia/static/src/js/hide_field.js"/>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </section>
+            </div>
+        </t>
+    </template>
+
+    <record id="portal_hr_expensive_menu" model="website.menu">
+        <field name="name">Solicitud de gastos</field>
+        <field name="url">/portal/hr_expensive_request</field>
+        <field name="parent_id" ref="portal_approval_menu"/>
+        <field name="sequence" type="int">160</field>
+        <field name="website_id" eval="1"/>
+    </record>
+</odoo>

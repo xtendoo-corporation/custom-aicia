@@ -1,0 +1,71 @@
+<?xml version="1.0" encoding="utf-8"?>
+<odoo>
+    <record id="view_aicia_account_pgc_recode_simulation_wizard_form" model="ir.ui.view">
+        <field name="name">aicia.account.pgc.recode.simulation.wizard.form</field>
+        <field name="model">aicia.account.pgc.recode.simulation.wizard</field>
+        <field name="arch" type="xml">
+            <form string="Recodificación por mapeo">
+                <sheet>
+                    <div class="oe_title">
+                        <h2>Recodificación masiva según el mapeo configurado</h2>
+                    </div>
+                    <field name="preview_generated" invisible="1"/>
+                    <notebook>
+                        <page string="Ámbito" name="scope">
+                            <group>
+                                <group string="Ámbito">
+                                    <field name="company_id" groups="base.group_multi_company"/>
+                                    <field name="date_from"/>
+                                    <field name="date_to"/>
+                                    <field name="journal_ids" widget="many2many_tags"/>
+                                </group>
+                                <group string="Opciones">
+                                    <field name="posted_only"/>
+                                    <field name="include_already_recoded"/>
+                                    <field name="account_ids" widget="many2many_tags"/>
+                                </group>
+                            </group>
+                            <div class="alert alert-info" role="alert">
+                                Se generará un borrador (lote) con las propuestas para que puedas revisarlas antes de aplicarlas.
+                                Pulsa "Previsualizar mapeo" para ver y ajustar la subcuenta destino de cada subcuenta origen antes de continuar.
+                            </div>
+                        </page>
+                        <page string="Mapeo de subcuentas" name="mapping">
+                            <div class="alert alert-warning" role="alert" invisible="preview_generated">
+                                Todavía no has generado la previsualización. Pulsa "Previsualizar mapeo" para calcular el mapeo de subcuentas según el ámbito y las reglas configuradas.
+                            </div>
+                            <field name="preview_line_ids" nolabel="1" colspan="2">
+                                <list editable="bottom" create="false" delete="false">
+                                    <field name="company_currency_id" column_invisible="1"/>
+                                    <field name="old_account_id" readonly="1"/>
+                                    <field name="old_account_name" optional="show"/>
+                                    <field name="move_line_count" sum="Apuntes"/>
+                                    <field name="total_balance" sum="Total saldo"/>
+                                    <field name="new_account_id"/>
+                                    <field name="new_account_code" optional="hide"/>
+                                    <field name="new_account_name" optional="hide"/>
+                                    <field name="rule_id" optional="hide"/>
+                                    <field name="status" decoration-success="status == 'automatic'" decoration-warning="status == 'review'" decoration-danger="status in ('manual', 'discarded')" widget="badge"/>
+                                    <field name="confidence" optional="hide"/>
+                                    <field name="notes" optional="hide"/>
+                                </list>
+                            </field>
+                        </page>
+                    </notebook>
+                </sheet>
+                <footer>
+                    <button name="action_preview" string="Previsualizar mapeo" type="object" class="btn-secondary"/>
+                    <button name="action_simulate" string="Generar borrador" type="object" class="btn-primary"/>
+                    <button string="Cancelar" class="btn-secondary" special="cancel"/>
+                </footer>
+            </form>
+        </field>
+    </record>
+
+    <record id="action_aicia_account_pgc_recode_simulation_wizard" model="ir.actions.act_window">
+        <field name="name">Recodificación por mapeo</field>
+        <field name="res_model">aicia.account.pgc.recode.simulation.wizard</field>
+        <field name="view_mode">form</field>
+        <field name="target">new</field>
+    </record>
+</odoo>

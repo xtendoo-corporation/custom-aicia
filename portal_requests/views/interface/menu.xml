@@ -1,0 +1,115 @@
+<?xml version="1.0" encoding="UTF-8" ?>
+<!--
+# Copyright 2021 - Daniel Domínguez <https://xtendoo.es>
+# License AGPL-3.0 or later (http://www.gnu.org/licenses/agpl).
+-->
+<odoo>
+    <data>
+
+        <!-- Menú raíz para el módulo portal_requests -->
+        <menuitem id="menu_portal_requests_root" name="Portal Requests" sequence="1"/>
+
+        <record id="action_unresised" model="ir.actions.act_window">
+        <field name="name">Unapproved Type Approvals</field>
+        <field name="res_model">document.approval</field>
+        <field name="view_mode">list,form,kanban</field>
+        <field name="domain">[('type_id', '=', active_id), ('is_revised', '=', False)]</field>
+
+    </record>
+
+        <record id="view_portal_request_dashboard_kanban" model="ir.ui.view">
+        <field name="name">portal.request.dashboard.kanban</field>
+        <field name="model">portal.request.dashboard</field>
+        <field name="arch" type="xml">
+            <kanban create="false" class="o_modules_kanban">
+                <field name="name"/>
+                <field name="to_revise_text"/>
+                <field name="unaproved_text"/>
+                <field name="approved_text"/>
+                <field name="image"/>
+                <field name="show_unapproved"/>
+                <templates>
+                    <t t-name="card">
+                        <div class="oe_module_vignette">
+                            <field name="image" widget="image" class="oe_kanban_avatar float-start me-3" />
+                            <div class="oe_module_desc">
+                                <h4 class="o_kanban_record_title" style="white-space: normal;">
+                                    <field name="name"/>
+                                </h4>
+
+
+                             <div class="oe_module_action">
+<!--                                    <button type="action" name="%(action_unresised)d"-->
+<!--                                            class="btn btn-sm btn-secondary float-end"-->
+<!--                                    >To Review:-->
+<!--                                        <field name="count_unapproved" readonly="1"/>-->
+<!--                                    </button>-->
+                                    <button type="object" name="open_new_action_to_revise"
+                                            class="btn btn-link"
+                                    >
+                                        <field name="to_revise_text" readonly="1"/>
+                                    </button>
+                                 <button type="object" name="open_new_action_approve"
+                                            class="btn btn-link"
+                                    >
+                                        <field name="approved_text" readonly="1"/>
+                                    </button>
+                                           <field name="show_unapproved" invisible="1"/>
+                                 <button invisible="not show_unapproved" type="object" name="open_new_action_rejected"
+                                            class="btn btn-link"
+                                    >
+                                        <field name="unaproved_text" readonly="1"/>
+                                    </button>
+                                </div>
+                            </div>
+                        </div>
+                    </t>
+                </templates>
+            </kanban>
+        </field>
+    </record>
+
+    <record id="portal_requests.action_portal_request_dashboard" model="ir.actions.act_window">
+        <field name="name">Resumen</field>
+        <field name="res_model">portal.request.dashboard</field>
+        <field name="view_mode">kanban</field>
+    </record>
+        <record id="portal_requests.action_portal_request" model="ir.actions.act_window">
+            <field name="name">Portal Requests</field>
+            <field name="res_model">portal.project.request</field>
+            <field name="view_mode">list,form</field>
+            <field name="help" type="html">
+                <p>
+                    Aquí puedes añadir una descripción de tu módulo.
+                </p>
+            </field>
+        </record>
+
+        <record id="action_analytic_accounts" model="ir.actions.act_window">
+            <field name="name">Cuentas Analíticas</field>
+            <field name="res_model">account.analytic.account</field>
+            <field name="view_mode">list,form</field>
+            <field name="help" type="html">
+                <p>
+                    Gestión de cuentas analíticas del proyecto.
+                </p>
+            </field>
+        </record>
+
+        <menuitem
+            id="portal_requests_menu"
+            name="Portal Request"
+            sequence="200"
+            action="portal_requests.action_portal_request_dashboard"
+            web_icon="portal_requests,static/description/menu_icon.png"
+            groups="base.group_user" />
+
+        <menuitem
+            id="analytic_accounts_menu"
+            name="Cuentas Analíticas"
+            sequence="210"
+            action="action_analytic_accounts"
+            web_icon="portal_requests,static/description/analytic_account_icon.png"
+            groups="base.group_user" />
+    </data>
+</odoo>

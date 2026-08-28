@@ -1,0 +1,27 @@
+<?xml version="1.0" encoding="utf-8"?>
+<odoo>
+    <record id="res_config_settings_view_form" model="ir.ui.view">
+        <field name="name">res.config.settings.view.form.inherit.aicia</field>
+        <field name="model">res.config.settings</field>
+        <field name="inherit_id" ref="account.res_config_settings_view_form"/>
+        <field name="arch" type="xml">
+            <xpath expr="//block[.//field[@name='group_analytic_accounting']]" position="after">
+                <block title="Distribución de Cobros AICIA" id="aicia_cash_distribution">
+                    <setting string="Configuración de Distribución" help="Configura los valores por defecto para los asientos analíticos de cobros">
+                        <div class="content-group">
+                            <div class="row mt16">
+                                <label for="cash_distribution_journal_id" string="Diario de Distribución" class="col-lg-4 o_light_label"/>
+                                <field name="cash_distribution_journal_id"/>
+                            </div>
+                            <div class="row mt8">
+                                <label for="cash_distribution_receiver_analytic_id" string="Analítica Receptora (Defecto)" class="col-lg-4 o_light_label"/>
+                                <field name="cash_distribution_receiver_analytic_id"/>
+                            </div>
+                        </div>
+                    </setting>
+                </block>
+            </xpath>
+        </field>
+    </record>
+</odoo>
+

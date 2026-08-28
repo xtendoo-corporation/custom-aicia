@@ -1,0 +1,710 @@
+<odoo>
+    <template id="portal_hr_employee_intern_request_template">
+        <t t-call="website.layout">
+            <!--CABECERA DE LA PÁGINA-->
+            <div id="wrap" class="oe_structure oe_empty">
+                <section class="s_title parallax s_parallax_is_fixed bg-black-50 pt24 pb24" data-vcss="001"
+                         data-snippet="s_title" data-scroll-background-ratio="1" data-name="Título">
+                    <span class="s_parallax_bg oe_img_bg"
+                          style="background-image: url('/web/image/website.s_parallax_default_image'); background-position: 50% 0;"/>
+                    <div class="o_we_bg_filter bg-black-50"/>
+                    <div class="container">
+                        <!--TÍTULO DE LA PÁGINA-->
+                        <h1>Solicitudes de Becarios</h1>
+                    </div>
+                </section>
+                <!--FORMULARIO-->
+                <section class="s_text_block pt40 pb40 o_colored_level" data-snippet="s_text_block" data-name="Texto"
+                         style="background-image: none;">
+                    <div class="s_allow_columns container">
+                        <div class="row">
+                            <div class="col-lg-8 mt-4 mt-lg-0">
+                                <p>
+                                    Rellene el formulario a continuación para solicitar un nuevo becario.
+                                </p>
+                                <div class="container">
+                                    <form action="/portal/hr_employee_intern_request/submit" method="POST" enctype="multipart/form-data">
+                                        <input type="hidden" name="csrf_token" t-att-value="request.csrf_token()"/>
+                                        <div
+                                            class="mb-0 py-2 col-12 s_website_form_field s_website_form_required s_website_form_model_required"
+                                            data-type="char" data-name="Field">
+                                            <div class="row s_col_no_resize s_col_no_bgcolor">
+                                                <label
+                                                    class="col-form-label col-sm-auto s_website_form_label"
+                                                    style="width: 200px" for="contact">
+                                                    <span class="s_website_form_label_content">Tipo de solicitud
+                                                    </span>
+                                                    <span class="s_website_form_mark">*</span>
+                                                </label>
+                                                <div class="col-sm">
+                                                    <select id="type_id" name="type_id"
+                                                            class="form-control s_website_form_input">
+                                                        <option value="new">Nuevo</option>
+                                                        <option value="alta">Dar de alta</option>
+                                                        <option value="baja">Dar de baja</option>
+                                                    </select>
+                                                </div>
+                                            </div>
+                                        </div>
+                                        <div class="s_website_form_rows row s_col_no_bgcolor">
+                                            <!--NO TOCAR, Esta variable permite el scroll en la web, NO TOCAR-->
+                                            <select id="move_type" style="display: none;"/>
+                                            <!--COMPANY REQUIRED-->
+                                            <div
+                                                class="mb-0 py-2 col-12 s_website_form_field s_website_form_required s_website_form_model_required"
+                                                data-type="char" data-name="Field">
+                                                <div class="row s_col_no_resize s_col_no_bgcolor">
+                                                    <label
+                                                        class="col-form-label col-sm-auto s_website_form_label"
+                                                        style="width: 200px" for="contact">
+                                                        <span class="s_website_form_label_content">Project
+                                                        </span>
+                                                        <span class="s_website_form_mark">*</span>
+                                                    </label>
+                                                    <div class="col-sm">
+                                                        <select id="company_id" name="company_id"
+                                                                class="form-control s_website_form_input">
+                                                            <t t-foreach="companies" t-as="company">
+                                                                <option t-att-value="company.id">
+                                                                    <t t-esc="company.name"/>
+                                                                </option>
+                                                            </t>
+                                                        </select>
+                                                    </div>
+                                                </div>
+                                            </div>
+                                            <div id="new_data">
+
+                                                <!--NAME REQUIRED-->
+                                                <div
+                                                    class="mb-0 py-2 col-12 s_website_form_field s_website_form_required s_website_form_model_required"
+                                                    data-type="text" data-name="Field">
+                                                    <div class="row s_col_no_resize s_col_no_bgcolor">
+                                                        <label
+                                                            class="col-form-label col-sm-auto s_website_form_label"
+                                                            style="width: 200px" for="contact">
+                                                            <span class="s_website_form_label_content">Name
+                                                            </span>
+                                                            <span class="s_website_form_mark">*</span>
+                                                        </label>
+                                                        <div class="col-sm">
+                                                            <input type="text" class="form-control"
+                                                                   name="name"
+                                                                   id="name"
+                                                                   required="required"/>
+                                                        </div>
+                                                    </div>
+                                                </div>
+                                                <!--IDENTIFICATION ID REQUIRED-->
+                                                <div
+                                                    class="mb-0 py-2 col-12 s_website_form_field s_website_form_required s_website_form_model_required"
+                                                    data-type="text" data-name="Field">
+                                                    <div class="row s_col_no_resize s_col_no_bgcolor">
+                                                        <label
+                                                            class="col-form-label col-sm-auto s_website_form_label"
+                                                            style="width: 200px" for="contact">
+                                                            <span class="s_website_form_label_content">Identification
+                                                            </span>
+                                                            <span class="s_website_form_mark">*</span>
+                                                        </label>
+                                                        <div class="col-sm">
+                                                            <input type="text" class="form-control"
+                                                                   name="identification_id"
+                                                                   id="identification_id"
+                                                                   required="required"/>
+                                                        </div>
+                                                    </div>
+                                                </div>
+                                                <!--MOBILE PHONE REQUIRED-->
+                                                <div
+                                                    class="mb-0 py-2 col-12 s_website_form_field s_website_form_required s_website_form_model_required"
+                                                    data-type="text" data-name="Field">
+                                                    <div class="row s_col_no_resize s_col_no_bgcolor">
+                                                        <label
+                                                            class="col-form-label col-sm-auto s_website_form_label"
+                                                            style="width: 200px" for="contact">
+                                                            <span class="s_website_form_label_content">Mobile Phone
+                                                            </span>
+                                                            <span class="s_website_form_mark">*</span>
+                                                        </label>
+                                                        <div class="col-sm">
+                                                            <input type="text" class="form-control"
+                                                                   name="mobile_phone"
+                                                                   id="mobile_phone"
+                                                                   required="required"/>
+                                                        </div>
+                                                    </div>
+                                                </div>
+                                                <!--CONFIDENTIAL COMPROMISE-->
+                                                <div
+                                                    class="mb-0 py-2 col-12 s_website_form_field s_website_form_required s_website_form_model_required"
+                                                    data-type="boolean" data-name="Field">
+                                                    <div class="row s_col_no_resize s_col_no_bgcolor">
+                                                        <label
+                                                            class="col-form-label col-sm-auto s_website_form_label"
+                                                            style="width: 200px" for="contact">
+                                                            <span class="s_website_form_label_content">Confidential
+                                                                Compromise
+                                                            </span>
+                                                        </label>
+                                                        <div class="col-sm col-sm d-flex align-items-center">
+                                                            <input type="checkbox" class="form-check-input"
+                                                                   name="confidential_compromise"
+                                                                   id="confidential_compromise"/>
+
+                                                        </div>
+                                                    </div>
+                                                </div>
+                                                <!--SSNID REQUIRED-->
+                                                <div
+                                                    class="mb-0 py-2 col-12 s_website_form_field s_website_form_required s_website_form_model_required"
+                                                    data-type="text" data-name="Field">
+                                                    <div class="row s_col_no_resize s_col_no_bgcolor">
+                                                        <label
+                                                            class="col-form-label col-sm-auto s_website_form_label"
+                                                            style="width: 200px" for="contact">
+                                                            <span class="s_website_form_label_content">SSNID
+                                                            </span>
+                                                            <span class="s_website_form_mark">*</span>
+                                                        </label>
+                                                        <div class="col-sm">
+                                                            <input type="text" class="form-control"
+                                                                   name="ssnid"
+                                                                   id="ssnid"
+                                                                   required="required"/>
+                                                        </div>
+                                                    </div>
+                                                </div>
+                                                <!--WORK EMAIL REQUIRED-->
+                                                <div
+                                                    class="mb-0 py-2 col-12 s_website_form_field s_website_form_required s_website_form_model_required"
+                                                    data-type="text" data-name="Field">
+                                                    <div class="row s_col_no_resize s_col_no_bgcolor">
+                                                        <label
+                                                            class="col-form-label col-sm-auto s_website_form_label"
+                                                            style="width: 200px" for="contact">
+                                                            <span class="s_website_form_label_content">Email
+                                                            </span>
+                                                            <span class="s_website_form_mark">*</span>
+                                                        </label>
+                                                        <div class="col-sm">
+                                                            <input type="text" class="form-control"
+                                                                   name="work_email"
+                                                                   id="work_email"
+                                                                   required="required"/>
+                                                        </div>
+                                                    </div>
+                                                </div>
+                                                <!--SALARY REQUIRED FLOAT-->
+                                                <div
+                                                    class="mb-0 py-2 col-12 s_website_form_field s_website_form_required s_website_form_model_required"
+                                                    data-type="char" data-name="Field">
+                                                    <div class="row s_col_no_resize s_col_no_bgcolor">
+                                                        <label
+                                                            class="col-form-label col-sm-auto s_website_form_label"
+                                                            style="width: 200px" for="contact">
+                                                            <span class="s_website_form_label_content">Salary
+                                                            </span>
+                                                            <span class="s_website_form_mark">*</span>
+                                                        </label>
+                                                        <div class="col-sm">
+                                                            <input type="number" id="salary" name="salary"
+                                                                   class="form-control s_website_form_input"
+                                                            />
+                                                        </div>
+                                                    </div>
+                                                </div>
+                                                <!--NUMBER OF PAYS REQUIRED-->
+                                                <div
+                                                    class="mb-0 py-2 col-12 s_website_form_field s_website_form_required s_website_form_model_required"
+                                                    data-type="char" data-name="Field">
+                                                    <div class="row s_col_no_resize s_col_no_bgcolor">
+                                                        <label
+                                                            class="col-form-label col-sm-auto s_website_form_label"
+                                                            style="width: 200px" for="contact">
+                                                            <span class="s_website_form_label_content">Number of Pays
+                                                            </span>
+                                                            <span class="s_website_form_mark">*</span>
+                                                        </label>
+                                                        <div class="col-sm">
+                                                            <input type="number" id="number_of_pays" name="number_of_pays"
+                                                                   class="form-control s_website_form_input"/>
+                                                        </div>
+                                                    </div>
+                                                </div>
+                                                <!--RESOURCE CALENDAR SELECTION REQUIRED-->
+                                                <div class="row s_col_no_resize s_col_no_bgcolor">
+                                                    <label
+                                                        class="col-form-label col-sm-auto s_website_form_label"
+                                                        style="width: 200px" for="contact">
+                                                        <span class="s_website_form_label_content">Resource Calendar
+                                                        </span>
+                                                        <span class="s_website_form_mark">*</span>
+                                                    </label>
+                                                    <div class="col-sm">
+                                                        <select id="resource_calendar_id" name="resource_calendar_id"
+                                                                class="form-control s_website_form_input">
+                                                            <t t-foreach="resource_calendar_id" t-as="resource_calendar">
+                                                                <option t-att-value="resource_calendar.id">
+                                                                    <t t-esc="resource_calendar.name"/>
+                                                                </option>
+                                                            </t>
+                                                        </select>
+                                                    </div>
+                                                </div>
+                                                <!--bank_account_id REQUIRED-->
+                                                <div
+                                                    class="mb-0 py-2 col-12 s_website_form_field s_website_form_required s_website_form_model_required"
+                                                    data-type="text" data-name="Field">
+                                                    <div class="row s_col_no_resize s_col_no_bgcolor">
+                                                        <label
+                                                            class="col-form-label col-sm-auto s_website_form_label"
+                                                            style="width: 200px" for="contact">
+                                                            <span class="s_website_form_label_content">Bank Account
+                                                            </span>
+                                                            <span class="s_website_form_mark">*</span>
+                                                        </label>
+                                                        <div class="col-sm">
+                                                            <input type="text" class="form-control"
+                                                                   name="bank_account"
+                                                                   id="bank_account"
+                                                                   required="required"/>
+                                                        </div>
+                                                    </div>
+                                                </div>
+                                                <!--PRL ANNEX REQUIRED-->
+                                                <div
+                                                    class="mb-0 py-2 col-12 s_website_form_field s_website_form_required s_website_form_model_required"
+                                                    data-type="binary" data-name="Field">
+                                                    <div class="row s_col_no_resize s_col_no_bgcolor">
+                                                        <label
+                                                            class="col-form-label col-sm-auto s_website_form_label"
+                                                            style="width: 200px" for="contact">
+                                                            <span class="s_website_form_label_content">PRL Annex
+                                                                File
+                                                            </span>
+                                                            <span class="s_website_form_mark">*</span>
+                                                        </label>
+                                                        <div class="col-sm">
+                                                            <input type="file" class="form-control" id="prl_annex" name="prl_annex" accept="application/pdf"/>
+                                                        </div>
+                                                    </div>
+                                                </div>
+                                                <!--Working Life Report REQUIRED-->
+                                                <div
+                                                    class="mb-0 py-2 col-12 s_website_form_field s_website_form_required s_website_form_model_required"
+                                                    data-type="binary" data-name="Field">
+                                                    <div class="row s_col_no_resize s_col_no_bgcolor">
+                                                        <label
+                                                            class="col-form-label col-sm-auto s_website_form_label"
+                                                            style="width: 200px" for="contact">
+                                                            <span class="s_website_form_label_content">Budget
+                                                                File
+                                                            </span>
+                                                            <span class="s_website_form_mark">*</span>
+                                                        </label>
+                                                        <div class="col-sm">
+                                                            <input type="file" class="form-control" id="working_life_report" name="working_life_report" accept="application/pdf"/>
+                                                        </div>
+                                                    </div>
+                                                </div>
+                                                <!--CV FILE REQUIRED-->
+                                                <div
+                                                    class="mb-0 py-2 col-12 s_website_form_field s_website_form_required s_website_form_model_required"
+                                                    data-type="binary" data-name="Field">
+                                                    <div class="row s_col_no_resize s_col_no_bgcolor">
+                                                        <label
+                                                            class="col-form-label col-sm-auto s_website_form_label"
+                                                            style="width: 200px" for="contact">
+                                                            <span class="s_website_form_label_content">CV File
+                                                            </span>
+                                                            <span class="s_website_form_mark">*</span>
+                                                        </label>
+                                                        <div class="col-sm">
+                                                            <input type="file" class="form-control" id="cv" name="cv" accept="application/pdf"/>
+                                                        </div>
+                                                    </div>
+                                                </div>
+                                            </div>
+                                            <div id="alta_data" style="display:none;">
+                                                <!--Employee REQUIRED-->
+                                                <div
+                                                    class="mb-0 py-2 col-12 s_website_form_field s_website_form_required s_website_form_model_required"
+                                                    data-type="date" data-name="Field">
+                                                    <div class="row s_col_no_resize s_col_no_bgcolor">
+                                                        <label
+                                                            class="col-form-label col-sm-auto s_website_form_label"
+                                                            style="width: 200px" for="contact">
+                                                            <span class="s_website_form_label_content">Empleado
+                                                            </span>
+                                                            <span class="s_website_form_mark">*</span>
+                                                        </label>
+                                                        <div class="col-sm">
+                                                            <select id="employee_id_unactive" name="employee_id_unactive"
+                                                                    class="form-control s_website_form_input">
+                                                            </select>
+                                                        </div>
+                                                    </div>
+                                                </div>
+                                                <!--Fecha de alta REQUIRED-->
+                                            <div
+                                                class="mb-0 py-2 col-12 s_website_form_field s_website_form_required s_website_form_model_required"
+                                                data-type="date" data-name="Field">
+                                                <div class="row s_col_no_resize s_col_no_bgcolor">
+                                                    <label
+                                                        class="col-form-label col-sm-auto s_website_form_label"
+                                                        style="width: 200px" for="contact">
+                                                        <span class="s_website_form_label_content">Fecha de alta
+                                                        </span>
+                                                        <span class="s_website_form_mark">*</span>
+                                                    </label>
+                                                    <div class="col-sm">
+                                                        <input type="date" class="form-control" id="alta_date" name="alta_date"/>
+                                                    </div>
+                                                </div>
+                                            </div>
+                                            </div>
+                                            <div id="baja_data" style="display:none;">
+                                                <!--Employee REQUIRED-->
+                                                <div
+                                                    class="mb-0 py-2 col-12 s_website_form_field s_website_form_required s_website_form_model_required"
+                                                    data-type="date" data-name="Field">
+                                                    <div class="row s_col_no_resize s_col_no_bgcolor">
+                                                        <label
+                                                            class="col-form-label col-sm-auto s_website_form_label"
+                                                            style="width: 200px" for="contact">
+                                                            <span class="s_website_form_label_content">Empleado
+                                                            </span>
+                                                            <span class="s_website_form_mark">*</span>
+                                                        </label>
+                                                        <div class="col-sm">
+                                                            <select id="employee_id_active" name="employee_id_active"
+                                                                    class="form-control s_website_form_input">
+                                                            </select>
+                                                        </div>
+                                                    </div>
+                                                </div>
+                                                     <!--Fecha de baja REQUIRED-->
+                                            <div
+                                                class="mb-0 py-2 col-12 s_website_form_field s_website_form_required s_website_form_model_required"
+                                                data-type="date" data-name="Field">
+                                                <div class="row s_col_no_resize s_col_no_bgcolor">
+                                                    <label
+                                                        class="col-form-label col-sm-auto s_website_form_label"
+                                                        style="width: 200px" for="contact">
+                                                        <span class="s_website_form_label_content">Fecha de baja
+                                                        </span>
+                                                        <span class="s_website_form_mark">*</span>
+                                                    </label>
+                                                    <div class="col-sm">
+                                                        <input type="date" class="form-control" id="baja_date" name="baja_date"/>
+                                                    </div>
+                                                </div>
+                                            </div>
+                                                <!-- Motivo REQUIRED -->
+                                            <div id="reason_field"
+                                                 class="mb-0 py-2 col-12 s_website_form_field s_website_form_required s_website_form_model_required"
+                                                 data-type="char" data-name="Field">
+                                                <div class="row s_col_no_resize s_col_no_bgcolor">
+                                                    <label class="col-form-label col-sm-auto s_website_form_label"
+                                                           style="width: 200px" for="contact">
+                                                        <span class="s_website_form_label_content">Motivo</span>
+                                                        <span class="s_website_form_mark">*</span>
+                                                    </label>
+                                                    <div class="col-sm">
+                                                        <select id="baja_reason"
+                                                                name="baja_reason"
+                                                                class="form-control s_website_form_input">
+                                                            <t t-foreach="options" t-as="option">
+                                                                <option t-att-value="option.id">
+                                                                    <t t-esc="option.name"/>
+                                                                </option>
+                                                            </t>
+                                                        </select>
+                                                    </div>
+                                                </div>
+                                            </div>
+
+                                                <!--CONCEPT REQUIRED-->
+                                            <div
+                                                class="mb-0 py-2 col-12 s_website_form_field s_website_form_required s_website_form_model_required"
+                                                data-type="char" data-name="Field">
+                                                <div class="row s_col_no_resize s_col_no_bgcolor">
+                                                    <label
+                                                        class="col-form-label col-sm-auto s_website_form_label"
+                                                        style="width: 200px" for="contact">
+                                                        <span class="s_website_form_label_content">Información adicional
+                                                        </span>
+                                                    </label>
+                                                    <div class="col-sm">
+                                                        <textarea id="baja_notes" name="baja_notes"
+                                                                  class="form-control s_website_form_input"
+                                                                  rows="4"/>
+                                                    </div>
+                                                </div>
+                                            </div>
+                                            </div>
+                                            <!--SEND BUTTON-->
+                                            <div class="mb-0 py-2 col-12 s_website_form_submit"
+                                                 data-name="Submit Button">
+                                                <div class="row s_col_no_resize s_col_no_bgcolor align-items-center">
+                                                    <div class="col-sm-auto" style="width: 200px;"/>
+                                                    <div class="col-sm">
+                                                        <button type="submit"
+                                                                class="btn btn-primary s_website_form_send">Submit
+                                                        </button>
+                                                    </div>
+                                                </div>
+                                                <span id="s_website_form_result"/>
+                                            </div>
+                                        </div>
+                                    </form>
+                                     <script>
+
+                                         //Mostrar u ocultar en funcion de type_id
+                                        const typeId = document.getElementById('type_id');
+                                        const div_new = document.getElementById('new_data');
+                                        const div_alta = document.getElementById('alta_data');
+                                        const div_baja = document.getElementById('baja_data');
+                                        //Campos new
+                                         const name = document.getElementById('name');
+                                         const identification_id = document.getElementById('identification_id');
+                                         const mobile_phone = document.getElementById('mobile_phone');
+                                         const confidential_compromise = document.getElementById('confidential_compromise');
+                                         const ssnid = document.getElementById('ssnid');
+                                         const work_email = document.getElementById('work_email');
+                                         const salary = document.getElementById('salary');
+                                         const number_of_pays = document.getElementById('number_of_pays');
+                                         const resource_calendar_id = document.getElementById('resource_calendar_id');
+                                         const bank_account = document.getElementById('bank_account');
+                                         const prl_annex = document.getElementById('prl_annex');
+                                         const working_life_report = document.getElementById('working_life_report');
+                                         const cv = document.getElementById('cv');
+
+                                        //Campos alta
+                                         const employee_id_unactive = document.getElementById('employee_id_unactive');
+                                         const alta_date = document.getElementById('alta_date');
+
+                                        //Campos baja
+                                         const employee_id_active = document.getElementById('employee_id_active');
+                                         const baja_date = document.getElementById('baja_date');
+                                         const baja_reason = document.getElementById('baja_reason');
+                                         const baja_notes = document.getElementById('baja_notes');
+
+                                        typeId.addEventListener('change', function () {
+                                            if (typeId.value === 'new') {
+                                                div_new.style.display = 'block';
+                                                //CAMPOS
+                                                name.setAttribute('name', 'name') ;
+                                                name.setAttribute('required', '') ;
+                                                identification_id.setAttribute('name', 'identification_id') ;
+                                                identification_id.setAttribute('required', '') ;
+                                                mobile_phone.setAttribute('name', 'mobile_phone') ;
+                                                mobile_phone.setAttribute('required', '') ;
+                                                confidential_compromise.setAttribute('name', 'confidential_compromise') ;
+                                                ssnid.setAttribute('name', 'ssnid') ;
+                                                ssnid.setAttribute('required', '') ;
+                                                work_email.setAttribute('name', 'work_email') ;
+                                                work_email.setAttribute('required', '') ;
+                                                salary.setAttribute('name', 'salary') ;
+                                                number_of_pays.setAttribute('name', 'number_of_pays') ;
+                                                resource_calendar_id.setAttribute('name', 'resource_calendar_id') ;
+                                                bank_account.setAttribute('name', 'bank_account') ;
+                                                bank_account.setAttribute('required', '') ;
+                                                prl_annex.setAttribute('name', 'prl_annex') ;
+                                                working_life_report.setAttribute('name', 'working_life_report') ;
+                                                cv.setAttribute('name', 'cv') ;
+
+                                                div_alta.style.display = 'none';
+                                                //Campos
+                                                employee_id_unactive.removeAttribute('name') ;
+                                                employee_id_unactive.removeAttribute('required') ;
+                                                alta_date.removeAttribute('name') ;
+                                                alta_date.removeAttribute('required') ;
+
+                                                div_baja.style.display = 'none';
+                                                //Campos
+                                                employee_id_active.removeAttribute('name') ;
+                                                employee_id_active.removeAttribute('required') ;
+                                                baja_date.removeAttribute('name') ;
+                                                baja_date.removeAttribute('required') ;
+                                                baja_reason.removeAttribute('name') ;
+                                                baja_reason.removeAttribute('required') ;
+                                                baja_notes.removeAttribute('name') ;
+
+                                            } else if (typeId.value === 'alta') {
+                                                div_new.style.display = 'none';
+                                                //Campos
+                                                name.removeAttribute('name') ;
+                                                name.removeAttribute('required') ;
+                                                identification_id.removeAttribute('name') ;
+                                                identification_id.removeAttribute('required') ;
+                                                mobile_phone.removeAttribute('name') ;
+                                                mobile_phone.removeAttribute('required') ;
+                                                confidential_compromise.removeAttribute('name') ;
+                                                ssnid.removeAttribute('name') ;
+                                                ssnid.removeAttribute('required') ;
+                                                work_email.removeAttribute('name') ;
+                                                work_email.removeAttribute('required') ;
+                                                salary.removeAttribute('name') ;
+                                                number_of_pays.removeAttribute('name') ;
+                                                resource_calendar_id.removeAttribute('name') ;
+                                                bank_account.removeAttribute('name') ;
+                                                bank_account.removeAttribute('required') ;
+                                                prl_annex.removeAttribute('name') ;
+                                                working_life_report.removeAttribute('name') ;
+                                                cv.removeAttribute('name') ;
+
+                                                div_alta.style.display = 'block';
+                                                //Campos
+                                                employee_id_unactive.setAttribute('name', 'employee_id_unactive') ;
+                                                employee_id_unactive.setAttribute('required', '') ;
+                                                alta_date.setAttribute('name', 'alta_date') ;
+                                                alta_date.setAttribute('required', '') ;
+
+                                                div_baja.style.display = 'none';
+                                                //Campos
+                                                employee_id_active.removeAttribute('name') ;
+                                                employee_id_active.removeAttribute('required') ;
+                                                baja_date.removeAttribute('name') ;
+                                                baja_date.removeAttribute('required') ;
+                                                baja_reason.removeAttribute('name') ;
+                                                baja_reason.removeAttribute('required') ;
+                                                baja_notes.removeAttribute('name') ;
+
+
+                                            }else if (typeId.value === 'baja') {
+                                                div_new.style.display = 'none';
+                                                //Campos
+                                                name.removeAttribute('name') ;
+                                                name.removeAttribute('required') ;
+                                                identification_id.removeAttribute('name') ;
+                                                identification_id.removeAttribute('required') ;
+                                                mobile_phone.removeAttribute('name') ;
+                                                mobile_phone.removeAttribute('required') ;
+                                                confidential_compromise.removeAttribute('name') ;
+                                                ssnid.removeAttribute('name') ;
+                                                ssnid.removeAttribute('required') ;
+                                                work_email.removeAttribute('name') ;
+                                                work_email.removeAttribute('required') ;
+                                                salary.removeAttribute('name') ;
+                                                number_of_pays.removeAttribute('name') ;
+                                                resource_calendar_id.removeAttribute('name') ;
+                                                bank_account.removeAttribute('name') ;
+                                                bank_account.removeAttribute('required') ;
+                                                prl_annex.removeAttribute('name') ;
+                                                working_life_report.removeAttribute('name') ;
+                                                cv.removeAttribute('name') ;
+
+                                                div_alta.style.display = 'none';
+                                                //Campos
+                                                employee_id_unactive.removeAttribute('name') ;
+                                                employee_id_unactive.removeAttribute('required') ;
+                                                alta_date.removeAttribute('name') ;
+                                                alta_date.removeAttribute('required') ;
+
+                                                div_baja.style.display = 'block';
+                                                //Campos
+                                                employee_id_active.setAttribute('name', 'employee_id_active') ;
+                                                employee_id_active.setAttribute('required', '') ;
+                                                baja_date.setAttribute('name', 'baja_date') ;
+                                                baja_date.setAttribute('required', '') ;
+                                                baja_reason.setAttribute('name', 'baja_reason') ;
+                                                baja_reason.setAttribute('required', '') ;
+                                                baja_notes.setAttribute('name', 'baja_notes') ;
+
+                                        }
+                                        });
+
+                                         //PARTE DE RELLENAR EMPLEADOS inactivos CON AJAX
+                                        document.addEventListener('DOMContentLoaded', function () {
+                                            const companySelect = document.getElementById('company_id');
+                                            const employeeSelectUnactive = document.getElementById('employee_id_unactive');
+                                            const employeeSelectActive = document.getElementById('employee_id_active');
+
+                                            companySelect.addEventListener('change', function () {
+                                                const companyId = companySelect.value;
+                                                employeeSelectUnactive.innerHTML = '<option value="">Loading...</option>';
+                                                employeeSelectActive.innerHTML = '<option value="">Loading...</option>';
+                                                $.ajax({
+                                                    url: '/get_employee_by_company',
+                                                    type: 'GET',
+                                                    data: {
+                                                        company_id: companyId,
+                                                        employee_type: "student",
+                                                        active: 0
+                                                    }, // Pasar el company_id como parámetro
+                                                    success: function(response) {
+                                                        var employeeSelectUnactive = document.getElementById("employee_id_unactive");
+                                                        employeeSelectUnactive.innerHTML = '';
+                                                        let employees = response.partners.employees;
+                                                        if (employees.length === 0) {
+                                                            const option = document.createElement('option');
+                                                            option.value = '0';
+                                                            option.textContent = 'employee not found';
+                                                            employeeSelectUnactive.appendChild(option);
+                                                        } else {
+                                                            employees.forEach(function(employee) {
+                                                                const option = document.createElement('option');
+                                                                option.value = employee.id;
+                                                                option.textContent = employee.name;
+                                                                employeeSelectUnactive.appendChild(option);
+                                                            });
+                                                        }
+                                                    },
+                                                    error: function(error) {
+                                                        console.log("Error fetching employees: ", error);
+                                                    }
+                                                });
+                                                $.ajax({
+                                                    url: '/get_employee_by_company',
+                                                    type: 'GET',
+                                                    data: {
+                                                        company_id: companyId,
+                                                        employee_type: "student",
+                                                        active: 1
+                                                    }, // Pasar el company_id como parámetro
+                                                    success: function(response) {
+                                                        var employeeSelectActive = document.getElementById("employee_id_active");
+                                                        employeeSelectActive.innerHTML = '';
+                                                        let employees = response.partners.employees;
+                                                        if (employees.length === 0) {
+                                                            const option = document.createElement('option');
+                                                            option.value = '0';
+                                                            option.textContent = 'employee not found';
+                                                            employeeSelectActive.appendChild(option);
+                                                        } else {
+                                                            employees.forEach(function(employee) {
+                                                                const option = document.createElement('option');
+                                                                option.value = employee.id;
+                                                                option.textContent = employee.name;
+                                                                employeeSelectActive.appendChild(option);
+                                                            });
+                                                        }
+                                                    },
+                                                    error: function(error) {
+                                                        console.log("Error fetching employees: ", error);
+                                                    }
+                                                });
+                                            });
+                                        });
+
+
+
+                                    </script>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </section>
+            </div>
+        </t>
+    </template>
+
+<!--    <record id="portal_hr_employee_intern_menu" model="website.menu">-->
+<!--        <field name="name">Solicitud de Becarios</field>-->
+<!--        <field name="url">/portal/hr_employee_intern_request</field>-->
+<!--        <field name="parent_id" ref="website.main_menu"/>-->
+<!--        <field name="sequence" type="int">140</field>-->
+<!--    </record>-->
+</odoo>

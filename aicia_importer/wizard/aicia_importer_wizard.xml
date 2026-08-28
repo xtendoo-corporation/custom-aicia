@@ -1,0 +1,577 @@
+<?xml version="1.0" ?>
+<odoo>
+    <!-- Vista para PROVEEDORES -->
+    <record id="aicia_importer_suppliers_view" model="ir.ui.view">
+        <field name="name">AICIA - Importador de Proveedores</field>
+        <field name="model">aicia.importer.wizard</field>
+        <field name="priority">10</field>
+        <field name="arch" type="xml">
+            <form string="Importador de Proveedores AICIA">
+                <field name="state" invisible="1"/>
+                <!-- Mostrar formulario de carga cuando state='draft' -->
+                <group invisible="state == 'done'">
+                    <field name="data_file_suppliers" filename="filename_suppliers" widget="binary"/>
+                    <field name="filename_suppliers" invisible="1"/>
+                    <field name="data_file_customers" invisible="1"/>
+                    <field name="filename_customers" invisible="1"/>
+                    <field name="data_file_employees" invisible="1"/>
+                    <field name="filename_employees" invisible="1"/>
+                </group>
+                <group invisible="state == 'done'">
+                    <field name="update_existing"/>
+                </group>
+
+                <!-- Mostrar log cuando state='done' -->
+                <group invisible="state == 'draft'">
+                    <field name="import_log" nolabel="1" colspan="2"/>
+                </group>
+
+                <notebook invisible="state == 'done'">
+                    <page string="Información">
+                        <group>
+                            <p>
+                                Este asistente permite importar proveedores desde archivos Excel (.xlsx).
+                            </p>
+                            <p>
+                                <b>Formato esperado:</b>
+                                <ul>
+                                    <li>Primera fila: encabezados de columnas</li>
+                                    <li><b>Columnas:</b> ID_Proveedor, Nombre, Nombre2, CIF, Telefono,
+                                        TelefonoMovil, Direccion, Direccion2, Localidad, Cod_Postal,
+                                        Correo_Electronico, Persona_Contacto, Observaciones, etc.</li>
+                                    <li><b>Provincias:</b> Se mapean automáticamente desde el código postal.</li>
+                                </ul>
+                            </p>
+                            <p>
+                                <b>Actualizar existentes:</b> Si está marcado, actualiza los proveedores
+                                existentes (busca por referencia interna o CIF).
+                            </p>
+                        </group>
+                    </page>
+                </notebook>
+                <footer>
+                    <button
+                        name="import_suppliers"
+                        string="Importar"
+                        type="object"
+                        class="btn-primary"
+                        invisible="state == 'done'"
+                    />
+                    <button string="Cerrar" class="btn-primary" special="cancel" invisible="state == 'draft'"/>
+                    <button string="Cancelar" class="btn-secondary" special="cancel" invisible="state == 'done'"/>
+                </footer>
+            </form>
+        </field>
+    </record>
+
+    <!-- Vista para CLIENTES -->
+    <record id="aicia_importer_customers_view" model="ir.ui.view">
+        <field name="name">AICIA - Importador de Clientes</field>
+        <field name="model">aicia.importer.wizard</field>
+        <field name="priority">10</field>
+        <field name="arch" type="xml">
+            <form string="Importador de Clientes AICIA">
+                <field name="state" invisible="1"/>
+                <!-- Mostrar formulario de carga cuando state='draft' -->
+                <group invisible="state == 'done'">
+                    <field name="data_file_customers" filename="filename_customers" widget="binary"/>
+                    <field name="filename_customers" invisible="1"/>
+                    <field name="data_file_suppliers" invisible="1"/>
+                    <field name="filename_suppliers" invisible="1"/>
+                    <field name="data_file_employees" invisible="1"/>
+                    <field name="filename_employees" invisible="1"/>
+                </group>
+                <group invisible="state == 'done'">
+                    <field name="update_existing"/>
+                </group>
+
+                <!-- Mostrar log cuando state='done' -->
+                <group invisible="state == 'draft'">
+                    <field name="import_log" nolabel="1" colspan="2"/>
+                </group>
+
+                <notebook invisible="state == 'done'">
+                    <page string="Información">
+                        <group>
+                            <p>
+                                Este asistente permite importar clientes desde archivos Excel (.xlsx).
+                            </p>
+                            <p>
+                                <b>Formato esperado:</b>
+                                <ul>
+                                    <li>Primera fila: encabezados de columnas</li>
+                                    <li><b>Columnas:</b> ID_Cliente, Nombre, Nombre2, CIF, Telefono,
+                                        TelefonoMovil, Direccion, Direccion2, Localidad, Cod_Postal,
+                                        Correo_Electronico, Persona_Contacto, Observaciones, etc.</li>
+                                    <li><b>Provincias:</b> Se mapean automáticamente desde el código postal.</li>
+                                    <li><b>Referencia:</b> Se añade prefijo 'C' al ID_Cliente (ej: C1, C2, C3)</li>
+                                </ul>
+                            </p>
+                            <p>
+                                <b>Actualizar existentes:</b> Si está marcado, actualiza los clientes
+                                existentes (busca por referencia interna con prefijo 'C' o CIF).
+                            </p>
+                        </group>
+                    </page>
+                </notebook>
+                <footer>
+                    <button
+                        name="import_suppliers"
+                        string="Importar"
+                        type="object"
+                        class="btn-primary"
+                        invisible="state == 'done'"
+                    />
+                    <button string="Cerrar" class="btn-primary" special="cancel" invisible="state == 'draft'"/>
+                    <button string="Cancelar" class="btn-secondary" special="cancel" invisible="state == 'done'"/>
+                </footer>
+            </form>
+        </field>
+    </record>
+
+    <!-- Vista para EMPLEADOS/PERSONAL -->
+    <record id="aicia_importer_employees_view" model="ir.ui.view">
+        <field name="name">AICIA - Importador de Personal</field>
+        <field name="model">aicia.importer.wizard</field>
+        <field name="priority">10</field>
+        <field name="arch" type="xml">
+            <form string="Importador de Personal AICIA">
+                <field name="state" invisible="1"/>
+                <!-- Mostrar formulario de carga cuando state='draft' -->
+                <group invisible="state == 'done'">
+                    <field name="data_file_employees" filename="filename_employees" widget="binary"/>
+                    <field name="filename_employees" invisible="1"/>
+                    <field name="data_file_suppliers" invisible="1"/>
+                    <field name="filename_suppliers" invisible="1"/>
+                    <field name="data_file_customers" invisible="1"/>
+                    <field name="filename_customers" invisible="1"/>
+                </group>
+                <group invisible="state == 'done'">
+                    <field name="update_existing"/>
+                </group>
+
+                <!-- Mostrar log cuando state='done' -->
+                <group invisible="state == 'draft'">
+                    <field name="import_log" nolabel="1" colspan="2"/>
+                </group>
+
+                <notebook invisible="state == 'done'">
+                    <page string="Información">
+                        <group>
+                            <p>
+                                Este asistente permite importar personal/empleados desde archivos Excel (.xlsx).
+                            </p>
+                            <p>
+                                <b>Formato esperado:</b>
+                                <ul>
+                                    <li>Primera fila: encabezados de columnas</li>
+                                    <li><b>Columnas:</b> Código Personal, Nombre, Apellido1, Apellido2, NIF,
+                                        Direccion, Cod_Postal, Población, Teléfono, Movil, Email, NSS,
+                                        Fecha Antiguedad, Cuenta Bancaria, Tipo de contrato, etc.</li>
+                                </ul>
+                            </p>
+                            <p>
+                                <b>Actualizar existentes:</b> Si está marcado, actualiza los empleados
+                                existentes (busca por código de personal).
+                            </p>
+                        </group>
+                    </page>
+                </notebook>
+                <footer>
+                    <button
+                        name="import_suppliers"
+                        string="Importar"
+                        type="object"
+                        class="btn-primary"
+                        invisible="state == 'done'"
+                    />
+                    <button string="Cerrar" class="btn-primary" special="cancel" invisible="state == 'draft'"/>
+                    <button string="Cancelar" class="btn-secondary" special="cancel" invisible="state == 'done'"/>
+                </footer>
+            </form>
+        </field>
+    </record>
+
+    <!-- Acción para PROVEEDORES -->
+    <record id="aicia_importer_suppliers_action" model="ir.actions.act_window">
+        <field name="name">Importar Proveedores</field>
+        <field name="res_model">aicia.importer.wizard</field>
+        <field name="view_mode">form</field>
+        <field name="view_id" ref="aicia_importer_suppliers_view"/>
+        <field name="target">new</field>
+    </record>
+
+    <!-- Acción para CLIENTES -->
+    <record id="aicia_importer_customers_action" model="ir.actions.act_window">
+        <field name="name">Importar Clientes</field>
+        <field name="res_model">aicia.importer.wizard</field>
+        <field name="view_mode">form</field>
+        <field name="view_id" ref="aicia_importer_customers_view"/>
+        <field name="target">new</field>
+    </record>
+
+    <!-- Acción para EMPLEADOS -->
+    <record id="aicia_importer_employees_action" model="ir.actions.act_window">
+        <field name="name">Importar Personal</field>
+        <field name="res_model">aicia.importer.wizard</field>
+        <field name="view_mode">form</field>
+        <field name="view_id" ref="aicia_importer_employees_view"/>
+        <field name="target">new</field>
+    </record>
+
+    <!-- Vista para PROYECTOS -->
+    <record id="aicia_importer_projects_view" model="ir.ui.view">
+        <field name="name">AICIA - Importador de Proyectos</field>
+        <field name="model">aicia.importer.wizard</field>
+        <field name="priority">10</field>
+        <field name="arch" type="xml">
+            <form string="Importador de Proyectos AICIA">
+                <field name="state" invisible="1"/>
+                <!-- Mostrar formulario de carga cuando state='draft' -->
+                <group invisible="state == 'done'">
+                    <field name="data_file_projects" filename="filename_projects" widget="binary"/>
+                    <field name="filename_projects" invisible="1"/>
+                    <field name="data_file_suppliers" invisible="1"/>
+                    <field name="filename_suppliers" invisible="1"/>
+                    <field name="data_file_customers" invisible="1"/>
+                    <field name="filename_customers" invisible="1"/>
+                    <field name="data_file_employees" invisible="1"/>
+                    <field name="filename_employees" invisible="1"/>
+                </group>
+                <group invisible="state == 'done'">
+                    <field name="update_existing"/>
+                </group>
+
+                <!-- Mostrar log cuando state='done' -->
+                <group invisible="state == 'draft'">
+                    <field name="import_log" nolabel="1" colspan="2"/>
+                </group>
+
+                <notebook invisible="state == 'done'">
+                    <page string="Información">
+                        <group>
+                            <p>
+                                Este asistente permite importar proyectos desde archivos Excel (.xlsx).
+                            </p>
+                            <p>
+                                <b>Formato esperado:</b>
+                                <ul>
+                                    <li>Primera fila: encabezados de columnas</li>
+                                    <li><b>Columnas:</b> Codigo (o ID_Proyecto), Nombre, Cliente, Activo</li>
+                                    <li><b>Codigo:</b> Código único del proyecto (opcional)</li>
+                                    <li><b>Nombre:</b> Nombre del proyecto (obligatorio)</li>
+                                    <li><b>Cliente:</b> Nombre o referencia del cliente asociado (opcional)</li>
+                                    <li><b>Activo:</b> TRUE/FALSE o 1/0 para indicar si está activo (opcional, por defecto TRUE)</li>
+                                </ul>
+                            </p>
+                            <p>
+                                <b>Actualizar existentes:</b> Si está marcado, actualiza los proyectos
+                                existentes (busca por código o nombre).
+                            </p>
+                            <p>
+                                <b>Nota:</b> Los proyectos se almacenan internamente como cuentas analíticas en Odoo.
+                            </p>
+                        </group>
+                    </page>
+                </notebook>
+                <footer>
+                    <button
+                        name="import_suppliers"
+                        string="Importar"
+                        type="object"
+                        class="btn-primary"
+                        invisible="state == 'done'"
+                    />
+                    <button string="Cerrar" class="btn-primary" special="cancel" invisible="state == 'draft'"/>
+                    <button string="Cancelar" class="btn-secondary" special="cancel" invisible="state == 'done'"/>
+                </footer>
+            </form>
+        </field>
+    </record>
+
+    <!-- Acción para PROYECTOS -->
+    <record id="aicia_importer_projects_action" model="ir.actions.act_window">
+        <field name="name">Importar Proyectos</field>
+        <field name="res_model">aicia.importer.wizard</field>
+        <field name="view_mode">form</field>
+        <field name="view_id" ref="aicia_importer_projects_view"/>
+        <field name="target">new</field>
+    </record>
+
+    <!-- Vista para ASIGNACIONES DE PROYECTOS -->
+    <record id="aicia_importer_project_assignments_view" model="ir.ui.view">
+        <field name="name">AICIA - Importador de Asignaciones de Proyectos</field>
+        <field name="model">aicia.importer.wizard</field>
+        <field name="priority">10</field>
+        <field name="arch" type="xml">
+            <form string="Importador de Asignaciones de Proyectos AICIA">
+                <field name="state" invisible="1"/>
+                <!-- Mostrar formulario de carga cuando state='draft' -->
+                <group invisible="state == 'done'">
+                    <field name="data_file_project_assignments" filename="filename_project_assignments" widget="binary"/>
+                    <field name="filename_project_assignments" invisible="1"/>
+                    <field name="data_file_suppliers" invisible="1"/>
+                    <field name="filename_suppliers" invisible="1"/>
+                    <field name="data_file_customers" invisible="1"/>
+                    <field name="filename_customers" invisible="1"/>
+                    <field name="data_file_employees" invisible="1"/>
+                    <field name="filename_employees" invisible="1"/>
+                    <field name="data_file_projects" invisible="1"/>
+                    <field name="filename_projects" invisible="1"/>
+                </group>
+                <group invisible="state == 'done'">
+                    <field name="update_existing"/>
+                </group>
+
+                <!-- Mostrar log cuando state='done' -->
+                <group invisible="state == 'draft'">
+                    <field name="import_log" nolabel="1" colspan="2"/>
+                </group>
+
+                <notebook invisible="state == 'done'">
+                    <page string="Información">
+                        <group>
+                            <p>
+                                Este asistente permite importar la relación entre proyectos y empleados desde archivos Excel (.xlsx).
+                            </p>
+                            <p>
+                                <b>Formato esperado:</b>
+                                <ul>
+                                    <li>Primera fila: encabezados de columnas</li>
+                                    <li><b>Columnas requeridas:</b> ID_Proyecto, ID_Personal</li>
+                                    <li><b>Columnas opcionales:</b> ID_Departamento, Jefe_Proyecto</li>
+                                    <li><b>ID_Proyecto:</b> Código del proyecto (debe existir previamente)</li>
+                                    <li><b>ID_Personal:</b> Código del empleado sin la "E" inicial (debe existir previamente)</li>
+                                </ul>
+                            </p>
+                            <p>
+                                <b>Funcionamiento:</b>
+                                <ul>
+                                    <li>Busca el proyecto por su código</li>
+                                    <li>Busca el empleado añadiendo "E" al ID_Personal</li>
+                                    <li>Asocia el empleado al proyecto</li>
+                                    <li>Si el empleado ya está asociado, no se duplica</li>
+                                </ul>
+                            </p>
+                            <p>
+                                <b>Nota:</b> Tanto los proyectos como los empleados deben haber sido importados previamente.
+                            </p>
+                        </group>
+                    </page>
+                </notebook>
+                <footer>
+                    <button
+                        name="import_suppliers"
+                        string="Importar"
+                        type="object"
+                        class="btn-primary"
+                        invisible="state == 'done'"
+                    />
+                    <button string="Cerrar" class="btn-primary" special="cancel" invisible="state == 'draft'"/>
+                    <button string="Cancelar" class="btn-secondary" special="cancel" invisible="state == 'done'"/>
+                </footer>
+            </form>
+        </field>
+    </record>
+
+    <!-- Acción para ASIGNACIONES DE PROYECTOS -->
+    <record id="aicia_importer_project_assignments_action" model="ir.actions.act_window">
+        <field name="name">Importar Asignación de Proyectos</field>
+        <field name="res_model">aicia.importer.wizard</field>
+        <field name="view_mode">form</field>
+        <field name="view_id" ref="aicia_importer_project_assignments_view"/>
+        <field name="target">new</field>
+    </record>
+
+    <!-- Vista para ACTUALIZAR GRUPOS DE TRABAJO -->
+    <record id="aicia_update_work_groups_view" model="ir.ui.view">
+        <field name="name">AICIA - Actualizar Grupos de Trabajo</field>
+        <field name="model">aicia.importer.wizard</field>
+        <field name="priority">10</field>
+        <field name="arch" type="xml">
+            <form string="Actualizar Grupos de Trabajo">
+                <field name="state" invisible="1"/>
+
+                <!-- Mostrar log cuando state='done' -->
+                <group invisible="state == 'draft'">
+                    <field name="import_log" nolabel="1" colspan="2"/>
+                </group>
+
+                <notebook invisible="state == 'done'">
+                    <page string="Información">
+                        <group>
+                            <p>
+                                Este asistente recorre todos los empleados activos y los añade
+                                al grupo de trabajo correspondiente según su departamento.
+                            </p>
+                            <p>
+                                <b>Funcionamiento:</b>
+                            </p>
+                            <ul>
+                                <li>Toma el nombre del departamento de cada empleado.</li>
+                                <li>Si el nombre del departamento empieza por <b>0</b>, se elimina ese 0 inicial antes de buscar.</li>
+                                <li>Busca el grupo de trabajo (<b>portal.work.group</b>) con ese nombre exacto.</li>
+                                <li>Añade el usuario Odoo del empleado al campo <b>Usuarios</b> del grupo.</li>
+                                <li>Si el usuario ya pertenece al grupo, no se duplica.</li>
+                            </ul>
+                            <p>
+                                <b>Motivos por los que un empleado puede no ser procesado:</b>
+                            </p>
+                            <ul>
+                                <li>Sin departamento asignado.</li>
+                                <li>No existe ningún grupo de trabajo con ese nombre.</li>
+                                <li>El empleado no tiene usuario Odoo asociado.</li>
+                            </ul>
+                        </group>
+                    </page>
+                </notebook>
+
+                <footer>
+                    <button
+                        name="action_update_work_groups"
+                        string="Actualizar Grupos"
+                        type="object"
+                        class="btn-primary"
+                        invisible="state == 'done'"
+                    />
+                    <button string="Cerrar" class="btn-primary" special="cancel" invisible="state == 'draft'"/>
+                    <button string="Cancelar" class="btn-secondary" special="cancel" invisible="state == 'done'"/>
+                </footer>
+            </form>
+        </field>
+    </record>
+
+    <!-- Acción para ACTUALIZAR GRUPOS DE TRABAJO -->
+    <record id="aicia_update_work_groups_action" model="ir.actions.act_window">
+        <field name="name">Actualizar Grupos</field>
+        <field name="res_model">aicia.importer.wizard</field>
+        <field name="view_mode">form</field>
+        <field name="view_id" ref="aicia_update_work_groups_view"/>
+        <field name="target">new</field>
+    </record>
+
+    <!-- Vista para ACTUALIZAR JEFES DE EQUIPO POR PROYECTO -->
+    <record id="aicia_update_project_bosses_view" model="ir.ui.view">
+        <field name="name">AICIA - Actualizar Jefes de Equipo por Proyecto</field>
+        <field name="model">aicia.importer.wizard</field>
+        <field name="priority">10</field>
+        <field name="arch" type="xml">
+            <form string="Actualizar Jefes de Equipo por Proyecto">
+                <field name="state" invisible="1"/>
+
+                <!-- Mostrar log cuando state='done' -->
+                <group invisible="state == 'draft'">
+                    <field name="import_log" nolabel="1" colspan="2"/>
+                </group>
+
+                <notebook invisible="state == 'done'">
+                    <page string="Información">
+                        <group>
+                            <p>
+                                Este asistente recorre todos los proyectos que tienen un
+                                <b>Responsable</b> asignado y añade ese usuario al grupo
+                                <b>Jefe de Equipo</b>.
+                            </p>
+                            <p><b>Funcionamiento:</b></p>
+                            <ul>
+                                <li>Busca todos los proyectos con responsable asignado.</li>
+                                <li>Añade el usuario responsable al grupo <b>Jefe de Equipo</b>.</li>
+                                <li>Si el usuario ya tiene el grupo, no se duplica.</li>
+                                <li>Se puede ejecutar varias veces sin efectos secundarios.</li>
+                            </ul>
+                        </group>
+                    </page>
+                </notebook>
+
+                <footer>
+                    <button
+                        name="action_update_project_bosses"
+                        string="Actualizar Jefes de Equipo"
+                        type="object"
+                        class="btn-primary"
+                        invisible="state == 'done'"
+                    />
+                    <button string="Cerrar" class="btn-primary" special="cancel" invisible="state == 'draft'"/>
+                    <button string="Cancelar" class="btn-secondary" special="cancel" invisible="state == 'done'"/>
+                </footer>
+            </form>
+        </field>
+    </record>
+
+    <!-- Acción para ACTUALIZAR JEFES DE EQUIPO POR PROYECTO -->
+    <record id="aicia_update_project_bosses_action" model="ir.actions.act_window">
+        <field name="name">Actualizar Jefes de Equipo</field>
+        <field name="res_model">aicia.importer.wizard</field>
+        <field name="view_mode">form</field>
+        <field name="view_id" ref="aicia_update_project_bosses_view"/>
+        <field name="target">new</field>
+    </record>
+
+    <!-- Vista para ASIGNAR GRUPO DE TRABAJO A PROYECTOS -->
+    <record id="aicia_assign_project_work_groups_view" model="ir.ui.view">
+        <field name="name">AICIA - Asignar Grupo de Trabajo a Proyectos</field>
+        <field name="model">aicia.importer.wizard</field>
+        <field name="priority">10</field>
+        <field name="arch" type="xml">
+            <form string="Asignar Grupo de Trabajo a Proyectos">
+                <field name="state" invisible="1"/>
+
+                <!-- Mostrar log cuando state='done' -->
+                <group invisible="state == 'draft'">
+                    <field name="import_log" nolabel="1" colspan="2"/>
+                </group>
+
+                <notebook invisible="state == 'done'">
+                    <page string="Información">
+                        <group>
+                            <p>
+                                Este asistente recorre todos los proyectos (cuentas analíticas) que
+                                tienen un <b>Responsable</b> asignado pero <b>no tienen aún</b> un
+                                grupo de trabajo asignado, y les asocia automáticamente el
+                                <b>Grupo de Trabajo</b> correspondiente al departamento de su responsable.
+                            </p>
+                            <p><b>Funcionamiento:</b></p>
+                            <ul>
+                                <li>Busca proyectos con responsable asignado y sin grupo de trabajo.</li>
+                                <li>Localiza el empleado activo vinculado al usuario responsable.</li>
+                                <li>Toma el departamento de ese empleado.</li>
+                                <li>Si el nombre del departamento empieza por <b>0</b>, se elimina ese 0 inicial antes de buscar.</li>
+                                <li>Busca el grupo de trabajo (<b>portal.work.group</b>) con ese nombre exacto.</li>
+                                <li>Asigna ese grupo al campo <b>Grupo de Trabajo</b> del proyecto.</li>
+                                <li>Los proyectos que ya tienen grupo asignado no se modifican.</li>
+                            </ul>
+                            <p><b>Motivos por los que un proyecto puede no ser procesado:</b></p>
+                            <ul>
+                                <li>El responsable no tiene empleado activo asociado en Odoo.</li>
+                                <li>El empleado no tiene departamento asignado.</li>
+                                <li>No existe ningún grupo de trabajo con el nombre del departamento.</li>
+                            </ul>
+                        </group>
+                    </page>
+                </notebook>
+
+                <footer>
+                    <button
+                        name="action_assign_project_work_groups"
+                        string="Asignar Grupos a Proyectos"
+                        type="object"
+                        class="btn-primary"
+                        invisible="state == 'done'"
+                    />
+                    <button string="Cerrar" class="btn-primary" special="cancel" invisible="state == 'draft'"/>
+                    <button string="Cancelar" class="btn-secondary" special="cancel" invisible="state == 'done'"/>
+                </footer>
+            </form>
+        </field>
+    </record>
+
+    <!-- Acción para ASIGNAR GRUPO DE TRABAJO A PROYECTOS -->
+    <record id="aicia_assign_project_work_groups_action" model="ir.actions.act_window">
+        <field name="name">Asignar Grupos a Proyectos</field>
+        <field name="res_model">aicia.importer.wizard</field>
+        <field name="view_mode">form</field>
+        <field name="view_id" ref="aicia_assign_project_work_groups_view"/>
+        <field name="target">new</field>
+    </record>
+</odoo>
+

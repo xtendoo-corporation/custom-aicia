@@ -1,0 +1,47 @@
+<?xml version="1.0" encoding="utf-8"?>
+<odoo>
+    <!-- Añadir distribution_plan_id en el formulario de cobro de cliente -->
+    <record id="view_account_payment_form_inherit_aicia" model="ir.ui.view">
+        <field name="name">account.payment.form.inherit.aicia</field>
+        <field name="model">account.payment</field>
+        <field name="inherit_id" ref="account.view_account_payment_form"/>
+        <field name="arch" type="xml">
+            <!-- Smart button de distribuciones -->
+            <xpath expr="//div[@name='button_box']" position="inside">
+                <button name="action_view_distribution_moves"
+                        type="object"
+                        class="oe_stat_button"
+                        icon="fa-exchange"
+                        invisible="distribution_move_count == 0"
+                        groups="account.group_account_user">
+                    <field name="distribution_move_count" widget="statinfo" string="Distribuciones"/>
+                </button>
+            </xpath>
+            <!-- Campo plan de distribución junto a la información del pago -->
+            <xpath expr="//field[@name='partner_id']" position="after">
+                <field name="show_distribution_plan_id" invisible="1"/>
+                <field name="distribution_plan_id"
+                       invisible="not show_distribution_plan_id"
+                       options="{'no_create': True}"/>
+            </xpath>
+            <!-- Pestaña de distribución analítica
+            <xpath expr="//notebook" position="inside">
+                <page string="Distribución Analítica AICIA" invisible="distribution_move_count == 0">
+                    <field name="distribution_move_line_ids" readonly="1">
+                        <list create="0" edit="0" delete="0">
+                            <field name="move_id" string="Asiento"/>
+                            <field name="date"/>
+                            <field name="account_id"/>
+                            <field name="name"/>
+                            <field name="analytic_distribution" widget="analytic_distribution"/>
+                            <field name="debit" sum="Total Debe"/>
+                            <field name="credit" sum="Total Haber"/>
+                        </list>
+                    </field>
+                </page>
+            </xpath>
+            -->
+        </field>
+    </record>
+</odoo>
+

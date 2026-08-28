@@ -1,0 +1,154 @@
+<?xml version="1.0" encoding="utf-8"?>
+<odoo>
+    <data>
+        <!-- Breadcrumb para navegación -->
+        <template id="portal_my_home_menu_invoices" name="Portal layout: menu invoices"
+                  inherit_id="portal.portal_breadcrumbs" priority="46">
+            <xpath expr="//ol[hasclass('o_portal_submenu')]" position="inside">
+                <li t-if="page_name == 'invoice_request' and not invoice_request" class="breadcrumb-item active">
+                    Solicitudes de Facturas
+                </li>
+            </xpath>
+        </template>
+
+        <!-- Vista del listado de solicitudes de facturas -->
+        <template id="portal_my_invoices" name="Mis Solicitudes de Facturas">
+            <t t-call="portal.portal_layout">
+                <t t-set="no_breadcrumbs" t-value="True"/>
+
+                <div class="portal-project-breadcrumbs mb-3">
+                    <ol class="breadcrumb">
+                        <li class="breadcrumb-item"><a href="/my"><i class="fa fa-home"/></a></li>
+                        <li class="breadcrumb-item active" aria-current="page">Solicitudes de Facturas</li>
+                    </ol>
+                </div>
+
+                <div class="d-flex justify-content-end align-items-center gap-2 mb-3">
+                    <a t-att-href="'/my/invoices/export?' + keep_query('*')" class="btn btn-outline-secondary">
+                        <i class="fa fa-download me-2"/>Exportar
+                    </a>
+                    <a href="/portal/invoice_request" class="btn btn-primary">
+                        <i class="fa fa-plus me-1"/> Nueva Solicitud
+                    </a>
+                </div>
+
+                <div class="portal-project-searchbar-wrapper mb-4">
+                    <div class="portal-project-searchbar d-flex flex-column flex-lg-row justify-content-center align-items-stretch align-items-lg-center gap-2">
+                        <div class="btn-group portal-project-groupby">
+                            <button id="portal_invoice_request_filter" data-bs-toggle="dropdown" class="btn btn-light dropdown-toggle" type="button">
+                                Filtrar por: <t t-esc="searchbar_filters[filterby].get('label', 'Todos')"/>
+                            </button>
+                            <div class="dropdown-menu" aria-labelledby="portal_invoice_request_filter">
+                                <t t-foreach="searchbar_filters" t-as="option">
+                                    <a t-att-href="default_url + '?' + keep_query('*', filterby=option)"
+                                       t-attf-class="dropdown-item#{filterby == option and ' active' or ''}">
+                                        <span t-esc="searchbar_filters[option].get('label')"/>
+                                    </a>
+                                </t>
+                            </div>
+                        </div>
+
+                        <div class="btn-group portal-project-groupby">
+                            <button id="portal_invoice_request_groupby" data-bs-toggle="dropdown" class="btn btn-light dropdown-toggle" type="button">
+                                Agrupar por: <t t-esc="searchbar_groupby[groupby].get('label', 'Sin agrupar')"/>
+                            </button>
+                            <div class="dropdown-menu" aria-labelledby="portal_invoice_request_groupby">
+                                <t t-foreach="searchbar_groupby" t-as="option">
+                                    <a t-att-href="default_url + '?' + keep_query('*', groupby=option)"
+                                       t-attf-class="dropdown-item#{groupby == option and ' active' or ''}">
+                                        <span t-esc="searchbar_groupby[option].get('label')"/>
+                                    </a>
+                                </t>
+                            </div>
+                        </div>
+
+                        <form class="o_portal_search_panel portal-project-search-form">
+                            <input type="hidden" name="filterby" t-att-value="filterby"/>
+                            <input type="hidden" name="groupby" t-att-value="groupby"/>
+                            <input type="hidden" name="search_in" t-att-value="search_in"/>
+                            <div class="input-group w-100">
+                                <button type="button" class="btn btn-light border-end dropdown-toggle" data-bs-toggle="dropdown"/>
+                                <div class="dropdown-menu" role="menu">
+                                    <t t-foreach="searchbar_inputs" t-as="input">
+                                        <a t-att-href="default_url + '?' + keep_query('*', search_in=searchbar_inputs[input]['input'])"
+                                           t-attf-class="dropdown-item#{search_in == searchbar_inputs[input]['input'] and ' active' or ''}">
+                                            <span t-esc="searchbar_inputs[input]['label']"/>
+                                        </a>
+                                    </t>
+                                </div>
+                                <input type="search" class="form-control border-0 bg-light" t-att-value="search" name="search" t-att-placeholder="searchbar_inputs[search_in].get('label', 'Buscar...')"/>
+                                <button class="btn btn-light" type="submit">
+                                    <span class="oi oi-search"/>
+                                </button>
+                            </div>
+                        </form>
+                    </div>
+                </div>
+
+                <t t-if="not invoice_requests">
+                    <div class="alert alert-info mt-3" role="alert">
+                        No hay solicitudes de facturas.
+                    </div>
+                </t>
+
+                <t t-if="invoice_requests" t-call="portal.portal_table">
+                    <thead>
+                        <tr class="active">
+                            <th>Tipo</th>
+                            <th>Cliente</th>
+                            <th>Proyecto</th>
+                            <th>Importe</th>
+                            <th>Estado</th>
+                            <th class="text-end">Fecha de Creación</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        <t t-foreach="invoice_request_groups" t-as="invoice_request_group">
+                            <tr t-if="groupby != 'none'" class="table-secondary">
+                                <td colspan="6">
+                                    <strong t-esc="invoice_request_group['label']"/>
+                                </td>
+                            </tr>
+                            <t t-foreach="invoice_request_group['invoice_requests']" t-as="invoice_request">
+                                <tr style="cursor: pointer;">
+                                    <td>
+                                        <a t-attf-href="/my/invoices/#{invoice_request.id}">
+                                            <span t-if="invoice_request.move_type == 'out_invoice'">Factura</span>
+                                            <span t-else="">Factura Rectificativa</span>
+                                        </a>
+                                    </td>
+                                    <td>
+                                        <a t-attf-href="/my/invoices/#{invoice_request.id}">
+                                            <span t-field="invoice_request.partner_id"/>
+                                        </a>
+                                    </td>
+                                    <td>
+                                        <a t-attf-href="/my/invoices/#{invoice_request.id}">
+                                            <span t-field="invoice_request.analytic_id"/>
+                                        </a>
+                                    </td>
+                                    <td>
+                                        <a t-attf-href="/my/invoices/#{invoice_request.id}">
+                                            <span t-field="invoice_request.amount" t-options='{"widget": "monetary", "display_currency": invoice_request.currency_id}'/>
+                                        </a>
+                                    </td>
+                                    <td>
+                                        <a t-attf-href="/my/invoices/#{invoice_request.id}">
+                                            <span t-attf-class="badge #{'bg-success' if invoice_request.status == 'approve' else 'bg-danger' if invoice_request.status == 'rejected' else 'bg-info'}" t-field="invoice_request.status"/>
+                                        </a>
+                                    </td>
+                                    <td class="text-end">
+                                        <a t-attf-href="/my/invoices/#{invoice_request.id}">
+                                            <span t-field="invoice_request.create_date" t-options='{"widget": "date"}'/>
+                                        </a>
+                                    </td>
+                                </tr>
+                            </t>
+                        </t>
+                    </tbody>
+                </t>
+            </t>
+        </template>
+    </data>
+</odoo>
+

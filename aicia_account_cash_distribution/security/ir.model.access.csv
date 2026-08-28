@@ -1,0 +1,10 @@
+id,name,model_id:id,group_id:id,perm_read,perm_write,perm_create,perm_unlink
+access_aicia_distribution_plan,aicia.distribution.plan,model_aicia_distribution_plan,account.group_account_manager,1,1,1,1
+access_aicia_distribution_plan_user,aicia.distribution.plan user,model_aicia_distribution_plan,account.group_account_user,1,0,0,0
+access_aicia_distribution_plan_read,aicia.distribution.plan read,model_aicia_distribution_plan,account.group_account_readonly,1,0,0,0
+access_aicia_distribution_plan_line,aicia.distribution.plan.line,model_aicia_distribution_plan_line,account.group_account_manager,1,1,1,1
+access_aicia_distribution_plan_line_user,aicia.distribution.plan.line user,model_aicia_distribution_plan_line,account.group_account_user,1,0,0,0
+access_aicia_distribution_plan_line_read,aicia.distribution.plan.line read,model_aicia_distribution_plan_line,account.group_account_readonly,1,0,0,0
+
+
+
