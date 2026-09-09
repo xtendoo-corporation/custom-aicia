@@ -168,7 +168,7 @@
                         <div class="alert alert-success alert-dismissible fade show" role="alert">
                             <strong>¡Éxito!</strong>
                             <span t-if="success_message == 'message_posted'">Tu mensaje ha sido enviado correctamente.</span>
-                            <button type="button" class="btn-close" data-bs-dismiss="alert" aria-label="Close"/>
+                            <button type="button" class="btn-close" data-bs-dismiss="alert" aria-label="Cerrar"/>
                         </div>
                     </t>
 

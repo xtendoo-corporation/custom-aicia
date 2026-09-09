@@ -57,7 +57,7 @@
                                                     <label
                                                         class="col-form-label col-sm-auto s_website_form_label"
                                                         style="width: 200px" for="contact">
-                                                        <span class="s_website_form_label_content">Project
+                                                        <span class="s_website_form_label_content">Compañía
                                                         </span>
                                                         <span class="s_website_form_mark">*</span>
                                                     </label>
@@ -83,7 +83,7 @@
                                                         <label
                                                             class="col-form-label col-sm-auto s_website_form_label"
                                                             style="width: 200px" for="contact">
-                                                            <span class="s_website_form_label_content">Name
+                                                            <span class="s_website_form_label_content">Nombre
                                                             </span>
                                                             <span class="s_website_form_mark">*</span>
                                                         </label>
@@ -103,7 +103,7 @@
                                                         <label
                                                             class="col-form-label col-sm-auto s_website_form_label"
                                                             style="width: 200px" for="contact">
-                                                            <span class="s_website_form_label_content">Identification
+                                                            <span class="s_website_form_label_content">Identificación
                                                             </span>
                                                             <span class="s_website_form_mark">*</span>
                                                         </label>
@@ -123,7 +123,7 @@
                                                         <label
                                                             class="col-form-label col-sm-auto s_website_form_label"
                                                             style="width: 200px" for="contact">
-                                                            <span class="s_website_form_label_content">Mobile Phone
+                                                            <span class="s_website_form_label_content">Teléfono móvil
                                                             </span>
                                                             <span class="s_website_form_mark">*</span>
                                                         </label>
@@ -143,8 +143,8 @@
                                                         <label
                                                             class="col-form-label col-sm-auto s_website_form_label"
                                                             style="width: 200px" for="contact">
-                                                            <span class="s_website_form_label_content">Confidential
-                                                                Compromise
+                                                            <span class="s_website_form_label_content">Compromiso de
+                                                                confidencialidad
                                                             </span>
                                                         </label>
                                                         <div class="col-sm col-sm d-flex align-items-center">
@@ -163,7 +163,7 @@
                                                         <label
                                                             class="col-form-label col-sm-auto s_website_form_label"
                                                             style="width: 200px" for="contact">
-                                                            <span class="s_website_form_label_content">SSNID
+                                                            <span class="s_website_form_label_content">Nº Seguridad Social
                                                             </span>
                                                             <span class="s_website_form_mark">*</span>
                                                         </label>
@@ -183,7 +183,7 @@
                                                         <label
                                                             class="col-form-label col-sm-auto s_website_form_label"
                                                             style="width: 200px" for="contact">
-                                                            <span class="s_website_form_label_content">Email
+                                                            <span class="s_website_form_label_content">Correo electrónico
                                                             </span>
                                                             <span class="s_website_form_mark">*</span>
                                                         </label>
@@ -203,7 +203,7 @@
                                                         <label
                                                             class="col-form-label col-sm-auto s_website_form_label"
                                                             style="width: 200px" for="contact">
-                                                            <span class="s_website_form_label_content">Salary
+                                                            <span class="s_website_form_label_content">Salario
                                                             </span>
                                                             <span class="s_website_form_mark">*</span>
                                                         </label>
@@ -222,7 +222,7 @@
                                                         <label
                                                             class="col-form-label col-sm-auto s_website_form_label"
                                                             style="width: 200px" for="contact">
-                                                            <span class="s_website_form_label_content">Number of Pays
+                                                            <span class="s_website_form_label_content">Número de pagas
                                                             </span>
                                                             <span class="s_website_form_mark">*</span>
                                                         </label>
@@ -237,7 +237,7 @@
                                                     <label
                                                         class="col-form-label col-sm-auto s_website_form_label"
                                                         style="width: 200px" for="contact">
-                                                        <span class="s_website_form_label_content">Resource Calendar
+                                                        <span class="s_website_form_label_content">Calendario laboral
                                                         </span>
                                                         <span class="s_website_form_mark">*</span>
                                                     </label>
@@ -260,7 +260,7 @@
                                                         <label
                                                             class="col-form-label col-sm-auto s_website_form_label"
                                                             style="width: 200px" for="contact">
-                                                            <span class="s_website_form_label_content">Bank Account
+                                                            <span class="s_website_form_label_content">Cuenta bancaria
                                                             </span>
                                                             <span class="s_website_form_mark">*</span>
                                                         </label>
@@ -280,8 +280,8 @@
                                                         <label
                                                             class="col-form-label col-sm-auto s_website_form_label"
                                                             style="width: 200px" for="contact">
-                                                            <span class="s_website_form_label_content">PRL Annex
-                                                                File
+                                                            <span class="s_website_form_label_content">Anexo PRL
+                                                                (archivo)
                                                             </span>
                                                             <span class="s_website_form_mark">*</span>
                                                         </label>
@@ -298,8 +298,8 @@
                                                         <label
                                                             class="col-form-label col-sm-auto s_website_form_label"
                                                             style="width: 200px" for="contact">
-                                                            <span class="s_website_form_label_content">Budget
-                                                                File
+                                                            <span class="s_website_form_label_content">Informe de vida
+                                                                laboral (archivo)
                                                             </span>
                                                             <span class="s_website_form_mark">*</span>
                                                         </label>
@@ -316,7 +316,8 @@
                                                         <label
                                                             class="col-form-label col-sm-auto s_website_form_label"
                                                             style="width: 200px" for="contact">
-                                                            <span class="s_website_form_label_content">CV File
+                                                            <span class="s_website_form_label_content">Currículum
+                                                                (archivo)
                                                             </span>
                                                             <span class="s_website_form_mark">*</span>
                                                         </label>
@@ -624,8 +625,8 @@
 
                                             companySelect.addEventListener('change', function () {
                                                 const companyId = companySelect.value;
-                                                employeeSelectUnactive.innerHTML = '<option value="">Loading...</option>';
-                                                employeeSelectActive.innerHTML = '<option value="">Loading...</option>';
+                                                employeeSelectUnactive.innerHTML = '<option value="">Cargando...</option>';
+                                                employeeSelectActive.innerHTML = '<option value="">Cargando...</option>';
                                                 $.ajax({
                                                     url: '/get_employee_by_company',
                                                     type: 'GET',
@@ -641,7 +642,7 @@
                                                         if (employees.length === 0) {
                                                             const option = document.createElement('option');
                                                             option.value = '0';
-                                                            option.textContent = 'employee not found';
+                                                            option.textContent = 'Empleado no encontrado';
                                                             employeeSelectUnactive.appendChild(option);
                                                         } else {
                                                             employees.forEach(function(employee) {
@@ -671,7 +672,7 @@
                                                         if (employees.length === 0) {
                                                             const option = document.createElement('option');
                                                             option.value = '0';
-                                                            option.textContent = 'employee not found';
+                                                            option.textContent = 'Empleado no encontrado';
                                                             employeeSelectActive.appendChild(option);
                                                         } else {
                                                             employees.forEach(function(employee) {

@@ -10,7 +10,7 @@
                     <div class="o_we_bg_filter bg-black-50"/>
                     <div class="container">
                         <!--TÍTULO DE LA PÁGINA-->
-                        <h1>Project End Request</h1>
+                        <h1>Solicitud de Fin de Proyecto</h1>
                     </div>
                 </section>
                 <!--FORMULARIO-->
@@ -20,7 +20,7 @@
                         <div class="row">
                             <div class="col-lg-8 mt-4 mt-lg-0">
                                 <p>
-                                    Fill out the form below to request the end of the project.
+                                    Rellene el formulario a continuación para solicitar la finalización del proyecto.
                                 </p>
                                 <div class="container">
                                     <form action="/portal/project_end_request/submit" method="POST">
@@ -34,7 +34,7 @@
                                                     <label
                                                         class="col-form-label col-sm-auto s_website_form_label"
                                                         style="width: 200px" for="contact">
-                                                        <span class="s_website_form_label_content">Project
+                                                        <span class="s_website_form_label_content">Compañía
                                                         </span>
                                                         <span class="s_website_form_mark">*</span>
                                                     </label>
@@ -59,7 +59,7 @@
                                                     <label
                                                         class="col-form-label col-sm-auto s_website_form_label"
                                                         style="width: 200px" for="contact">
-                                                        <span class="s_website_form_label_content">Date of end
+                                                        <span class="s_website_form_label_content">Fecha de fin
                                                         </span>
                                                         <span class="s_website_form_mark">*</span>
                                                     </label>
@@ -77,7 +77,7 @@
                                                     <label
                                                         class="col-form-label col-sm-auto s_website_form_label"
                                                         style="width: 200px" for="contact">
-                                                        <span class="s_website_form_label_content">Concept
+                                                        <span class="s_website_form_label_content">Concepto
                                                         </span>
                                                         <span class="s_website_form_mark">*</span>
                                                     </label>
@@ -95,7 +95,7 @@
                                                     <div class="col-sm-auto" style="width: 200px;"/>
                                                     <div class="col-sm">
                                                         <button type="submit"
-                                                                class="btn btn-primary s_website_form_send">Submit
+                                                                class="btn btn-primary s_website_form_send">Enviar
                                                         </button>
                                                     </div>
                                                 </div>
@@ -113,7 +113,7 @@
     </template>
 
 <!--    <record id="portal_project_end_menu" model="website.menu">-->
-<!--        <field name="name">Project End Request</field>-->
+<!--        <field name="name">Solicitud de Fin de Proyecto</field>-->
 <!--        <field name="url">/portal/project_end_request</field>-->
 <!--        <field name="parent_id" ref="website.main_menu"/>-->
 <!--        <field name="sequence" type="int">100</field>-->

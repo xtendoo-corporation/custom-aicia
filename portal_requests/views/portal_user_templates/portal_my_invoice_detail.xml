@@ -22,15 +22,15 @@
                         <!-- Mensajes de éxito -->
                         <div t-if="success_message == 'revision_requested'" class="alert alert-success alert-dismissible fade show" role="alert">
                             <strong>¡Solicitud enviada!</strong> Su solicitud de nueva revisión ha sido registrada correctamente.
-                            <button type="button" class="btn-close" data-bs-dismiss="alert" aria-label="Close"></button>
+                            <button type="button" class="btn-close" data-bs-dismiss="alert" aria-label="Cerrar"></button>
                         </div>
                         <div t-if="success_message == 'message_posted'" class="alert alert-success alert-dismissible fade show" role="alert">
                             <strong>¡Mensaje enviado!</strong> Tu comentario ha sido publicado correctamente.
-                            <button type="button" class="btn-close" data-bs-dismiss="alert" aria-label="Close"></button>
+                            <button type="button" class="btn-close" data-bs-dismiss="alert" aria-label="Cerrar"></button>
                         </div>
                         <div t-if="success_message == 'approved'" class="alert alert-success alert-dismissible fade show" role="alert">
                             <strong>¡Solicitud aprobada!</strong> La solicitud ha sido aprobada y enviada al responsable de clientes para su revisión.
-                            <button type="button" class="btn-close" data-bs-dismiss="alert" aria-label="Close"></button>
+                            <button type="button" class="btn-close" data-bs-dismiss="alert" aria-label="Cerrar"></button>
                         </div>
 
                         <div class="row">

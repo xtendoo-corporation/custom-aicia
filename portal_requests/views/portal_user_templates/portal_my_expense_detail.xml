@@ -22,11 +22,15 @@
                         <!-- Mensaje de éxito -->
                         <div t-if="success_message == 'revision_requested'" class="alert alert-success alert-dismissible fade show" role="alert">
                             <strong>¡Solicitud enviada!</strong> Su solicitud de nueva revisión ha sido registrada correctamente.
-                            <button type="button" class="btn-close" data-bs-dismiss="alert" aria-label="Close"></button>
+                            <button type="button" class="btn-close" data-bs-dismiss="alert" aria-label="Cerrar"></button>
                         </div>
                         <div t-if="success_message == 'message_posted'" class="alert alert-success alert-dismissible fade show" role="alert">
                             <strong>¡Mensaje enviado!</strong> Tu comentario ha sido publicado correctamente.
-                            <button type="button" class="btn-close" data-bs-dismiss="alert" aria-label="Close"></button>
+                            <button type="button" class="btn-close" data-bs-dismiss="alert" aria-label="Cerrar"></button>
+                        </div>
+                        <div t-if="success_message == 'approved'" class="alert alert-success alert-dismissible fade show" role="alert">
+                            <strong>¡Solicitud aprobada!</strong> La solicitud ha sido aprobada y enviada al siguiente responsable para su revisión.
+                            <button type="button" class="btn-close" data-bs-dismiss="alert" aria-label="Cerrar"></button>
                         </div>
 
                         <div class="row">
@@ -42,6 +46,16 @@
                                             <input type="hidden" name="csrf_token" t-att-value="request.csrf_token()"/>
                                             <button type="submit" class="btn btn-warning">
                                                 <i class="fa fa-refresh me-1"/> Solicitar Revisión
+                                            </button>
+                                        </form>
+                                        <!-- Botón Aprobar (visible solo para el jefe de equipo/administrativo) -->
+                                        <form t-if="expense.show_approve_button"
+                                              method="POST"
+                                              t-attf-action="/my/expenses/#{expense.id}/approve"
+                                              class="d-inline-block me-2">
+                                            <input type="hidden" name="csrf_token" t-att-value="request.csrf_token()"/>
+                                            <button type="submit" class="btn btn-success">
+                                                <i class="fa fa-check me-1"/> Aprobar Solicitud
                                             </button>
                                         </form>
                                         <!-- Botón Volver -->

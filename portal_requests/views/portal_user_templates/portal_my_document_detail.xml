@@ -22,19 +22,19 @@
                         <!-- Mensajes de éxito -->
                         <div t-if="success_message == 'revision_requested'" class="alert alert-success alert-dismissible fade show" role="alert">
                             <strong>¡Solicitud enviada!</strong> Su solicitud de revisión final ha sido registrada correctamente.
-                             <button type="button" class="btn-close" data-bs-dismiss="alert" aria-label="Close">&#160;</button>
+                             <button type="button" class="btn-close" data-bs-dismiss="alert" aria-label="Cerrar">&#160;</button>
                         </div>
                         <div t-if="success_message == 'message_posted'" class="alert alert-success alert-dismissible fade show" role="alert">
                             <strong>¡Mensaje enviado!</strong> Tu comentario ha sido publicado correctamente.
-                             <button type="button" class="btn-close" data-bs-dismiss="alert" aria-label="Close">&#160;</button>
+                             <button type="button" class="btn-close" data-bs-dismiss="alert" aria-label="Cerrar">&#160;</button>
                         </div>
                         <div t-if="success_message == 'resubmitted'" class="alert alert-success alert-dismissible fade show" role="alert">
                             <strong>¡Solicitud reenviada!</strong> La nueva versión se ha registrado y la solicitud ha vuelto a revisión.
-                             <button type="button" class="btn-close" data-bs-dismiss="alert" aria-label="Close">&#160;</button>
+                             <button type="button" class="btn-close" data-bs-dismiss="alert" aria-label="Cerrar">&#160;</button>
                         </div>
                         <div t-if="request.params.get('error') == 'invalid_file'" class="alert alert-danger alert-dismissible fade show" role="alert">
                             <strong>Archivo no válido.</strong> Solo se permiten documentos en formato PDF.
-                             <button type="button" class="btn-close" data-bs-dismiss="alert" aria-label="Close">&#160;</button>
+                             <button type="button" class="btn-close" data-bs-dismiss="alert" aria-label="Cerrar">&#160;</button>
                         </div>
 
                         <div class="row">

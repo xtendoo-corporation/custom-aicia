@@ -11,7 +11,7 @@
                           <!-- Tarjeta de Solicitudes de Proyectos: solo visible para Jefes de Equipo -->
                     <t t-if="is_equip_boss">
                         <t t-call="portal.portal_docs_entry">
-                            <t t-set="icon" t-value="'/portal_requests/static/description/project.png'"/>
+                            <t t-set="icon" t-value="'/portal_requests/static/src/img/request_project.svg'"/>
                             <t t-set="title">Solicitudes de Proyectos</t>
                             <t t-set="text">Consulta tus solicitudes de proyectos</t>
                             <t t-set="url" t-value="'/my/project_requests'"/>
@@ -19,79 +19,49 @@
                         </t>
                     </t>
                      <t t-call="portal.portal_docs_entry">
-                            <t t-set="icon" t-value="'/portal_requests/static/description/document.png'"/>
+                            <t t-set="icon" t-value="'/portal_requests/static/src/img/request_document.svg'"/>
                             <t t-set="title">Solicitudes de Documentos</t>
                             <t t-set="text">Consulta tus solicitudes de aprobación de documentos</t>
                             <t t-set="url" t-value="'/my/documents'"/>
                             <t t-set="config_card" t-value="True"/>
                         </t>
                      <t t-call="portal.portal_docs_entry">
-                            <t t-set="icon" t-value="'/portal_requests/static/description/invoicing.png'"/>
+                            <t t-set="icon" t-value="'/portal_requests/static/src/img/request_invoice.svg'"/>
                             <t t-set="title">Solicitudes de Facturas</t>
                             <t t-set="text">Consulta tus solicitudes de facturas</t>
                             <t t-set="url" t-value="'/my/invoices'"/>
                             <t t-set="config_card" t-value="True"/>
                         </t>
                     <t t-call="portal.portal_docs_entry">
-                            <t t-set="icon" t-value="'/portal_requests/static/description/expensive.png'"/>
+                            <t t-set="icon" t-value="'/portal_requests/static/src/img/request_expense.svg'"/>
                             <t t-set="title">Solicitudes de Gastos</t>
                             <t t-set="text">Consulta tus solicitudes de gastos</t>
                             <t t-set="url" t-value="'/my/expenses'"/>
                             <t t-set="config_card" t-value="True"/>
                         </t>
-
-<!--                    <t t-call="portal.portal_docs_entry">-->
-<!--                        <t t-set="icon" t-value="'/account/static/src/img/bill.svg'"/>-->
-<!--                        <t t-set="title">Solicitudes de Facturas</t>-->
-<!--                        <t t-set="text">Consulta tus solicitudes de facturas</t>-->
-<!--                        <t t-set="url" t-value="'/my/invoices'"/>-->
-<!--                        <t t-set="show_count" t-value="True"/>-->
-<!--                        <t t-set="count" t-value="invoice_request_count"/>-->
-<!--                    </t>-->
-<!--                    <t t-call="portal.portal_docs_entry">-->
-<!--                        <t t-set="icon" t-value="'/hr_expense/static/description/icon.png'"/>-->
-<!--                        <t t-set="title">Solicitudes de Gastos</t>-->
-<!--                        <t t-set="text">Consulta tus solicitudes de gastos</t>-->
-<!--                        <t t-set="url" t-value="'/my/expenses'"/>-->
-<!--                        <t t-set="show_count" t-value="True"/>-->
-<!--                        <t t-set="count" t-value="expense_count"/>-->
-
-
+                    <t t-call="portal.portal_docs_entry">
+                        <t t-set="icon" t-value="'/portal_requests/static/src/img/my_projects.svg'"/>
+                        <t t-set="title">Mis Proyectos</t>
+                        <t t-set="text">Consulta los proyectos de los que eres responsable</t>
+                        <t t-set="url" t-value="'/my/analytic_projects'"/>
+                        <t t-set="config_card" t-value="True"/>
+                    </t>
+                    <t t-call="portal.portal_docs_entry">
+                        <t t-set="icon" t-value="'/portal_requests/static/src/img/payments.svg'"/>
+                        <t t-set="title">Pagos</t>
+                        <t t-set="text">Consulta tus pagos realizados</t>
+                        <t t-set="url" t-value="'/my/payments'"/>
+                        <t t-set="config_card" t-value="True"/>
+                    </t>
+                    <t t-call="portal.portal_docs_entry">
+                        <t t-set="icon" t-value="'/portal_requests/static/src/img/my_payroll.svg'"/>
+                        <t t-set="title">Mis Nóminas</t>
+                        <t t-set="text">Consulta y descargar tus Nóminas</t>
+                        <t t-set="url" t-value="'/my/nomina'"/>
+                        <t t-set="config_card" t-value="True"/>
+                    </t>
                 </div>
             </xpath>
-
-            <!-- Añadir tarjeta "Mis Proyectos" PRIMERO en la sección de configuración -->
-            <!-- Buscar la primera tarjeta del grupo de configuración y añadir ANTES de ella -->
-            <xpath expr="//div[@id='portal_common_category']/t[1]" position="before">
-                <t t-call="portal.portal_docs_entry">
-                    <t t-set="icon" t-value="'/portal_requests/static/description/analytic_projects.svg'"/>
-                    <t t-set="title">Mis Proyectos</t>
-                    <t t-set="text">Consulta los proyectos de los que eres responsable</t>
-                    <t t-set="url" t-value="'/my/analytic_projects'"/>
-                    <t t-set="config_card" t-value="True"/>
-                </t>
-            </xpath>
-            <xpath expr="//div[@id='portal_common_category']/t[1]" position="after">
-                <t t-call="portal.portal_docs_entry">
-                    <t t-set="icon" t-value="'/portal_requests/static/description/nomina_nuevo.png'"/>
-                    <t t-set="icon_style" t-value="'max-width: 70px; max-height: 70px;'"/>
-                    <t t-set="title">Mis Nóminas</t>
-                    <t t-set="text">Consulta y descargar tus Nóminas</t>
-                    <t t-set="url" t-value="'/my/nomina'"/>
-                    <t t-set="config_card" t-value="True"/>
-                </t>
-            </xpath>
-            <xpath expr="//div[@id='portal_common_category']/t[1]" position="after">
-                <t t-call="portal.portal_docs_entry">
-                    <t t-set="icon" t-value="'/portal_requests/static/description/payment.png'"/>
-                    <t t-set="icon_style" t-value="'max-width: 64px; max-height: 64px;'"/>
-                    <t t-set="title">Pagos</t>
-                    <t t-set="text">Consulta tus pagos realizados</t>
-                    <t t-set="url" t-value="'/my/payments'"/>
-                    <t t-set="config_card" t-value="True"/>
-                </t>
-            </xpath>
-
 
         </template>
     </data>

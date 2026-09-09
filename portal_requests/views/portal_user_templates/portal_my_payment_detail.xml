@@ -441,7 +441,7 @@
                                                 <t t-foreach="invoice.invoice_line_ids" t-as="line">
                                                     <tr t-if="line.display_type == 'product'">
                                                         <td><span t-esc="line.name"/></td>
-                                                        <td class="text-end"><span t-esc="line.quantity"/></td>
+                                                        <td class="text-end"><span t-field="line.quantity"/></td>
                                                         <td class="text-end">
                                                             <span t-field="line.price_unit"
                                                                   t-options='{"widget": "monetary", "display_currency": invoice.currency_id}'/>

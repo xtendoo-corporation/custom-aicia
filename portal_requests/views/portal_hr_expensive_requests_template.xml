@@ -57,7 +57,7 @@
                                                     <label
                                                         class="col-form-label col-sm-auto s_website_form_label"
                                                         style="width: 200px" for="contact">
-                                                        <span class="s_website_form_label_content">Project
+                                                        <span class="s_website_form_label_content">Compañía
                                                         </span>
                                                         <span class="s_website_form_mark">*</span>
                                                     </label>
@@ -116,7 +116,7 @@
                                                     <label
                                                         class="col-form-label col-sm-auto s_website_form_label"
                                                         style="width: 200px" for="is_more">
-                                                        <span class="s_website_form_label_content">¿Es mas de 10.000€?</span>
+                                                        <span class="s_website_form_label_content">¿Es más de 10.000€?</span>
                                                         <span class="s_website_form_mark">*</span>
                                                     </label>
                                                     <div class="col-sm">
@@ -150,7 +150,7 @@
                                                     <div class="col-sm-auto" style="width: 200px;"/>
                                                     <div class="col-sm">
                                                         <button type="submit"
-                                                                class="btn btn-primary s_website_form_send">Submit
+                                                                class="btn btn-primary s_website_form_send">Enviar
                                                         </button>
                                                     </div>
                                                 </div>

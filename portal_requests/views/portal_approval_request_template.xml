@@ -20,7 +20,7 @@
                         <div class="row">
                             <div class="col-lg-8 mt-4 mt-lg-0">
                                 <p>
-                                    Fill out the form below to request an approval.
+                                    Rellene el formulario a continuación para solicitar una aprobación.
                                 </p>
                                 <div class="container">
                                     <form action="/portal/approval_request/submit" method="POST" enctype="multipart/form-data">
@@ -35,7 +35,7 @@
                                                 <div class="row s_col_no_resize s_col_no_bgcolor">
                                                     <label class="col-form-label col-sm-auto s_website_form_label"
                                                            style="width: 200px" for="contact">
-                                                        <span class="s_website_form_label_content">Type</span>
+                                                        <span class="s_website_form_label_content">Tipo</span>
                                                         <span class="s_website_form_mark">*</span>
                                                     </label>
                                                     <div class="col-sm">
@@ -67,7 +67,7 @@
                                                     <label
                                                         class="col-form-label col-sm-auto s_website_form_label"
                                                         style="width: 200px" for="contact">
-                                                        <span class="s_website_form_label_content">File
+                                                        <span class="s_website_form_label_content">Archivo
                                                         </span>
                                                         <span class="s_website_form_mark">*</span>
                                                     </label>
@@ -102,7 +102,7 @@
                                                     <label
                                                         class="col-form-label col-sm-auto s_website_form_label"
                                                         style="width: 200px" for="contact">
-                                                        <span class="s_website_form_label_content">Description
+                                                        <span class="s_website_form_label_content">Descripción
                                                         </span>
                                                         <span class="s_website_form_mark">*</span>
                                                     </label>
@@ -146,7 +146,7 @@
                                                     <div class="col-sm-auto" style="width: 200px;"/>
                                                     <div class="col-sm">
                                                         <button type="submit"
-                                                                class="btn btn-primary s_website_form_send">Submit
+                                                                class="btn btn-primary s_website_form_send">Enviar
                                                         </button>
                                                     </div>
                                                 </div>
