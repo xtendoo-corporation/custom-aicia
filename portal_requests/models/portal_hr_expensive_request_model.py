@@ -66,13 +66,16 @@ class PortalHrExpensiveRequest(models.Model):
 
     @api.depends('status')
     def _compute_show_solicitar_revision(self):
-        is_boss = self.env.user.has_group('portal_requests.group_equip_boss') or self.env.user.has_group(
-            'portal_requests.group_intern_partner_responsible')
+        # group_administrative implica group_equip_boss (ver res_group_data.xml),
+        # así que has_group('group_equip_boss') también es True para el
+        # Administrativo. Hay que excluirlo explícitamente para que sí vea
+        # el botón cuando su propia solicitud necesita ser reenviada.
+        user = self.env.user
+        is_boss = (
+            user.has_group('portal_requests.group_equip_boss')
+            and not user.has_group('portal_requests.group_administrative')
+        ) or user.has_group('portal_requests.group_intern_partner_responsible')
         for rec in self:
-            if rec.status == 'to_revise' and not is_boss:
-                print("Setting show_solicitar_revision to True for record ID:", rec.id)
-            else:
-                print("Setting show_solicitar_revision to False for record ID:", rec.id)
             rec.show_solicitar_revision = (rec.status == 'to_revise') and (not is_boss)
 
     show_solicitar_revision = fields.Boolean(
@@ -80,6 +83,31 @@ class PortalHrExpensiveRequest(models.Model):
         compute='_compute_show_solicitar_revision',
         store=False,
     )
+
+    show_approve_button = fields.Boolean(
+        string='Mostrar Botón Aprobar',
+        compute='_compute_show_approve_button',
+        store=False,
+    )
+
+    @api.depends('status')
+    def _compute_show_approve_button(self):
+        """Misma lógica de visibilidad que la botonera del backend
+        (views/interface/portal_hr_expensive_request.xml): en cada etapa,
+        puede aprobar quien tenga el grupo correspondiente. group_equip_boss
+        ya cubre también al Administrativo (lo implica), así que no hace
+        falta distinguirlo aparte."""
+        user = self.env.user
+        for rec in self:
+            if rec.status == 'approved_by_boss_group':
+                rec.show_approve_button = user.has_group('portal_requests.group_equip_boss')
+            elif rec.status == 'approved_purchase_responsible':
+                rec.show_approve_button = user.has_group(rec._second_approver_group_xmlid())
+            elif rec.status == 'approved_director':
+                rec.show_approve_button = user.has_group('portal_requests.group_director_manager')
+            else:
+                rec.show_approve_button = False
+
     show_project_credit = fields.Boolean(string='Mostrar Saldo del Proyecto', compute='_compute_show_project_credit')
     @api.depends('user_id', 'project')
     def _compute_show_project_credit(self):
@@ -157,6 +185,9 @@ class PortalHrExpensiveRequest(models.Model):
                                           "success")
 
         elif self.status == 'to_revise':
+            # A petición del cliente, el Administrativo vuelve a pasar por
+            # la aprobación del Jefe de Equipo al reenviar, igual que al
+            # solicitar por primera vez.
             if self.equip_boss == self.user_id:
                 user_to_notify = self.env['res.users'].search([('group_ids', 'in', self.env.ref(self._second_approver_group_xmlid()).id)])
                 self.status = 'approved_purchase_responsible'

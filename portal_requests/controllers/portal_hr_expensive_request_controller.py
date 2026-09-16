@@ -9,7 +9,6 @@ class PortalHrExpensiveRequestController(Controller):
         # Obtener el usuario actual
         user = request.env.user
         # Obtener las compañías permitidas para el usuario logueado
-        # Obtener las compañías permitidas para el usuario logueado
         allowed_work_groups = request.env['portal.work.group'].search(
             request.env['portal.work.group']._boss_or_administrative_domain(user)
         )
@@ -43,8 +42,12 @@ class PortalHrExpensiveRequestController(Controller):
         user_name = request.env['res.users'].sudo().browse(int(user_id)).name
         company_name = request.env['account.analytic.account'].sudo().browse(project).name
         is_more = post.get('is_more')
-        #Si solicita el jefe de equipo
-        if int(user_id) == int(work_group_id.equip_boss.id):
+        requester = request.env['res.users'].sudo().browse(int(user_id))
+        # A petición del cliente, el Administrativo vuelve a pasar por la
+        # aprobación del Jefe de Equipo: solo el propio Jefe de Equipo
+        # solicita directamente al Responsable de Compras (o de
+        # Clientes/Becarios para gratificaciones).
+        if int(requester.id) == int(work_group_id.equip_boss.id):
             status = 'approved_purchase_responsible'
             # Usar sudo para evitar error de permisos al acceder a grupos desde portal
             group_xmlid = (
@@ -117,7 +120,7 @@ class PortalHrExpensiveRequestController(Controller):
                 'email_to': email,
                 'body_html': body_html,
             }
-            mail = request.env['mail.mail'].create(mail_values)
+            mail = request.env['mail.mail'].sudo().create(mail_values)
 
             mail.send()
 

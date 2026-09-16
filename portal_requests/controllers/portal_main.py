@@ -1160,6 +1160,19 @@ class PortalRequestsCustomerPortal(CustomerPortal):
         # Redirigir de vuelta al detalle de la solicitud con mensaje de éxito
         return request.redirect(f'/my/expenses/{expense_id}?success=revision_requested')
 
+    @http.route(['/my/expenses/<int:expense_id>/approve'], type='http', auth="user", website=True, methods=['POST'], csrf=True)
+    def portal_expense_approve(self, expense_id, **kw):
+        """Permite aprobar una solicitud de gastos desde el portal, en
+        cualquiera de sus etapas (Jefe de Equipo/Administrativo, Responsable
+        de Compras o de Clientes/Becarios, Director Gerente), replicando la
+        misma lógica de visibilidad que la botonera del backend
+        (ver show_approve_button en el modelo)."""
+        expense = request.env['portal.hr.expensive.request'].sudo().browse(expense_id)
+        if not expense.exists() or not expense.show_approve_button:
+            return request.redirect('/my')
+        expense.action_approve()
+        return request.redirect(f'/my/expenses/{expense_id}?success=approved')
+
     @http.route(['/my/expenses/thank-you'], type='http', auth="public", website=True)
     def portal_expense_thank_you(self, **kw):
         """Página de confirmación después de enviar una solicitud de gastos"""
@@ -1585,8 +1598,19 @@ class PortalRequestsCustomerPortal(CustomerPortal):
         rechazado y reenviar la solicitud dentro del mismo flujo."""
         user = request.env.user
         document = request.env['document.approval'].sudo().browse(document_id)
-        if not document.exists() or document.user_id != user:
+        if not document.exists():
             return request.redirect('/my')
+
+        # Igual que en el resto de rutas de detalle de documento: puede
+        # reenviar tanto el propietario como el jefe de equipo/administrativo
+        # del grupo de trabajo del documento.
+        is_owner = document.user_id == user
+        is_boss_of_group = False
+        if user.has_group('portal_requests.group_equip_boss') and document.work_group_id:
+            is_boss_of_group = document.work_group_id._is_boss_or_administrative(user)
+        if not is_owner and not is_boss_of_group:
+            return request.redirect('/my')
+
         if document.status != 'rejected':
             return request.redirect(f'/my/documents/{document_id}')
         file_storage = request.httprequest.files.get('attachment')
@@ -2182,18 +2206,19 @@ class PortalRequestsCustomerPortal(CustomerPortal):
     @http.route(['/my/project_requests/<int:request_id>'], type='http', auth="user", website=True)
     def portal_my_project_request_detail(self, request_id, success=None, **kw):
         """Muestra el detalle de una solicitud de proyecto"""
-        # Solo los jefes de equipo pueden acceder
-        if not request.env.user.has_group('portal_requests.group_equip_boss'):
+        user = request.env.user
+        project_request = request.env['portal.project.request'].sudo().browse(request_id)
+        if not project_request.exists():
             return request.redirect('/my')
 
-        # Buscar la solicitud del usuario
-        project_request = request.env['portal.project.request'].search([
-            ('id', '=', request_id),
-            ('user_id', '=', request.env.user.id)
-        ], limit=1)
-
-        # Si no existe o no es del usuario, redirigir
-        if not project_request:
+        # Puede acceder tanto el solicitante original como el jefe de
+        # equipo/administrativo del grupo de trabajo de la solicitud, igual
+        # que en Solicitudes de Documentos.
+        is_owner = project_request.user_id == user
+        is_boss_of_group = False
+        if user.has_group('portal_requests.group_equip_boss') and project_request.work_group_id:
+            is_boss_of_group = project_request.work_group_id._is_boss_or_administrative(user)
+        if not is_owner and not is_boss_of_group:
             return request.redirect('/my')
 
         # Obtener los mensajes del chatter
@@ -2284,6 +2309,27 @@ class PortalRequestsCustomerPortal(CustomerPortal):
 
         # Redirigir de vuelta al detalle
         return request.redirect(f'/my/project_requests/{request_id}?success=message_posted')
+
+    @http.route(['/my/project_requests/<int:request_id>/resubmit'], type='http', auth="user", website=True, methods=['POST'], csrf=True)
+    def portal_project_request_resubmit(self, request_id, **post):
+        """Permite reenviar a revisión una solicitud de proyecto rechazada,
+        sin tener que crear una solicitud nueva. Puede hacerlo tanto el
+        solicitante original como el jefe de equipo/administrativo del
+        grupo de trabajo, igual que en Solicitudes de Documentos."""
+        user = request.env.user
+        project_request = request.env['portal.project.request'].sudo().browse(request_id)
+        if not project_request.exists():
+            return request.redirect('/my')
+        is_owner = project_request.user_id == user
+        is_boss_of_group = False
+        if user.has_group('portal_requests.group_equip_boss') and project_request.work_group_id:
+            is_boss_of_group = project_request.work_group_id._is_boss_or_administrative(user)
+        if not is_owner and not is_boss_of_group:
+            return request.redirect('/my')
+        if project_request.approved or not project_request.is_revised:
+            return request.redirect(f'/my/project_requests/{request_id}')
+        project_request.action_resubmit()
+        return request.redirect(f'/my/project_requests/{request_id}?success=resubmitted')
 
     @http.route(['/my/analytic_projects/<int:project_id>/add_attachment'], type='http', auth="user", website=True, methods=['POST'], csrf=True)
     def portal_project_add_attachment(self, project_id, **post):

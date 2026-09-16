@@ -98,6 +98,30 @@
                                                         </div>
                                                     </div>
                                                 </div>
+                                                <!--MIEMBROS DEL PROYECTO (opcional)-->
+                                                <div
+                                                    class="mb-0 py-2 col-12 s_website_form_field s_website_form_model_required"
+                                                    data-type="char" data-name="Field">
+                                                    <div class="row s_col_no_resize s_col_no_bgcolor">
+                                                        <label
+                                                            class="col-form-label col-sm-auto s_website_form_label"
+                                                            style="width: 200px" for="member_ids">
+                                                            <span class="s_website_form_label_content">Miembros del proyecto
+                                                            </span>
+                                                        </label>
+                                                        <div class="col-sm">
+                                                            <div id="member_ids" class="list-group" style="max-height: 220px; overflow-y: auto;">
+                                                                <t t-foreach="project_members" t-as="pm">
+                                                                    <label class="list-group-item d-flex align-items-center gap-2" t-att-data-groups="pm['groups_csv']">
+                                                                        <input type="checkbox" class="form-check-input mt-0 flex-shrink-0" name="member_ids[]" t-att-value="pm['user'].id"/>
+                                                                        <t t-esc="pm['user'].name"/>
+                                                                    </label>
+                                                                </t>
+                                                            </div>
+                                                            <small class="form-text text-muted">Opcional. Marca uno o varios miembros del grupo de trabajo elegido.</small>
+                                                        </div>
+                                                    </div>
+                                                </div>
                                                 <!--CLIENT REQUIRED-->
                                                 <div
     class="mb-0 py-2 col-12 s_website_form_field s_website_form_required s_website_form_model_required"
@@ -116,26 +140,6 @@
         </div>
     </div>
 </div>
-<!--                                                 &lt;!&ndash;responsibles REQUIRED&ndash;&gt;-->
-<!--                                                <div-->
-<!--                                                    class="mb-0 py-2 col-12 s_website_form_field s_website_form_required s_website_form_model_required"-->
-<!--                                                    data-type="date" data-name="Field">-->
-<!--                                                    <div class="row s_col_no_resize s_col_no_bgcolor">-->
-<!--                                                        <label-->
-<!--                                                            class="col-form-label col-sm-auto s_website_form_label"-->
-<!--                                                            style="width: 200px" for="contact">-->
-<!--                                                            <span class="s_website_form_label_content">Reponsilbes-->
-<!--                                                            </span>-->
-<!--                                                            <span class="s_website_form_mark">*</span>-->
-<!--                                                        </label>-->
-<!--                                                        <div class="col-sm">-->
-<!--                                                            <select id="responsible_id" name="responsible_id[]"-->
-<!--                                                                    class="form-control s_website_form_input advanced-select" Multiple="">-->
-
-<!--                                                            </select>-->
-<!--                                                        </div>-->
-<!--                                                    </div>-->
-<!--                                                </div>-->
                                                 <!-- TYPE REQUIRED -->
                                                 <!--PROJECT NAME REQUIRED-->
                                                 <div
@@ -145,7 +149,7 @@
                                                         <label
                                                             class="col-form-label col-sm-auto s_website_form_label"
                                                             style="width: 200px" for="contact">
-                                                            <span class="s_website_form_label_content">Proyecto
+                                                            <span class="s_website_form_label_content">Nombre proyecto
                                                             </span>
                                                             <span class="s_website_form_mark">*</span>
                                                         </label>
@@ -222,8 +226,7 @@
                                                         <label
                                                             class="col-form-label col-sm-auto s_website_form_label"
                                                             style="width: 200px" for="contact">
-                                                            <span class="s_website_form_label_content">Archivo de
-                                                                presupuesto
+                                                            <span class="s_website_form_label_content">Ficha de Alta
                                                             </span>
                                                             <span class="s_website_form_mark">*</span>
                                                         </label>
@@ -231,7 +234,7 @@
                                                             <input type="file" class="form-control"
                                                                    id="budget_file"
                                                                    name="budget_file"
-                                                                   accept="application/pdf"/>
+                                                                   accept=".xls,.xlsx,application/vnd.ms-excel,application/vnd.openxmlformats-officedocument.spreadsheetml.sheet"/>
                                                         </div>
                                                     </div>
                                                 </div>
@@ -325,6 +328,7 @@
                                         const date_end = document.getElementById('end_date');
                                         const signed_contract = document.getElementById('signed_contract');
                                         const budget_file = document.getElementById('budget_file');
+                                        const partner_id_char = document.getElementById('partner_id_char');
                                         //Campos end
                                         const company_id_end = document.getElementById('company_id_end');
                                         const project_end_date_end = document.getElementById('project_end_date_end');
@@ -379,6 +383,37 @@
 
                                             }
                                         });
+
+                                        // Filtra las casillas de "Miembros del proyecto" según el
+                                        // grupo de trabajo elegido: cada etiqueta lleva en el
+                                        // atributo data-groups los ids de los grupos a los que
+                                        // pertenece ese usuario (separados por comas).
+                                        const workGroupSelect = document.getElementById('work_group_id');
+                                        const memberList = document.getElementById('member_ids');
+
+                                        function filterProjectMembersByGroup() {
+                                            if (!workGroupSelect || !memberList) {
+                                                return;
+                                            }
+                                            const selectedGroup = workGroupSelect.value;
+                                            memberList.querySelectorAll('label[data-groups]').forEach(function (item) {
+                                                const groups = (item.getAttribute('data-groups') || '').split(',');
+                                                const visible = groups.indexOf(selectedGroup) !== -1;
+                                                item.hidden = !visible;
+                                                const checkbox = item.querySelector('input[type="checkbox"]');
+                                                if (checkbox) {
+                                                    checkbox.disabled = !visible;
+                                                    if (!visible) {
+                                                        checkbox.checked = false;
+                                                    }
+                                                }
+                                            });
+                                        }
+
+                                        if (workGroupSelect) {
+                                            workGroupSelect.addEventListener('change', filterProjectMembersByGroup);
+                                            filterProjectMembersByGroup();
+                                        }
                                     </script>
                                 </div>
                             </div>

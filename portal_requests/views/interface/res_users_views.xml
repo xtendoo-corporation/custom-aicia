@@ -1,0 +1,29 @@
+<?xml version="1.0" encoding="utf-8"?>
+<odoo>
+    <data>
+        <!-- El selector de rol estándar de Odoo (privilegio "Tipo de
+             usuario": Jefe de Equipo, Administrativo, Jefe de Proyecto,
+             Gestor, etc.) ya existe en la pestaña "Permisos de Acceso" de la
+             ficha de usuario, pero base.view_users_form lo oculta
+             expresamente para usuarios portal (invisible="share"), dejando
+             esa pestaña vacía para ellos. Quitamos esa condición para que
+             también lo vean. -->
+        <record id="view_users_form_show_role_for_portal" model="ir.ui.view">
+            <field name="name">res.users.form.show.role.for.portal</field>
+            <field name="model">res.users</field>
+            <field name="inherit_id" ref="base.view_users_form"/>
+            <field name="arch" type="xml">
+                <!-- Un <field name="group_ids" .../> como localizador no
+                     sirve: Odoo solo compara el atributo "name" para
+                     localizar <field>, así que siempre encuentra el PRIMER
+                     "group_ids" del formulario (el de modo técnico/debug),
+                     no el segundo (el que tiene invisible="share"). Hace
+                     falta un <xpath> con predicado de posición para acertar
+                     con el segundo. -->
+                <xpath expr="//page[@name='access_rights']/field[@name='group_ids'][2]" position="attributes">
+                    <attribute name="invisible">False</attribute>
+                </xpath>
+            </field>
+        </record>
+    </data>
+</odoo>

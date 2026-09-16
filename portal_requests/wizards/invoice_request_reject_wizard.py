@@ -27,7 +27,9 @@ class InvoiceResquestRejectWizard(models.TransientModel):
         self.ensure_one()
         if not self.request_id:
             raise models.ValidationError(_('No hay solicitud seleccionada.'))
-        #Comprobamos si el que realiza la solicitud es el jefe de equipo o el responsabel del proyecto.
+        # A petición del cliente, el Administrativo vuelve a pasar por la
+        # aprobación del Jefe de Equipo: solo se salta el paso "Solicitar
+        # Revisión" cuando quien solicitó es el propio Jefe de Equipo.
         status = 'to_revise'
         if self.request_id.equip_boss == self.request_id.user_id:
             status = 'approved_by_boss_group'

@@ -111,6 +111,7 @@
                         </group>
                         <group>
                             <field name="notes" widget="textarea"/>
+                            <field name="comment" widget="textarea"/>
                         </group>
                         <group>
                             <field name="l10n_es_edi_facturae_reason_code" invisible="move_type == 'out_invoice'"/>

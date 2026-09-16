@@ -168,9 +168,30 @@
                         <div class="alert alert-success alert-dismissible fade show" role="alert">
                             <strong>¡Éxito!</strong>
                             <span t-if="success_message == 'message_posted'">Tu mensaje ha sido enviado correctamente.</span>
-                            <button type="button" class="btn-close" data-bs-dismiss="alert" aria-label="Cerrar"/>
+                            <span t-if="success_message == 'resubmitted'">La solicitud se ha reenviado a revisión correctamente.</span>
+                            <button type="button" class="btn-close" data-bs-dismiss="alert" aria-label="Close"/>
                         </div>
                     </t>
+
+                    <!-- Reenvío tras rechazo: evita tener que crear una solicitud nueva -->
+                    <div class="row" t-if="not project_request.approved and project_request.is_revised">
+                        <div class="col-12">
+                            <div class="card mb-3 border-danger">
+                                <div class="card-header bg-danger text-white">
+                                    <h5 class="mb-0"><i class="fa fa-refresh me-1"/> Solicitud rechazada: corregir y reenviar</h5>
+                                </div>
+                                <div class="card-body">
+                                    <p>Esta solicitud fue rechazada. Puede subir una nueva versión de los archivos (sección "Archivos Adjuntos" más abajo) y reenviarla a revisión sin tener que crear una solicitud nueva.</p>
+                                    <form method="POST" t-attf-action="/my/project_requests/#{project_request.id}/resubmit">
+                                        <input type="hidden" name="csrf_token" t-att-value="request.csrf_token()"/>
+                                        <button type="submit" class="btn btn-danger">
+                                            <i class="fa fa-paper-plane me-1"/> Reenviar a revisión
+                                        </button>
+                                    </form>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
 
                     <div class="row">
                         <div class="col-12">
@@ -198,6 +219,17 @@
                                             <div class="mb-3" t-if="project_request.work_group_id">
                                                 <strong>Grupo de Trabajo:</strong>
                                                 <p><span t-esc="project_request.work_group_id.name"/></p>
+                                            </div>
+                                            <div class="mb-3" t-if="project_request.member_ids">
+                                                <strong>Miembros del Proyecto:</strong>
+                                                <p class="d-flex flex-wrap gap-2 mt-1">
+                                                    <t t-foreach="project_request.member_ids" t-as="member">
+                                                        <span class="badge bg-secondary rounded-pill">
+                                                            <i class="fa fa-user me-1"/>
+                                                            <t t-esc="member.name"/>
+                                                        </span>
+                                                    </t>
+                                                </p>
                                             </div>
                                             <div class="mb-3" t-if="project_request.partner_id">
                                                 <strong>Cliente:</strong>

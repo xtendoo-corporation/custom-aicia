@@ -22,6 +22,7 @@ class PortalInvoiceRequest(models.Model):
     partner_id = fields.Many2one('res.partner', string='Client', required=True)
     amount = fields.Float(string='Amount', required=True)
     notes = fields.Text(string='Invoice Concept')
+    comment = fields.Text(string='Comentario')
     currency_id = fields.Many2one(string="Currency", related='user_id.company_id.currency_id', readonly=True)
     move_type = fields.Selection([
         ('out_invoice', 'Customer Invoice'),
@@ -84,7 +85,15 @@ class PortalInvoiceRequest(models.Model):
 
     @api.depends('status')
     def _compute_show_solicitar_revision(self):
-        is_boss = self.env.user.sudo().has_group('portal_requests.group_equip_boss') or self.env.user.sudo().has_group('portal_requests.group_intern_partner_responsible')
+        # group_administrative implica group_equip_boss (ver res_group_data.xml),
+        # así que has_group('group_equip_boss') también es True para el
+        # Administrativo. Hay que excluirlo explícitamente para que sí vea
+        # el botón cuando su propia solicitud necesita ser reenviada.
+        user = self.env.user.sudo()
+        is_boss = (
+            user.has_group('portal_requests.group_equip_boss')
+            and not user.has_group('portal_requests.group_administrative')
+        ) or user.has_group('portal_requests.group_intern_partner_responsible')
         for rec in self:
             rec.show_solicitar_revision = (rec.status == 'to_revise') and (not is_boss)
 
@@ -104,6 +113,7 @@ class PortalInvoiceRequest(models.Model):
             invoice_request_link = f"/web#id={self.id}&cids=1-24-28-29-32-25-30-31&menu_id=899&active_id=1&model=portal.invoice.request&view_type=form"
             project_code = self.analytic_id.code or ''
             internal_ref = self.partner_id.ref or ''
+            invoice_date = self.date.strftime('%d-%m-%Y') if self.date else ''
             if type == 'to_revise':
                 for admin_user in users_to_send:
                     admin_name = admin_user.name
@@ -136,6 +146,7 @@ class PortalInvoiceRequest(models.Model):
                                 <ul>
                                     <li><strong>Código de proyecto:</strong> {project_code}</li>
                                     <li><strong>Referencia interna:</strong> {internal_ref}</li>
+                                    <li><strong>Fecha:</strong> {invoice_date}</li>
                                 </ul>
                                 <p>Puede acceder a ella a traves del siguiente enlace:</p>
                                 <p><strong>Enlace:</strong> <a href="{invoice_request_link}">Solicitud</a></p>
@@ -194,7 +205,12 @@ class PortalInvoiceRequest(models.Model):
                 if boss_or_admin and boss_or_admin.partner_id:
                     self.message_subscribe(partner_ids=[boss_or_admin.partner_id.id])
             self.status = 'approved_by_client_responsible'
-            user_to_send = self.env['res.users'].search([('work_group_ids', 'in', self.env.ref('portal_requests.group_intern_partner_responsible').id)])
+            # 'work_group_ids' es un M2M a portal.work.group (equipos de
+            # trabajo), no a res.groups: comparar su id contra el id del
+            # grupo de permisos no localizaba a nadie. group.user_ids es la
+            # forma correcta de obtener a todos los miembros del grupo.
+            group = self.env.ref('portal_requests.group_intern_partner_responsible').sudo()
+            user_to_send = group.user_ids
             move_text = "factura" if self.move_type == 'out_invoice' else "factura rectificativa"
             # Usar sudo() para acceder a partner_id.name para evitar errores de permisos
             self._send_invoice_request_mail(type, user_to_send, move_text, self.user_id.name, self.analytic_id.name, self.partner_id.sudo().name)
@@ -296,6 +312,11 @@ class PortalInvoiceRequest(models.Model):
         group = self.analytic_id.work_group_id
         invoice.add_followers_from_request(self)
         #self.invoice_created.add_partner_id_to_followers(group)
+        if self.comment:
+            invoice.sudo().message_post(
+                body=self.comment,
+                subtype_id=self.env.ref('mail.mt_note').id,
+            )
 
     def action_view_invoice(self):
         self.ensure_one()

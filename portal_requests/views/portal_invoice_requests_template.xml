@@ -23,7 +23,7 @@
                                     Por favor, complete el siguiente formulario para enviar una solicitud de factura.
                                 </p>
                                 <div class="container">
-                                    <form action="/portal/invoice_request/submit" method="POST">
+                                    <form action="/portal/invoice_request/submit" method="POST" enctype="multipart/form-data">
                                         <input type="hidden" name="csrf_token" t-att-value="request.csrf_token()"/>
                                         <div class="s_website_form_rows row s_col_no_bgcolor">
                                             <!--COMPANY REQUIRED-->
@@ -34,14 +34,14 @@
                                                     <label
                                                         class="col-form-label col-sm-auto s_website_form_label"
                                                         style="width: 200px" for="contact">
-                                                        <span class="s_website_form_label_content">Compañía
+                                                        <span class="s_website_form_label_content">Project
                                                         </span>
                                                         <span class="s_website_form_mark">*</span>
                                                     </label>
                                                     <div class="col-sm">
                                                         <select id="company_id" name="company_id"
                                                                 class="form-control s_website_form_input">
-                                                            <option value="0">Selecciona un proyecto</option>
+                                                            <option value="0">Select a project</option>
                                                             <t t-foreach="companies" t-as="company">
                                                                 <option t-att-value="company.id">
                                                                     <t t-esc="company.name"/>
@@ -59,7 +59,7 @@
                                                     <label
                                                         class="col-form-label col-sm-auto s_website_form_label"
                                                         style="width: 200px" for="contact">
-                                                        <span class="s_website_form_label_content">Cliente
+                                                        <span class="s_website_form_label_content">Client
                                                         </span>
                                                         <span class="s_website_form_mark">*</span>
                                                     </label>
@@ -78,15 +78,32 @@
                                                 <div class="row s_col_no_resize s_col_no_bgcolor">
                                                     <label class="col-form-label col-sm-auto s_website_form_label"
                                                            style="width: 200px" for="contact">
-                                                        <span class="s_website_form_label_content">Tipo</span>
+                                                        <span class="s_website_form_label_content">Type</span>
                                                         <span class="s_website_form_mark">*</span>
                                                     </label>
                                                     <div class="col-sm">
                                                         <select id="move_type" name="move_type"
                                                                 class="form-control s_website_form_input">
-                                                            <option value="out_invoice">Factura</option>
-                                                            <option value="out_refund">Abono</option>
+                                                            <option value="out_invoice">Invoice</option>
+                                                            <option value="out_refund">Refund</option>
                                                         </select>
+                                                    </div>
+                                                </div>
+                                            </div>
+
+                                            <!--FILE (Documento Emisión de Factura)-->
+                                            <div
+                                                class="mb-0 py-2 col-12 s_website_form_field"
+                                                data-type="binary" data-name="Field">
+                                                <div class="row s_col_no_resize s_col_no_bgcolor">
+                                                    <label
+                                                        class="col-form-label col-sm-auto s_website_form_label"
+                                                        style="width: 200px" for="contact">
+                                                        <span class="s_website_form_label_content">Adjuntar Documento Emisión de Factura
+                                                        </span>
+                                                    </label>
+                                                    <div class="col-sm">
+                                                        <input type="file" class="form-control" name="file" accept="application/pdf"/>
                                                     </div>
                                                 </div>
                                             </div>
@@ -134,7 +151,7 @@
                                                     <label
                                                         class="col-form-label col-sm-auto s_website_form_label"
                                                         style="width: 200px" for="contact">
-                                                        <span class="s_website_form_label_content">Fecha
+                                                        <span class="s_website_form_label_content">Date
                                                         </span>
                                                         <span class="s_website_form_mark">*</span>
                                                     </label>
@@ -153,7 +170,7 @@
                                                 <div class="row s_col_no_resize s_col_no_bgcolor">
                                                     <label class="col-form-label col-sm-auto s_website_form_label"
                                                            style="width: 200px" for="contact">
-                                                        <span class="s_website_form_label_content">Motivo</span>
+                                                        <span class="s_website_form_label_content">Reason</span>
                                                         <span class="s_website_form_mark">*</span>
                                                     </label>
                                                     <div class="col-sm">
@@ -178,13 +195,31 @@
                                                     <label
                                                         class="col-form-label col-sm-auto s_website_form_label"
                                                         style="width: 200px" for="contact">
-                                                        <span class="s_website_form_label_content">Importe
+                                                        <span class="s_website_form_label_content">Importe (sin IVA)
                                                         </span>
                                                         <span class="s_website_form_mark">*</span>
                                                     </label>
                                                     <div class="col-sm">
                                                         <input type="number" id="amount" name="amount"
                                                                class="form-control s_website_form_input"/>
+                                                    </div>
+                                                </div>
+                                            </div>
+                                            <!--CONCEPTO (opcional)-->
+                                            <div
+                                                class="mb-0 py-2 col-12 s_website_form_field"
+                                                data-type="char" data-name="Field">
+                                                <div class="row s_col_no_resize s_col_no_bgcolor">
+                                                    <label
+                                                        class="col-form-label col-sm-auto s_website_form_label"
+                                                        style="width: 200px" for="contact">
+                                                        <span class="s_website_form_label_content">Concepto
+                                                        </span>
+                                                    </label>
+                                                    <div class="col-sm">
+                                                        <textarea id="notes" name="notes"
+                                                                  class="form-control s_website_form_input"
+                                                                  rows="4"/>
                                                     </div>
                                                 </div>
                                             </div>
@@ -200,7 +235,7 @@
                                                         </span>
                                                     </label>
                                                     <div class="col-sm">
-                                                        <textarea id="notes" name="notes"
+                                                        <textarea id="comment" name="comment"
                                                                   class="form-control s_website_form_input"
                                                                   rows="4"/>
                                                     </div>
@@ -213,7 +248,7 @@
                                                     <div class="col-sm-auto" style="width: 200px;"/>
                                                     <div class="col-sm">
                                                         <button type="submit"
-                                                                class="btn btn-primary s_website_form_send">Enviar
+                                                                class="btn btn-primary s_website_form_send">Submit
                                                         </button>
                                                     </div>
                                                 </div>
@@ -231,7 +266,7 @@
                                             clientSelect.addEventListener('change', function () {
                                                 const clientId = clientSelect.value;
                                                 const companyId = companySelect.value;
-                                                invoiceSelect.innerHTML = '<option value="">Cargando...</option>';
+                                                invoiceSelect.innerHTML = '<option value="">Loading...</option>';
                                                 $.ajax({
                                                     url: '/get_invoice_by_clients',
                                                     type: 'GET',
@@ -246,7 +281,7 @@
                                                         if (invoices.length === 0) {
                                                             const option = document.createElement('option');
                                                             option.value = '0';
-                                                            option.textContent = 'Facturas no encontradas';
+                                                            option.textContent = 'Invoices not found';
                                                             invoiceSelect.appendChild(option);
                                                         } else {
                                                             invoices.forEach(function(invoice) {
@@ -270,7 +305,7 @@
 
                                             companySelect.addEventListener('change', function () {
                                                 const companyId = companySelect.value;
-                                                clientSelect.innerHTML = '<option value="">Cargando...</option>';
+                                                clientSelect.innerHTML = '<option value="">Loading...</option>';
                                                 $.ajax({
                                                     url: '/get_clients_by_analytic',
                                                     type: 'GET',
@@ -282,7 +317,7 @@
                                                         if (clients.length === 0) {
                                                             const option = document.createElement('option');
                                                             option.value = '0';
-                                                            option.textContent = 'Cliente no encontrado';
+                                                            option.textContent = 'Client not found';
                                                             clientSelect.appendChild(option);
                                                         } else {
                                                             clients.forEach(function(client) {
@@ -325,7 +360,7 @@
     </template>
 
     <record id="portal_invoice_menu" model="website.menu">
-        <field name="name">Solicitud de Facturas</field>
+        <field name="name">Invoice Request</field>
         <field name="url">/portal/invoice_request</field>
         <field name="parent_id" ref="portal_approval_menu"/>
         <field name="sequence" type="int">120</field>

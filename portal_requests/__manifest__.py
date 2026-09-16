@@ -57,6 +57,7 @@
         'views/interface/etiqueta_categoria_views.xml',
         'views/interface/portal_hr_expensive_request.xml',
         'views/interface/ir_attachment_views.xml',
+        'views/interface/res_users_views.xml',
         'views/portal_user_templates/portal_user_templates.xml',
         'views/portal_user_templates/portal_my_home_requests.xml',
         'views/portal_user_templates/portal_my_expenses_list.xml',

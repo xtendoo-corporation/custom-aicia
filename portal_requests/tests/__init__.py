@@ -11,9 +11,17 @@ from . import test_pdf_utils
 from . import test_signed_suffix
 from . import test_expense_type
 from . import test_document_resubmit
+from . import test_document_resubmit_access
+from . import test_project_request_resubmit
+from . import test_invoice_request_routing
+from . import test_invoice_request_attachment
+from . import test_invoice_request_email_date
+from . import test_invoice_request_comment
+from . import test_expense_request_routing_and_approve
 from . import test_gestor_access
 from . import test_notification_recipients
 from . import test_pdf_restriction_http
 from . import test_state_change_notifications
 from . import test_expense_threshold
 from . import test_administrative_access
+from . import test_project_request_members

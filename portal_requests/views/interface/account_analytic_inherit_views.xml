@@ -33,6 +33,7 @@
                 <field name="work_group_id" readonly="not user_can_edit"/>
                 <field name="responsible_domain" invisible="1"/>
                 <field name="responsible_id" readonly="not user_can_edit"/>
+                <field name="member_ids" widget="many2many_tags" readonly="not user_can_edit"/>
             </xpath>
             <xpath expr="//div[@name='button_box']" position="inside">
                 <!-- Smart button de adjuntos con icono Odoo -->

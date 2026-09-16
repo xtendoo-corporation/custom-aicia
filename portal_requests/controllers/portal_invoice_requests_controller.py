@@ -1,7 +1,8 @@
 from odoo.http import request, Controller, route
+import base64
 import logging
 
-from .portal_pdf_utils import is_pdf
+from .portal_pdf_utils import ensure_pdf, is_pdf
 
 _logger = logging.getLogger(__name__)
 
@@ -43,6 +44,7 @@ class PortalInvoiceController(Controller):
         partner_id = int(post.get('partner_id'))
         amount = float(post.get('amount'))
         notes = post.get('notes')
+        comment = post.get('comment')
         move_type = post.get('move_type')
         date = post.get('date')
         invoice_to_refund = post.get('invoice_id')
@@ -56,7 +58,11 @@ class PortalInvoiceController(Controller):
         if move_type == 'out_invoice':
             l10n_es_edi_facturae_reason_code = ""
             invoice_to_refund = False
-        if user_id == work_group_id.equip_boss.id:
+        # A petición del cliente, el Administrativo vuelve a pasar por la
+        # aprobación del Jefe de Equipo: solo el propio Jefe de Equipo
+        # solicita directamente al Responsable de Clientes.
+        requester_is_boss_or_administrative = user_id == work_group_id.equip_boss.id
+        if requester_is_boss_or_administrative:
             state = 'approved_by_client_responsible'
         else:
             state = 'approved_by_boss_group'
@@ -67,6 +73,7 @@ class PortalInvoiceController(Controller):
             'partner_id': partner_id,
             'amount': amount,
             'notes': notes,
+            'comment': comment,
             'move_type': move_type,
             'date': date,
             'l10n_es_edi_facturae_reason_code': l10n_es_edi_facturae_reason_code,
@@ -74,12 +81,29 @@ class PortalInvoiceController(Controller):
             'send_draft': send_draft,
             'status': state,
         })
+
+        # Documento de emisión de factura (opcional): mismo patrón que en
+        # Solicitud de Documentos (controllers/portal_approval_request_controller.py).
+        attachments = request.httprequest.files.getlist('file')
+        ensure_pdf(*attachments)
+        for attachment in attachments:
+            if not attachment or not attachment.filename:
+                continue
+            request.env['ir.attachment'].sudo().create({
+                'name': attachment.filename,
+                'res_model': 'portal.invoice.request',
+                'res_id': invoice_request.id,
+                'datas': base64.b64encode(attachment.read()),
+                'type': 'binary',
+                'mimetype': attachment.content_type or 'application/pdf',
+            })
+
         if move_type == 'out_invoice':
             move_text = "factura"
         else:
             invoice_name = request.env['account.move'].sudo().search([('id', '=', invoice_to_refund)]).name
             move_text = "factura rectificativa para la factura " + invoice_name
-        if work_group_id.equip_boss.id == invoice_request.user_id.id:
+        if requester_is_boss_or_administrative:
             group = request.env.ref('portal_requests.group_intern_partner_responsible').sudo()
             to_notify_users = group.user_ids
             # to_notify_users = request.env['res.users'].search(
@@ -99,6 +123,7 @@ class PortalInvoiceController(Controller):
         invoice_request_link = f"/web#id={invoice_request.id}&cids=1-24-28-29-32-25-30-31&menu_id=899&active_id=1&model=portal.invoice.request&view_type=form"
         project_code = invoice_request.analytic_id.code or ''
         internal_ref = invoice_request.partner_id.ref or ''
+        invoice_date = invoice_request.date.strftime('%d-%m-%Y') if invoice_request.date else ''
         for admin_user in to_notify_users:
             admin_name = admin_user.name
             body_html = f"""
@@ -111,6 +136,7 @@ class PortalInvoiceController(Controller):
                             <li><strong>Código de proyecto:</strong> {project_code}</li>
                             <li><strong>Referencia interna:</strong> {internal_ref}</li>
                             <li><strong>Cliente:</strong> {partner_name}</li>
+                            <li><strong>Fecha:</strong> {invoice_date}</li>
                             <li><strong>Concepto:</strong> {notes}</li>
                             <li><strong>Enlace:</strong> <a href="{invoice_request_link}">Solicitud</a></li>
                         <ul>

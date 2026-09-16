@@ -3,7 +3,7 @@ from odoo import fields
 from datetime import datetime
 import base64
 
-from .portal_pdf_utils import ensure_pdf
+from .portal_pdf_utils import ensure_pdf, ensure_excel
 
 class PortalInvoiceController(Controller):
 
@@ -20,6 +20,22 @@ class PortalInvoiceController(Controller):
             ('active', '=', True)
         ])
 
+        # Miembros seleccionables como "Miembros del Proyecto": los usuarios
+        # de cada grupo de trabajo permitido, con la lista de esos grupos a
+        # los que pertenece cada uno (para que el JS del formulario filtre
+        # las opciones según el grupo elegido). sudo() es necesario: un
+        # usuario portal no tiene acceso de lectura a la ficha de otros
+        # usuarios, así que sin él group.user_ids solo devolvía al propio
+        # usuario logueado en vez de a todo el equipo.
+        member_group_ids = {}
+        for group in allowed_work_groups.sudo():
+            for member in group.user_ids:
+                member_group_ids.setdefault(member, []).append(group.id)
+        project_members = [
+            {'user': member, 'groups_csv': ','.join(str(gid) for gid in group_ids)}
+            for member, group_ids in sorted(member_group_ids.items(), key=lambda item: item[0].name)
+        ]
+
         # Pasar las compañías permitidas al contexto para que se usen en el formulario
         return request.render('portal_requests.portal_project_request_template', {
             'companies': allowed_companies,
@@ -27,6 +43,7 @@ class PortalInvoiceController(Controller):
             'clients': allowed_clients,
             'actual_company': request.env.company.id,
             'project_allowed': project_allowed,
+            'project_members': project_members,
         })
 
     @route('/portal/project_request/submit', type='http', auth='user', website=True, methods=['POST'])
@@ -36,6 +53,14 @@ class PortalInvoiceController(Controller):
             # Procesar los campos de texto
             company_id = post.get('company_id')
             work_group_id = post.get('work_group_id')
+            # Miembros del proyecto: se valida contra los usuarios reales del
+            # grupo de trabajo elegido, ya que el filtrado del <select> es
+            # solo en el navegador (JS) y no impide un POST manipulado.
+            posted_member_ids = {
+                int(m) for m in request.httprequest.form.getlist('member_ids[]') if m
+            }
+            work_group = request.env['portal.work.group'].sudo().browse(int(work_group_id))
+            member_ids = work_group.user_ids.filtered(lambda u: u.id in posted_member_ids).ids
             date_start = post.get('date_start')
             date_end = post.get('date_end')
             project_name = post.get('project_name')
@@ -44,7 +69,8 @@ class PortalInvoiceController(Controller):
             # Procesar los archivos usando request.httprequest.files
             signed_contract = request.httprequest.files.get('signed_contract')
             budget_file = request.httprequest.files.get('budget_file')
-            ensure_pdf(signed_contract, budget_file)
+            ensure_pdf(signed_contract)
+            ensure_excel(budget_file)
 
             signed_contract_filename = signed_contract.filename if signed_contract else False
             signed_contract_data = signed_contract.read() if signed_contract else False
@@ -57,6 +83,7 @@ class PortalInvoiceController(Controller):
                 'user_id': request.env.user.id,
                 'company_id': int(company_id),
                 'work_group_id': int(work_group_id),
+                'member_ids': [(6, 0, member_ids)],
                 'partner_id_char': partner_id_char,
                 'date_start': datetime.strptime(date_start, '%Y-%m-%d'),
                 'date_end': datetime.strptime(date_end, '%Y-%m-%d'),
@@ -79,13 +106,18 @@ class PortalInvoiceController(Controller):
                     'mimetype': signed_contract.content_type or 'application/pdf',
                 })
             if budget_file_data:
+                default_excel_mimetype = (
+                    'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet'
+                    if budget_file_filename.lower().endswith('.xlsx')
+                    else 'application/vnd.ms-excel'
+                )
                 request.env['ir.attachment'].create({
                     'name': budget_file_filename,
                     'type': 'binary',
                     'datas': base64.b64encode(budget_file_data),
                     'res_model': 'portal.project.request',
                     'res_id': project.id,
-                    'mimetype': budget_file.content_type or 'application/pdf',
+                    'mimetype': budget_file.content_type or default_excel_mimetype,
                 })
             self.send_project_email(project)
 
@@ -107,80 +139,6 @@ class PortalInvoiceController(Controller):
             self.send_project_email(project)
 
         return request.redirect('/my/project_requests/thank-you')
-
-    # @route('/portal/project_request/submit', type='http', auth='user', website=True, methods=['POST'])
-    # def project_request_submit(self, **post):
-    #     type = post.get('type_id')
-    #     if type == 'new':
-    #         # Procesar los campos de texto
-    #         company_id = post.get('company_id')
-    #         date_start = post.get('date_start')
-    #         date_end = post.get('date_end')
-    #         project_name = post.get('project_name')
-    #
-    #         # Procesar los archivos usando request.httprequest.files
-    #         signed_contract = request.httprequest.files.get('signed_contract')
-    #         signed_contract_filename = signed_contract.filename if signed_contract else False
-    #         signed_contract_data = signed_contract.read() if signed_contract else False
-    #
-    #         budget_file = request.httprequest.files.get('budget_file')
-    #         budget_file_filename = budget_file.filename if budget_file else False
-    #         budget_file_data = budget_file.read() if budget_file else False
-    #
-    #         # Crear el registro del proyecto en Odoo
-    #         project = request.env['portal.project.request'].sudo().create({
-    #             'user_id': request.env.user.id,
-    #             'company_id': int(company_id),
-    #             'date_start': datetime.strptime(date_start, '%Y-%m-%d'),
-    #             'date_end': datetime.strptime(date_end, '%Y-%m-%d'),
-    #             'project_name': project_name,
-    #             'signed_contract': base64.b64encode(signed_contract_data) if signed_contract_data else False,
-    #             'signed_contract_filename': signed_contract_filename,
-    #             'budget_file': base64.b64encode(budget_file_data) if budget_file_data else False,
-    #             'budget_file_filename': budget_file_filename,
-    #             'type': type,
-    #         })
-    #         print(f"Project created: {project}")
-    #         # Procesar archivos adjuntos
-    #         attachments = []
-    #         if signed_contract:
-    #             attachments.append(request.env['ir.attachment'].create({
-    #                 'name': signed_contract.filename,
-    #                 'type': 'binary',
-    #                 'datas': base64.b64encode(signed_contract.read()),
-    #                 'res_model': 'portal.project.request',
-    #                 'res_id': project.id,
-    #                 'mimetype': 'application/pdf',
-    #             }))
-    #             if budget_file:
-    #                 attachments.append(request.env['ir.attachment'].create({
-    #                     'name': budget_file.filename,
-    #                     'type': 'binary',
-    #                     'datas': base64.b64encode(budget_file.read()),
-    #                     'res_model': 'portal.project.request',
-    #                     'res_id': project.id,
-    #                     'mimetype': 'application/pdf',
-    #                 }))
-    #         self.send_project_email(project)
-    #
-    #     elif type == 'end':
-    #         company_id = post.get('company_id_end')
-    #         project_end_date = post.get('project_end_date')
-    #         concept = post.get('concept')
-    #         company_name = request.env['res.company'].browse(int(company_id)).name
-    #         project = request.env['portal.project.request'].sudo().create({
-    #             'user_id': request.env.user.id,
-    #             'company_id': int(company_id),
-    #             'project_name': company_name,
-    #             'date_end': datetime.strptime(project_end_date, '%Y-%m-%d'),
-    #             'concept': concept,
-    #             'type': type,
-    #         })
-    #         self.send_project_email(project)
-    #
-    #
-    #
-    #     return request.redirect('/contactus-thank-you')
 
     # Método para enviar el correo electrónico
     def send_project_email(self, project):
@@ -242,4 +200,3 @@ class PortalInvoiceController(Controller):
                 }
                 mail = request.env['mail.mail'].sudo().create(mail_values)
                 mail.send()
-            return request.render("portal.email_sent_confirmation")

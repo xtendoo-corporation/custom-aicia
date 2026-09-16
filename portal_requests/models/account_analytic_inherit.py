@@ -37,6 +37,14 @@ class AccountAnalyticAccountInherit(models.Model):
 
     responsible_id = fields.Many2one('res.users', string='Responsable', tracking=True,
                                      domain="[('id', 'in', responsible_domain)]")
+    member_ids = fields.Many2many(
+        'res.users',
+        'account_analytic_account_member_rel',
+        'account_id',
+        'user_id',
+        string='Miembros del Proyecto',
+        domain="[('id', 'in', responsible_domain)]",
+    )
 
     user_can_edit = fields.Boolean(string='User Can Edit', compute='_compute_user_can_edit')
     presupuesto = fields.Float(string='Presupuesto AICIA', tracking=True)
