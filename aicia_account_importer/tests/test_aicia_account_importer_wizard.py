@@ -1070,6 +1070,32 @@ class TestAiciaAccountImporterWizard(TransactionCase):
         self.assertIn("Resumen", wizard.import_log)
         self.assertIn("creados", wizard.import_log)
 
+    @patch("aicia_account_importer.wizard.aicia_account_importer_wizard._logger")
+    def test_append_import_activity_writes_to_server_log(self, logger):
+        """Cada actividad se muestra también en el log del servidor."""
+        activity_log = []
+
+        self.env["aicia.account.importer.wizard"]._append_import_activity(
+            activity_log, "info", "Procesando asiento 1/1."
+        )
+        self.env["aicia.account.importer.wizard"]._append_import_activity(
+            activity_log, "warning", "Asiento dejado en borrador."
+        )
+        self.env["aicia.account.importer.wizard"]._append_import_activity(
+            activity_log, "error", "No se pudo importar el asiento."
+        )
+
+        logger.info.assert_called_once_with(
+            "[AICIA import] %s", "Procesando asiento 1/1."
+        )
+        logger.warning.assert_called_once_with(
+            "[AICIA import] %s", "Asiento dejado en borrador."
+        )
+        logger.error.assert_called_once_with(
+            "[AICIA import] %s", "No se pudo importar el asiento."
+        )
+        self.assertEqual(len(activity_log), 3)
+
     def test_no_files_applies_account_mapping_to_existing_move_lines(self):
         """Sin archivos → aplica el mapeo global sobre apuntes existentes."""
         source_account = self._ensure_account(

@@ -1985,11 +1985,19 @@ class AiciaAccountImporterWizard(models.TransientModel):
         """Añade una entrada cronológica al log de importación."""
         if activity_log is None:
             return
+        message = str(message or "")
+        log_message = "[AICIA import] %s"
+        if level == "error":
+            _logger.error(log_message, message)
+        elif level == "warning":
+            _logger.warning(log_message, message)
+        else:
+            _logger.info(log_message, message)
         activity_log.append(
             {
                 "time": fields.Datetime.now().strftime("%H:%M:%S"),
                 "level": level,
-                "message": str(message or ""),
+                "message": message,
             }
         )
 
