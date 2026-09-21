@@ -441,7 +441,11 @@ class AiciaAccountImporterWizard(models.TransientModel):
 
     # ── Estado y log ─────────────────────────────────────────────────────────
     state = fields.Selection(
-        [("draft", "Borrador"), ("done", "Completado")],
+        [
+            ("draft", "Borrador"),
+            ("processing", "Procesando"),
+            ("done", "Completado"),
+        ],
         default="draft",
     )
     import_log = fields.Html(string="Log de importación", readonly=True)
@@ -593,6 +597,8 @@ class AiciaAccountImporterWizard(models.TransientModel):
             raise UserError(
                 _("La librería 'openpyxl' no está instalada en el servidor.")
             )
+        self.write({"state": "processing"})
+        self.env.cr.commit()
 
         self._append_import_activity(activity_log, "info", _("Leyendo archivo de apuntes."))
         apuntes = self._parse_apuntes(b64decode(self.file_apuntes))
@@ -660,6 +666,16 @@ class AiciaAccountImporterWizard(models.TransientModel):
                 results.append(result)
                 self._append_import_activity(activity_log, "error", result["msg"])
                 errors += 1
+                self._save_import_progress(
+                    results,
+                    missing_accounts,
+                    missing_partners,
+                    activity_log,
+                    created,
+                    skipped,
+                    warnings,
+                    errors,
+                )
                 continue
 
             result = self._process_asiento(
@@ -684,6 +700,16 @@ class AiciaAccountImporterWizard(models.TransientModel):
                 errors += 1
                 activity_status = "error"
             self._append_import_activity(activity_log, activity_status, result["msg"])
+            self._save_import_progress(
+                results,
+                missing_accounts,
+                missing_partners,
+                activity_log,
+                created,
+                skipped,
+                warnings,
+                errors,
+            )
 
         AccountMapping = self.env["aicia.account.importer.account.mapping"]
         existing_sources = set(runtime.get("mapping_sources", set()))
@@ -755,6 +781,31 @@ class AiciaAccountImporterWizard(models.TransientModel):
             "views": [(False, "form")],
             "target": "new",
         }
+
+    def _save_import_progress(
+        self,
+        results,
+        missing_accounts,
+        missing_partners,
+        activity_log,
+        created,
+        skipped,
+        warnings,
+        errors,
+    ):
+        """Guarda y confirma el progreso para no perder asientos procesados."""
+        self.write(
+            {
+                "total_created": created,
+                "total_skipped": skipped,
+                "total_errors": errors,
+                "total_warnings": warnings,
+                "import_log": self._build_log_html(
+                    results, missing_accounts, missing_partners, activity_log
+                ),
+            }
+        )
+        self.env.cr.commit()
 
     def _action_apply_account_mappings_to_existing_move_lines(self):
         """Aplica los mapeos guardados sobre apuntes contables ya existentes."""

@@ -1096,6 +1096,27 @@ class TestAiciaAccountImporterWizard(TransactionCase):
         )
         self.assertEqual(len(activity_log), 3)
 
+    def test_save_import_progress_commits_partial_results(self):
+        """El progreso se confirma para conservar los asientos ya importados."""
+        wizard = self._make_wizard()
+        with patch.object(self.env.cr, "commit") as commit:
+            wizard._save_import_progress(
+                results=[],
+                missing_accounts=set(),
+                missing_partners={},
+                activity_log=[],
+                created=1,
+                skipped=2,
+                warnings=3,
+                errors=4,
+            )
+
+        self.assertEqual(wizard.total_created, 1)
+        self.assertEqual(wizard.total_skipped, 2)
+        self.assertEqual(wizard.total_warnings, 3)
+        self.assertEqual(wizard.total_errors, 4)
+        commit.assert_called_once_with()
+
     def test_no_files_applies_account_mapping_to_existing_move_lines(self):
         """Sin archivos → aplica el mapeo global sobre apuntes existentes."""
         source_account = self._ensure_account(
