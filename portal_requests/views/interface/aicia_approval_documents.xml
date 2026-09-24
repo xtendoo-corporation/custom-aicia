@@ -25,19 +25,27 @@
                 <header>
                     <field name="status" widget="statusbar"/>
 
+                    <!-- Nota: la aprobación del Jefe de Equipo (estado
+                         'approved_by_equip_boss') NO tiene botón aquí: el
+                         Jefe de Equipo es siempre un usuario de portal (nunca
+                         interno), así que no puede acceder a esta vista de
+                         backend. Esa aprobación se hace exclusivamente desde
+                         el portal (portal_my_document_detail.xml,
+                         /my/documents/<id>/approve). -->
+
                     <!-- Botonera del I+D -->
                     <button name="action_approve"
                             string="Aprobar"
                             type="object"
                             class="btn-primary"
                             groups="portal_requests.group_director_investigation_and_development"
-                            invisible="status in ('approved_by_director_gerente','sign_company','approve','rejected')"/>
+                            invisible="status in ('approved_by_equip_boss','approved_by_director_gerente','sign_company','approve','rejected')"/>
                     <button name="action_reject"
                             string="Rechazar"
                             type="object"
                             class="btn-secondary"
                             groups="portal_requests.group_director_investigation_and_development"
-                            invisible="status in ('approved_by_director_gerente','sign_company','approve','rejected')"/>
+                            invisible="status in ('approved_by_equip_boss','approved_by_director_gerente','sign_company','approve','rejected')"/>
 
                     <!-- Botonera del Solicitante -->
                     <button name="action_solicite_final_revision"
@@ -109,6 +117,7 @@
         <field name="arch" type="xml">
             <search string="Documentos">
                 <field name="status"/>
+                <filter string="Aprobación Jefe de Equipo" name="filter_equip_boss" domain="[('status','=','approved_by_equip_boss')]"/>
                 <filter string="Aprobación Director I+D" name="filter_i_d" domain="[('status','=','approved_by_director_i_d')]"/>
                 <filter string="Esperando firma de la empresa" name="filter_sign_company" domain="[('status','=','sign_company')]"/>
                 <filter string="Aprobadas" name="filter_approved" domain="[('status','=','approve')]"/>

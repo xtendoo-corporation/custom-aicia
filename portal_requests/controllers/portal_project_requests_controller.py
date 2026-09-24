@@ -119,7 +119,7 @@ class PortalInvoiceController(Controller):
                     'res_id': project.id,
                     'mimetype': budget_file.content_type or default_excel_mimetype,
                 })
-            self.send_project_email(project)
+            self._notify_new_project_request(project)
 
         elif type == 'end':
             company_id = request.env.company.id
@@ -136,9 +136,19 @@ class PortalInvoiceController(Controller):
                 'concept': concept,
                 'type': type,
             })
-            self.send_project_email(project)
+            self._notify_new_project_request(project)
 
         return request.redirect('/my/project_requests/thank-you')
+
+    def _notify_new_project_request(self, project):
+        """Aviso de solicitud nueva a quien debe actuar primero: el Jefe de
+        Equipo del grupo si la solicitud empieza en su paso; en otro caso
+        (la solicita el propio Jefe de Equipo, o no tiene grupo de trabajo),
+        el Director I+D como hasta ahora."""
+        if project.status == 'approved_by_equip_boss' and project.work_group_id.equip_boss:
+            project._notify_project_request_approvers(resubmit=False)
+        else:
+            self.send_project_email(project)
 
     # Método para enviar el correo electrónico
     def send_project_email(self, project):

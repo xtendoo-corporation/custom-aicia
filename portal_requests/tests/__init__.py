@@ -18,10 +18,12 @@ from . import test_invoice_request_attachment
 from . import test_invoice_request_email_date
 from . import test_invoice_request_comment
 from . import test_expense_request_routing_and_approve
-from . import test_gestor_access
 from . import test_notification_recipients
 from . import test_pdf_restriction_http
 from . import test_state_change_notifications
 from . import test_expense_threshold
 from . import test_administrative_access
 from . import test_project_request_members
+from . import test_equip_boss_first_approval
+from . import test_team_boss_portal_review
+from . import test_portal_manual

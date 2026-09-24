@@ -19,7 +19,8 @@
         "sign",
         "project",
         "send_draft_invoices",
-        "xtendoo_invoice_import_gemini_ai"
+        "xtendoo_invoice_import_gemini_ai",
+        "knowledge",
     ],
     "license": "AGPL-3",
     "assets": {
@@ -76,6 +77,8 @@
         'views/portal_user_templates/portal_my_payments.xml',
         'views/portal_user_templates/portal_my_nomina.xml',
         'views/portal_user_templates/portal_my_payment_detail.xml',
+        'views/portal_user_templates/portal_my_manual.xml',
+        'data/knowledge_manuals.xml',
         'security/dashboard_permision.xml',
         'wizards/purchase_request_reject_wizard.xml',
         'wizards/invoice_request_reject_wizard.xml',

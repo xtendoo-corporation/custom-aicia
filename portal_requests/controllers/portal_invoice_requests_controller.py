@@ -24,12 +24,6 @@ class PortalInvoiceController(Controller):
                 [('work_group_id', 'in', allowed_work_groups.ids)]
             )
             allowed_companies = allowed_companies | wg_companies
-        if user.sudo().has_group('portal_requests.group_manager'):
-            manager_groups = request.env['portal.work.group'].search([('user_ids', 'in', user.id)])
-            if manager_groups:
-                allowed_companies = allowed_companies | request.env['account.analytic.account'].search(
-                    [('work_group_id', 'in', manager_groups.ids)]
-                )
         options = request.env['account.move']._fields['l10n_es_edi_facturae_reason_code']._description_selection(
             request.env)
         return request.render('portal_requests.portal_invoice_request_template', {
@@ -120,12 +114,14 @@ class PortalInvoiceController(Controller):
         return request.redirect('/my/invoices/thank-you')
 
     def send_request_email(self,to_notify_users, move_text, user_name,company_name, partner_name, notes, invoice_to_refund, invoice_request):
-        invoice_request_link = f"/web#id={invoice_request.id}&cids=1-24-28-29-32-25-30-31&menu_id=899&active_id=1&model=portal.invoice.request&view_type=form"
+        backend_link = f"/web#id={invoice_request.id}&cids=1-24-28-29-32-25-30-31&menu_id=899&active_id=1&model=portal.invoice.request&view_type=form"
         project_code = invoice_request.analytic_id.code or ''
         internal_ref = invoice_request.partner_id.ref or ''
         invoice_date = invoice_request.date.strftime('%d-%m-%Y') if invoice_request.date else ''
         for admin_user in to_notify_users:
             admin_name = admin_user.name
+            # El Jefe de Equipo es usuario de portal: enlace al portal.
+            invoice_request_link = invoice_request._notify_link_for(admin_user, backend_link)
             body_html = f"""
                         <p>Estimado/a {admin_name},</p>
                         <p>El usuario {user_name} ha creado una solicitud de {move_text} en el proyecto {company_name}.</p>

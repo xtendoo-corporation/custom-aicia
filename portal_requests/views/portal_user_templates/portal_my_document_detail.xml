@@ -24,6 +24,18 @@
                             <strong>¡Solicitud enviada!</strong> Su solicitud de revisión final ha sido registrada correctamente.
                              <button type="button" class="btn-close" data-bs-dismiss="alert" aria-label="Close">&#160;</button>
                         </div>
+                        <div t-if="success_message == 'equip_boss_approved'" class="alert alert-success alert-dismissible fade show" role="alert">
+                            <strong>¡Solicitud aprobada!</strong> Ha aprobado el documento. Queda pendiente de la aprobación del Director I+D.
+                             <button type="button" class="btn-close" data-bs-dismiss="alert" aria-label="Close">&#160;</button>
+                        </div>
+                        <div t-if="success_message == 'rejected'" class="alert alert-success alert-dismissible fade show" role="alert">
+                            <strong>Solicitud rechazada.</strong> El solicitante ha sido avisado con el motivo y puede subir una nueva versión.
+                            <button type="button" class="btn-close" data-bs-dismiss="alert" aria-label="Close"></button>
+                        </div>
+                        <div t-if="request.params.get('error') == 'reason_required'" class="alert alert-danger alert-dismissible fade show" role="alert">
+                            <strong>Falta el motivo.</strong> Indique el motivo del rechazo para poder rechazar la solicitud.
+                            <button type="button" class="btn-close" data-bs-dismiss="alert" aria-label="Close"></button>
+                        </div>
                         <div t-if="success_message == 'message_posted'" class="alert alert-success alert-dismissible fade show" role="alert">
                             <strong>¡Mensaje enviado!</strong> Tu comentario ha sido publicado correctamente.
                              <button type="button" class="btn-close" data-bs-dismiss="alert" aria-label="Close">&#160;</button>
@@ -42,8 +54,25 @@
                                 <div class="d-flex justify-content-between align-items-center mb-3 portal-detail-toolbar">
                                     <h3>Solicitud de Documento #<span t-esc="document.id"/></h3>
                                     <div>
+                                        <!-- Botón Aprobar (Jefe de Equipo): primer paso del circuito -->
+                                        <form t-if="document.status == 'approved_by_equip_boss' and can_approve_equip_boss"
+                                              method="POST"
+                                              t-attf-action="/my/documents/#{document.id}/approve"
+                                              class="d-inline-block me-2">
+                                            <input type="hidden" name="csrf_token" t-att-value="request.csrf_token()"/>
+                                            <button type="submit" class="btn btn-success">
+                                                <i class="fa fa-check me-1"/> Aprobar
+                                            </button>
+                                        </form>
+                                        <!-- Botón Rechazar (Jefe de Equipo, en su paso): despliega el formulario del motivo -->
+                                        <button t-if="document.status == 'approved_by_equip_boss' and can_approve_equip_boss"
+                                                type="button" class="btn btn-danger me-2"
+                                                data-bs-toggle="collapse" data-bs-target="#portal_reject_form"
+                                                aria-expanded="false" aria-controls="portal_reject_form">
+                                            <i class="fa fa-times me-1"/> Rechazar
+                                        </button>
                                         <!-- Botón Solicitar Revisión Final (solo jefe de equipo cuando está en sign_company) -->
-                                        <form t-if="document.status == 'sign_company' and is_equip_boss"
+                                        <form t-if="document.status == 'sign_company' and can_confirm_company_sign"
                                               method="POST"
                                               t-attf-action="/my/documents/#{document.id}/request_revision"
                                               class="d-inline-block me-2">
@@ -80,6 +109,22 @@
                                             </div>
                                         </form>
                                     </div>
+                                </div>
+                            </div>
+                        </div>
+
+                        <!-- Formulario de rechazo con motivo obligatorio (Jefe de Equipo, en su paso) -->
+                        <div t-if="document.status == 'approved_by_equip_boss' and can_approve_equip_boss" class="collapse mb-3" id="portal_reject_form">
+                            <div class="card border-danger">
+                                <div class="card-body">
+                                    <form method="POST" t-attf-action="/my/documents/#{document.id}/reject">
+                                        <input type="hidden" name="csrf_token" t-att-value="request.csrf_token()"/>
+                                        <label for="portal_reject_reason" class="form-label"><strong>Motivo del rechazo</strong> (obligatorio)</label>
+                                        <textarea id="portal_reject_reason" name="reason" class="form-control mb-2" rows="3" required="required"/>
+                                        <button type="submit" class="btn btn-danger">
+                                            <i class="fa fa-times me-1"/> Confirmar rechazo
+                                        </button>
+                                    </form>
                                 </div>
                             </div>
                         </div>

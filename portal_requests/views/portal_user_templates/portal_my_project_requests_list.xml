@@ -169,9 +169,51 @@
                             <strong>¡Éxito!</strong>
                             <span t-if="success_message == 'message_posted'">Tu mensaje ha sido enviado correctamente.</span>
                             <span t-if="success_message == 'resubmitted'">La solicitud se ha reenviado a revisión correctamente.</span>
+                            <span t-if="success_message == 'equip_boss_approved'">Ha aprobado la solicitud. Queda pendiente de la aprobación final.</span>
+                            <span t-if="success_message == 'rejected'">Ha rechazado la solicitud. El solicitante ha sido avisado con el motivo.</span>
                             <button type="button" class="btn-close" data-bs-dismiss="alert" aria-label="Close"/>
                         </div>
                     </t>
+                    <div t-if="request.params.get('error') == 'reason_required'" class="alert alert-danger alert-dismissible fade show" role="alert">
+                        <strong>Falta el motivo.</strong> Indique el motivo del rechazo para poder rechazar la solicitud.
+                        <button type="button" class="btn-close" data-bs-dismiss="alert" aria-label="Close"/>
+                    </div>
+
+                    <!-- Aprobación del Jefe de Equipo: primer paso del circuito -->
+                    <div class="row" t-if="project_request.status == 'approved_by_equip_boss' and can_approve_equip_boss and not project_request.is_revised">
+                        <div class="col-12">
+                            <div class="card mb-3 border-warning">
+                                <div class="card-header bg-warning">
+                                    <h5 class="mb-0"><i class="fa fa-check me-1"/> Pendiente de su aprobación</h5>
+                                </div>
+                                <div class="card-body">
+                                    <p>Esta solicitud está pendiente de su aprobación como Jefe de Equipo. Al aprobarla, pasará a la revisión final.</p>
+                                    <form method="POST" t-attf-action="/my/project_requests/#{project_request.id}/approve" class="d-inline-block me-2">
+                                        <input type="hidden" name="csrf_token" t-att-value="request.csrf_token()"/>
+                                        <button type="submit" class="btn btn-success">
+                                            <i class="fa fa-check me-1"/> Aprobar
+                                        </button>
+                                    </form>
+                                    <!-- Rechazar: despliega el formulario del motivo (obligatorio) -->
+                                    <button type="button" class="btn btn-danger"
+                                            data-bs-toggle="collapse" data-bs-target="#portal_reject_form"
+                                            aria-expanded="false" aria-controls="portal_reject_form">
+                                        <i class="fa fa-times me-1"/> Rechazar
+                                    </button>
+                                    <div class="collapse mt-3" id="portal_reject_form">
+                                        <form method="POST" t-attf-action="/my/project_requests/#{project_request.id}/reject">
+                                            <input type="hidden" name="csrf_token" t-att-value="request.csrf_token()"/>
+                                            <label for="portal_reject_reason" class="form-label"><strong>Motivo del rechazo</strong> (obligatorio)</label>
+                                            <textarea id="portal_reject_reason" name="reason" class="form-control mb-2" rows="3" required="required"/>
+                                            <button type="submit" class="btn btn-danger">
+                                                <i class="fa fa-times me-1"/> Confirmar rechazo
+                                            </button>
+                                        </form>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
 
                     <!-- Reenvío tras rechazo: evita tener que crear una solicitud nueva -->
                     <div class="row" t-if="not project_request.approved and project_request.is_revised">
@@ -249,6 +291,9 @@
                                                     </t>
                                                     <t t-elif="not project_request.approved and project_request.is_revised">
                                                         <span class="badge bg-danger">Rechazada</span>
+                                                    </t>
+                                                    <t t-elif="project_request.status == 'approved_by_equip_boss'">
+                                                        <span class="badge bg-info">Aprobación del Jefe de Equipo</span>
                                                     </t>
                                                     <t t-else="">
                                                         <span class="badge bg-warning">Pendiente de Revisión</span>

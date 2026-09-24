@@ -15,6 +15,7 @@
                     <field name="date_end"/>
                     <field name="type"/>
                     <field name="concept"/>
+                    <field name="status"/>
                     <field name="approved"/>
                     <field name="is_revised"/>
                 </list>
@@ -27,20 +28,35 @@
             <field name="arch" type="xml">
                 <form>
                     <header>
+                        <field name="status" widget="statusbar"/>
+
+                        <!-- Nota: la aprobación del Jefe de Equipo (estado
+                             'approved_by_equip_boss') NO tiene botón aquí: el
+                             Jefe de Equipo es siempre un usuario de portal
+                             (nunca interno), así que no puede acceder a esta
+                             vista de backend. Esa aprobación se hace
+                             exclusivamente desde el portal
+                             (portal_my_project_requests_list.xml,
+                             /my/project_requests/<id>/approve). -->
+
+                        <!-- Botonera del Director I+D -->
                         <button name="action_approve"
                                 string="Approve"
                                 type="object"
                                 class="btn-primary"
-                                invisible="is_revised == True"/>
+                                groups="portal_requests.group_director_investigation_and_development"
+                                invisible="status != 'pending_review' or is_revised == True"/>
                         <button name="action_reject"
                                 string="Reject"
                                 type="object"
                                 class="btn-secondary"
+                                groups="portal_requests.group_director_investigation_and_development"
                                 invisible="is_revised == True"/>
                         <button name="action_to_revise"
                                 string="Para Revisar"
                                 type="object"
                                 class="btn-secondary"
+                                groups="portal_requests.group_director_investigation_and_development"
                                 invisible="not is_revised or approved"/>
                     </header>
                     <sheet>

@@ -24,6 +24,14 @@
                             <strong>¡Solicitud enviada!</strong> Su solicitud de nueva revisión ha sido registrada correctamente.
                             <button type="button" class="btn-close" data-bs-dismiss="alert" aria-label="Cerrar"></button>
                         </div>
+                        <div t-if="success_message == 'rejected'" class="alert alert-success alert-dismissible fade show" role="alert">
+                            <strong>Solicitud rechazada.</strong> Ha vuelto al solicitante para revisarla; se le ha avisado con el motivo.
+                            <button type="button" class="btn-close" data-bs-dismiss="alert" aria-label="Cerrar"></button>
+                        </div>
+                        <div t-if="request.params.get('error') == 'reason_required'" class="alert alert-danger alert-dismissible fade show" role="alert">
+                            <strong>Falta el motivo.</strong> Indique el motivo del rechazo para poder rechazar la solicitud.
+                            <button type="button" class="btn-close" data-bs-dismiss="alert" aria-label="Cerrar"></button>
+                        </div>
                         <div t-if="success_message == 'message_posted'" class="alert alert-success alert-dismissible fade show" role="alert">
                             <strong>¡Mensaje enviado!</strong> Tu comentario ha sido publicado correctamente.
                             <button type="button" class="btn-close" data-bs-dismiss="alert" aria-label="Cerrar"></button>
@@ -64,11 +72,34 @@
                                                 <i class="fa fa-check me-1"/> Aprobar Solicitud
                                             </button>
                                         </form>
+                                        <!-- Botón Rechazar (Jefe de Equipo, en su paso): despliega el formulario del motivo -->
+                                        <button t-if="invoice_request.show_approve_button"
+                                                type="button" class="btn btn-danger me-2"
+                                                data-bs-toggle="collapse" data-bs-target="#portal_reject_form"
+                                                aria-expanded="false" aria-controls="portal_reject_form">
+                                            <i class="fa fa-times me-1"/> Rechazar
+                                        </button>
                                         <!-- Botón Volver -->
 <!--                                        <a href="/my/invoices" class="btn btn-secondary">-->
 <!--                                            <i class="fa fa-arrow-left"/> Volver al Listado-->
 <!--                                        </a>-->
                                     </div>
+                                </div>
+                            </div>
+                        </div>
+
+                        <!-- Formulario de rechazo con motivo obligatorio (Jefe de Equipo, en su paso) -->
+                        <div t-if="invoice_request.show_approve_button" class="collapse mb-3" id="portal_reject_form">
+                            <div class="card border-danger">
+                                <div class="card-body">
+                                    <form method="POST" t-attf-action="/my/invoices/#{invoice_request.id}/reject">
+                                        <input type="hidden" name="csrf_token" t-att-value="request.csrf_token()"/>
+                                        <label for="portal_reject_reason" class="form-label"><strong>Motivo del rechazo</strong> (obligatorio)</label>
+                                        <textarea id="portal_reject_reason" name="reason" class="form-control mb-2" rows="3" required="required"/>
+                                        <button type="submit" class="btn btn-danger">
+                                            <i class="fa fa-times me-1"/> Confirmar rechazo
+                                        </button>
+                                    </form>
                                 </div>
                             </div>
                         </div>

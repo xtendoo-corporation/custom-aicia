@@ -89,7 +89,7 @@ class TestDocumentResubmitAccess(HttpCase):
             ),
             "El propietario debe poder reenviar el documento rechazado",
         )
-        self.assertEqual(self.document.status, 'approved_by_director_i_d')
+        self.assertEqual(self.document.status, 'approved_by_equip_boss')
 
     def test_team_boss_can_resubmit(self):
         # Caso reportado: el Jefe de Equipo (no propietario) debe poder
@@ -103,7 +103,7 @@ class TestDocumentResubmitAccess(HttpCase):
             "El jefe de equipo del grupo de trabajo debe poder reenviar "
             "un documento rechazado, no solo el propietario",
         )
-        self.assertEqual(self.document.status, 'approved_by_director_i_d')
+        self.assertEqual(self.document.status, 'approved_by_equip_boss')
 
     def test_outsider_cannot_resubmit(self):
         response = self._resubmit(self.outsider)

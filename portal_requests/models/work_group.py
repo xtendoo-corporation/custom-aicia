@@ -67,6 +67,34 @@ class WorkGroup(models.Model):
         self.ensure_one()
         return self.equip_boss == user or self.administrative_id == user
 
+    def _is_equip_boss_step_approver(self, user):
+        """True si `user` puede aprobar o rechazar el paso "Aprobación del
+        Jefe de Equipo" de una solicitud de este grupo de trabajo: solo el
+        Jefe de Equipo del grupo, nunca el Administrativo (no tiene un estado
+        propio en el circuito). Sin grupo de trabajo (recordset vacío, p.ej.
+        las solicitudes de "Finalizar proyecto"), cualquier usuario con el
+        perfil de Jefe de Equipo que no sea Administrativo."""
+        if self:
+            self.ensure_one()
+            return self.equip_boss == user
+        return (
+            user.has_group('portal_requests.group_equip_boss')
+            and not user.has_group('portal_requests.group_administrative')
+        )
+
+    def _equip_boss_step_recipients(self):
+        """A quién avisar de una solicitud pendiente del paso "Aprobación del
+        Jefe de Equipo": el Jefe de Equipo de este grupo. Sin grupo de trabajo
+        (recordset vacío) se mantiene el aviso de siempre a todos los Jefes
+        de Equipo, excluyendo a los Administrativos, que no aprueban ese paso."""
+        if self:
+            self.ensure_one()
+            return self.equip_boss
+        boss_users = self.env.ref('portal_requests.group_equip_boss').sudo().user_ids
+        return boss_users.filtered(
+            lambda user: not user.has_group('portal_requests.group_administrative')
+        )
+
     @api.model
     def _boss_or_administrative_domain(self, user):
         """Dominio ir.rule-friendly: grupos de trabajo donde `user` es Jefe

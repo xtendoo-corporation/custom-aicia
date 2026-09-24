@@ -1,0 +1,48 @@
+<?xml version="1.0" encoding="utf-8"?>
+<odoo>
+
+    <!-- Manual de usuario del rol del usuario (artículo de Knowledge, ver
+         controllers/portal_manual_controller.py). -->
+    <template id="portal_my_manual" name="Manual de usuario">
+        <t t-call="portal.portal_layout">
+            <t t-set="no_breadcrumbs" t-value="True"/>
+
+            <div class="container mt-3 portal-detail-page">
+                <ol class="breadcrumb">
+                    <li class="breadcrumb-item"><a href="/my"><i class="fa fa-home"/></a></li>
+                    <li class="breadcrumb-item active">Manual</li>
+                </ol>
+
+                <t t-if="article">
+                    <div class="d-flex justify-content-between align-items-center mb-3 portal-detail-toolbar">
+                        <h3 class="mb-0"><t t-esc="article.name"/></h3>
+                        <a t-if="has_pdf" href="/my/manual/pdf" class="btn btn-primary">
+                            <i class="fa fa-download me-1"/> Descargar PDF
+                        </a>
+                    </div>
+                    <div class="card mb-4">
+                        <div class="card-body o_portal_manual_body">
+                            <t t-out="manual_body"/>
+                        </div>
+                    </div>
+                </t>
+                <div t-else="" class="alert alert-info">
+                    Todavía no hay un manual disponible para tu perfil.
+                </div>
+            </div>
+
+            <style>
+                .o_portal_manual_body { font-size: 1rem; line-height: 1.6; }
+                .o_portal_manual_body h2 { margin-top: 1.8rem; padding-bottom: .3rem; border-bottom: 2px solid #034f55; color: #034f55; }
+                .o_portal_manual_body h3 { margin-top: 1.4rem; color: #034f55; }
+                .o_portal_manual_body img { display: block; max-width: 100%; height: auto; margin: 1rem auto .3rem;
+                    border: 1px solid #cfdcde; border-radius: 6px; box-shadow: 0 2px 6px rgba(0,0,0,.12); }
+                .o_portal_manual_body table { width: 100%; margin: 1rem 0; border-collapse: collapse; }
+                .o_portal_manual_body th, .o_portal_manual_body td { border: 1px solid #cfdcde; padding: .45rem .6rem; vertical-align: top; }
+                .o_portal_manual_body th { background: #034f55; color: #fff; }
+                .o_portal_manual_body blockquote { padding: .6rem 1rem; background: #eef5f6; border-left: 4px solid #034f55; }
+            </style>
+        </t>
+    </template>
+
+</odoo>

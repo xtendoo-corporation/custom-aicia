@@ -100,7 +100,11 @@ perfil funcional **Gestor**:
 ## 4. Crear un usuario INTERNO con perfil AICIA
 
 Para el personal de AICIA que sí trabaja en el backend (dirección,
-administración, responsables, jefes de equipo internos).
+administración y responsables).
+
+> **Jefe de Equipo** y **Jefe de Proyecto** son siempre **usuarios de portal**
+> (nunca internos): créalos como en la sección 2 y asígnales el perfil como en
+> la sección 3.
 
 **Pasos:**
 
@@ -110,8 +114,6 @@ administración, responsables, jefes de equipo internos).
    interno**.
 4. En la categoría **"Tipo de usuario"** (privilegio de AICIA), selecciona el
    perfil correspondiente:
-   - **Jefe de Equipo**
-   - **Jefe de Proyecto**
    - **Director I+D**
    - **Director Gerente**
    - **Director Financiero**
@@ -169,8 +171,8 @@ solicitudes de ese equipo.
 | Perfil funcional | Tipo base recomendado | ¿Consume licencia? | Necesita equipo |
 |---|---|---|---|
 | **Gestor** | **Portal** | ❌ No | ✅ Sí |
-| **Jefe de Equipo** | Interno | ✅ Sí | ✅ Sí |
-| **Jefe de Proyecto** | Interno o Portal | Según tipo base | Recomendado |
+| **Jefe de Equipo** | **Portal** | ❌ No | ✅ Sí |
+| **Jefe de Proyecto** | **Portal** | ❌ No | Recomendado |
 | **Director I+D** | Interno | ✅ Sí | No |
 | **Director Gerente** | Interno | ✅ Sí | No |
 | **Director Financiero** | Interno | ✅ Sí | No |

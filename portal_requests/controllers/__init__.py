@@ -10,3 +10,4 @@ from . import portal_purchase_order_requests_controller
 from . import portal_utils
 from . import portal_payment_requests_controller
 from . import portal_nominas_controller
+from . import portal_manual_controller

@@ -30,13 +30,14 @@ class DocumentApproval(models.Model):
     work_group_id = fields.Many2one('portal.work.group', string='Grupo de Trabajo', store=True)
     user_id = fields.Many2one('res.users', string='Solicitante', tracking=True)
     status = fields.Selection([
+        ('approved_by_equip_boss', 'Aprobación del Jefe de Equipo'),
         ('approved_by_director_i_d', 'Aprobación del Director I+D'),
         ('approved_by_director_gerente', 'Aprobación del Director Gerente'),
         ('sign_company', 'Esperando firma de empresa'),
         ('final_revision', 'Revisión final'),
         ('approve', 'Aprobada'),
         ('rejected', 'Rechazada'),
-    ], string='Estado', default='approved_by_director_i_d', tracking=True)
+    ], string='Estado', default='approved_by_equip_boss', tracking=True)
 
     is_company_signed = fields.Boolean(string='Firmado por la empresa', default=False, tracking=True)
 
@@ -78,6 +79,28 @@ class DocumentApproval(models.Model):
     def _compute_name(self):
         for record in self:
             record.computed_name = f"{record.type_id.name} - {record.description}"
+
+    def _initial_status_for(self, work_group, requester):
+        """Estado de arranque del circuito según quién solicita.
+
+        El propio Jefe de Equipo no necesita aprobarse a sí mismo: si es
+        quien solicita, se salta ese paso y entra directamente en la
+        aprobación del Director I+D. Cualquier otro solicitante (incluido
+        el Administrativo del mismo grupo) pasa primero por la aprobación
+        del Jefe de Equipo."""
+        if work_group and requester and work_group.equip_boss == requester:
+            return 'approved_by_director_i_d'
+        return 'approved_by_equip_boss'
+
+    @api.model_create_multi
+    def create(self, vals_list):
+        WorkGroup = self.env['portal.work.group']
+        for vals in vals_list:
+            if vals.get('work_group_id') and vals.get('user_id'):
+                work_group = WorkGroup.browse(vals['work_group_id'])
+                requester = self.env['res.users'].browse(vals['user_id'])
+                vals.setdefault('status', self._initial_status_for(work_group, requester))
+        return super().create(vals_list)
 
     # ─────────────────────────────────────────────
     # Integración con módulo sign de Odoo 19 Enterprise
@@ -205,6 +228,14 @@ class DocumentApproval(models.Model):
 
     def action_approve(self):
         self.ensure_one()
+        if (self.status == 'approved_by_equip_boss'
+                and self.work_group_id._is_equip_boss_step_approver(self.env.user)
+                and not (self.work_group_id and self.env.user == self.user_id)):
+            self.status = 'approved_by_director_i_d'
+            group = self.env.ref('portal_requests.group_director_investigation_and_development')
+            user_to_send = group.sudo().user_ids
+            self.send_request_email(self.type_id.name, user_to_send, "approved_by_equip_boss")
+
         if self.status == 'approved_by_director_i_d' and self.env.user.has_group(
                 "portal_requests.group_director_investigation_and_development"):
             self.status = 'approved_by_director_gerente'
@@ -238,18 +269,39 @@ class DocumentApproval(models.Model):
             user_to_send = self.user_id
             self.send_request_email(self.type_id.name, user_to_send, "final_revision")
 
-    def action_reject(self):
+    def action_reject(self, reason=None):
+        """Rechaza el documento. ``reason`` es el motivo indicado por el Jefe
+        de Equipo al rechazar desde el portal: se guarda en el histórico y se
+        incluye en el correo al solicitante."""
         for record in self:
             record.status = 'rejected'
+            body = _(
+                "Documento rechazado. El solicitante puede subir una nueva "
+                "versión y reenviar la solicitud sin perder el histórico."
+            )
+            if reason:
+                body = _("Documento rechazado. Motivo: %s", reason)
             record.sudo().message_post(
-                body=_(
-                    "Documento rechazado. El solicitante puede subir una nueva "
-                    "versión y reenviar la solicitud sin perder el histórico."
-                ),
+                body=body,
                 subtype_id=self.env.ref('mail.mt_note').id,
             )
             if record.user_id:
-                record.send_request_email(record.type_id.name, record.user_id, "rejected")
+                record.send_request_email(record.type_id.name, record.user_id, "rejected", notes=reason or "")
+
+    def _notify_new_request(self):
+        """Aviso de documento nuevo: al Jefe de Equipo del grupo si la
+        solicitud empieza en su paso; si no (lo solicita el propio Jefe de
+        Equipo, o no tiene grupo de trabajo), al Director I+D como hasta
+        ahora."""
+        self.ensure_one()
+        if self.status == 'approved_by_equip_boss' and self.work_group_id.equip_boss:
+            recipients = self.work_group_id.equip_boss
+        else:
+            recipients = self.env.ref(
+                'portal_requests.group_director_investigation_and_development'
+            ).sudo().user_ids
+        if recipients:
+            self.send_request_email(self.type_id.name, recipients, "new")
 
     def action_resubmit(self):
         """Reabre una solicitud rechazada para que el solicitante aporte una
@@ -260,8 +312,9 @@ class DocumentApproval(models.Model):
             raise UserError(_("Solo puede reenviar solicitudes rechazadas."))
         if self.sign_request_id and self.sign_request_id.state != 'signed':
             self.sign_request_id.cancel()
+        restart_status = self._initial_status_for(self.work_group_id, self.user_id)
         self.write({
-            'status': 'approved_by_director_i_d',
+            'status': restart_status,
             'is_company_signed': False,
         })
         self.sudo().message_post(
@@ -271,8 +324,14 @@ class DocumentApproval(models.Model):
             ),
             subtype_id=self.env.ref('mail.mt_note').id,
         )
-        group = self.env.ref('portal_requests.group_director_investigation_and_development')
-        self.send_request_email(self.type_id.name, group.sudo().user_ids, "resubmit")
+        if restart_status == 'approved_by_equip_boss':
+            recipients = self.work_group_id._equip_boss_step_recipients()
+        else:
+            recipients = self.env.ref(
+                'portal_requests.group_director_investigation_and_development'
+            ).sudo().user_ids
+        if recipients:
+            self.send_request_email(self.type_id.name, recipients, "resubmit")
 
     def action_to_revise(self):
         self.ensure_one()
@@ -285,8 +344,8 @@ class DocumentApproval(models.Model):
     # Envío de emails
     # ─────────────────────────────────────────────
 
-    def send_request_email(self, move_text, user_to_send, type):
-        document_request_link = (
+    def send_request_email(self, move_text, user_to_send, type, notes=""):
+        backend_link = (
             f"/web#id={self.id}&cids=1-24-28-29-32-25-30-31"
             f"&menu_id=899&active_id=1&model=document.approval&view_type=form"
         )
@@ -300,8 +359,33 @@ class DocumentApproval(models.Model):
                 continue
             user_for_send = self.env.user.name
             admin_name = admin_user.name
+            # El Jefe de Equipo es usuario de portal: enlace al portal.
+            document_request_link = self._notify_link_for(admin_user, backend_link)
+            notes_html = f"<p><strong>Motivo:</strong> <em>{notes}</em></p>" if notes else ""
 
-            if type == "approved_by_director_i_d":
+            if type == "new":
+                body_html = f"""
+                    <p>Estimado/a {admin_name},</p>
+                    <p>El usuario {user.name} ha creado una solicitud de nuevo documento.</p>
+                    <ul>
+                        <li><strong>Usuario:</strong> {user.name}</li>
+                        <li><strong>Tipo:</strong> {move_text}</li>
+                        <li><strong>Enlace:</strong> <a href="{document_request_link}">Solicitud</a></li>
+                    </ul>
+                    <p>Saludos cordiales, Odoo</p>
+                """
+            elif type == "approved_by_equip_boss":
+                body_html = f"""
+                    <p>Estimado/a {admin_name},</p>
+                    <p>El Jefe de Equipo, {user_for_send}, ya ha dado su aprobación para la siguiente solicitud:</p>
+                    <ul>
+                        <li><strong>Solicitante:</strong> {user.name}</li>
+                        <li><strong>Tipo:</strong> {move_text}</li>
+                        <li><strong>Enlace:</strong> <a href="{document_request_link}">Solicitud</a></li>
+                    </ul>
+                    <p>Saludos cordiales, Odoo</p>
+                """
+            elif type == "approved_by_director_i_d":
                 body_html = f"""
                     <p>Estimado/a {admin_name},</p>
                     <p>El Director de I+D, {user_for_send}, ya ha dado su aprobación para la siguiente solicitud:</p>
@@ -343,6 +427,7 @@ class DocumentApproval(models.Model):
                 body_html = f"""
                     <p>Estimado/a {admin_name},</p>
                     <p>Su solicitud de documento ha sido rechazada.</p>
+                    {notes_html}
                     <p>Puede subir una nueva versión del documento y reenviar la
                     solicitud desde el portal, sin perder el histórico, a través
                     del siguiente enlace:</p>

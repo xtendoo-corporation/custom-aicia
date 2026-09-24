@@ -3,7 +3,7 @@
     <data>
         <!-- El selector de rol estándar de Odoo (privilegio "Tipo de
              usuario": Jefe de Equipo, Administrativo, Jefe de Proyecto,
-             Gestor, etc.) ya existe en la pestaña "Permisos de Acceso" de la
+             etc.) ya existe en la pestaña "Permisos de Acceso" de la
              ficha de usuario, pero base.view_users_form lo oculta
              expresamente para usuarios portal (invisible="share"), dejando
              esa pestaña vacía para ellos. Quitamos esa condición para que

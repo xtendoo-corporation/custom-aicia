@@ -91,16 +91,16 @@ class PortalHrExpensiveRequest(models.Model):
     )
 
     @api.depends('status')
+    @api.depends_context('uid')
     def _compute_show_approve_button(self):
-        """Misma lógica de visibilidad que la botonera del backend
-        (views/interface/portal_hr_expensive_request.xml): en cada etapa,
-        puede aprobar quien tenga el grupo correspondiente. group_equip_boss
-        ya cubre también al Administrativo (lo implica), así que no hace
-        falta distinguirlo aparte."""
+        """En cada etapa puede aprobar quien tenga el grupo correspondiente,
+        salvo el primer paso: "Aprobación del Jefe de Equipo" solo la hace el
+        Jefe de Equipo del grupo, nunca el Administrativo (aunque este
+        implique group_equip_boss)."""
         user = self.env.user
         for rec in self:
             if rec.status == 'approved_by_boss_group':
-                rec.show_approve_button = user.has_group('portal_requests.group_equip_boss')
+                rec.show_approve_button = rec.work_group_id._is_equip_boss_step_approver(user)
             elif rec.status == 'approved_purchase_responsible':
                 rec.show_approve_button = user.has_group(rec._second_approver_group_xmlid())
             elif rec.status == 'approved_director':
@@ -154,7 +154,7 @@ class PortalHrExpensiveRequest(models.Model):
 
 
     def action_approve(self):
-        if self.env.user.has_group('portal_requests.group_equip_boss') and self.status == 'approved_by_boss_group':
+        if self.status == 'approved_by_boss_group' and self.work_group_id._is_equip_boss_step_approver(self.env.user):
             self.status = 'approved_purchase_responsible'
             user_to_notify = self.env['res.users'].search(
                 [('group_ids', 'in', self.env.ref(self._second_approver_group_xmlid()).id)])
@@ -269,6 +269,24 @@ class PortalHrExpensiveRequest(models.Model):
             for line in invoice.invoice_line_ids:
                 line.account_id = self.inmovilizado_account_id.id
 
+    def _reject_with_reason(self, reason):
+        """Rechazo con motivo, común al asistente del backend y al botón
+        Rechazar del portal. Si el solicitante es el propio Jefe de Equipo,
+        vuelve a su paso; si no, queda en "Volver a revisar"."""
+        self.ensure_one()
+        status = 'to_revise'
+        if self.equip_boss == self.user_id:
+            status = 'approved_by_boss_group'
+        self.write({'status': status})
+        reason = reason or ''
+        self.sudo().message_post(
+            body='Solicitud Rechazada: {}'.format(reason),
+            subtype_id=self.env.ref('mail.mt_note').id,
+        )
+        self._send_purchase_request_mail(
+            'rejected', self.user_id, self.user_id.name, self.project.name, notes=reason,
+        )
+
     def action_reject(self):
         self.ensure_one()
         return {
@@ -311,10 +329,12 @@ class PortalHrExpensiveRequest(models.Model):
             record.is_revised = False
 
     def _send_purchase_request_mail(self,type, users_to_send, user_name, company_name, notes=""):
-            expensive_request_link = f"/web#id={self.id}&cids=1-24-28-29-32-25-30-31&menu_id=899&active_id=1&model=portal.hr.expensive.request&view_type=form"
+            backend_link = f"/web#id={self.id}&cids=1-24-28-29-32-25-30-31&menu_id=899&active_id=1&model=portal.hr.expensive.request&view_type=form"
             if type == 'to_revise':
                 for admin_user in users_to_send:
                     admin_name = admin_user.name
+                    # El Jefe de Equipo es usuario de portal: enlace al portal.
+                    expensive_request_link = self._notify_link_for(admin_user, backend_link)
                     body_html = f"""
                                 <p>Estimado/a {admin_name},</p>
                                 <p>Se ha solicitado una nueva revisión de la solicitud de gasto, por parte de {user_name}.</p>
@@ -334,6 +354,7 @@ class PortalHrExpensiveRequest(models.Model):
             elif type == 'approved_by_boss_group':
                 for admin_user in users_to_send:
                     admin_name = admin_user.name
+                    expensive_request_link = self._notify_link_for(admin_user, backend_link)
                     body_html = f"""
                                 <p>Estimado/a {admin_name},</p>
                                 <p>La solicitud de gasto en el proyecto {company_name} ha sido aprobada por el jefe de equipo ({user_name}).</p>
@@ -374,6 +395,7 @@ class PortalHrExpensiveRequest(models.Model):
             elif type == 'approved_purchase_responsible':
                 for admin_user in users_to_send:
                     admin_name = admin_user.name
+                    expensive_request_link = self._notify_link_for(admin_user, backend_link)
                     body_html = f"""
                                 <p>Estimado/a {admin_name},</p>
                                 <p>La solicitud de gasto en el proyecto {company_name} ha sido aprobada por el responsable de compras ({user_name}).</p>

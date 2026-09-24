@@ -1,0 +1,3090 @@
+<?xml version="1.0" encoding="utf-8"?>
+<odoo>
+    <!-- Generado a partir de los manuales de usuario por rol. noupdate: las ediciones hechas después en Knowledge no se pisan al actualizar el módulo. -->
+    <data noupdate="1">
+        <record id="manual_article_root" model="knowledge.article">
+            <field name="name">Manuales del Portal de Solicitudes</field>
+            <field name="icon">📘</field>
+            <field name="internal_permission">read</field>
+            <field name="is_article_visible_by_everyone" eval="True" />
+            <field name="article_member_ids" eval="[(0, 0, {'partner_id': ref('base.partner_admin'), 'permission': 'write'})]" />
+            <field name="body">&lt;p&gt;Manuales de usuario del Portal de Solicitudes, uno por rol. Cada manual incluye capturas de pantalla y se puede descargar en PDF.&lt;/p&gt;&lt;p&gt;Los usuarios de portal ven el manual de su rol desde la tarjeta &lt;strong&gt;Manual&lt;/strong&gt; de su cuenta (&lt;code&gt;/my&lt;/code&gt;).&lt;/p&gt;</field>
+        </record>
+        <record id="manual_article_solicitante" model="knowledge.article">
+            <field name="name">Manual — Solicitante (usuario de portal)</field>
+            <field name="icon">📝</field>
+            <field name="parent_id" ref="manual_article_root" />
+            <field name="sequence">1</field>
+            <field name="body">&lt;p&gt;&lt;a href="/web/content/portal_requests.manual_pdf_solicitante?download=true"&gt;📄 Descargar este manual en PDF&lt;/a&gt;&lt;/p&gt;&lt;h2 id="introducción-al-portal-de-solicitudes"&gt;Introducción al Portal de
+Solicitudes&lt;/h2&gt;
+&lt;p&gt;El Portal de Solicitudes de AICIA (módulo
+&lt;code&gt;portal_requests&lt;/code&gt;, Odoo 19) centraliza las solicitudes
+internas: firma de documentos, apertura y cierre de proyectos, emisión
+de facturas y gastos. También permite consultar proyectos, pagos y
+nóminas. Cada solicitud recorre un circuito de aprobación por estados y
+el sistema avisa por correo en cada paso.&lt;/p&gt;
+&lt;p&gt;&lt;strong&gt;Dónde se trabaja&lt;/strong&gt;&lt;/p&gt;
+&lt;ul&gt;
+&lt;li&gt;&lt;strong&gt;Portal&lt;/strong&gt; (&lt;code&gt;/my&lt;/code&gt;, “Mi cuenta”): lo usan
+solicitantes, Jefes de Proyecto, Jefes de Equipo y Administrativos. No
+consume licencia.&lt;/li&gt;
+&lt;li&gt;&lt;strong&gt;Backend&lt;/strong&gt; (aplicación &lt;strong&gt;Solicitudes del
+Portal&lt;/strong&gt; de Odoo): lo usan dirección y responsables internos para
+revisar y aprobar.&lt;/li&gt;
+&lt;/ul&gt;
+&lt;p&gt;&lt;strong&gt;Conceptos clave&lt;/strong&gt;&lt;/p&gt;
+&lt;ul&gt;
+&lt;li&gt;&lt;strong&gt;Grupo de trabajo&lt;/strong&gt;: equipo con miembros, un Jefe de
+Equipo y, opcionalmente, un Administrativo.&lt;/li&gt;
+&lt;li&gt;&lt;strong&gt;Paso “Aprobación del Jefe de Equipo”&lt;/strong&gt;: primer paso
+de las solicitudes de un miembro del equipo. Solo lo aprueba o rechaza
+el Jefe de Equipo del grupo; las solicitudes del propio Jefe de Equipo
+se lo saltan.&lt;/li&gt;
+&lt;li&gt;&lt;strong&gt;Proyecto&lt;/strong&gt;: cuenta analítica con responsable, grupo
+de trabajo, miembros, saldo y presupuesto.&lt;/li&gt;
+&lt;li&gt;&lt;strong&gt;Solo PDF&lt;/strong&gt;: todo archivo subido debe ser un PDF real
+(se comprueba el contenido, no solo la extensión). Única excepción: la
+Ficha de Alta de un proyecto nuevo, que se sube en Excel.&lt;/li&gt;
+&lt;li&gt;&lt;strong&gt;Umbral de 10.000 €&lt;/strong&gt;: un gasto marcado como superior
+a 10.000 € necesita además la aprobación del Director Gerente.&lt;/li&gt;
+&lt;li&gt;&lt;strong&gt;Rechazo sin perder histórico&lt;/strong&gt;: una solicitud
+rechazada se corrige y se reenvía dentro del mismo expediente. El motivo
+del rechazo queda en el historial y llega por correo al
+solicitante.&lt;/li&gt;
+&lt;li&gt;&lt;strong&gt;Aviso por correo&lt;/strong&gt;: el solicitante recibe un correo
+con enlace cada vez que cambia el estado de su solicitud.&lt;/li&gt;
+&lt;/ul&gt;
+&lt;p&gt;&lt;strong&gt;Roles del módulo&lt;/strong&gt;&lt;/p&gt;
+&lt;table&gt;
+&lt;colgroup&gt;
+&lt;col style="width: 33%" /&gt;
+&lt;col style="width: 33%" /&gt;
+&lt;col style="width: 33%" /&gt;
+&lt;/colgroup&gt;
+&lt;thead&gt;
+&lt;tr&gt;
+&lt;th&gt;Rol&lt;/th&gt;
+&lt;th&gt;Dónde trabaja&lt;/th&gt;
+&lt;th&gt;Función principal&lt;/th&gt;
+&lt;/tr&gt;
+&lt;/thead&gt;
+&lt;tbody&gt;
+&lt;tr&gt;
+&lt;td&gt;Solicitante (usuario de portal)&lt;/td&gt;
+&lt;td&gt;Portal&lt;/td&gt;
+&lt;td&gt;Crea y sigue sus propias solicitudes&lt;/td&gt;
+&lt;/tr&gt;
+&lt;tr&gt;
+&lt;td&gt;Jefe de Proyecto&lt;/td&gt;
+&lt;td&gt;Portal&lt;/td&gt;
+&lt;td&gt;Igual que un solicitante&lt;/td&gt;
+&lt;/tr&gt;
+&lt;tr&gt;
+&lt;td&gt;Jefe de Equipo&lt;/td&gt;
+&lt;td&gt;Portal&lt;/td&gt;
+&lt;td&gt;Aprueba o rechaza el primer paso de su equipo; ve saldos&lt;/td&gt;
+&lt;/tr&gt;
+&lt;tr&gt;
+&lt;td&gt;Administrativo&lt;/td&gt;
+&lt;td&gt;Portal&lt;/td&gt;
+&lt;td&gt;Crea solicitudes y ve las del equipo; no aprueba ni rechaza&lt;/td&gt;
+&lt;/tr&gt;
+&lt;tr&gt;
+&lt;td&gt;Director I+D&lt;/td&gt;
+&lt;td&gt;Backend&lt;/td&gt;
+&lt;td&gt;Aprueba documentos y proyectos&lt;/td&gt;
+&lt;/tr&gt;
+&lt;tr&gt;
+&lt;td&gt;Director Gerente&lt;/td&gt;
+&lt;td&gt;Backend&lt;/td&gt;
+&lt;td&gt;Firma documentos; aprueba gastos de más de 10.000 €&lt;/td&gt;
+&lt;/tr&gt;
+&lt;tr&gt;
+&lt;td&gt;Responsable de Personal y Compras&lt;/td&gt;
+&lt;td&gt;Backend&lt;/td&gt;
+&lt;td&gt;Segundo aprobador de gastos; altas y bajas de empleados&lt;/td&gt;
+&lt;/tr&gt;
+&lt;tr&gt;
+&lt;td&gt;Responsable de Clientes y Becarios&lt;/td&gt;
+&lt;td&gt;Backend&lt;/td&gt;
+&lt;td&gt;Segundo aprobador de facturas y gratificaciones; becarios&lt;/td&gt;
+&lt;/tr&gt;
+&lt;tr&gt;
+&lt;td&gt;Director Financiero&lt;/td&gt;
+&lt;td&gt;Backend&lt;/td&gt;
+&lt;td&gt;Consulta de documentos&lt;/td&gt;
+&lt;/tr&gt;
+&lt;/tbody&gt;
+&lt;/table&gt;
+&lt;blockquote&gt;
+&lt;p&gt;Las capturas de este manual se han tomado con usuarios y datos
+ficticios.&lt;/p&gt;
+&lt;/blockquote&gt;
+&lt;h2 id="tu-rol-solicitante"&gt;Tu rol: Solicitante&lt;/h2&gt;
+&lt;p&gt;Eres un usuario de portal (investigador o miembro de un grupo de
+trabajo) sin perfil AICIA específico. Creas solicitudes y sigues su
+estado; no apruebas nada. Solo ves tus propias solicitudes y los
+proyectos de los que eres responsable.&lt;/p&gt;
+&lt;p&gt;&lt;strong&gt;Requisitos&lt;/strong&gt;: usuario de portal, pertenecer a un grupo
+de trabajo y ser responsable de al menos un proyecto (para facturas y
+gastos). Para ver nóminas, tu usuario debe estar vinculado a una ficha
+de empleado.&lt;/p&gt;
+&lt;table&gt;
+&lt;colgroup&gt;
+&lt;col style="width: 50%" /&gt;
+&lt;col style="width: 50%" /&gt;
+&lt;/colgroup&gt;
+&lt;thead&gt;
+&lt;tr&gt;
+&lt;th&gt;Puedes&lt;/th&gt;
+&lt;th&gt;Dónde&lt;/th&gt;
+&lt;/tr&gt;
+&lt;/thead&gt;
+&lt;tbody&gt;
+&lt;tr&gt;
+&lt;td&gt;Solicitar la firma de un documento&lt;/td&gt;
+&lt;td&gt;&lt;code&gt;/my&lt;/code&gt; → &lt;strong&gt;Solicitudes de Documentos&lt;/strong&gt; →
+&lt;strong&gt;Nueva Solicitud&lt;/strong&gt;&lt;/td&gt;
+&lt;/tr&gt;
+&lt;tr&gt;
+&lt;td&gt;Solicitar una factura o rectificativa&lt;/td&gt;
+&lt;td&gt;&lt;code&gt;/my&lt;/code&gt; → &lt;strong&gt;Solicitudes de Facturas&lt;/strong&gt; →
+&lt;strong&gt;Nueva Solicitud&lt;/strong&gt;&lt;/td&gt;
+&lt;/tr&gt;
+&lt;tr&gt;
+&lt;td&gt;Solicitar un gasto&lt;/td&gt;
+&lt;td&gt;&lt;code&gt;/my&lt;/code&gt; → &lt;strong&gt;Solicitudes de Gastos&lt;/strong&gt; →
+&lt;strong&gt;Nueva Solicitud&lt;/strong&gt;&lt;/td&gt;
+&lt;/tr&gt;
+&lt;tr&gt;
+&lt;td&gt;Solicitar la apertura o cierre de un proyecto&lt;/td&gt;
+&lt;td&gt;Dirección &lt;code&gt;/portal/project_request&lt;/code&gt;&lt;/td&gt;
+&lt;/tr&gt;
+&lt;tr&gt;
+&lt;td&gt;Corregir y reenviar una solicitud rechazada&lt;/td&gt;
+&lt;td&gt;Detalle de la solicitud&lt;/td&gt;
+&lt;/tr&gt;
+&lt;tr&gt;
+&lt;td&gt;Consultar tus proyectos, sus facturas y pagos&lt;/td&gt;
+&lt;td&gt;Tarjeta &lt;strong&gt;Mis Proyectos&lt;/strong&gt;&lt;/td&gt;
+&lt;/tr&gt;
+&lt;tr&gt;
+&lt;td&gt;Consultar pagos de tus proyectos&lt;/td&gt;
+&lt;td&gt;Tarjeta &lt;strong&gt;Pagos&lt;/strong&gt;&lt;/td&gt;
+&lt;/tr&gt;
+&lt;tr&gt;
+&lt;td&gt;Descargar tus nóminas&lt;/td&gt;
+&lt;td&gt;Tarjeta &lt;strong&gt;Mis Nóminas&lt;/strong&gt;&lt;/td&gt;
+&lt;/tr&gt;
+&lt;/tbody&gt;
+&lt;/table&gt;
+&lt;p&gt;&lt;strong&gt;No puedes&lt;/strong&gt;: aprobar ni rechazar solicitudes, ver
+solicitudes de otras personas ni ver proyectos de los que no eres
+responsable.&lt;/p&gt;
+&lt;h2 id="cómo-hacerlo-paso-a-paso"&gt;Cómo hacerlo, paso a paso&lt;/h2&gt;
+&lt;h3 id="entrar-en-el-portal"&gt;Entrar en el portal&lt;/h3&gt;
+&lt;p&gt;Inicia sesión con tu usuario y contraseña. Llegarás a &lt;strong&gt;Mi
+cuenta&lt;/strong&gt; (&lt;code&gt;/my&lt;/code&gt;), con una tarjeta por cada sección a
+la que tienes acceso.&lt;/p&gt;
+&lt;p&gt;&lt;img class="img-fluid" src="/web/image/portal_requests.manual_img_solicitante_01_inicio"
+alt="Mi cuenta: tarjetas de acceso a cada sección" /&gt;&lt;br /&gt;
+&lt;em&gt;Mi cuenta: tarjetas de acceso a cada sección&lt;/em&gt;&lt;/p&gt;
+&lt;h3 id="solicitar-la-firma-de-un-documento"&gt;Solicitar la firma de un
+documento&lt;/h3&gt;
+&lt;ol type="1"&gt;
+&lt;li&gt;Entra en &lt;code&gt;/my&lt;/code&gt; → &lt;strong&gt;Solicitudes de
+Documentos&lt;/strong&gt; y pulsa &lt;strong&gt;Nueva Solicitud&lt;/strong&gt;.&lt;/li&gt;
+&lt;/ol&gt;
+&lt;p&gt;&lt;img class="img-fluid" src="/web/image/portal_requests.manual_img_solicitante_02_documentos_lista"
+alt="Listado de documentos: botón Nueva Solicitud" /&gt;&lt;br /&gt;
+&lt;em&gt;Listado de documentos: botón Nueva Solicitud&lt;/em&gt;&lt;/p&gt;
+&lt;ol start="2" type="1"&gt;
+&lt;li&gt;Rellena el formulario:
+&lt;ul&gt;
+&lt;li&gt;&lt;strong&gt;Tipo&lt;/strong&gt;: firma NDA, firma de contrato con empresa,
+autorización de salida a empresas o salida de viaje.&lt;/li&gt;
+&lt;li&gt;&lt;strong&gt;Archivo&lt;/strong&gt;: el documento en &lt;strong&gt;PDF&lt;/strong&gt;.&lt;/li&gt;
+&lt;li&gt;&lt;strong&gt;Firmado por empresa&lt;/strong&gt;: márcalo solo si el documento
+ya lleva la firma de la empresa externa.&lt;/li&gt;
+&lt;li&gt;&lt;strong&gt;Descripción&lt;/strong&gt; y &lt;strong&gt;Grupo de
+trabajo&lt;/strong&gt;.&lt;/li&gt;
+&lt;/ul&gt;&lt;/li&gt;
+&lt;li&gt;Pulsa &lt;strong&gt;Enviar&lt;/strong&gt;.&lt;/li&gt;
+&lt;/ol&gt;
+&lt;p&gt;&lt;img class="img-fluid" src="/web/image/portal_requests.manual_img_solicitante_03_documento_nuevo"
+alt="Formulario de solicitud de documento" /&gt;&lt;br /&gt;
+&lt;em&gt;Formulario de solicitud de documento&lt;/em&gt;&lt;/p&gt;
+&lt;p&gt;Circuito: Jefe de Equipo → Director I+D → firma del Director Gerente
+→ (firma de la empresa, si faltaba) → revisión final del Director I+D →
+&lt;strong&gt;Aprobada&lt;/strong&gt;.&lt;/p&gt;
+&lt;p&gt;Cuando el estado sea &lt;strong&gt;Esperando firma de empresa&lt;/strong&gt;,
+consigue la firma de la empresa y sube el PDF firmado desde el detalle
+(&lt;strong&gt;Subir archivo&lt;/strong&gt;). El Jefe de Equipo confirma después la
+firma para que el documento pase a revisión final. El documento firmado
+aparece con el sufijo &lt;code&gt;_firmado&lt;/code&gt;.&lt;/p&gt;
+&lt;h3 id="solicitar-una-factura-o-factura-rectificativa"&gt;Solicitar una
+factura o factura rectificativa&lt;/h3&gt;
+&lt;ol type="1"&gt;
+&lt;li&gt;Entra en &lt;code&gt;/my&lt;/code&gt; → &lt;strong&gt;Solicitudes de Facturas&lt;/strong&gt;
+y pulsa &lt;strong&gt;Nueva Solicitud&lt;/strong&gt;.&lt;/li&gt;
+&lt;/ol&gt;
+&lt;p&gt;&lt;img class="img-fluid" src="/web/image/portal_requests.manual_img_solicitante_05_facturas_lista"
+alt="Listado de facturas: botón Nueva Solicitud" /&gt;&lt;br /&gt;
+&lt;em&gt;Listado de facturas: botón Nueva Solicitud&lt;/em&gt;&lt;/p&gt;
+&lt;ol start="2" type="1"&gt;
+&lt;li&gt;Rellena el formulario:
+&lt;ul&gt;
+&lt;li&gt;&lt;strong&gt;Proyecto&lt;/strong&gt; y &lt;strong&gt;Cliente&lt;/strong&gt; (la lista de
+clientes depende del proyecto).&lt;/li&gt;
+&lt;li&gt;&lt;strong&gt;Tipo&lt;/strong&gt;: factura o factura rectificativa. En una
+rectificativa aparecen también la factura a rectificar y el motivo.&lt;/li&gt;
+&lt;li&gt;&lt;strong&gt;Adjuntar Documento Emisión de Factura&lt;/strong&gt; (opcional, en
+PDF).&lt;/li&gt;
+&lt;li&gt;&lt;strong&gt;Enviar Borrador&lt;/strong&gt;: márcalo si quieres que el borrador
+se envíe a los seguidores al aprobarse.&lt;/li&gt;
+&lt;li&gt;&lt;strong&gt;Fecha&lt;/strong&gt;, &lt;strong&gt;Importe (sin IVA)&lt;/strong&gt;,
+&lt;strong&gt;Concepto&lt;/strong&gt; (texto de la línea de factura) y
+&lt;strong&gt;Comentario&lt;/strong&gt; (dirección de envío, observaciones).&lt;/li&gt;
+&lt;/ul&gt;&lt;/li&gt;
+&lt;li&gt;Pulsa &lt;strong&gt;Enviar&lt;/strong&gt;.&lt;/li&gt;
+&lt;/ol&gt;
+&lt;p&gt;&lt;img class="img-fluid" src="/web/image/portal_requests.manual_img_solicitante_06_factura_nueva"
+alt="Formulario de solicitud de factura" /&gt;&lt;br /&gt;
+&lt;em&gt;Formulario de solicitud de factura&lt;/em&gt;&lt;/p&gt;
+&lt;p&gt;Circuito: Jefe de Equipo → Responsable de Clientes →
+&lt;strong&gt;Aprobada&lt;/strong&gt;. Al aprobarse se crea la factura en borrador y
+en el detalle aparece &lt;strong&gt;Ver Factura Creada&lt;/strong&gt;.&lt;/p&gt;
+&lt;h3 id="solicitar-un-gasto"&gt;Solicitar un gasto&lt;/h3&gt;
+&lt;ol type="1"&gt;
+&lt;li&gt;Entra en &lt;code&gt;/my&lt;/code&gt; → &lt;strong&gt;Solicitudes de Gastos&lt;/strong&gt; y
+pulsa &lt;strong&gt;Nueva Solicitud&lt;/strong&gt;.&lt;/li&gt;
+&lt;/ol&gt;
+&lt;p&gt;&lt;img class="img-fluid" src="/web/image/portal_requests.manual_img_solicitante_08_gastos_lista"
+alt="Listado de gastos: botón Nueva Solicitud" /&gt;&lt;br /&gt;
+&lt;em&gt;Listado de gastos: botón Nueva Solicitud&lt;/em&gt;&lt;/p&gt;
+&lt;ol start="2" type="1"&gt;
+&lt;li&gt;Rellena el formulario:
+&lt;ul&gt;
+&lt;li&gt;&lt;strong&gt;Tipo&lt;/strong&gt;: compra de bienes o servicios, pago de
+material inventariable, liquidación de gastos o gratificación.&lt;/li&gt;
+&lt;li&gt;&lt;strong&gt;Compañía&lt;/strong&gt;: aquí se elige el
+&lt;strong&gt;proyecto&lt;/strong&gt;.&lt;/li&gt;
+&lt;li&gt;&lt;strong&gt;Factura&lt;/strong&gt;: los PDF. La gratificación admite
+&lt;strong&gt;un solo&lt;/strong&gt; archivo (el formulario); si subes más, solo se
+guarda el primero. El material inventariable pide además un
+&lt;strong&gt;archivo de inventario&lt;/strong&gt;.&lt;/li&gt;
+&lt;li&gt;&lt;strong&gt;¿Es mas de 10000€?&lt;/strong&gt;: márcalo si el importe supera
+esa cifra.&lt;/li&gt;
+&lt;/ul&gt;&lt;/li&gt;
+&lt;li&gt;Pulsa &lt;strong&gt;Enviar&lt;/strong&gt;.&lt;/li&gt;
+&lt;/ol&gt;
+&lt;p&gt;&lt;img class="img-fluid" src="/web/image/portal_requests.manual_img_solicitante_09_gasto_nuevo"
+alt="Formulario de solicitud de gasto" /&gt;&lt;br /&gt;
+&lt;em&gt;Formulario de solicitud de gasto&lt;/em&gt;&lt;/p&gt;
+&lt;p&gt;Circuito: Jefe de Equipo → Responsable de Personal y Compras (o de
+Clientes y Becarios si es gratificación) → Director Gerente solo si
+supera 10.000 € → &lt;strong&gt;Aprobada&lt;/strong&gt;. Al aprobarse se crea la
+factura de proveedor en borrador.&lt;/p&gt;
+&lt;h3 id="solicitar-la-apertura-o-el-cierre-de-un-proyecto"&gt;Solicitar la
+apertura o el cierre de un proyecto&lt;/h3&gt;
+&lt;ol type="1"&gt;
+&lt;li&gt;Abre en el portal la dirección
+&lt;code&gt;/portal/project_request&lt;/code&gt;.&lt;/li&gt;
+&lt;li&gt;Rellena el formulario:
+&lt;ul&gt;
+&lt;li&gt;&lt;strong&gt;Tipo de solicitud&lt;/strong&gt;: nuevo o finalizar proyecto.&lt;/li&gt;
+&lt;li&gt;En un proyecto nuevo: &lt;strong&gt;Compañía&lt;/strong&gt;, &lt;strong&gt;Grupo de
+trabajo&lt;/strong&gt;, &lt;strong&gt;Miembros del proyecto&lt;/strong&gt; (se filtran por
+el grupo), &lt;strong&gt;Client&lt;/strong&gt; (nombre del cliente), &lt;strong&gt;Nombre
+proyecto&lt;/strong&gt;, &lt;strong&gt;Fecha de inicio&lt;/strong&gt;, &lt;strong&gt;Fecha de
+fin&lt;/strong&gt;, &lt;strong&gt;Contrato firmado&lt;/strong&gt; (PDF) y &lt;strong&gt;Ficha de
+Alta&lt;/strong&gt; (Excel).&lt;/li&gt;
+&lt;li&gt;Para finalizar: el proyecto, la fecha de fin y el concepto.&lt;/li&gt;
+&lt;/ul&gt;&lt;/li&gt;
+&lt;li&gt;Pulsa &lt;strong&gt;Enviar&lt;/strong&gt;.&lt;/li&gt;
+&lt;/ol&gt;
+&lt;p&gt;&lt;img class="img-fluid" src="/web/image/portal_requests.manual_img_solicitante_11_proyecto_nuevo"
+alt="Formulario de solicitud de proyecto" /&gt;&lt;br /&gt;
+&lt;em&gt;Formulario de solicitud de proyecto&lt;/em&gt;&lt;/p&gt;
+&lt;p&gt;Circuito: Jefe de Equipo → Director I+D, que crea la cuenta analítica
+(o la archiva si es un cierre). En un proyecto nuevo quedarás como
+&lt;strong&gt;responsable&lt;/strong&gt;.&lt;/p&gt;
+&lt;h3 id="seguir-tus-solicitudes"&gt;Seguir tus solicitudes&lt;/h3&gt;
+&lt;p&gt;Cada listado (&lt;code&gt;/my/documents&lt;/code&gt;, &lt;code&gt;/my/invoices&lt;/code&gt;,
+&lt;code&gt;/my/expenses&lt;/code&gt;) permite &lt;strong&gt;filtrar por estado&lt;/strong&gt;,
+&lt;strong&gt;buscar&lt;/strong&gt;, &lt;strong&gt;agrupar&lt;/strong&gt; y
+&lt;strong&gt;Exportar&lt;/strong&gt; a CSV. Las solicitudes aprobadas siguen
+visibles. En el detalle puedes ver datos, estado y adjuntos,
+&lt;strong&gt;Subir archivo&lt;/strong&gt; (PDF) y escribir en el historial con
+&lt;strong&gt;Enviar Mensaje&lt;/strong&gt;.&lt;/p&gt;
+&lt;h3 id="corregir-una-solicitud-rechazada"&gt;Corregir una solicitud
+rechazada&lt;/h3&gt;
+&lt;p&gt;El correo de rechazo y el historial de la solicitud incluyen el
+motivo.&lt;/p&gt;
+&lt;ul&gt;
+&lt;li&gt;&lt;strong&gt;Documento&lt;/strong&gt; (estado &lt;strong&gt;Rechazada&lt;/strong&gt;): en
+el detalle sube la nueva versión en PDF y pulsa &lt;strong&gt;Reenviar a
+revisión&lt;/strong&gt;. Vuelve al inicio del circuito conservando el
+historial.&lt;/li&gt;
+&lt;/ul&gt;
+&lt;p&gt;&lt;img class="img-fluid" src="/web/image/portal_requests.manual_img_solicitante_04_documento_rechazado"
+alt="Documento rechazado: subir nueva versión y reenviar" /&gt;&lt;br /&gt;
+&lt;em&gt;Documento rechazado: subir nueva versión y reenviar&lt;/em&gt;&lt;/p&gt;
+&lt;ul&gt;
+&lt;li&gt;&lt;strong&gt;Factura o gasto&lt;/strong&gt; (estado &lt;strong&gt;Volver a
+revisar&lt;/strong&gt;): corrige lo necesario (adjuntos, mensaje) y pulsa
+&lt;strong&gt;Solicitar Revisión&lt;/strong&gt; en el detalle; vuelve al Jefe de
+Equipo.&lt;/li&gt;
+&lt;/ul&gt;
+&lt;p&gt;&lt;img class="img-fluid" src="/web/image/portal_requests.manual_img_solicitante_07_factura_volver_a_revisar"
+alt="Factura en Volver a revisar: botón Solicitar Revisión" /&gt;&lt;br /&gt;
+&lt;em&gt;Factura en Volver a revisar: botón Solicitar Revisión&lt;/em&gt;&lt;/p&gt;
+&lt;ul&gt;
+&lt;li&gt;&lt;strong&gt;Proyecto&lt;/strong&gt; (estado &lt;strong&gt;Rechazada&lt;/strong&gt;): en el
+detalle pulsa &lt;strong&gt;Reenviar a revisión&lt;/strong&gt;.&lt;/li&gt;
+&lt;/ul&gt;
+&lt;h3 id="consultar-proyectos-pagos-y-nóminas"&gt;Consultar proyectos, pagos
+y nóminas&lt;/h3&gt;
+&lt;ul&gt;
+&lt;li&gt;&lt;strong&gt;Mis Proyectos&lt;/strong&gt;: los proyectos de los que eres
+responsable, con cliente, saldo y estado.&lt;/li&gt;
+&lt;/ul&gt;
+&lt;p&gt;&lt;img class="img-fluid" src="/web/image/portal_requests.manual_img_solicitante_12_mis_proyectos"
+alt="Mis Proyectos" /&gt;&lt;br /&gt;
+&lt;em&gt;Mis Proyectos&lt;/em&gt;&lt;/p&gt;
+&lt;ul&gt;
+&lt;li&gt;En el detalle de un proyecto ves presupuesto, responsable y grupo;
+puedes subir PDF, escribir mensajes y abrir &lt;strong&gt;Ver Facturas
+Asociadas&lt;/strong&gt; (facturas del proyecto y sus pagos).&lt;/li&gt;
+&lt;/ul&gt;
+&lt;p&gt;&lt;img class="img-fluid" src="/web/image/portal_requests.manual_img_solicitante_13_proyecto_detalle"
+alt="Detalle de un proyecto" /&gt;&lt;br /&gt;
+&lt;em&gt;Detalle de un proyecto&lt;/em&gt;&lt;/p&gt;
+&lt;ul&gt;
+&lt;li&gt;&lt;strong&gt;Pagos&lt;/strong&gt;: pagos de las facturas pagadas de tus
+proyectos, con detalle, adjuntos, mensajes y exportación.&lt;/li&gt;
+&lt;li&gt;&lt;strong&gt;Mis Nóminas&lt;/strong&gt;: busca y descarga tus nóminas.&lt;/li&gt;
+&lt;/ul&gt;
+&lt;p&gt;&lt;img class="img-fluid" src="/web/image/portal_requests.manual_img_solicitante_15_nominas" alt="Mis Nóminas" /&gt;&lt;br /&gt;
+&lt;em&gt;Mis Nóminas&lt;/em&gt;&lt;/p&gt;
+&lt;h2 id="estados-que-verás"&gt;Estados que verás&lt;/h2&gt;
+&lt;table&gt;
+&lt;colgroup&gt;
+&lt;col style="width: 33%" /&gt;
+&lt;col style="width: 33%" /&gt;
+&lt;col style="width: 33%" /&gt;
+&lt;/colgroup&gt;
+&lt;thead&gt;
+&lt;tr&gt;
+&lt;th&gt;Solicitud&lt;/th&gt;
+&lt;th&gt;Estado&lt;/th&gt;
+&lt;th&gt;Quién actúa&lt;/th&gt;
+&lt;/tr&gt;
+&lt;/thead&gt;
+&lt;tbody&gt;
+&lt;tr&gt;
+&lt;td&gt;Documento&lt;/td&gt;
+&lt;td&gt;Aprobación del Jefe de Equipo&lt;/td&gt;
+&lt;td&gt;Jefe de Equipo&lt;/td&gt;
+&lt;/tr&gt;
+&lt;tr&gt;
+&lt;td&gt;Documento&lt;/td&gt;
+&lt;td&gt;Aprobación del Director I+D&lt;/td&gt;
+&lt;td&gt;Director I+D&lt;/td&gt;
+&lt;/tr&gt;
+&lt;tr&gt;
+&lt;td&gt;Documento&lt;/td&gt;
+&lt;td&gt;Aprobación del Director Gerente&lt;/td&gt;
+&lt;td&gt;Director Gerente (firma)&lt;/td&gt;
+&lt;/tr&gt;
+&lt;tr&gt;
+&lt;td&gt;Documento&lt;/td&gt;
+&lt;td&gt;Esperando firma de empresa&lt;/td&gt;
+&lt;td&gt;&lt;strong&gt;Tú&lt;/strong&gt; (subes el PDF firmado) y el Jefe de Equipo
+(confirma)&lt;/td&gt;
+&lt;/tr&gt;
+&lt;tr&gt;
+&lt;td&gt;Documento&lt;/td&gt;
+&lt;td&gt;Revisión final&lt;/td&gt;
+&lt;td&gt;Director I+D&lt;/td&gt;
+&lt;/tr&gt;
+&lt;tr&gt;
+&lt;td&gt;Documento&lt;/td&gt;
+&lt;td&gt;Rechazada&lt;/td&gt;
+&lt;td&gt;&lt;strong&gt;Tú&lt;/strong&gt; (nueva versión y reenvío)&lt;/td&gt;
+&lt;/tr&gt;
+&lt;tr&gt;
+&lt;td&gt;Factura&lt;/td&gt;
+&lt;td&gt;Aprobación del Jefe de Equipo&lt;/td&gt;
+&lt;td&gt;Jefe de Equipo&lt;/td&gt;
+&lt;/tr&gt;
+&lt;tr&gt;
+&lt;td&gt;Factura&lt;/td&gt;
+&lt;td&gt;Aprobación del Responsable de clientes&lt;/td&gt;
+&lt;td&gt;Responsable de Clientes y Becarios&lt;/td&gt;
+&lt;/tr&gt;
+&lt;tr&gt;
+&lt;td&gt;Factura&lt;/td&gt;
+&lt;td&gt;Volver a revisar&lt;/td&gt;
+&lt;td&gt;&lt;strong&gt;Tú&lt;/strong&gt; (Solicitar Revisión)&lt;/td&gt;
+&lt;/tr&gt;
+&lt;tr&gt;
+&lt;td&gt;Gasto&lt;/td&gt;
+&lt;td&gt;Aprobación del Jefe de Equipo&lt;/td&gt;
+&lt;td&gt;Jefe de Equipo&lt;/td&gt;
+&lt;/tr&gt;
+&lt;tr&gt;
+&lt;td&gt;Gasto&lt;/td&gt;
+&lt;td&gt;Aprobación del Responsable de proveedores&lt;/td&gt;
+&lt;td&gt;Personal y Compras (o Clientes y Becarios si es gratificación)&lt;/td&gt;
+&lt;/tr&gt;
+&lt;tr&gt;
+&lt;td&gt;Gasto&lt;/td&gt;
+&lt;td&gt;Aprobación del Director Gerente&lt;/td&gt;
+&lt;td&gt;Director Gerente (solo más de 10.000 €)&lt;/td&gt;
+&lt;/tr&gt;
+&lt;tr&gt;
+&lt;td&gt;Gasto&lt;/td&gt;
+&lt;td&gt;Volver a revisar&lt;/td&gt;
+&lt;td&gt;&lt;strong&gt;Tú&lt;/strong&gt; (Solicitar Revisión)&lt;/td&gt;
+&lt;/tr&gt;
+&lt;tr&gt;
+&lt;td&gt;Proyecto&lt;/td&gt;
+&lt;td&gt;Pendiente&lt;/td&gt;
+&lt;td&gt;Jefe de Equipo y después Director I+D&lt;/td&gt;
+&lt;/tr&gt;
+&lt;tr&gt;
+&lt;td&gt;Proyecto&lt;/td&gt;
+&lt;td&gt;Rechazada&lt;/td&gt;
+&lt;td&gt;&lt;strong&gt;Tú&lt;/strong&gt; (Reenviar a revisión)&lt;/td&gt;
+&lt;/tr&gt;
+&lt;/tbody&gt;
+&lt;/table&gt;
+&lt;p&gt;En todos los tipos, &lt;strong&gt;Aprobada&lt;/strong&gt; es el estado final.&lt;/p&gt;
+&lt;h2 id="avisos-y-preguntas-frecuentes"&gt;Avisos y preguntas
+frecuentes&lt;/h2&gt;
+&lt;p&gt;&lt;strong&gt;Correos que recibirás&lt;/strong&gt;: uno en cada cambio de estado
+de tus solicitudes, con enlace al portal y, si se rechazan, con el
+motivo. Si tu usuario no tiene email, no recibes avisos.&lt;/p&gt;
+&lt;p&gt;&lt;strong&gt;¿Por qué no puedo subir un Word?&lt;/strong&gt; El portal solo
+admite PDF. Si un archivo no es PDF, la solicitud no se crea y ningún
+adjunto se guarda.&lt;/p&gt;
+&lt;p&gt;&lt;strong&gt;No me aparece ningún proyecto en el formulario de factura o
+gasto.&lt;/strong&gt; Solo salen los proyectos de los que eres responsable.
+Pide que te asignen como responsable del proyecto.&lt;/p&gt;
+&lt;p&gt;&lt;strong&gt;No veo el listado de Solicitudes de Proyectos.&lt;/strong&gt; Solo
+lo ven los Jefes de Equipo y los Administrativos. Sigue tus solicitudes
+de proyecto desde el enlace de los correos de cambio de estado.&lt;/p&gt;
+&lt;p&gt;&lt;strong&gt;Mis Nóminas aparece vacío.&lt;/strong&gt; Tu usuario no está
+vinculado a una ficha de empleado. Contacta con Personal.&lt;/p&gt;
+</field>
+        </record>
+        <record id="manual_article_jefe_de_proyecto" model="knowledge.article">
+            <field name="name">Manual — Jefe de Proyecto</field>
+            <field name="icon">📁</field>
+            <field name="parent_id" ref="manual_article_root" />
+            <field name="sequence">2</field>
+            <field name="body">&lt;p&gt;&lt;a href="/web/content/portal_requests.manual_pdf_jefe_de_proyecto?download=true"&gt;📄 Descargar este manual en PDF&lt;/a&gt;&lt;/p&gt;&lt;h2 id="introducción-al-portal-de-solicitudes"&gt;Introducción al Portal de
+Solicitudes&lt;/h2&gt;
+&lt;p&gt;El Portal de Solicitudes de AICIA (módulo
+&lt;code&gt;portal_requests&lt;/code&gt;, Odoo 19) centraliza las solicitudes
+internas: firma de documentos, apertura y cierre de proyectos, emisión
+de facturas y gastos. También permite consultar proyectos, pagos y
+nóminas. Cada solicitud recorre un circuito de aprobación por estados y
+el sistema avisa por correo en cada paso.&lt;/p&gt;
+&lt;p&gt;&lt;strong&gt;Dónde se trabaja&lt;/strong&gt;&lt;/p&gt;
+&lt;ul&gt;
+&lt;li&gt;&lt;strong&gt;Portal&lt;/strong&gt; (&lt;code&gt;/my&lt;/code&gt;, “Mi cuenta”): lo usan
+solicitantes, Jefes de Proyecto, Jefes de Equipo y Administrativos. No
+consume licencia.&lt;/li&gt;
+&lt;li&gt;&lt;strong&gt;Backend&lt;/strong&gt; (aplicación &lt;strong&gt;Solicitudes del
+Portal&lt;/strong&gt; de Odoo): lo usan dirección y responsables internos para
+revisar y aprobar.&lt;/li&gt;
+&lt;/ul&gt;
+&lt;p&gt;&lt;strong&gt;Conceptos clave&lt;/strong&gt;&lt;/p&gt;
+&lt;ul&gt;
+&lt;li&gt;&lt;strong&gt;Grupo de trabajo&lt;/strong&gt;: equipo con miembros, un Jefe de
+Equipo y, opcionalmente, un Administrativo.&lt;/li&gt;
+&lt;li&gt;&lt;strong&gt;Paso “Aprobación del Jefe de Equipo”&lt;/strong&gt;: primer paso
+de las solicitudes de un miembro del equipo. Solo lo aprueba o rechaza
+el Jefe de Equipo del grupo; las solicitudes del propio Jefe de Equipo
+se lo saltan.&lt;/li&gt;
+&lt;li&gt;&lt;strong&gt;Proyecto&lt;/strong&gt;: cuenta analítica con responsable, grupo
+de trabajo, miembros, saldo y presupuesto.&lt;/li&gt;
+&lt;li&gt;&lt;strong&gt;Solo PDF&lt;/strong&gt;: todo archivo subido debe ser un PDF real
+(se comprueba el contenido, no solo la extensión). Única excepción: la
+Ficha de Alta de un proyecto nuevo, que se sube en Excel.&lt;/li&gt;
+&lt;li&gt;&lt;strong&gt;Umbral de 10.000 €&lt;/strong&gt;: un gasto marcado como superior
+a 10.000 € necesita además la aprobación del Director Gerente.&lt;/li&gt;
+&lt;li&gt;&lt;strong&gt;Rechazo sin perder histórico&lt;/strong&gt;: una solicitud
+rechazada se corrige y se reenvía dentro del mismo expediente. El motivo
+del rechazo queda en el historial y llega por correo al
+solicitante.&lt;/li&gt;
+&lt;li&gt;&lt;strong&gt;Aviso por correo&lt;/strong&gt;: el solicitante recibe un correo
+con enlace cada vez que cambia el estado de su solicitud.&lt;/li&gt;
+&lt;/ul&gt;
+&lt;p&gt;&lt;strong&gt;Roles del módulo&lt;/strong&gt;&lt;/p&gt;
+&lt;table&gt;
+&lt;colgroup&gt;
+&lt;col style="width: 33%" /&gt;
+&lt;col style="width: 33%" /&gt;
+&lt;col style="width: 33%" /&gt;
+&lt;/colgroup&gt;
+&lt;thead&gt;
+&lt;tr&gt;
+&lt;th&gt;Rol&lt;/th&gt;
+&lt;th&gt;Dónde trabaja&lt;/th&gt;
+&lt;th&gt;Función principal&lt;/th&gt;
+&lt;/tr&gt;
+&lt;/thead&gt;
+&lt;tbody&gt;
+&lt;tr&gt;
+&lt;td&gt;Solicitante (usuario de portal)&lt;/td&gt;
+&lt;td&gt;Portal&lt;/td&gt;
+&lt;td&gt;Crea y sigue sus propias solicitudes&lt;/td&gt;
+&lt;/tr&gt;
+&lt;tr&gt;
+&lt;td&gt;Jefe de Proyecto&lt;/td&gt;
+&lt;td&gt;Portal&lt;/td&gt;
+&lt;td&gt;Igual que un solicitante&lt;/td&gt;
+&lt;/tr&gt;
+&lt;tr&gt;
+&lt;td&gt;Jefe de Equipo&lt;/td&gt;
+&lt;td&gt;Portal&lt;/td&gt;
+&lt;td&gt;Aprueba o rechaza el primer paso de su equipo; ve saldos&lt;/td&gt;
+&lt;/tr&gt;
+&lt;tr&gt;
+&lt;td&gt;Administrativo&lt;/td&gt;
+&lt;td&gt;Portal&lt;/td&gt;
+&lt;td&gt;Crea solicitudes y ve las del equipo; no aprueba ni rechaza&lt;/td&gt;
+&lt;/tr&gt;
+&lt;tr&gt;
+&lt;td&gt;Director I+D&lt;/td&gt;
+&lt;td&gt;Backend&lt;/td&gt;
+&lt;td&gt;Aprueba documentos y proyectos&lt;/td&gt;
+&lt;/tr&gt;
+&lt;tr&gt;
+&lt;td&gt;Director Gerente&lt;/td&gt;
+&lt;td&gt;Backend&lt;/td&gt;
+&lt;td&gt;Firma documentos; aprueba gastos de más de 10.000 €&lt;/td&gt;
+&lt;/tr&gt;
+&lt;tr&gt;
+&lt;td&gt;Responsable de Personal y Compras&lt;/td&gt;
+&lt;td&gt;Backend&lt;/td&gt;
+&lt;td&gt;Segundo aprobador de gastos; altas y bajas de empleados&lt;/td&gt;
+&lt;/tr&gt;
+&lt;tr&gt;
+&lt;td&gt;Responsable de Clientes y Becarios&lt;/td&gt;
+&lt;td&gt;Backend&lt;/td&gt;
+&lt;td&gt;Segundo aprobador de facturas y gratificaciones; becarios&lt;/td&gt;
+&lt;/tr&gt;
+&lt;tr&gt;
+&lt;td&gt;Director Financiero&lt;/td&gt;
+&lt;td&gt;Backend&lt;/td&gt;
+&lt;td&gt;Consulta de documentos&lt;/td&gt;
+&lt;/tr&gt;
+&lt;/tbody&gt;
+&lt;/table&gt;
+&lt;blockquote&gt;
+&lt;p&gt;Las capturas de este manual se han tomado con usuarios y datos
+ficticios.&lt;/p&gt;
+&lt;/blockquote&gt;
+&lt;h2 id="tu-rol-jefe-de-proyecto"&gt;Tu rol: Jefe de Proyecto&lt;/h2&gt;
+&lt;p&gt;Eres &lt;strong&gt;usuario de portal&lt;/strong&gt; y en el portal funcionas
+&lt;strong&gt;exactamente igual que un solicitante&lt;/strong&gt;: creas solicitudes
+y sigues su estado, pero no apruebas ni rechazas nada. Solo ves tus
+propias solicitudes y los proyectos de los que eres responsable.&lt;/p&gt;
+&lt;p&gt;No confundas este perfil con ser &lt;strong&gt;responsable de un
+proyecto&lt;/strong&gt; (campo &lt;em&gt;Responsable&lt;/em&gt; de la cuenta analítica):
+cualquier usuario puede ser responsable de un proyecto, tenga o no este
+perfil.&lt;/p&gt;
+&lt;p&gt;&lt;strong&gt;Requisitos&lt;/strong&gt;: usuario de portal con el perfil
+&lt;strong&gt;Jefe de Proyecto&lt;/strong&gt;, pertenecer a un grupo de trabajo y
+ser responsable de al menos un proyecto (para facturas y gastos). Para
+ver nóminas, tu usuario debe estar vinculado a una ficha de
+empleado.&lt;/p&gt;
+&lt;table&gt;
+&lt;colgroup&gt;
+&lt;col style="width: 50%" /&gt;
+&lt;col style="width: 50%" /&gt;
+&lt;/colgroup&gt;
+&lt;thead&gt;
+&lt;tr&gt;
+&lt;th&gt;Puedes&lt;/th&gt;
+&lt;th&gt;Dónde&lt;/th&gt;
+&lt;/tr&gt;
+&lt;/thead&gt;
+&lt;tbody&gt;
+&lt;tr&gt;
+&lt;td&gt;Solicitar la firma de un documento&lt;/td&gt;
+&lt;td&gt;&lt;code&gt;/my&lt;/code&gt; → &lt;strong&gt;Solicitudes de Documentos&lt;/strong&gt; →
+&lt;strong&gt;Nueva Solicitud&lt;/strong&gt;&lt;/td&gt;
+&lt;/tr&gt;
+&lt;tr&gt;
+&lt;td&gt;Solicitar una factura o rectificativa&lt;/td&gt;
+&lt;td&gt;&lt;code&gt;/my&lt;/code&gt; → &lt;strong&gt;Solicitudes de Facturas&lt;/strong&gt; →
+&lt;strong&gt;Nueva Solicitud&lt;/strong&gt;&lt;/td&gt;
+&lt;/tr&gt;
+&lt;tr&gt;
+&lt;td&gt;Solicitar un gasto&lt;/td&gt;
+&lt;td&gt;&lt;code&gt;/my&lt;/code&gt; → &lt;strong&gt;Solicitudes de Gastos&lt;/strong&gt; →
+&lt;strong&gt;Nueva Solicitud&lt;/strong&gt;&lt;/td&gt;
+&lt;/tr&gt;
+&lt;tr&gt;
+&lt;td&gt;Solicitar la apertura o cierre de un proyecto&lt;/td&gt;
+&lt;td&gt;Dirección &lt;code&gt;/portal/project_request&lt;/code&gt;&lt;/td&gt;
+&lt;/tr&gt;
+&lt;tr&gt;
+&lt;td&gt;Corregir y reenviar una solicitud rechazada&lt;/td&gt;
+&lt;td&gt;Detalle de la solicitud&lt;/td&gt;
+&lt;/tr&gt;
+&lt;tr&gt;
+&lt;td&gt;Consultar tus proyectos, sus facturas y pagos&lt;/td&gt;
+&lt;td&gt;Tarjeta &lt;strong&gt;Mis Proyectos&lt;/strong&gt;&lt;/td&gt;
+&lt;/tr&gt;
+&lt;tr&gt;
+&lt;td&gt;Consultar pagos de tus proyectos&lt;/td&gt;
+&lt;td&gt;Tarjeta &lt;strong&gt;Pagos&lt;/strong&gt;&lt;/td&gt;
+&lt;/tr&gt;
+&lt;tr&gt;
+&lt;td&gt;Descargar tus nóminas&lt;/td&gt;
+&lt;td&gt;Tarjeta &lt;strong&gt;Mis Nóminas&lt;/strong&gt;&lt;/td&gt;
+&lt;/tr&gt;
+&lt;/tbody&gt;
+&lt;/table&gt;
+&lt;p&gt;&lt;strong&gt;No puedes&lt;/strong&gt;: aprobar ni rechazar solicitudes, ver
+solicitudes de otras personas ni ver proyectos de los que no eres
+responsable.&lt;/p&gt;
+&lt;h2 id="cómo-hacerlo-paso-a-paso"&gt;Cómo hacerlo, paso a paso&lt;/h2&gt;
+&lt;h3 id="entrar-en-el-portal"&gt;Entrar en el portal&lt;/h3&gt;
+&lt;p&gt;Inicia sesión con tu usuario y contraseña. Llegarás a &lt;strong&gt;Mi
+cuenta&lt;/strong&gt; (&lt;code&gt;/my&lt;/code&gt;), con una tarjeta por cada sección a
+la que tienes acceso.&lt;/p&gt;
+&lt;p&gt;&lt;img class="img-fluid" src="/web/image/portal_requests.manual_img_jefe_de_proyecto_01_inicio"
+alt="Mi cuenta: tarjetas de acceso a cada sección" /&gt;&lt;br /&gt;
+&lt;em&gt;Mi cuenta: tarjetas de acceso a cada sección&lt;/em&gt;&lt;/p&gt;
+&lt;h3 id="solicitar-la-firma-de-un-documento"&gt;Solicitar la firma de un
+documento&lt;/h3&gt;
+&lt;ol type="1"&gt;
+&lt;li&gt;Entra en &lt;code&gt;/my&lt;/code&gt; → &lt;strong&gt;Solicitudes de
+Documentos&lt;/strong&gt; y pulsa &lt;strong&gt;Nueva Solicitud&lt;/strong&gt;.&lt;/li&gt;
+&lt;/ol&gt;
+&lt;p&gt;&lt;img class="img-fluid" src="/web/image/portal_requests.manual_img_jefe_de_proyecto_02_documentos_lista"
+alt="Listado de documentos: botón Nueva Solicitud" /&gt;&lt;br /&gt;
+&lt;em&gt;Listado de documentos: botón Nueva Solicitud&lt;/em&gt;&lt;/p&gt;
+&lt;ol start="2" type="1"&gt;
+&lt;li&gt;Rellena el formulario:
+&lt;ul&gt;
+&lt;li&gt;&lt;strong&gt;Tipo&lt;/strong&gt;: firma NDA, firma de contrato con empresa,
+autorización de salida a empresas o salida de viaje.&lt;/li&gt;
+&lt;li&gt;&lt;strong&gt;Archivo&lt;/strong&gt;: el documento en &lt;strong&gt;PDF&lt;/strong&gt;.&lt;/li&gt;
+&lt;li&gt;&lt;strong&gt;Firmado por empresa&lt;/strong&gt;: márcalo solo si el documento
+ya lleva la firma de la empresa externa.&lt;/li&gt;
+&lt;li&gt;&lt;strong&gt;Descripción&lt;/strong&gt; y &lt;strong&gt;Grupo de
+trabajo&lt;/strong&gt;.&lt;/li&gt;
+&lt;/ul&gt;&lt;/li&gt;
+&lt;li&gt;Pulsa &lt;strong&gt;Enviar&lt;/strong&gt;.&lt;/li&gt;
+&lt;/ol&gt;
+&lt;p&gt;&lt;img class="img-fluid" src="/web/image/portal_requests.manual_img_solicitante_03_documento_nuevo"
+alt="Formulario de solicitud de documento" /&gt;&lt;br /&gt;
+&lt;em&gt;Formulario de solicitud de documento&lt;/em&gt;&lt;/p&gt;
+&lt;p&gt;Circuito: Jefe de Equipo → Director I+D → firma del Director Gerente
+→ (firma de la empresa, si faltaba) → revisión final del Director I+D →
+&lt;strong&gt;Aprobada&lt;/strong&gt;.&lt;/p&gt;
+&lt;p&gt;Cuando el estado sea &lt;strong&gt;Esperando firma de empresa&lt;/strong&gt;,
+consigue la firma de la empresa y sube el PDF firmado desde el detalle
+(&lt;strong&gt;Subir archivo&lt;/strong&gt;). El Jefe de Equipo confirma después la
+firma para que el documento pase a revisión final. El documento firmado
+aparece con el sufijo &lt;code&gt;_firmado&lt;/code&gt;.&lt;/p&gt;
+&lt;h3 id="solicitar-una-factura-o-factura-rectificativa"&gt;Solicitar una
+factura o factura rectificativa&lt;/h3&gt;
+&lt;ol type="1"&gt;
+&lt;li&gt;Entra en &lt;code&gt;/my&lt;/code&gt; → &lt;strong&gt;Solicitudes de Facturas&lt;/strong&gt;
+y pulsa &lt;strong&gt;Nueva Solicitud&lt;/strong&gt;.&lt;/li&gt;
+&lt;/ol&gt;
+&lt;p&gt;&lt;img class="img-fluid" src="/web/image/portal_requests.manual_img_solicitante_05_facturas_lista"
+alt="Listado de facturas: botón Nueva Solicitud" /&gt;&lt;br /&gt;
+&lt;em&gt;Listado de facturas: botón Nueva Solicitud&lt;/em&gt;&lt;/p&gt;
+&lt;ol start="2" type="1"&gt;
+&lt;li&gt;Rellena el formulario:
+&lt;ul&gt;
+&lt;li&gt;&lt;strong&gt;Proyecto&lt;/strong&gt; y &lt;strong&gt;Cliente&lt;/strong&gt; (la lista de
+clientes depende del proyecto).&lt;/li&gt;
+&lt;li&gt;&lt;strong&gt;Tipo&lt;/strong&gt;: factura o factura rectificativa. En una
+rectificativa aparecen también la factura a rectificar y el motivo.&lt;/li&gt;
+&lt;li&gt;&lt;strong&gt;Adjuntar Documento Emisión de Factura&lt;/strong&gt; (opcional, en
+PDF).&lt;/li&gt;
+&lt;li&gt;&lt;strong&gt;Enviar Borrador&lt;/strong&gt;: márcalo si quieres que el borrador
+se envíe a los seguidores al aprobarse.&lt;/li&gt;
+&lt;li&gt;&lt;strong&gt;Fecha&lt;/strong&gt;, &lt;strong&gt;Importe (sin IVA)&lt;/strong&gt;,
+&lt;strong&gt;Concepto&lt;/strong&gt; (texto de la línea de factura) y
+&lt;strong&gt;Comentario&lt;/strong&gt; (dirección de envío, observaciones).&lt;/li&gt;
+&lt;/ul&gt;&lt;/li&gt;
+&lt;li&gt;Pulsa &lt;strong&gt;Enviar&lt;/strong&gt;.&lt;/li&gt;
+&lt;/ol&gt;
+&lt;p&gt;&lt;img class="img-fluid" src="/web/image/portal_requests.manual_img_solicitante_06_factura_nueva"
+alt="Formulario de solicitud de factura" /&gt;&lt;br /&gt;
+&lt;em&gt;Formulario de solicitud de factura&lt;/em&gt;&lt;/p&gt;
+&lt;p&gt;Circuito: Jefe de Equipo → Responsable de Clientes →
+&lt;strong&gt;Aprobada&lt;/strong&gt;. Al aprobarse se crea la factura en borrador y
+en el detalle aparece &lt;strong&gt;Ver Factura Creada&lt;/strong&gt;.&lt;/p&gt;
+&lt;h3 id="solicitar-un-gasto"&gt;Solicitar un gasto&lt;/h3&gt;
+&lt;ol type="1"&gt;
+&lt;li&gt;Entra en &lt;code&gt;/my&lt;/code&gt; → &lt;strong&gt;Solicitudes de Gastos&lt;/strong&gt; y
+pulsa &lt;strong&gt;Nueva Solicitud&lt;/strong&gt;.&lt;/li&gt;
+&lt;/ol&gt;
+&lt;p&gt;&lt;img class="img-fluid" src="/web/image/portal_requests.manual_img_jefe_de_proyecto_03_gastos_lista"
+alt="Listado de gastos: botón Nueva Solicitud" /&gt;&lt;br /&gt;
+&lt;em&gt;Listado de gastos: botón Nueva Solicitud&lt;/em&gt;&lt;/p&gt;
+&lt;ol start="2" type="1"&gt;
+&lt;li&gt;Rellena el formulario:
+&lt;ul&gt;
+&lt;li&gt;&lt;strong&gt;Tipo&lt;/strong&gt;: compra de bienes o servicios, pago de
+material inventariable, liquidación de gastos o gratificación.&lt;/li&gt;
+&lt;li&gt;&lt;strong&gt;Compañía&lt;/strong&gt;: aquí se elige el
+&lt;strong&gt;proyecto&lt;/strong&gt;.&lt;/li&gt;
+&lt;li&gt;&lt;strong&gt;Factura&lt;/strong&gt;: los PDF. La gratificación admite
+&lt;strong&gt;un solo&lt;/strong&gt; archivo (el formulario); si subes más, solo se
+guarda el primero. El material inventariable pide además un
+&lt;strong&gt;archivo de inventario&lt;/strong&gt;.&lt;/li&gt;
+&lt;li&gt;&lt;strong&gt;¿Es mas de 10000€?&lt;/strong&gt;: márcalo si el importe supera
+esa cifra.&lt;/li&gt;
+&lt;/ul&gt;&lt;/li&gt;
+&lt;li&gt;Pulsa &lt;strong&gt;Enviar&lt;/strong&gt;.&lt;/li&gt;
+&lt;/ol&gt;
+&lt;p&gt;&lt;img class="img-fluid" src="/web/image/portal_requests.manual_img_solicitante_09_gasto_nuevo"
+alt="Formulario de solicitud de gasto" /&gt;&lt;br /&gt;
+&lt;em&gt;Formulario de solicitud de gasto&lt;/em&gt;&lt;/p&gt;
+&lt;p&gt;Circuito: Jefe de Equipo → Responsable de Personal y Compras (o de
+Clientes y Becarios si es gratificación) → Director Gerente solo si
+supera 10.000 € → &lt;strong&gt;Aprobada&lt;/strong&gt;. Al aprobarse se crea la
+factura de proveedor en borrador.&lt;/p&gt;
+&lt;h3 id="solicitar-la-apertura-o-el-cierre-de-un-proyecto"&gt;Solicitar la
+apertura o el cierre de un proyecto&lt;/h3&gt;
+&lt;ol type="1"&gt;
+&lt;li&gt;Abre en el portal la dirección
+&lt;code&gt;/portal/project_request&lt;/code&gt;.&lt;/li&gt;
+&lt;li&gt;Rellena el formulario:
+&lt;ul&gt;
+&lt;li&gt;&lt;strong&gt;Tipo de solicitud&lt;/strong&gt;: nuevo o finalizar proyecto.&lt;/li&gt;
+&lt;li&gt;En un proyecto nuevo: &lt;strong&gt;Compañía&lt;/strong&gt;, &lt;strong&gt;Grupo de
+trabajo&lt;/strong&gt;, &lt;strong&gt;Miembros del proyecto&lt;/strong&gt; (se filtran por
+el grupo), &lt;strong&gt;Client&lt;/strong&gt; (nombre del cliente), &lt;strong&gt;Nombre
+proyecto&lt;/strong&gt;, &lt;strong&gt;Fecha de inicio&lt;/strong&gt;, &lt;strong&gt;Fecha de
+fin&lt;/strong&gt;, &lt;strong&gt;Contrato firmado&lt;/strong&gt; (PDF) y &lt;strong&gt;Ficha de
+Alta&lt;/strong&gt; (Excel).&lt;/li&gt;
+&lt;li&gt;Para finalizar: el proyecto, la fecha de fin y el concepto.&lt;/li&gt;
+&lt;/ul&gt;&lt;/li&gt;
+&lt;li&gt;Pulsa &lt;strong&gt;Enviar&lt;/strong&gt;.&lt;/li&gt;
+&lt;/ol&gt;
+&lt;p&gt;&lt;img class="img-fluid" src="/web/image/portal_requests.manual_img_solicitante_11_proyecto_nuevo"
+alt="Formulario de solicitud de proyecto" /&gt;&lt;br /&gt;
+&lt;em&gt;Formulario de solicitud de proyecto&lt;/em&gt;&lt;/p&gt;
+&lt;p&gt;Circuito: Jefe de Equipo → Director I+D, que crea la cuenta analítica
+(o la archiva si es un cierre). En un proyecto nuevo quedarás como
+&lt;strong&gt;responsable&lt;/strong&gt;.&lt;/p&gt;
+&lt;h3 id="seguir-tus-solicitudes"&gt;Seguir tus solicitudes&lt;/h3&gt;
+&lt;p&gt;Cada listado (&lt;code&gt;/my/documents&lt;/code&gt;, &lt;code&gt;/my/invoices&lt;/code&gt;,
+&lt;code&gt;/my/expenses&lt;/code&gt;) permite &lt;strong&gt;filtrar por estado&lt;/strong&gt;,
+&lt;strong&gt;buscar&lt;/strong&gt;, &lt;strong&gt;agrupar&lt;/strong&gt; y
+&lt;strong&gt;Exportar&lt;/strong&gt; a CSV. Las solicitudes aprobadas siguen
+visibles. En el detalle puedes ver datos, estado y adjuntos,
+&lt;strong&gt;Subir archivo&lt;/strong&gt; (PDF) y escribir en el historial con
+&lt;strong&gt;Enviar Mensaje&lt;/strong&gt;.&lt;/p&gt;
+&lt;h3 id="corregir-una-solicitud-rechazada"&gt;Corregir una solicitud
+rechazada&lt;/h3&gt;
+&lt;p&gt;El correo de rechazo y el historial de la solicitud incluyen el
+motivo.&lt;/p&gt;
+&lt;ul&gt;
+&lt;li&gt;&lt;strong&gt;Documento&lt;/strong&gt; (estado &lt;strong&gt;Rechazada&lt;/strong&gt;): en
+el detalle sube la nueva versión en PDF y pulsa &lt;strong&gt;Reenviar a
+revisión&lt;/strong&gt;. Vuelve al inicio del circuito conservando el
+historial.&lt;/li&gt;
+&lt;/ul&gt;
+&lt;p&gt;&lt;img class="img-fluid" src="/web/image/portal_requests.manual_img_solicitante_04_documento_rechazado"
+alt="Documento rechazado: subir nueva versión y reenviar" /&gt;&lt;br /&gt;
+&lt;em&gt;Documento rechazado: subir nueva versión y reenviar&lt;/em&gt;&lt;/p&gt;
+&lt;ul&gt;
+&lt;li&gt;&lt;strong&gt;Factura o gasto&lt;/strong&gt; (estado &lt;strong&gt;Volver a
+revisar&lt;/strong&gt;): corrige lo necesario (adjuntos, mensaje) y pulsa
+&lt;strong&gt;Solicitar Revisión&lt;/strong&gt; en el detalle; vuelve al Jefe de
+Equipo.&lt;/li&gt;
+&lt;/ul&gt;
+&lt;p&gt;&lt;img class="img-fluid" src="/web/image/portal_requests.manual_img_solicitante_07_factura_volver_a_revisar"
+alt="Factura en Volver a revisar: botón Solicitar Revisión" /&gt;&lt;br /&gt;
+&lt;em&gt;Factura en Volver a revisar: botón Solicitar Revisión&lt;/em&gt;&lt;/p&gt;
+&lt;ul&gt;
+&lt;li&gt;&lt;strong&gt;Proyecto&lt;/strong&gt; (estado &lt;strong&gt;Rechazada&lt;/strong&gt;): en el
+detalle pulsa &lt;strong&gt;Reenviar a revisión&lt;/strong&gt;.&lt;/li&gt;
+&lt;/ul&gt;
+&lt;h3 id="consultar-proyectos-pagos-y-nóminas"&gt;Consultar proyectos, pagos
+y nóminas&lt;/h3&gt;
+&lt;ul&gt;
+&lt;li&gt;&lt;strong&gt;Mis Proyectos&lt;/strong&gt;: los proyectos de los que eres
+responsable, con cliente, saldo y estado.&lt;/li&gt;
+&lt;/ul&gt;
+&lt;p&gt;&lt;img class="img-fluid" src="/web/image/portal_requests.manual_img_jefe_de_proyecto_04_mis_proyectos"
+alt="Mis Proyectos" /&gt;&lt;br /&gt;
+&lt;em&gt;Mis Proyectos&lt;/em&gt;&lt;/p&gt;
+&lt;ul&gt;
+&lt;li&gt;En el detalle de un proyecto ves presupuesto, responsable y grupo;
+puedes subir PDF, escribir mensajes y abrir &lt;strong&gt;Ver Facturas
+Asociadas&lt;/strong&gt; (facturas del proyecto y sus pagos).&lt;/li&gt;
+&lt;/ul&gt;
+&lt;p&gt;&lt;img class="img-fluid" src="/web/image/portal_requests.manual_img_solicitante_13_proyecto_detalle"
+alt="Detalle de un proyecto" /&gt;&lt;br /&gt;
+&lt;em&gt;Detalle de un proyecto&lt;/em&gt;&lt;/p&gt;
+&lt;ul&gt;
+&lt;li&gt;&lt;strong&gt;Pagos&lt;/strong&gt;: pagos de las facturas pagadas de tus
+proyectos, con detalle, adjuntos, mensajes y exportación.&lt;/li&gt;
+&lt;li&gt;&lt;strong&gt;Mis Nóminas&lt;/strong&gt;: busca y descarga tus nóminas.&lt;/li&gt;
+&lt;/ul&gt;
+&lt;p&gt;&lt;img class="img-fluid" src="/web/image/portal_requests.manual_img_solicitante_15_nominas" alt="Mis Nóminas" /&gt;&lt;br /&gt;
+&lt;em&gt;Mis Nóminas&lt;/em&gt;&lt;/p&gt;
+&lt;h2 id="estados-que-verás"&gt;Estados que verás&lt;/h2&gt;
+&lt;table&gt;
+&lt;colgroup&gt;
+&lt;col style="width: 33%" /&gt;
+&lt;col style="width: 33%" /&gt;
+&lt;col style="width: 33%" /&gt;
+&lt;/colgroup&gt;
+&lt;thead&gt;
+&lt;tr&gt;
+&lt;th&gt;Solicitud&lt;/th&gt;
+&lt;th&gt;Estado&lt;/th&gt;
+&lt;th&gt;Quién actúa&lt;/th&gt;
+&lt;/tr&gt;
+&lt;/thead&gt;
+&lt;tbody&gt;
+&lt;tr&gt;
+&lt;td&gt;Documento&lt;/td&gt;
+&lt;td&gt;Aprobación del Jefe de Equipo&lt;/td&gt;
+&lt;td&gt;Jefe de Equipo&lt;/td&gt;
+&lt;/tr&gt;
+&lt;tr&gt;
+&lt;td&gt;Documento&lt;/td&gt;
+&lt;td&gt;Aprobación del Director I+D&lt;/td&gt;
+&lt;td&gt;Director I+D&lt;/td&gt;
+&lt;/tr&gt;
+&lt;tr&gt;
+&lt;td&gt;Documento&lt;/td&gt;
+&lt;td&gt;Aprobación del Director Gerente&lt;/td&gt;
+&lt;td&gt;Director Gerente (firma)&lt;/td&gt;
+&lt;/tr&gt;
+&lt;tr&gt;
+&lt;td&gt;Documento&lt;/td&gt;
+&lt;td&gt;Esperando firma de empresa&lt;/td&gt;
+&lt;td&gt;&lt;strong&gt;Tú&lt;/strong&gt; (subes el PDF firmado) y el Jefe de Equipo
+(confirma)&lt;/td&gt;
+&lt;/tr&gt;
+&lt;tr&gt;
+&lt;td&gt;Documento&lt;/td&gt;
+&lt;td&gt;Revisión final&lt;/td&gt;
+&lt;td&gt;Director I+D&lt;/td&gt;
+&lt;/tr&gt;
+&lt;tr&gt;
+&lt;td&gt;Documento&lt;/td&gt;
+&lt;td&gt;Rechazada&lt;/td&gt;
+&lt;td&gt;&lt;strong&gt;Tú&lt;/strong&gt; (nueva versión y reenvío)&lt;/td&gt;
+&lt;/tr&gt;
+&lt;tr&gt;
+&lt;td&gt;Factura&lt;/td&gt;
+&lt;td&gt;Aprobación del Jefe de Equipo&lt;/td&gt;
+&lt;td&gt;Jefe de Equipo&lt;/td&gt;
+&lt;/tr&gt;
+&lt;tr&gt;
+&lt;td&gt;Factura&lt;/td&gt;
+&lt;td&gt;Aprobación del Responsable de clientes&lt;/td&gt;
+&lt;td&gt;Responsable de Clientes y Becarios&lt;/td&gt;
+&lt;/tr&gt;
+&lt;tr&gt;
+&lt;td&gt;Factura&lt;/td&gt;
+&lt;td&gt;Volver a revisar&lt;/td&gt;
+&lt;td&gt;&lt;strong&gt;Tú&lt;/strong&gt; (Solicitar Revisión)&lt;/td&gt;
+&lt;/tr&gt;
+&lt;tr&gt;
+&lt;td&gt;Gasto&lt;/td&gt;
+&lt;td&gt;Aprobación del Jefe de Equipo&lt;/td&gt;
+&lt;td&gt;Jefe de Equipo&lt;/td&gt;
+&lt;/tr&gt;
+&lt;tr&gt;
+&lt;td&gt;Gasto&lt;/td&gt;
+&lt;td&gt;Aprobación del Responsable de proveedores&lt;/td&gt;
+&lt;td&gt;Personal y Compras (o Clientes y Becarios si es gratificación)&lt;/td&gt;
+&lt;/tr&gt;
+&lt;tr&gt;
+&lt;td&gt;Gasto&lt;/td&gt;
+&lt;td&gt;Aprobación del Director Gerente&lt;/td&gt;
+&lt;td&gt;Director Gerente (solo más de 10.000 €)&lt;/td&gt;
+&lt;/tr&gt;
+&lt;tr&gt;
+&lt;td&gt;Gasto&lt;/td&gt;
+&lt;td&gt;Volver a revisar&lt;/td&gt;
+&lt;td&gt;&lt;strong&gt;Tú&lt;/strong&gt; (Solicitar Revisión)&lt;/td&gt;
+&lt;/tr&gt;
+&lt;tr&gt;
+&lt;td&gt;Proyecto&lt;/td&gt;
+&lt;td&gt;Pendiente&lt;/td&gt;
+&lt;td&gt;Jefe de Equipo y después Director I+D&lt;/td&gt;
+&lt;/tr&gt;
+&lt;tr&gt;
+&lt;td&gt;Proyecto&lt;/td&gt;
+&lt;td&gt;Rechazada&lt;/td&gt;
+&lt;td&gt;&lt;strong&gt;Tú&lt;/strong&gt; (Reenviar a revisión)&lt;/td&gt;
+&lt;/tr&gt;
+&lt;/tbody&gt;
+&lt;/table&gt;
+&lt;p&gt;En todos los tipos, &lt;strong&gt;Aprobada&lt;/strong&gt; es el estado final.&lt;/p&gt;
+&lt;h2 id="avisos-y-preguntas-frecuentes"&gt;Avisos y preguntas
+frecuentes&lt;/h2&gt;
+&lt;p&gt;&lt;strong&gt;Correos que recibirás&lt;/strong&gt;: uno en cada cambio de estado
+de tus solicitudes, con enlace al portal y, si se rechazan, con el
+motivo. Si tu usuario no tiene email, no recibes avisos.&lt;/p&gt;
+&lt;p&gt;&lt;strong&gt;¿Por qué no puedo subir un Word?&lt;/strong&gt; El portal solo
+admite PDF. Si un archivo no es PDF, la solicitud no se crea y ningún
+adjunto se guarda.&lt;/p&gt;
+&lt;p&gt;&lt;strong&gt;No me aparece ningún proyecto en el formulario de factura o
+gasto.&lt;/strong&gt; Solo salen los proyectos de los que eres responsable.
+Pide que te asignen como responsable del proyecto.&lt;/p&gt;
+&lt;p&gt;&lt;strong&gt;No veo el listado de Solicitudes de Proyectos.&lt;/strong&gt; Solo
+lo ven los Jefes de Equipo y los Administrativos. Sigue tus solicitudes
+de proyecto desde el enlace de los correos de cambio de estado.&lt;/p&gt;
+&lt;p&gt;&lt;strong&gt;Mis Nóminas aparece vacío.&lt;/strong&gt; Tu usuario no está
+vinculado a una ficha de empleado. Contacta con Personal.&lt;/p&gt;
+&lt;p&gt;&lt;strong&gt;¿El perfil Jefe de Proyecto me da algo más que a un
+solicitante?&lt;/strong&gt; No. En el portal hace lo mismo que cualquier
+solicitante.&lt;/p&gt;
+</field>
+        </record>
+        <record id="manual_article_jefe_de_equipo" model="knowledge.article">
+            <field name="name">Manual — Jefe de Equipo</field>
+            <field name="icon">👥</field>
+            <field name="parent_id" ref="manual_article_root" />
+            <field name="sequence">3</field>
+            <field name="body">&lt;p&gt;&lt;a href="/web/content/portal_requests.manual_pdf_jefe_de_equipo?download=true"&gt;📄 Descargar este manual en PDF&lt;/a&gt;&lt;/p&gt;&lt;h2 id="introducción-al-portal-de-solicitudes"&gt;Introducción al Portal de
+Solicitudes&lt;/h2&gt;
+&lt;p&gt;El Portal de Solicitudes de AICIA (módulo
+&lt;code&gt;portal_requests&lt;/code&gt;, Odoo 19) centraliza las solicitudes
+internas: firma de documentos, apertura y cierre de proyectos, emisión
+de facturas y gastos. También permite consultar proyectos, pagos y
+nóminas. Cada solicitud recorre un circuito de aprobación por estados y
+el sistema avisa por correo en cada paso.&lt;/p&gt;
+&lt;p&gt;&lt;strong&gt;Dónde se trabaja&lt;/strong&gt;&lt;/p&gt;
+&lt;ul&gt;
+&lt;li&gt;&lt;strong&gt;Portal&lt;/strong&gt; (&lt;code&gt;/my&lt;/code&gt;, “Mi cuenta”): lo usan
+solicitantes, Jefes de Proyecto, Jefes de Equipo y Administrativos. No
+consume licencia.&lt;/li&gt;
+&lt;li&gt;&lt;strong&gt;Backend&lt;/strong&gt; (aplicación &lt;strong&gt;Solicitudes del
+Portal&lt;/strong&gt; de Odoo): lo usan dirección y responsables internos para
+revisar y aprobar.&lt;/li&gt;
+&lt;/ul&gt;
+&lt;p&gt;&lt;strong&gt;Conceptos clave&lt;/strong&gt;&lt;/p&gt;
+&lt;ul&gt;
+&lt;li&gt;&lt;strong&gt;Grupo de trabajo&lt;/strong&gt;: equipo con miembros, un Jefe de
+Equipo y, opcionalmente, un Administrativo.&lt;/li&gt;
+&lt;li&gt;&lt;strong&gt;Paso “Aprobación del Jefe de Equipo”&lt;/strong&gt;: primer paso
+de las solicitudes de un miembro del equipo. Solo lo aprueba o rechaza
+el Jefe de Equipo del grupo; las solicitudes del propio Jefe de Equipo
+se lo saltan.&lt;/li&gt;
+&lt;li&gt;&lt;strong&gt;Proyecto&lt;/strong&gt;: cuenta analítica con responsable, grupo
+de trabajo, miembros, saldo y presupuesto.&lt;/li&gt;
+&lt;li&gt;&lt;strong&gt;Solo PDF&lt;/strong&gt;: todo archivo subido debe ser un PDF real
+(se comprueba el contenido, no solo la extensión). Única excepción: la
+Ficha de Alta de un proyecto nuevo, que se sube en Excel.&lt;/li&gt;
+&lt;li&gt;&lt;strong&gt;Umbral de 10.000 €&lt;/strong&gt;: un gasto marcado como superior
+a 10.000 € necesita además la aprobación del Director Gerente.&lt;/li&gt;
+&lt;li&gt;&lt;strong&gt;Rechazo sin perder histórico&lt;/strong&gt;: una solicitud
+rechazada se corrige y se reenvía dentro del mismo expediente. El motivo
+del rechazo queda en el historial y llega por correo al
+solicitante.&lt;/li&gt;
+&lt;li&gt;&lt;strong&gt;Aviso por correo&lt;/strong&gt;: el solicitante recibe un correo
+con enlace cada vez que cambia el estado de su solicitud.&lt;/li&gt;
+&lt;/ul&gt;
+&lt;p&gt;&lt;strong&gt;Roles del módulo&lt;/strong&gt;&lt;/p&gt;
+&lt;table&gt;
+&lt;colgroup&gt;
+&lt;col style="width: 33%" /&gt;
+&lt;col style="width: 33%" /&gt;
+&lt;col style="width: 33%" /&gt;
+&lt;/colgroup&gt;
+&lt;thead&gt;
+&lt;tr&gt;
+&lt;th&gt;Rol&lt;/th&gt;
+&lt;th&gt;Dónde trabaja&lt;/th&gt;
+&lt;th&gt;Función principal&lt;/th&gt;
+&lt;/tr&gt;
+&lt;/thead&gt;
+&lt;tbody&gt;
+&lt;tr&gt;
+&lt;td&gt;Solicitante (usuario de portal)&lt;/td&gt;
+&lt;td&gt;Portal&lt;/td&gt;
+&lt;td&gt;Crea y sigue sus propias solicitudes&lt;/td&gt;
+&lt;/tr&gt;
+&lt;tr&gt;
+&lt;td&gt;Jefe de Proyecto&lt;/td&gt;
+&lt;td&gt;Portal&lt;/td&gt;
+&lt;td&gt;Igual que un solicitante&lt;/td&gt;
+&lt;/tr&gt;
+&lt;tr&gt;
+&lt;td&gt;Jefe de Equipo&lt;/td&gt;
+&lt;td&gt;Portal&lt;/td&gt;
+&lt;td&gt;Aprueba o rechaza el primer paso de su equipo; ve saldos&lt;/td&gt;
+&lt;/tr&gt;
+&lt;tr&gt;
+&lt;td&gt;Administrativo&lt;/td&gt;
+&lt;td&gt;Portal&lt;/td&gt;
+&lt;td&gt;Crea solicitudes y ve las del equipo; no aprueba ni rechaza&lt;/td&gt;
+&lt;/tr&gt;
+&lt;tr&gt;
+&lt;td&gt;Director I+D&lt;/td&gt;
+&lt;td&gt;Backend&lt;/td&gt;
+&lt;td&gt;Aprueba documentos y proyectos&lt;/td&gt;
+&lt;/tr&gt;
+&lt;tr&gt;
+&lt;td&gt;Director Gerente&lt;/td&gt;
+&lt;td&gt;Backend&lt;/td&gt;
+&lt;td&gt;Firma documentos; aprueba gastos de más de 10.000 €&lt;/td&gt;
+&lt;/tr&gt;
+&lt;tr&gt;
+&lt;td&gt;Responsable de Personal y Compras&lt;/td&gt;
+&lt;td&gt;Backend&lt;/td&gt;
+&lt;td&gt;Segundo aprobador de gastos; altas y bajas de empleados&lt;/td&gt;
+&lt;/tr&gt;
+&lt;tr&gt;
+&lt;td&gt;Responsable de Clientes y Becarios&lt;/td&gt;
+&lt;td&gt;Backend&lt;/td&gt;
+&lt;td&gt;Segundo aprobador de facturas y gratificaciones; becarios&lt;/td&gt;
+&lt;/tr&gt;
+&lt;tr&gt;
+&lt;td&gt;Director Financiero&lt;/td&gt;
+&lt;td&gt;Backend&lt;/td&gt;
+&lt;td&gt;Consulta de documentos&lt;/td&gt;
+&lt;/tr&gt;
+&lt;/tbody&gt;
+&lt;/table&gt;
+&lt;blockquote&gt;
+&lt;p&gt;Las capturas de este manual se han tomado con usuarios y datos
+ficticios.&lt;/p&gt;
+&lt;/blockquote&gt;
+&lt;h2 id="tu-rol-jefe-de-equipo"&gt;Tu rol: Jefe de Equipo&lt;/h2&gt;
+&lt;p&gt;Eres el responsable de un grupo de trabajo y el
+&lt;strong&gt;único&lt;/strong&gt; que aprueba o rechaza el primer paso,
+&lt;strong&gt;Aprobación del Jefe de Equipo&lt;/strong&gt;, de las solicitudes de tu
+equipo. Trabajas &lt;strong&gt;solo en el portal&lt;/strong&gt; (&lt;code&gt;/my&lt;/code&gt;);
+no tienes acceso al backend. Ves las solicitudes de tu equipo y sus
+proyectos, con &lt;strong&gt;saldo y presupuesto&lt;/strong&gt;.&lt;/p&gt;
+&lt;p&gt;&lt;strong&gt;Requisitos&lt;/strong&gt;: usuario de portal con el perfil
+&lt;strong&gt;Jefe de Equipo&lt;/strong&gt; y figurar como &lt;strong&gt;Jefe de
+Equipo&lt;/strong&gt; en la ficha del grupo de trabajo.&lt;/p&gt;
+&lt;p&gt;&lt;strong&gt;Tus propias solicitudes no pasan por ti&lt;/strong&gt;: se saltan
+el paso de Jefe de Equipo.&lt;/p&gt;
+&lt;table&gt;
+&lt;colgroup&gt;
+&lt;col style="width: 50%" /&gt;
+&lt;col style="width: 50%" /&gt;
+&lt;/colgroup&gt;
+&lt;thead&gt;
+&lt;tr&gt;
+&lt;th&gt;Tu solicitud de…&lt;/th&gt;
+&lt;th&gt;Empieza en&lt;/th&gt;
+&lt;/tr&gt;
+&lt;/thead&gt;
+&lt;tbody&gt;
+&lt;tr&gt;
+&lt;td&gt;Documento&lt;/td&gt;
+&lt;td&gt;Aprobación del Director I+D&lt;/td&gt;
+&lt;/tr&gt;
+&lt;tr&gt;
+&lt;td&gt;Proyecto&lt;/td&gt;
+&lt;td&gt;Pendiente del Director I+D&lt;/td&gt;
+&lt;/tr&gt;
+&lt;tr&gt;
+&lt;td&gt;Factura&lt;/td&gt;
+&lt;td&gt;Aprobación del Responsable de clientes&lt;/td&gt;
+&lt;/tr&gt;
+&lt;tr&gt;
+&lt;td&gt;Gasto&lt;/td&gt;
+&lt;td&gt;Aprobación del segundo aprobador (Personal y Compras, o Clientes y
+Becarios si es gratificación)&lt;/td&gt;
+&lt;/tr&gt;
+&lt;/tbody&gt;
+&lt;/table&gt;
+&lt;table&gt;
+&lt;colgroup&gt;
+&lt;col style="width: 50%" /&gt;
+&lt;col style="width: 50%" /&gt;
+&lt;/colgroup&gt;
+&lt;thead&gt;
+&lt;tr&gt;
+&lt;th&gt;Puedes&lt;/th&gt;
+&lt;th&gt;Dónde&lt;/th&gt;
+&lt;/tr&gt;
+&lt;/thead&gt;
+&lt;tbody&gt;
+&lt;tr&gt;
+&lt;td&gt;Todo lo que hace un solicitante (crear y seguir solicitudes)&lt;/td&gt;
+&lt;td&gt;Tarjetas de &lt;code&gt;/my&lt;/code&gt; → &lt;strong&gt;Nueva Solicitud&lt;/strong&gt;&lt;/td&gt;
+&lt;/tr&gt;
+&lt;tr&gt;
+&lt;td&gt;Ver las solicitudes de tu equipo: documentos, facturas, gastos y
+proyectos&lt;/td&gt;
+&lt;td&gt;Tarjetas &lt;strong&gt;Solicitudes de…&lt;/strong&gt; de &lt;code&gt;/my&lt;/code&gt;&lt;/td&gt;
+&lt;/tr&gt;
+&lt;tr&gt;
+&lt;td&gt;Aprobar o rechazar (con motivo) el primer paso de las solicitudes
+del equipo&lt;/td&gt;
+&lt;td&gt;Detalle de la solicitud&lt;/td&gt;
+&lt;/tr&gt;
+&lt;tr&gt;
+&lt;td&gt;Escribir mensajes y subir PDF en las solicitudes del equipo&lt;/td&gt;
+&lt;td&gt;Detalle de la solicitud&lt;/td&gt;
+&lt;/tr&gt;
+&lt;tr&gt;
+&lt;td&gt;Confirmar la firma de la empresa en un documento&lt;/td&gt;
+&lt;td&gt;Detalle del documento&lt;/td&gt;
+&lt;/tr&gt;
+&lt;tr&gt;
+&lt;td&gt;Reenviar documentos y proyectos rechazados del equipo&lt;/td&gt;
+&lt;td&gt;Detalle de la solicitud&lt;/td&gt;
+&lt;/tr&gt;
+&lt;tr&gt;
+&lt;td&gt;Crear facturas y gastos para cualquier proyecto de tus grupos&lt;/td&gt;
+&lt;td&gt;Formularios de factura y de gasto&lt;/td&gt;
+&lt;/tr&gt;
+&lt;tr&gt;
+&lt;td&gt;Consultar los proyectos del equipo con saldo y presupuesto&lt;/td&gt;
+&lt;td&gt;&lt;strong&gt;Mis Proyectos&lt;/strong&gt;&lt;/td&gt;
+&lt;/tr&gt;
+&lt;tr&gt;
+&lt;td&gt;Consultar los pagos de los proyectos de tus grupos&lt;/td&gt;
+&lt;td&gt;&lt;strong&gt;Pagos&lt;/strong&gt;&lt;/td&gt;
+&lt;/tr&gt;
+&lt;/tbody&gt;
+&lt;/table&gt;
+&lt;h2 id="cómo-hacerlo-paso-a-paso"&gt;Cómo hacerlo, paso a paso&lt;/h2&gt;
+&lt;h3 id="entrar-en-el-portal"&gt;Entrar en el portal&lt;/h3&gt;
+&lt;p&gt;Además de las tarjetas de cualquier solicitante, tienes
+&lt;strong&gt;Solicitudes de Proyectos&lt;/strong&gt;, con las solicitudes de
+proyecto de tu equipo.&lt;/p&gt;
+&lt;p&gt;&lt;img class="img-fluid" src="/web/image/portal_requests.manual_img_jefe_de_equipo_01_inicio"
+alt="Mi cuenta del Jefe de Equipo: tarjeta Solicitudes de Proyectos" /&gt;&lt;br /&gt;
+&lt;em&gt;Mi cuenta del Jefe de Equipo: tarjeta Solicitudes de
+Proyectos&lt;/em&gt;&lt;/p&gt;
+&lt;h3 id="revisar-las-solicitudes-de-tu-equipo"&gt;Revisar las solicitudes de
+tu equipo&lt;/h3&gt;
+&lt;p&gt;En cada tarjeta &lt;strong&gt;Solicitudes de…&lt;/strong&gt; verás las tuyas y
+las de tu equipo. Filtra por estado para encontrar las pendientes de tu
+aprobación.&lt;/p&gt;
+&lt;p&gt;&lt;img class="img-fluid" src="/web/image/portal_requests.manual_img_jefe_de_equipo_02_documentos_lista"
+alt="Solicitudes de Documentos del equipo" /&gt;&lt;br /&gt;
+&lt;em&gt;Solicitudes de Documentos del equipo&lt;/em&gt;&lt;/p&gt;
+&lt;h3 id="aprobar-una-solicitud"&gt;Aprobar una solicitud&lt;/h3&gt;
+&lt;ol type="1"&gt;
+&lt;li&gt;Abre la solicitud pendiente de tu aprobación.&lt;/li&gt;
+&lt;li&gt;Revisa los datos y los adjuntos. Si necesitas aclaraciones, usa
+&lt;strong&gt;Enviar Mensaje&lt;/strong&gt;.&lt;/li&gt;
+&lt;li&gt;Pulsa &lt;strong&gt;Aprobar&lt;/strong&gt; (&lt;strong&gt;Aprobar Solicitud&lt;/strong&gt;
+en facturas y gastos).&lt;/li&gt;
+&lt;/ol&gt;
+&lt;p&gt;&lt;img class="img-fluid" src="/web/image/portal_requests.manual_img_jefe_de_equipo_03_documento_pendiente"
+alt="Documento pendiente: botones Aprobar y Rechazar" /&gt;&lt;br /&gt;
+&lt;em&gt;Documento pendiente: botones Aprobar y Rechazar&lt;/em&gt;&lt;/p&gt;
+&lt;table&gt;
+&lt;colgroup&gt;
+&lt;col style="width: 33%" /&gt;
+&lt;col style="width: 33%" /&gt;
+&lt;col style="width: 33%" /&gt;
+&lt;/colgroup&gt;
+&lt;thead&gt;
+&lt;tr&gt;
+&lt;th&gt;Tipo&lt;/th&gt;
+&lt;th&gt;Al aprobar pasa a&lt;/th&gt;
+&lt;th&gt;Se avisa a&lt;/th&gt;
+&lt;/tr&gt;
+&lt;/thead&gt;
+&lt;tbody&gt;
+&lt;tr&gt;
+&lt;td&gt;Documento&lt;/td&gt;
+&lt;td&gt;Aprobación del Director I+D&lt;/td&gt;
+&lt;td&gt;Director I+D&lt;/td&gt;
+&lt;/tr&gt;
+&lt;tr&gt;
+&lt;td&gt;Proyecto&lt;/td&gt;
+&lt;td&gt;Pendiente de la aprobación final&lt;/td&gt;
+&lt;td&gt;Director I+D&lt;/td&gt;
+&lt;/tr&gt;
+&lt;tr&gt;
+&lt;td&gt;Factura&lt;/td&gt;
+&lt;td&gt;Aprobación del Responsable de clientes&lt;/td&gt;
+&lt;td&gt;Responsable de Clientes y Becarios&lt;/td&gt;
+&lt;/tr&gt;
+&lt;tr&gt;
+&lt;td&gt;Gasto&lt;/td&gt;
+&lt;td&gt;Aprobación del Responsable de proveedores&lt;/td&gt;
+&lt;td&gt;Personal y Compras (o Clientes y Becarios si es gratificación)&lt;/td&gt;
+&lt;/tr&gt;
+&lt;/tbody&gt;
+&lt;/table&gt;
+&lt;p&gt;Así se ven las facturas, los gastos y las solicitudes de proyecto
+pendientes:&lt;/p&gt;
+&lt;p&gt;&lt;img class="img-fluid" src="/web/image/portal_requests.manual_img_jefe_de_equipo_07_factura_pendiente"
+alt="Factura pendiente de tu aprobación" /&gt;&lt;br /&gt;
+&lt;em&gt;Factura pendiente de tu aprobación&lt;/em&gt;&lt;/p&gt;
+&lt;p&gt;&lt;img class="img-fluid" src="/web/image/portal_requests.manual_img_jefe_de_equipo_09_gasto_pendiente"
+alt="Gasto pendiente de tu aprobación" /&gt;&lt;br /&gt;
+&lt;em&gt;Gasto pendiente de tu aprobación&lt;/em&gt;&lt;/p&gt;
+&lt;p&gt;&lt;img class="img-fluid" src="/web/image/portal_requests.manual_img_jefe_de_equipo_11_proyecto_pendiente"
+alt="Solicitud de proyecto pendiente de tu aprobación" /&gt;&lt;br /&gt;
+&lt;em&gt;Solicitud de proyecto pendiente de tu aprobación&lt;/em&gt;&lt;/p&gt;
+&lt;h3 id="rechazar-una-solicitud"&gt;Rechazar una solicitud&lt;/h3&gt;
+&lt;ol type="1"&gt;
+&lt;li&gt;En el detalle de una solicitud pendiente de tu aprobación, pulsa
+&lt;strong&gt;Rechazar&lt;/strong&gt;.&lt;/li&gt;
+&lt;li&gt;Escribe el &lt;strong&gt;Motivo del rechazo&lt;/strong&gt; (es obligatorio) y
+pulsa &lt;strong&gt;Confirmar rechazo&lt;/strong&gt;.&lt;/li&gt;
+&lt;/ol&gt;
+&lt;p&gt;&lt;img class="img-fluid" src="/web/image/portal_requests.manual_img_jefe_de_equipo_04_documento_rechazar_motivo"
+alt="Rechazar: escribir el motivo y confirmar" /&gt;&lt;br /&gt;
+&lt;em&gt;Rechazar: escribir el motivo y confirmar&lt;/em&gt;&lt;/p&gt;
+&lt;ol start="3" type="1"&gt;
+&lt;li&gt;El solicitante recibe un correo con el motivo, que también queda en
+el historial:
+&lt;ul&gt;
+&lt;li&gt;&lt;strong&gt;Documento o proyecto&lt;/strong&gt;: queda
+&lt;strong&gt;Rechazada&lt;/strong&gt;. El solicitante la corrige y la reenvía.&lt;/li&gt;
+&lt;li&gt;&lt;strong&gt;Factura o gasto&lt;/strong&gt;: queda en &lt;strong&gt;Volver a
+revisar&lt;/strong&gt;. El solicitante la corrige y pulsa &lt;strong&gt;Solicitar
+Revisión&lt;/strong&gt;; vuelve a ti.&lt;/li&gt;
+&lt;/ul&gt;&lt;/li&gt;
+&lt;/ol&gt;
+&lt;h3 id="confirmar-la-firma-de-la-empresa"&gt;Confirmar la firma de la
+empresa&lt;/h3&gt;
+&lt;ol type="1"&gt;
+&lt;li&gt;Cuando un documento de tu equipo está en &lt;strong&gt;Esperando firma de
+empresa&lt;/strong&gt;, el Director Gerente ya lo ha firmado.&lt;/li&gt;
+&lt;li&gt;Comprueba que el PDF firmado por la empresa está en los adjuntos. Si
+no, súbelo con &lt;strong&gt;Subir archivo&lt;/strong&gt;.&lt;/li&gt;
+&lt;li&gt;Pulsa &lt;strong&gt;Solicitar Revisión Final&lt;/strong&gt;. El documento pasa a
+&lt;strong&gt;Revisión final&lt;/strong&gt; del Director I+D.&lt;/li&gt;
+&lt;/ol&gt;
+&lt;p&gt;&lt;img class="img-fluid" src="/web/image/portal_requests.manual_img_jefe_de_equipo_05_documento_firma_empresa"
+alt="Documento esperando firma de empresa: Solicitar Revisión Final" /&gt;&lt;br /&gt;
+&lt;em&gt;Documento esperando firma de empresa: Solicitar Revisión
+Final&lt;/em&gt;&lt;/p&gt;
+&lt;h3 id="reenviar-un-documento-o-proyecto-rechazado-del-equipo"&gt;Reenviar
+un documento o proyecto rechazado del equipo&lt;/h3&gt;
+&lt;ul&gt;
+&lt;li&gt;&lt;strong&gt;Documento&lt;/strong&gt;: en el detalle, sube la nueva versión en
+PDF y pulsa &lt;strong&gt;Reenviar a revisión&lt;/strong&gt;.&lt;/li&gt;
+&lt;li&gt;&lt;strong&gt;Proyecto&lt;/strong&gt;: en el detalle, pulsa &lt;strong&gt;Reenviar a
+revisión&lt;/strong&gt;.&lt;/li&gt;
+&lt;/ul&gt;
+&lt;p&gt;Vuelven a empezar el circuito conservando el historial.&lt;/p&gt;
+&lt;h3 id="si-rechazan-una-solicitud-tuya"&gt;Si rechazan una solicitud
+tuya&lt;/h3&gt;
+&lt;ul&gt;
+&lt;li&gt;&lt;strong&gt;Documento o proyecto&lt;/strong&gt;: corrígelo y reenvíalo como
+cualquier solicitante; vuelve directamente al Director I+D.&lt;/li&gt;
+&lt;li&gt;&lt;strong&gt;Factura o gasto&lt;/strong&gt;: vuelve a quedar en
+&lt;strong&gt;Aprobación del Jefe de Equipo&lt;/strong&gt;, es decir, en tu paso.
+Corrige lo necesario y pulsa &lt;strong&gt;Aprobar Solicitud&lt;/strong&gt; para
+reenviarla al siguiente aprobador.&lt;/li&gt;
+&lt;/ul&gt;
+&lt;h3 id="crear-solicitudes"&gt;Crear solicitudes&lt;/h3&gt;
+&lt;p&gt;Los formularios son los mismos que para cualquier solicitante (ver el
+manual del Solicitante). En &lt;strong&gt;factura&lt;/strong&gt; y
+&lt;strong&gt;gasto&lt;/strong&gt; puedes elegir cualquier proyecto de tus grupos.
+La solicitud de proyecto se abre desde &lt;strong&gt;Solicitudes de
+Proyectos&lt;/strong&gt; → &lt;strong&gt;Nueva Solicitud&lt;/strong&gt;.&lt;/p&gt;
+&lt;p&gt;&lt;img class="img-fluid" src="/web/image/portal_requests.manual_img_jefe_de_equipo_10_proyectos_lista"
+alt="Solicitudes de Proyectos del equipo" /&gt;&lt;br /&gt;
+&lt;em&gt;Solicitudes de Proyectos del equipo&lt;/em&gt;&lt;/p&gt;
+&lt;h3 id="consultar-proyectos-y-pagos"&gt;Consultar proyectos y pagos&lt;/h3&gt;
+&lt;ul&gt;
+&lt;li&gt;&lt;strong&gt;Mis Proyectos&lt;/strong&gt;: tus proyectos y todos los de tus
+grupos, con cliente, &lt;strong&gt;saldo&lt;/strong&gt; y estado. En el detalle ves
+también el &lt;strong&gt;presupuesto&lt;/strong&gt;; puedes subir PDF, escribir
+mensajes y abrir las facturas del proyecto y sus pagos.&lt;/li&gt;
+&lt;li&gt;&lt;strong&gt;Pagos&lt;/strong&gt;: pagos de facturas pagadas de tus proyectos y
+de los proyectos de los grupos a los que perteneces.&lt;/li&gt;
+&lt;/ul&gt;
+&lt;p&gt;&lt;img class="img-fluid" src="/web/image/portal_requests.manual_img_jefe_de_equipo_12_mis_proyectos"
+alt="Mis Proyectos con saldo" /&gt;&lt;br /&gt;
+&lt;em&gt;Mis Proyectos con saldo&lt;/em&gt;&lt;/p&gt;
+&lt;h2 id="avisos-y-preguntas-frecuentes"&gt;Avisos y preguntas
+frecuentes&lt;/h2&gt;
+&lt;p&gt;&lt;strong&gt;Correos que recibes&lt;/strong&gt;: cada solicitud de tu equipo que
+entra en tu paso (documentos, proyectos, facturas y gastos), tanto nueva
+como reenviada tras un rechazo, con enlace directo al portal. También
+los cambios de estado de tus propias solicitudes.&lt;/p&gt;
+&lt;p&gt;&lt;strong&gt;No veo las solicitudes de un miembro.&lt;/strong&gt; Comprueba que
+está en tu grupo de trabajo y que tú figuras como Jefe de Equipo en ese
+grupo. En facturas y gastos, además, el proyecto debe tener asignado tu
+grupo de trabajo.&lt;/p&gt;
+&lt;p&gt;&lt;strong&gt;¿Qué diferencia hay con el Administrativo?&lt;/strong&gt; El
+Administrativo crea solicitudes y ve las de tu equipo, pero no aprueba
+ni rechaza nada en tu paso ni confirma la firma de la empresa. Tampoco
+ve saldos, presupuestos ni pagos del equipo. Sus propias solicitudes
+pasan por ti.&lt;/p&gt;
+</field>
+        </record>
+        <record id="manual_article_administrativo" model="knowledge.article">
+            <field name="name">Manual — Administrativo</field>
+            <field name="icon">🗂️</field>
+            <field name="parent_id" ref="manual_article_root" />
+            <field name="sequence">4</field>
+            <field name="body">&lt;p&gt;&lt;a href="/web/content/portal_requests.manual_pdf_administrativo?download=true"&gt;📄 Descargar este manual en PDF&lt;/a&gt;&lt;/p&gt;&lt;h2 id="introducción-al-portal-de-solicitudes"&gt;Introducción al Portal de
+Solicitudes&lt;/h2&gt;
+&lt;p&gt;El Portal de Solicitudes de AICIA (módulo
+&lt;code&gt;portal_requests&lt;/code&gt;, Odoo 19) centraliza las solicitudes
+internas: firma de documentos, apertura y cierre de proyectos, emisión
+de facturas y gastos. También permite consultar proyectos, pagos y
+nóminas. Cada solicitud recorre un circuito de aprobación por estados y
+el sistema avisa por correo en cada paso.&lt;/p&gt;
+&lt;p&gt;&lt;strong&gt;Dónde se trabaja&lt;/strong&gt;&lt;/p&gt;
+&lt;ul&gt;
+&lt;li&gt;&lt;strong&gt;Portal&lt;/strong&gt; (&lt;code&gt;/my&lt;/code&gt;, “Mi cuenta”): lo usan
+solicitantes, Jefes de Proyecto, Jefes de Equipo y Administrativos. No
+consume licencia.&lt;/li&gt;
+&lt;li&gt;&lt;strong&gt;Backend&lt;/strong&gt; (aplicación &lt;strong&gt;Solicitudes del
+Portal&lt;/strong&gt; de Odoo): lo usan dirección y responsables internos para
+revisar y aprobar.&lt;/li&gt;
+&lt;/ul&gt;
+&lt;p&gt;&lt;strong&gt;Conceptos clave&lt;/strong&gt;&lt;/p&gt;
+&lt;ul&gt;
+&lt;li&gt;&lt;strong&gt;Grupo de trabajo&lt;/strong&gt;: equipo con miembros, un Jefe de
+Equipo y, opcionalmente, un Administrativo.&lt;/li&gt;
+&lt;li&gt;&lt;strong&gt;Paso “Aprobación del Jefe de Equipo”&lt;/strong&gt;: primer paso
+de las solicitudes de un miembro del equipo. Solo lo aprueba o rechaza
+el Jefe de Equipo del grupo; las solicitudes del propio Jefe de Equipo
+se lo saltan.&lt;/li&gt;
+&lt;li&gt;&lt;strong&gt;Proyecto&lt;/strong&gt;: cuenta analítica con responsable, grupo
+de trabajo, miembros, saldo y presupuesto.&lt;/li&gt;
+&lt;li&gt;&lt;strong&gt;Solo PDF&lt;/strong&gt;: todo archivo subido debe ser un PDF real
+(se comprueba el contenido, no solo la extensión). Única excepción: la
+Ficha de Alta de un proyecto nuevo, que se sube en Excel.&lt;/li&gt;
+&lt;li&gt;&lt;strong&gt;Umbral de 10.000 €&lt;/strong&gt;: un gasto marcado como superior
+a 10.000 € necesita además la aprobación del Director Gerente.&lt;/li&gt;
+&lt;li&gt;&lt;strong&gt;Rechazo sin perder histórico&lt;/strong&gt;: una solicitud
+rechazada se corrige y se reenvía dentro del mismo expediente. El motivo
+del rechazo queda en el historial y llega por correo al
+solicitante.&lt;/li&gt;
+&lt;li&gt;&lt;strong&gt;Aviso por correo&lt;/strong&gt;: el solicitante recibe un correo
+con enlace cada vez que cambia el estado de su solicitud.&lt;/li&gt;
+&lt;/ul&gt;
+&lt;p&gt;&lt;strong&gt;Roles del módulo&lt;/strong&gt;&lt;/p&gt;
+&lt;table&gt;
+&lt;colgroup&gt;
+&lt;col style="width: 33%" /&gt;
+&lt;col style="width: 33%" /&gt;
+&lt;col style="width: 33%" /&gt;
+&lt;/colgroup&gt;
+&lt;thead&gt;
+&lt;tr&gt;
+&lt;th&gt;Rol&lt;/th&gt;
+&lt;th&gt;Dónde trabaja&lt;/th&gt;
+&lt;th&gt;Función principal&lt;/th&gt;
+&lt;/tr&gt;
+&lt;/thead&gt;
+&lt;tbody&gt;
+&lt;tr&gt;
+&lt;td&gt;Solicitante (usuario de portal)&lt;/td&gt;
+&lt;td&gt;Portal&lt;/td&gt;
+&lt;td&gt;Crea y sigue sus propias solicitudes&lt;/td&gt;
+&lt;/tr&gt;
+&lt;tr&gt;
+&lt;td&gt;Jefe de Proyecto&lt;/td&gt;
+&lt;td&gt;Portal&lt;/td&gt;
+&lt;td&gt;Igual que un solicitante&lt;/td&gt;
+&lt;/tr&gt;
+&lt;tr&gt;
+&lt;td&gt;Jefe de Equipo&lt;/td&gt;
+&lt;td&gt;Portal&lt;/td&gt;
+&lt;td&gt;Aprueba o rechaza el primer paso de su equipo; ve saldos&lt;/td&gt;
+&lt;/tr&gt;
+&lt;tr&gt;
+&lt;td&gt;Administrativo&lt;/td&gt;
+&lt;td&gt;Portal&lt;/td&gt;
+&lt;td&gt;Crea solicitudes y ve las del equipo; no aprueba ni rechaza&lt;/td&gt;
+&lt;/tr&gt;
+&lt;tr&gt;
+&lt;td&gt;Director I+D&lt;/td&gt;
+&lt;td&gt;Backend&lt;/td&gt;
+&lt;td&gt;Aprueba documentos y proyectos&lt;/td&gt;
+&lt;/tr&gt;
+&lt;tr&gt;
+&lt;td&gt;Director Gerente&lt;/td&gt;
+&lt;td&gt;Backend&lt;/td&gt;
+&lt;td&gt;Firma documentos; aprueba gastos de más de 10.000 €&lt;/td&gt;
+&lt;/tr&gt;
+&lt;tr&gt;
+&lt;td&gt;Responsable de Personal y Compras&lt;/td&gt;
+&lt;td&gt;Backend&lt;/td&gt;
+&lt;td&gt;Segundo aprobador de gastos; altas y bajas de empleados&lt;/td&gt;
+&lt;/tr&gt;
+&lt;tr&gt;
+&lt;td&gt;Responsable de Clientes y Becarios&lt;/td&gt;
+&lt;td&gt;Backend&lt;/td&gt;
+&lt;td&gt;Segundo aprobador de facturas y gratificaciones; becarios&lt;/td&gt;
+&lt;/tr&gt;
+&lt;tr&gt;
+&lt;td&gt;Director Financiero&lt;/td&gt;
+&lt;td&gt;Backend&lt;/td&gt;
+&lt;td&gt;Consulta de documentos&lt;/td&gt;
+&lt;/tr&gt;
+&lt;/tbody&gt;
+&lt;/table&gt;
+&lt;blockquote&gt;
+&lt;p&gt;Las capturas de este manual se han tomado con usuarios y datos
+ficticios.&lt;/p&gt;
+&lt;/blockquote&gt;
+&lt;h2 id="tu-rol-administrativo"&gt;Tu rol: Administrativo&lt;/h2&gt;
+&lt;p&gt;Apoyas al Jefe de Equipo de tu grupo de trabajo: &lt;strong&gt;creas
+solicitudes&lt;/strong&gt; y &lt;strong&gt;ves las de tu equipo&lt;/strong&gt;, pero
+&lt;strong&gt;no apruebas ni rechazas&lt;/strong&gt; ninguna. El paso
+&lt;strong&gt;Aprobación del Jefe de Equipo&lt;/strong&gt; lo hace siempre el Jefe
+de Equipo, aunque tú ya hayas revisado la solicitud. Trabajas en el
+portal (&lt;code&gt;/my&lt;/code&gt;) y no ves información económica: ni saldos, ni
+presupuestos, ni el histórico de pagos del equipo.&lt;/p&gt;
+&lt;p&gt;&lt;strong&gt;Requisitos&lt;/strong&gt;: perfil &lt;strong&gt;Administrativo&lt;/strong&gt;
+en tu usuario y figurar como &lt;strong&gt;Administrativo&lt;/strong&gt; en la ficha
+del grupo de trabajo. El perfil incluye automáticamente el acceso de
+portal.&lt;/p&gt;
+&lt;p&gt;&lt;strong&gt;Tus propias solicitudes pasan por el Jefe de Equipo&lt;/strong&gt;,
+igual que las de cualquier miembro.&lt;/p&gt;
+&lt;table&gt;
+&lt;colgroup&gt;
+&lt;col style="width: 50%" /&gt;
+&lt;col style="width: 50%" /&gt;
+&lt;/colgroup&gt;
+&lt;thead&gt;
+&lt;tr&gt;
+&lt;th&gt;Puedes&lt;/th&gt;
+&lt;th&gt;Dónde&lt;/th&gt;
+&lt;/tr&gt;
+&lt;/thead&gt;
+&lt;tbody&gt;
+&lt;tr&gt;
+&lt;td&gt;Todo lo que hace un solicitante&lt;/td&gt;
+&lt;td&gt;Tarjetas de &lt;code&gt;/my&lt;/code&gt; → &lt;strong&gt;Nueva Solicitud&lt;/strong&gt;&lt;/td&gt;
+&lt;/tr&gt;
+&lt;tr&gt;
+&lt;td&gt;Crear facturas y gastos para cualquier proyecto de los grupos donde
+eres Administrativo&lt;/td&gt;
+&lt;td&gt;Formularios de factura y de gasto&lt;/td&gt;
+&lt;/tr&gt;
+&lt;tr&gt;
+&lt;td&gt;Ver las solicitudes de tu equipo: documentos, facturas, gastos y
+proyectos&lt;/td&gt;
+&lt;td&gt;Tarjetas &lt;strong&gt;Solicitudes de…&lt;/strong&gt; de &lt;code&gt;/my&lt;/code&gt;&lt;/td&gt;
+&lt;/tr&gt;
+&lt;tr&gt;
+&lt;td&gt;Escribir mensajes y subir PDF en las solicitudes del equipo&lt;/td&gt;
+&lt;td&gt;Detalle de la solicitud&lt;/td&gt;
+&lt;/tr&gt;
+&lt;tr&gt;
+&lt;td&gt;Reenviar documentos y proyectos rechazados del equipo&lt;/td&gt;
+&lt;td&gt;Detalle de la solicitud&lt;/td&gt;
+&lt;/tr&gt;
+&lt;tr&gt;
+&lt;td&gt;Ver los proyectos del equipo, sin datos económicos&lt;/td&gt;
+&lt;td&gt;&lt;strong&gt;Mis Proyectos&lt;/strong&gt;&lt;/td&gt;
+&lt;/tr&gt;
+&lt;/tbody&gt;
+&lt;/table&gt;
+&lt;p&gt;&lt;strong&gt;No puedes&lt;/strong&gt;:&lt;/p&gt;
+&lt;ul&gt;
+&lt;li&gt;Aprobar ni rechazar nada que esté en &lt;strong&gt;Aprobación del Jefe de
+Equipo&lt;/strong&gt; (documentos, proyectos, facturas y gastos), aunque sea
+de tu equipo.&lt;/li&gt;
+&lt;li&gt;Confirmar la firma de la empresa en un documento (&lt;strong&gt;Solicitar
+Revisión Final&lt;/strong&gt;).&lt;/li&gt;
+&lt;li&gt;Ver saldos, presupuestos ni pagos del equipo. En
+&lt;strong&gt;Pagos&lt;/strong&gt; solo ves los proyectos de los que eres
+responsable.&lt;/li&gt;
+&lt;/ul&gt;
+&lt;h2 id="cómo-hacerlo-paso-a-paso"&gt;Cómo hacerlo, paso a paso&lt;/h2&gt;
+&lt;h3 id="entrar-en-el-portal"&gt;Entrar en el portal&lt;/h3&gt;
+&lt;p&gt;Inicia sesión y llegarás a &lt;strong&gt;Mi cuenta&lt;/strong&gt;
+(&lt;code&gt;/my&lt;/code&gt;). Además de las tarjetas de cualquier solicitante
+tienes &lt;strong&gt;Solicitudes de Proyectos&lt;/strong&gt;.&lt;/p&gt;
+&lt;p&gt;&lt;img class="img-fluid" src="/web/image/portal_requests.manual_img_administrativo_01_inicio"
+alt="Mi cuenta del Administrativo" /&gt;&lt;br /&gt;
+&lt;em&gt;Mi cuenta del Administrativo&lt;/em&gt;&lt;/p&gt;
+&lt;h3 id="crear-solicitudes-para-el-equipo"&gt;Crear solicitudes para el
+equipo&lt;/h3&gt;
+&lt;ol type="1"&gt;
+&lt;li&gt;Abre la tarjeta del tipo en &lt;code&gt;/my&lt;/code&gt; y pulsa &lt;strong&gt;Nueva
+Solicitud&lt;/strong&gt; (en proyectos, desde &lt;strong&gt;Solicitudes de
+Proyectos&lt;/strong&gt;).&lt;/li&gt;
+&lt;li&gt;En &lt;strong&gt;factura&lt;/strong&gt; y &lt;strong&gt;gasto&lt;/strong&gt; puedes elegir
+cualquier proyecto de los grupos donde eres Administrativo.&lt;/li&gt;
+&lt;li&gt;Envíala. Todas tus solicitudes empiezan en &lt;strong&gt;Aprobación del
+Jefe de Equipo&lt;/strong&gt; y se avisa al Jefe de Equipo.&lt;/li&gt;
+&lt;/ol&gt;
+&lt;p&gt;Los formularios son los mismos que para cualquier solicitante (ver el
+manual del Solicitante):&lt;/p&gt;
+&lt;ul&gt;
+&lt;li&gt;&lt;strong&gt;Documento&lt;/strong&gt;: Tipo, Archivo (PDF), Firmado por
+empresa, Descripción y Grupo de trabajo.&lt;/li&gt;
+&lt;li&gt;&lt;strong&gt;Factura&lt;/strong&gt;: Proyecto, Cliente, Tipo, adjunto opcional,
+Enviar Borrador, Fecha, Importe (sin IVA), Concepto y Comentario.&lt;/li&gt;
+&lt;li&gt;&lt;strong&gt;Gasto&lt;/strong&gt;: Tipo, Compañía (el proyecto), Factura (PDF)
+y ¿Es mas de 10000€?&lt;/li&gt;
+&lt;li&gt;&lt;strong&gt;Proyecto&lt;/strong&gt;: nuevo (Compañía, Grupo, Miembros, Client,
+Nombre, fechas, Contrato firmado y Ficha de Alta) o cierre.&lt;/li&gt;
+&lt;/ul&gt;
+&lt;h3 id="seguir-las-solicitudes-del-equipo"&gt;Seguir las solicitudes del
+equipo&lt;/h3&gt;
+&lt;p&gt;En &lt;code&gt;/my&lt;/code&gt;, abre &lt;strong&gt;Solicitudes de Documentos&lt;/strong&gt;,
+&lt;strong&gt;de Facturas&lt;/strong&gt;, &lt;strong&gt;de Gastos&lt;/strong&gt; o &lt;strong&gt;de
+Proyectos&lt;/strong&gt;. Verás las tuyas y las de tu equipo, con filtros por
+estado, búsqueda y exportación.&lt;/p&gt;
+&lt;p&gt;&lt;img class="img-fluid" src="/web/image/portal_requests.manual_img_administrativo_02_documentos_lista"
+alt="Solicitudes de Documentos del equipo" /&gt;&lt;br /&gt;
+&lt;em&gt;Solicitudes de Documentos del equipo&lt;/em&gt;&lt;/p&gt;
+&lt;p&gt;En el detalle puedes escribir con &lt;strong&gt;Enviar Mensaje&lt;/strong&gt; y
+subir PDF, pero no verás los botones &lt;strong&gt;Aprobar&lt;/strong&gt; ni
+&lt;strong&gt;Rechazar&lt;/strong&gt;. Si ves algo que corregir, déjalo escrito en
+el mensaje: quien aprueba o rechaza es el Jefe de Equipo.&lt;/p&gt;
+&lt;p&gt;&lt;img class="img-fluid" src="/web/image/portal_requests.manual_img_administrativo_05_factura_equipo"
+alt="Factura del equipo vista por el Administrativo: sin botones de aprobar o rechazar" /&gt;&lt;br /&gt;
+&lt;em&gt;Factura del equipo vista por el Administrativo: sin botones de
+aprobar o rechazar&lt;/em&gt;&lt;/p&gt;
+&lt;h3 id="reenviar-solicitudes-rechazadas"&gt;Reenviar solicitudes
+rechazadas&lt;/h3&gt;
+&lt;ul&gt;
+&lt;li&gt;&lt;strong&gt;Documento&lt;/strong&gt; del equipo: sube la nueva versión en PDF
+y pulsa &lt;strong&gt;Reenviar a revisión&lt;/strong&gt;.&lt;/li&gt;
+&lt;li&gt;&lt;strong&gt;Proyecto&lt;/strong&gt; del equipo: pulsa &lt;strong&gt;Reenviar a
+revisión&lt;/strong&gt;.&lt;/li&gt;
+&lt;li&gt;&lt;strong&gt;Tu factura o gasto en Volver a revisar&lt;/strong&gt;: corrige y
+pulsa &lt;strong&gt;Solicitar Revisión&lt;/strong&gt;; vuelve al Jefe de
+Equipo.&lt;/li&gt;
+&lt;/ul&gt;
+&lt;h3 id="consultar-proyectos"&gt;Consultar proyectos&lt;/h3&gt;
+&lt;p&gt;&lt;strong&gt;Mis Proyectos&lt;/strong&gt; muestra los mismos proyectos que ve el
+Jefe de Equipo, pero sin saldo ni presupuesto. En el detalle puedes
+subir PDF, escribir mensajes y consultar las facturas del proyecto.&lt;/p&gt;
+&lt;p&gt;&lt;img class="img-fluid" src="/web/image/portal_requests.manual_img_administrativo_09_mis_proyectos"
+alt="Mis Proyectos del Administrativo: sin columna de saldo" /&gt;&lt;br /&gt;
+&lt;em&gt;Mis Proyectos del Administrativo: sin columna de saldo&lt;/em&gt;&lt;/p&gt;
+&lt;h2 id="avisos-y-preguntas-frecuentes"&gt;Avisos y preguntas
+frecuentes&lt;/h2&gt;
+&lt;p&gt;&lt;strong&gt;Correos que recibes&lt;/strong&gt;: los cambios de estado de tus
+propias solicitudes. Los avisos de solicitudes pendientes de aprobación
+van al Jefe de Equipo, no a ti.&lt;/p&gt;
+&lt;p&gt;&lt;strong&gt;No veo los botones Aprobar ni Rechazar.&lt;/strong&gt; Es lo
+previsto: el paso &lt;strong&gt;Aprobación del Jefe de Equipo&lt;/strong&gt; lo hace
+siempre el Jefe de Equipo.&lt;/p&gt;
+&lt;p&gt;&lt;strong&gt;No veo las solicitudes de un miembro.&lt;/strong&gt; Comprueba que
+figuras como Administrativo en su grupo de trabajo. En facturas y
+gastos, el proyecto debe tener asignado ese grupo.&lt;/p&gt;
+</field>
+        </record>
+        <record id="manual_article_director_i_d" model="knowledge.article">
+            <field name="name">Manual — Director I+D</field>
+            <field name="icon">🔬</field>
+            <field name="parent_id" ref="manual_article_root" />
+            <field name="sequence">5</field>
+            <field name="body">&lt;p&gt;&lt;a href="/web/content/portal_requests.manual_pdf_director_i_d?download=true"&gt;📄 Descargar este manual en PDF&lt;/a&gt;&lt;/p&gt;&lt;h2 id="introducción-al-portal-de-solicitudes"&gt;Introducción al Portal de
+Solicitudes&lt;/h2&gt;
+&lt;p&gt;El Portal de Solicitudes de AICIA (módulo
+&lt;code&gt;portal_requests&lt;/code&gt;, Odoo 19) centraliza las solicitudes
+internas: firma de documentos, apertura y cierre de proyectos, emisión
+de facturas y gastos. También permite consultar proyectos, pagos y
+nóminas. Cada solicitud recorre un circuito de aprobación por estados y
+el sistema avisa por correo en cada paso.&lt;/p&gt;
+&lt;p&gt;&lt;strong&gt;Dónde se trabaja&lt;/strong&gt;&lt;/p&gt;
+&lt;ul&gt;
+&lt;li&gt;&lt;strong&gt;Portal&lt;/strong&gt; (&lt;code&gt;/my&lt;/code&gt;, “Mi cuenta”): lo usan
+solicitantes, Jefes de Proyecto, Jefes de Equipo y Administrativos. No
+consume licencia.&lt;/li&gt;
+&lt;li&gt;&lt;strong&gt;Backend&lt;/strong&gt; (aplicación &lt;strong&gt;Solicitudes del
+Portal&lt;/strong&gt; de Odoo): lo usan dirección y responsables internos para
+revisar y aprobar.&lt;/li&gt;
+&lt;/ul&gt;
+&lt;p&gt;&lt;strong&gt;Conceptos clave&lt;/strong&gt;&lt;/p&gt;
+&lt;ul&gt;
+&lt;li&gt;&lt;strong&gt;Grupo de trabajo&lt;/strong&gt;: equipo con miembros, un Jefe de
+Equipo y, opcionalmente, un Administrativo.&lt;/li&gt;
+&lt;li&gt;&lt;strong&gt;Paso “Aprobación del Jefe de Equipo”&lt;/strong&gt;: primer paso
+de las solicitudes de un miembro del equipo. Solo lo aprueba o rechaza
+el Jefe de Equipo del grupo; las solicitudes del propio Jefe de Equipo
+se lo saltan.&lt;/li&gt;
+&lt;li&gt;&lt;strong&gt;Proyecto&lt;/strong&gt;: cuenta analítica con responsable, grupo
+de trabajo, miembros, saldo y presupuesto.&lt;/li&gt;
+&lt;li&gt;&lt;strong&gt;Solo PDF&lt;/strong&gt;: todo archivo subido debe ser un PDF real
+(se comprueba el contenido, no solo la extensión). Única excepción: la
+Ficha de Alta de un proyecto nuevo, que se sube en Excel.&lt;/li&gt;
+&lt;li&gt;&lt;strong&gt;Umbral de 10.000 €&lt;/strong&gt;: un gasto marcado como superior
+a 10.000 € necesita además la aprobación del Director Gerente.&lt;/li&gt;
+&lt;li&gt;&lt;strong&gt;Rechazo sin perder histórico&lt;/strong&gt;: una solicitud
+rechazada se corrige y se reenvía dentro del mismo expediente. El motivo
+del rechazo queda en el historial y llega por correo al
+solicitante.&lt;/li&gt;
+&lt;li&gt;&lt;strong&gt;Aviso por correo&lt;/strong&gt;: el solicitante recibe un correo
+con enlace cada vez que cambia el estado de su solicitud.&lt;/li&gt;
+&lt;/ul&gt;
+&lt;p&gt;&lt;strong&gt;Roles del módulo&lt;/strong&gt;&lt;/p&gt;
+&lt;table&gt;
+&lt;colgroup&gt;
+&lt;col style="width: 33%" /&gt;
+&lt;col style="width: 33%" /&gt;
+&lt;col style="width: 33%" /&gt;
+&lt;/colgroup&gt;
+&lt;thead&gt;
+&lt;tr&gt;
+&lt;th&gt;Rol&lt;/th&gt;
+&lt;th&gt;Dónde trabaja&lt;/th&gt;
+&lt;th&gt;Función principal&lt;/th&gt;
+&lt;/tr&gt;
+&lt;/thead&gt;
+&lt;tbody&gt;
+&lt;tr&gt;
+&lt;td&gt;Solicitante (usuario de portal)&lt;/td&gt;
+&lt;td&gt;Portal&lt;/td&gt;
+&lt;td&gt;Crea y sigue sus propias solicitudes&lt;/td&gt;
+&lt;/tr&gt;
+&lt;tr&gt;
+&lt;td&gt;Jefe de Proyecto&lt;/td&gt;
+&lt;td&gt;Portal&lt;/td&gt;
+&lt;td&gt;Igual que un solicitante&lt;/td&gt;
+&lt;/tr&gt;
+&lt;tr&gt;
+&lt;td&gt;Jefe de Equipo&lt;/td&gt;
+&lt;td&gt;Portal&lt;/td&gt;
+&lt;td&gt;Aprueba o rechaza el primer paso de su equipo; ve saldos&lt;/td&gt;
+&lt;/tr&gt;
+&lt;tr&gt;
+&lt;td&gt;Administrativo&lt;/td&gt;
+&lt;td&gt;Portal&lt;/td&gt;
+&lt;td&gt;Crea solicitudes y ve las del equipo; no aprueba ni rechaza&lt;/td&gt;
+&lt;/tr&gt;
+&lt;tr&gt;
+&lt;td&gt;Director I+D&lt;/td&gt;
+&lt;td&gt;Backend&lt;/td&gt;
+&lt;td&gt;Aprueba documentos y proyectos&lt;/td&gt;
+&lt;/tr&gt;
+&lt;tr&gt;
+&lt;td&gt;Director Gerente&lt;/td&gt;
+&lt;td&gt;Backend&lt;/td&gt;
+&lt;td&gt;Firma documentos; aprueba gastos de más de 10.000 €&lt;/td&gt;
+&lt;/tr&gt;
+&lt;tr&gt;
+&lt;td&gt;Responsable de Personal y Compras&lt;/td&gt;
+&lt;td&gt;Backend&lt;/td&gt;
+&lt;td&gt;Segundo aprobador de gastos; altas y bajas de empleados&lt;/td&gt;
+&lt;/tr&gt;
+&lt;tr&gt;
+&lt;td&gt;Responsable de Clientes y Becarios&lt;/td&gt;
+&lt;td&gt;Backend&lt;/td&gt;
+&lt;td&gt;Segundo aprobador de facturas y gratificaciones; becarios&lt;/td&gt;
+&lt;/tr&gt;
+&lt;tr&gt;
+&lt;td&gt;Director Financiero&lt;/td&gt;
+&lt;td&gt;Backend&lt;/td&gt;
+&lt;td&gt;Consulta de documentos&lt;/td&gt;
+&lt;/tr&gt;
+&lt;/tbody&gt;
+&lt;/table&gt;
+&lt;blockquote&gt;
+&lt;p&gt;Las capturas de este manual se han tomado con usuarios y datos
+ficticios.&lt;/p&gt;
+&lt;/blockquote&gt;
+&lt;h2 id="tu-rol-director-id"&gt;Tu rol: Director I+D&lt;/h2&gt;
+&lt;p&gt;Eres el aprobador técnico de &lt;strong&gt;documentos&lt;/strong&gt; (segundo
+paso y revisión final) y el aprobador final de las &lt;strong&gt;solicitudes
+de proyecto&lt;/strong&gt;: al aprobar una apertura se crea la cuenta
+analítica. Trabajas en el backend y tienes acceso completo a todas las
+&lt;strong&gt;cuentas analíticas&lt;/strong&gt;.&lt;/p&gt;
+&lt;p&gt;&lt;strong&gt;Requisitos&lt;/strong&gt;: usuario interno con el perfil
+&lt;strong&gt;Director I+D&lt;/strong&gt;.&lt;/p&gt;
+&lt;table&gt;
+&lt;colgroup&gt;
+&lt;col style="width: 50%" /&gt;
+&lt;col style="width: 50%" /&gt;
+&lt;/colgroup&gt;
+&lt;thead&gt;
+&lt;tr&gt;
+&lt;th&gt;Puedes&lt;/th&gt;
+&lt;th&gt;Dónde&lt;/th&gt;
+&lt;/tr&gt;
+&lt;/thead&gt;
+&lt;tbody&gt;
+&lt;tr&gt;
+&lt;td&gt;Ver el panel de pendientes (documentos, proyectos, facturas,
+gastos)&lt;/td&gt;
+&lt;td&gt;&lt;strong&gt;Solicitudes del Portal → Resumen&lt;/strong&gt;&lt;/td&gt;
+&lt;/tr&gt;
+&lt;tr&gt;
+&lt;td&gt;Aprobar o rechazar documentos en tu paso y en la revisión final&lt;/td&gt;
+&lt;td&gt;&lt;strong&gt;Solicitudes del Portal → Documentos&lt;/strong&gt;&lt;/td&gt;
+&lt;/tr&gt;
+&lt;tr&gt;
+&lt;td&gt;Aprobar, rechazar o reabrir solicitudes de proyecto&lt;/td&gt;
+&lt;td&gt;&lt;strong&gt;Solicitudes del Portal → Proyectos&lt;/strong&gt;&lt;/td&gt;
+&lt;/tr&gt;
+&lt;tr&gt;
+&lt;td&gt;Crear y editar cualquier cuenta analítica&lt;/td&gt;
+&lt;td&gt;App &lt;strong&gt;Cuentas Analíticas&lt;/strong&gt;&lt;/td&gt;
+&lt;/tr&gt;
+&lt;tr&gt;
+&lt;td&gt;Configurar grupos de trabajo, etiquetas y categorías&lt;/td&gt;
+&lt;td&gt;&lt;strong&gt;Solicitudes del Portal → Grupos de Trabajo / Etiquetas /
+Categorias&lt;/strong&gt;&lt;/td&gt;
+&lt;/tr&gt;
+&lt;tr&gt;
+&lt;td&gt;Consultar facturas y gastos en curso (sin aprobarlos)&lt;/td&gt;
+&lt;td&gt;&lt;strong&gt;Resumen&lt;/strong&gt; → tarjetas Facturas y Gastos&lt;/td&gt;
+&lt;/tr&gt;
+&lt;/tbody&gt;
+&lt;/table&gt;
+&lt;p&gt;&lt;strong&gt;No puedes&lt;/strong&gt; aprobar el paso &lt;strong&gt;Aprobación del
+Jefe de Equipo&lt;/strong&gt;: en ese estado no verás botones.&lt;/p&gt;
+&lt;h2 id="cómo-hacerlo-paso-a-paso"&gt;Cómo hacerlo, paso a paso&lt;/h2&gt;
+&lt;h3 id="usar-el-panel-resumen"&gt;Usar el panel Resumen&lt;/h3&gt;
+&lt;ol type="1"&gt;
+&lt;li&gt;Abre la app &lt;strong&gt;Solicitudes del Portal&lt;/strong&gt;. Se muestra
+&lt;strong&gt;Resumen&lt;/strong&gt; con una tarjeta por tipo de solicitud.&lt;/li&gt;
+&lt;li&gt;Cada tarjeta tiene enlaces &lt;strong&gt;Para revisar&lt;/strong&gt;,
+&lt;strong&gt;Aprobados&lt;/strong&gt; y &lt;strong&gt;Rechazados&lt;/strong&gt; con su número.
+Púlsalos para abrir la lista filtrada.&lt;/li&gt;
+&lt;/ol&gt;
+&lt;p&gt;&lt;img class="img-fluid" src="/web/image/portal_requests.manual_img_director_i_d_01_resumen"
+alt="Panel Resumen del Director I+D" /&gt;&lt;br /&gt;
+&lt;em&gt;Panel Resumen del Director I+D&lt;/em&gt;&lt;/p&gt;
+&lt;h3 id="aprobar-un-documento"&gt;Aprobar un documento&lt;/h3&gt;
+&lt;ol type="1"&gt;
+&lt;li&gt;Recibes un correo cuando el Jefe de Equipo aprueba un documento,
+cuando lo crea o reenvía el propio Jefe de Equipo (se salta su paso) y
+cuando se crea uno sin grupo de trabajo.&lt;/li&gt;
+&lt;li&gt;Abre el documento en estado &lt;strong&gt;Aprobación del Director
+I+D&lt;/strong&gt; y revisa tipo, descripción, grupo y el PDF adjunto.&lt;/li&gt;
+&lt;li&gt;Pulsa &lt;strong&gt;Aprobar&lt;/strong&gt;: pasa al Director Gerente, que recibe
+un correo. O pulsa &lt;strong&gt;Rechazar&lt;/strong&gt;: el solicitante recibe un
+correo con enlace para subir una nueva versión.&lt;/li&gt;
+&lt;/ol&gt;
+&lt;p&gt;&lt;img class="img-fluid" src="/web/image/portal_requests.manual_img_director_i_d_02_documento_aprobar"
+alt="Documento en Aprobación del Director I+D: Aprobar o Rechazar" /&gt;&lt;br /&gt;
+&lt;em&gt;Documento en Aprobación del Director I+D: Aprobar o
+Rechazar&lt;/em&gt;&lt;/p&gt;
+&lt;h3 id="hacer-la-revisión-final-de-un-documento"&gt;Hacer la revisión final
+de un documento&lt;/h3&gt;
+&lt;ol type="1"&gt;
+&lt;li&gt;El documento llega a &lt;strong&gt;Revisión final&lt;/strong&gt; cuando el
+Director Gerente lo ha firmado y la empresa también.&lt;/li&gt;
+&lt;li&gt;Comprueba que el PDF con sufijo &lt;code&gt;_firmado&lt;/code&gt; y la firma de
+la empresa están en los adjuntos.&lt;/li&gt;
+&lt;li&gt;Pulsa &lt;strong&gt;Aprobar&lt;/strong&gt;: el documento queda
+&lt;strong&gt;Aprobado&lt;/strong&gt; y se avisa al solicitante. También puedes
+&lt;strong&gt;Rechazar&lt;/strong&gt;.&lt;/li&gt;
+&lt;/ol&gt;
+&lt;h3 id="aprobar-una-apertura-de-proyecto"&gt;Aprobar una apertura de
+proyecto&lt;/h3&gt;
+&lt;ol type="1"&gt;
+&lt;li&gt;Recibes un correo cuando el Jefe de Equipo aprueba la solicitud,
+cuando la crea o reenvía el propio Jefe de Equipo y cuando se crea una
+sin grupo de trabajo.&lt;/li&gt;
+&lt;li&gt;Abre &lt;strong&gt;Solicitudes del Portal → Proyectos&lt;/strong&gt; y la
+solicitud en &lt;strong&gt;Pendiente de Revisión&lt;/strong&gt;.&lt;/li&gt;
+&lt;li&gt;Revisa nombre, grupo de trabajo, miembros, fechas y adjuntos
+(contrato y Ficha de Alta).&lt;/li&gt;
+&lt;li&gt;El solicitante solo escribe el &lt;strong&gt;Nombre del Cliente&lt;/strong&gt;
+como texto. Selecciona el contacto real en el campo
+&lt;strong&gt;Cliente&lt;/strong&gt;; sin él no se puede aprobar.&lt;/li&gt;
+&lt;li&gt;Pulsa &lt;strong&gt;Aprobar&lt;/strong&gt;. Se crea la cuenta analítica en el
+plan &lt;strong&gt;AICIA&lt;/strong&gt; con el nombre, cliente, compañía, grupo,
+miembros y el solicitante como &lt;strong&gt;responsable&lt;/strong&gt;. Los
+adjuntos pasan a la cuenta.&lt;/li&gt;
+&lt;/ol&gt;
+&lt;p&gt;&lt;img class="img-fluid" src="/web/image/portal_requests.manual_img_director_i_d_03_proyecto_aprobar"
+alt="Solicitud de proyecto: elegir el Cliente y Aprobar" /&gt;&lt;br /&gt;
+&lt;em&gt;Solicitud de proyecto: elegir el Cliente y Aprobar&lt;/em&gt;&lt;/p&gt;
+&lt;p&gt;Una solicitud de tipo &lt;strong&gt;Finalizar Proyecto&lt;/strong&gt; se aprueba
+igual y &lt;strong&gt;archiva&lt;/strong&gt; la cuenta analítica. Con
+&lt;strong&gt;Rechazar&lt;/strong&gt; la solicitud queda rechazada y el solicitante
+puede reenviarla; &lt;strong&gt;Para Revisar&lt;/strong&gt; reabre una solicitud
+rechazada.&lt;/p&gt;
+&lt;h3 id="mantener-las-cuentas-analíticas"&gt;Mantener las cuentas
+analíticas&lt;/h3&gt;
+&lt;p&gt;En la app &lt;strong&gt;Cuentas Analíticas&lt;/strong&gt; puedes editar nombre,
+cliente, sujeto a convenio, código, observaciones, &lt;strong&gt;Presupuesto
+AICIA&lt;/strong&gt;, clientes asociados, grupo de trabajo,
+&lt;strong&gt;responsable&lt;/strong&gt; y &lt;strong&gt;miembros&lt;/strong&gt; (ambos se
+eligen entre los usuarios del grupo). El responsable y el Jefe de Equipo
+ven el proyecto en su portal.&lt;/p&gt;
+&lt;p&gt;&lt;img class="img-fluid" src="/web/image/portal_requests.manual_img_director_i_d_04_cuentas_analiticas"
+alt="Cuentas Analíticas (filtrado por un proyecto)" /&gt;&lt;br /&gt;
+&lt;em&gt;Cuentas Analíticas (filtrado por un proyecto)&lt;/em&gt;&lt;/p&gt;
+&lt;h3 id="configurar-un-grupo-de-trabajo"&gt;Configurar un grupo de
+trabajo&lt;/h3&gt;
+&lt;ol type="1"&gt;
+&lt;li&gt;&lt;strong&gt;Solicitudes del Portal → Grupos de Trabajo →
+Nuevo&lt;/strong&gt;.&lt;/li&gt;
+&lt;li&gt;Indica &lt;strong&gt;Nombre&lt;/strong&gt;, &lt;strong&gt;Código&lt;/strong&gt; y añade los
+&lt;strong&gt;Usuarios&lt;/strong&gt;.&lt;/li&gt;
+&lt;li&gt;Elige el &lt;strong&gt;Jefe de Equipo&lt;/strong&gt; y, si lo hay, el
+&lt;strong&gt;Administrativo&lt;/strong&gt;. Solo aparecen miembros con ese
+perfil.&lt;/li&gt;
+&lt;/ol&gt;
+&lt;p&gt;&lt;img class="img-fluid" src="/web/image/portal_requests.manual_img_director_i_d_05_grupo_de_trabajo"
+alt="Ficha de un grupo de trabajo" /&gt;&lt;br /&gt;
+&lt;em&gt;Ficha de un grupo de trabajo&lt;/em&gt;&lt;/p&gt;
+&lt;h2 id="avisos-y-preguntas-frecuentes"&gt;Avisos y preguntas
+frecuentes&lt;/h2&gt;
+&lt;p&gt;&lt;strong&gt;Correos que recibes&lt;/strong&gt;: documentos y solicitudes de
+proyecto aprobados por el Jefe de Equipo; los creados o reenviados por
+el propio Jefe de Equipo; los creados sin grupo de trabajo; y los
+documentos firmados por el Director Gerente con la firma de la empresa
+ya incluida. Lo que crea el resto del equipo avisa primero al Jefe de
+Equipo.&lt;/p&gt;
+&lt;p&gt;&lt;strong&gt;Error “No se encontró el plan analítico AICIA”.&lt;/strong&gt; Crea
+en Contabilidad un plan analítico llamado exactamente
+&lt;code&gt;AICIA&lt;/code&gt;.&lt;/p&gt;
+</field>
+        </record>
+        <record id="manual_article_director_gerente" model="knowledge.article">
+            <field name="name">Manual — Director Gerente</field>
+            <field name="icon">✍️</field>
+            <field name="parent_id" ref="manual_article_root" />
+            <field name="sequence">6</field>
+            <field name="body">&lt;p&gt;&lt;a href="/web/content/portal_requests.manual_pdf_director_gerente?download=true"&gt;📄 Descargar este manual en PDF&lt;/a&gt;&lt;/p&gt;&lt;h2 id="introducción-al-portal-de-solicitudes"&gt;Introducción al Portal de
+Solicitudes&lt;/h2&gt;
+&lt;p&gt;El Portal de Solicitudes de AICIA (módulo
+&lt;code&gt;portal_requests&lt;/code&gt;, Odoo 19) centraliza las solicitudes
+internas: firma de documentos, apertura y cierre de proyectos, emisión
+de facturas y gastos. También permite consultar proyectos, pagos y
+nóminas. Cada solicitud recorre un circuito de aprobación por estados y
+el sistema avisa por correo en cada paso.&lt;/p&gt;
+&lt;p&gt;&lt;strong&gt;Dónde se trabaja&lt;/strong&gt;&lt;/p&gt;
+&lt;ul&gt;
+&lt;li&gt;&lt;strong&gt;Portal&lt;/strong&gt; (&lt;code&gt;/my&lt;/code&gt;, “Mi cuenta”): lo usan
+solicitantes, Jefes de Proyecto, Jefes de Equipo y Administrativos. No
+consume licencia.&lt;/li&gt;
+&lt;li&gt;&lt;strong&gt;Backend&lt;/strong&gt; (aplicación &lt;strong&gt;Solicitudes del
+Portal&lt;/strong&gt; de Odoo): lo usan dirección y responsables internos para
+revisar y aprobar.&lt;/li&gt;
+&lt;/ul&gt;
+&lt;p&gt;&lt;strong&gt;Conceptos clave&lt;/strong&gt;&lt;/p&gt;
+&lt;ul&gt;
+&lt;li&gt;&lt;strong&gt;Grupo de trabajo&lt;/strong&gt;: equipo con miembros, un Jefe de
+Equipo y, opcionalmente, un Administrativo.&lt;/li&gt;
+&lt;li&gt;&lt;strong&gt;Paso “Aprobación del Jefe de Equipo”&lt;/strong&gt;: primer paso
+de las solicitudes de un miembro del equipo. Solo lo aprueba o rechaza
+el Jefe de Equipo del grupo; las solicitudes del propio Jefe de Equipo
+se lo saltan.&lt;/li&gt;
+&lt;li&gt;&lt;strong&gt;Proyecto&lt;/strong&gt;: cuenta analítica con responsable, grupo
+de trabajo, miembros, saldo y presupuesto.&lt;/li&gt;
+&lt;li&gt;&lt;strong&gt;Solo PDF&lt;/strong&gt;: todo archivo subido debe ser un PDF real
+(se comprueba el contenido, no solo la extensión). Única excepción: la
+Ficha de Alta de un proyecto nuevo, que se sube en Excel.&lt;/li&gt;
+&lt;li&gt;&lt;strong&gt;Umbral de 10.000 €&lt;/strong&gt;: un gasto marcado como superior
+a 10.000 € necesita además la aprobación del Director Gerente.&lt;/li&gt;
+&lt;li&gt;&lt;strong&gt;Rechazo sin perder histórico&lt;/strong&gt;: una solicitud
+rechazada se corrige y se reenvía dentro del mismo expediente. El motivo
+del rechazo queda en el historial y llega por correo al
+solicitante.&lt;/li&gt;
+&lt;li&gt;&lt;strong&gt;Aviso por correo&lt;/strong&gt;: el solicitante recibe un correo
+con enlace cada vez que cambia el estado de su solicitud.&lt;/li&gt;
+&lt;/ul&gt;
+&lt;p&gt;&lt;strong&gt;Roles del módulo&lt;/strong&gt;&lt;/p&gt;
+&lt;table&gt;
+&lt;colgroup&gt;
+&lt;col style="width: 33%" /&gt;
+&lt;col style="width: 33%" /&gt;
+&lt;col style="width: 33%" /&gt;
+&lt;/colgroup&gt;
+&lt;thead&gt;
+&lt;tr&gt;
+&lt;th&gt;Rol&lt;/th&gt;
+&lt;th&gt;Dónde trabaja&lt;/th&gt;
+&lt;th&gt;Función principal&lt;/th&gt;
+&lt;/tr&gt;
+&lt;/thead&gt;
+&lt;tbody&gt;
+&lt;tr&gt;
+&lt;td&gt;Solicitante (usuario de portal)&lt;/td&gt;
+&lt;td&gt;Portal&lt;/td&gt;
+&lt;td&gt;Crea y sigue sus propias solicitudes&lt;/td&gt;
+&lt;/tr&gt;
+&lt;tr&gt;
+&lt;td&gt;Jefe de Proyecto&lt;/td&gt;
+&lt;td&gt;Portal&lt;/td&gt;
+&lt;td&gt;Igual que un solicitante&lt;/td&gt;
+&lt;/tr&gt;
+&lt;tr&gt;
+&lt;td&gt;Jefe de Equipo&lt;/td&gt;
+&lt;td&gt;Portal&lt;/td&gt;
+&lt;td&gt;Aprueba o rechaza el primer paso de su equipo; ve saldos&lt;/td&gt;
+&lt;/tr&gt;
+&lt;tr&gt;
+&lt;td&gt;Administrativo&lt;/td&gt;
+&lt;td&gt;Portal&lt;/td&gt;
+&lt;td&gt;Crea solicitudes y ve las del equipo; no aprueba ni rechaza&lt;/td&gt;
+&lt;/tr&gt;
+&lt;tr&gt;
+&lt;td&gt;Director I+D&lt;/td&gt;
+&lt;td&gt;Backend&lt;/td&gt;
+&lt;td&gt;Aprueba documentos y proyectos&lt;/td&gt;
+&lt;/tr&gt;
+&lt;tr&gt;
+&lt;td&gt;Director Gerente&lt;/td&gt;
+&lt;td&gt;Backend&lt;/td&gt;
+&lt;td&gt;Firma documentos; aprueba gastos de más de 10.000 €&lt;/td&gt;
+&lt;/tr&gt;
+&lt;tr&gt;
+&lt;td&gt;Responsable de Personal y Compras&lt;/td&gt;
+&lt;td&gt;Backend&lt;/td&gt;
+&lt;td&gt;Segundo aprobador de gastos; altas y bajas de empleados&lt;/td&gt;
+&lt;/tr&gt;
+&lt;tr&gt;
+&lt;td&gt;Responsable de Clientes y Becarios&lt;/td&gt;
+&lt;td&gt;Backend&lt;/td&gt;
+&lt;td&gt;Segundo aprobador de facturas y gratificaciones; becarios&lt;/td&gt;
+&lt;/tr&gt;
+&lt;tr&gt;
+&lt;td&gt;Director Financiero&lt;/td&gt;
+&lt;td&gt;Backend&lt;/td&gt;
+&lt;td&gt;Consulta de documentos&lt;/td&gt;
+&lt;/tr&gt;
+&lt;/tbody&gt;
+&lt;/table&gt;
+&lt;blockquote&gt;
+&lt;p&gt;Las capturas de este manual se han tomado con usuarios y datos
+ficticios.&lt;/p&gt;
+&lt;/blockquote&gt;
+&lt;h2 id="tu-rol-director-gerente"&gt;Tu rol: Director Gerente&lt;/h2&gt;
+&lt;p&gt;Eres quien &lt;strong&gt;firma digitalmente&lt;/strong&gt; los documentos y la
+última aprobación de los &lt;strong&gt;gastos de más de 10.000 €&lt;/strong&gt;. Por
+debajo de ese importe no intervienes en gastos. Trabajas en el backend y
+tienes acceso completo a cuentas analíticas y saldos.&lt;/p&gt;
+&lt;p&gt;&lt;strong&gt;Requisitos&lt;/strong&gt;: usuario interno con el perfil
+&lt;strong&gt;Director Gerente&lt;/strong&gt;. La firma usa el módulo
+&lt;strong&gt;Sign&lt;/strong&gt; de Odoo.&lt;/p&gt;
+&lt;table&gt;
+&lt;colgroup&gt;
+&lt;col style="width: 50%" /&gt;
+&lt;col style="width: 50%" /&gt;
+&lt;/colgroup&gt;
+&lt;thead&gt;
+&lt;tr&gt;
+&lt;th&gt;Puedes&lt;/th&gt;
+&lt;th&gt;Dónde&lt;/th&gt;
+&lt;/tr&gt;
+&lt;/thead&gt;
+&lt;tbody&gt;
+&lt;tr&gt;
+&lt;td&gt;Ver tus pendientes de documentos, facturas y gastos&lt;/td&gt;
+&lt;td&gt;&lt;strong&gt;Solicitudes del Portal → Resumen&lt;/strong&gt;&lt;/td&gt;
+&lt;/tr&gt;
+&lt;tr&gt;
+&lt;td&gt;Firmar, aprobar o rechazar documentos en tu paso&lt;/td&gt;
+&lt;td&gt;&lt;strong&gt;Solicitudes del Portal → Documentos&lt;/strong&gt;&lt;/td&gt;
+&lt;/tr&gt;
+&lt;tr&gt;
+&lt;td&gt;Aprobar o rechazar gastos de más de 10.000 €&lt;/td&gt;
+&lt;td&gt;&lt;strong&gt;Resumen → Gastos → Para revisar&lt;/strong&gt;&lt;/td&gt;
+&lt;/tr&gt;
+&lt;tr&gt;
+&lt;td&gt;Ver saldo del proyecto y del grupo en los gastos&lt;/td&gt;
+&lt;td&gt;Ficha del gasto&lt;/td&gt;
+&lt;/tr&gt;
+&lt;tr&gt;
+&lt;td&gt;Crear y editar cualquier cuenta analítica&lt;/td&gt;
+&lt;td&gt;App &lt;strong&gt;Cuentas Analíticas&lt;/strong&gt;&lt;/td&gt;
+&lt;/tr&gt;
+&lt;/tbody&gt;
+&lt;/table&gt;
+&lt;h2 id="cómo-hacerlo-paso-a-paso"&gt;Cómo hacerlo, paso a paso&lt;/h2&gt;
+&lt;h3 id="usar-el-panel-resumen"&gt;Usar el panel Resumen&lt;/h3&gt;
+&lt;p&gt;Abre la app &lt;strong&gt;Solicitudes del Portal&lt;/strong&gt;. En
+&lt;strong&gt;Resumen&lt;/strong&gt;, &lt;strong&gt;Para revisar&lt;/strong&gt; de cada tarjeta
+te lleva a lo que tienes pendiente.&lt;/p&gt;
+&lt;p&gt;&lt;img class="img-fluid" src="/web/image/portal_requests.manual_img_director_gerente_01_resumen"
+alt="Panel Resumen del Director Gerente" /&gt;&lt;br /&gt;
+&lt;em&gt;Panel Resumen del Director Gerente&lt;/em&gt;&lt;/p&gt;
+&lt;h3 id="firmar-y-aprobar-un-documento"&gt;Firmar y aprobar un
+documento&lt;/h3&gt;
+&lt;ol type="1"&gt;
+&lt;li&gt;Recibes un correo cuando el Director I+D aprueba un documento.
+Ábrelo en &lt;strong&gt;Aprobación del Director Gerente&lt;/strong&gt;.&lt;/li&gt;
+&lt;li&gt;Pulsa &lt;strong&gt;Firmar digitalmente&lt;/strong&gt;. Se abre el editor de
+Sign con el PDF adjunto.&lt;/li&gt;
+&lt;/ol&gt;
+&lt;p&gt;&lt;img class="img-fluid" src="/web/image/portal_requests.manual_img_director_gerente_02_documento_firmar"
+alt="Documento pendiente de firma: botón Firmar digitalmente" /&gt;&lt;br /&gt;
+&lt;em&gt;Documento pendiente de firma: botón Firmar digitalmente&lt;/em&gt;&lt;/p&gt;
+&lt;ol start="3" type="1"&gt;
+&lt;li&gt;Arrastra los campos de firma desde el panel lateral al lugar
+correcto y pulsa &lt;strong&gt;Firmar ahora&lt;/strong&gt;. Se firma sin enviar
+correos.&lt;/li&gt;
+&lt;li&gt;Al cerrar el diálogo vuelves al documento. Si lo cierras antes de
+firmar, &lt;strong&gt;Ver solicitud de firma&lt;/strong&gt; reabre el editor.&lt;/li&gt;
+&lt;li&gt;Con la firma completada aparece &lt;strong&gt;Aprobar&lt;/strong&gt;. Púlsalo:
+&lt;ul&gt;
+&lt;li&gt;si el solicitante marcó &lt;strong&gt;Firmado por empresa&lt;/strong&gt;, pasa a
+&lt;strong&gt;Revisión final&lt;/strong&gt; del Director I+D;&lt;/li&gt;
+&lt;li&gt;si no, pasa a &lt;strong&gt;Esperando firma de empresa&lt;/strong&gt; y el
+solicitante recibe un correo para conseguirla.&lt;/li&gt;
+&lt;/ul&gt;&lt;/li&gt;
+&lt;/ol&gt;
+&lt;p&gt;El archivo firmado se guarda con el sufijo &lt;code&gt;_firmado&lt;/code&gt;.
+&lt;strong&gt;Aprobar&lt;/strong&gt; no funciona sin firma: aparece un aviso
+pidiendo que firmes primero.&lt;/p&gt;
+&lt;h3 id="rechazar-o-devolver-un-documento"&gt;Rechazar o devolver un
+documento&lt;/h3&gt;
+&lt;ul&gt;
+&lt;li&gt;En &lt;strong&gt;Aprobación del Director Gerente&lt;/strong&gt;,
+&lt;strong&gt;Rechazar&lt;/strong&gt; devuelve el documento al solicitante con
+enlace para subir una nueva versión; al reenviarla, la firma pendiente
+se cancela y el circuito vuelve a empezar.&lt;/li&gt;
+&lt;li&gt;En un documento &lt;strong&gt;Aprobado&lt;/strong&gt; o
+&lt;strong&gt;Rechazado&lt;/strong&gt;, &lt;strong&gt;Para Revisar&lt;/strong&gt; lo devuelve a
+&lt;strong&gt;Esperando firma de empresa&lt;/strong&gt;.&lt;/li&gt;
+&lt;/ul&gt;
+&lt;h3 id="aprobar-un-gasto-de-más-de-10.000"&gt;Aprobar un gasto de más de
+10.000 €&lt;/h3&gt;
+&lt;ol type="1"&gt;
+&lt;li&gt;Recibes un correo cuando el segundo aprobador aprueba un gasto
+marcado como superior a 10.000 €.&lt;/li&gt;
+&lt;li&gt;Abre &lt;strong&gt;Resumen → Gastos → Para revisar&lt;/strong&gt; (los gastos no
+tienen menú propio) y el gasto en &lt;strong&gt;Aprobación del Director
+Gerente&lt;/strong&gt;.&lt;/li&gt;
+&lt;li&gt;Revisa tipo, proyecto, adjuntos, &lt;strong&gt;Saldo del Proyecto&lt;/strong&gt;
+y &lt;strong&gt;Saldo del Grupo de Trabajo&lt;/strong&gt;.&lt;/li&gt;
+&lt;li&gt;Pulsa &lt;strong&gt;Aprobar&lt;/strong&gt;: queda &lt;strong&gt;Aprobada&lt;/strong&gt; y se
+crea la factura de proveedor en borrador. O pulsa
+&lt;strong&gt;Rechazar&lt;/strong&gt;, escribe el motivo y acepta: pasa a
+&lt;strong&gt;Volver a revisar&lt;/strong&gt; y el solicitante recibe el motivo por
+correo.&lt;/li&gt;
+&lt;/ol&gt;
+&lt;p&gt;&lt;img class="img-fluid" src="/web/image/portal_requests.manual_img_director_gerente_03_gasto_mas_10000"
+alt="Gasto de más de 10.000 € pendiente del Director Gerente" /&gt;&lt;br /&gt;
+&lt;em&gt;Gasto de más de 10.000 € pendiente del Director Gerente&lt;/em&gt;&lt;/p&gt;
+&lt;h2 id="avisos-y-preguntas-frecuentes"&gt;Avisos y preguntas
+frecuentes&lt;/h2&gt;
+&lt;p&gt;&lt;strong&gt;Correos que recibes&lt;/strong&gt;: documento aprobado por el
+Director I+D, firma de empresa confirmada por el Jefe de Equipo, y gasto
+de más de 10.000 € aprobado por el segundo aprobador.&lt;/p&gt;
+&lt;p&gt;&lt;strong&gt;¿Qué PDF se firma si hay varios adjuntos?&lt;/strong&gt; El editor
+toma un único adjunto del documento. Si hay varias versiones, comprueba
+en el editor que es la correcta antes de firmar.&lt;/p&gt;
+&lt;p&gt;&lt;strong&gt;Recibo avisos de gastos pequeños.&lt;/strong&gt; Solo deberías
+recibirlos si el solicitante marcó &lt;strong&gt;¿Es mas de 10000€?&lt;/strong&gt;.
+El sistema no calcula el importe: se basa en esa casilla.&lt;/p&gt;
+</field>
+        </record>
+        <record id="manual_article_responsable_personal_y_compras" model="knowledge.article">
+            <field name="name">Manual — Responsable de Personal y Compras</field>
+            <field name="icon">🧾</field>
+            <field name="parent_id" ref="manual_article_root" />
+            <field name="sequence">7</field>
+            <field name="body">&lt;p&gt;&lt;a href="/web/content/portal_requests.manual_pdf_responsable_personal_y_compras?download=true"&gt;📄 Descargar este manual en PDF&lt;/a&gt;&lt;/p&gt;&lt;h2 id="introducción-al-portal-de-solicitudes"&gt;Introducción al Portal de
+Solicitudes&lt;/h2&gt;
+&lt;p&gt;El Portal de Solicitudes de AICIA (módulo
+&lt;code&gt;portal_requests&lt;/code&gt;, Odoo 19) centraliza las solicitudes
+internas: firma de documentos, apertura y cierre de proyectos, emisión
+de facturas y gastos. También permite consultar proyectos, pagos y
+nóminas. Cada solicitud recorre un circuito de aprobación por estados y
+el sistema avisa por correo en cada paso.&lt;/p&gt;
+&lt;p&gt;&lt;strong&gt;Dónde se trabaja&lt;/strong&gt;&lt;/p&gt;
+&lt;ul&gt;
+&lt;li&gt;&lt;strong&gt;Portal&lt;/strong&gt; (&lt;code&gt;/my&lt;/code&gt;, “Mi cuenta”): lo usan
+solicitantes, Jefes de Proyecto, Jefes de Equipo y Administrativos. No
+consume licencia.&lt;/li&gt;
+&lt;li&gt;&lt;strong&gt;Backend&lt;/strong&gt; (aplicación &lt;strong&gt;Solicitudes del
+Portal&lt;/strong&gt; de Odoo): lo usan dirección y responsables internos para
+revisar y aprobar.&lt;/li&gt;
+&lt;/ul&gt;
+&lt;p&gt;&lt;strong&gt;Conceptos clave&lt;/strong&gt;&lt;/p&gt;
+&lt;ul&gt;
+&lt;li&gt;&lt;strong&gt;Grupo de trabajo&lt;/strong&gt;: equipo con miembros, un Jefe de
+Equipo y, opcionalmente, un Administrativo.&lt;/li&gt;
+&lt;li&gt;&lt;strong&gt;Paso “Aprobación del Jefe de Equipo”&lt;/strong&gt;: primer paso
+de las solicitudes de un miembro del equipo. Solo lo aprueba o rechaza
+el Jefe de Equipo del grupo; las solicitudes del propio Jefe de Equipo
+se lo saltan.&lt;/li&gt;
+&lt;li&gt;&lt;strong&gt;Proyecto&lt;/strong&gt;: cuenta analítica con responsable, grupo
+de trabajo, miembros, saldo y presupuesto.&lt;/li&gt;
+&lt;li&gt;&lt;strong&gt;Solo PDF&lt;/strong&gt;: todo archivo subido debe ser un PDF real
+(se comprueba el contenido, no solo la extensión). Única excepción: la
+Ficha de Alta de un proyecto nuevo, que se sube en Excel.&lt;/li&gt;
+&lt;li&gt;&lt;strong&gt;Umbral de 10.000 €&lt;/strong&gt;: un gasto marcado como superior
+a 10.000 € necesita además la aprobación del Director Gerente.&lt;/li&gt;
+&lt;li&gt;&lt;strong&gt;Rechazo sin perder histórico&lt;/strong&gt;: una solicitud
+rechazada se corrige y se reenvía dentro del mismo expediente. El motivo
+del rechazo queda en el historial y llega por correo al
+solicitante.&lt;/li&gt;
+&lt;li&gt;&lt;strong&gt;Aviso por correo&lt;/strong&gt;: el solicitante recibe un correo
+con enlace cada vez que cambia el estado de su solicitud.&lt;/li&gt;
+&lt;/ul&gt;
+&lt;p&gt;&lt;strong&gt;Roles del módulo&lt;/strong&gt;&lt;/p&gt;
+&lt;table&gt;
+&lt;colgroup&gt;
+&lt;col style="width: 33%" /&gt;
+&lt;col style="width: 33%" /&gt;
+&lt;col style="width: 33%" /&gt;
+&lt;/colgroup&gt;
+&lt;thead&gt;
+&lt;tr&gt;
+&lt;th&gt;Rol&lt;/th&gt;
+&lt;th&gt;Dónde trabaja&lt;/th&gt;
+&lt;th&gt;Función principal&lt;/th&gt;
+&lt;/tr&gt;
+&lt;/thead&gt;
+&lt;tbody&gt;
+&lt;tr&gt;
+&lt;td&gt;Solicitante (usuario de portal)&lt;/td&gt;
+&lt;td&gt;Portal&lt;/td&gt;
+&lt;td&gt;Crea y sigue sus propias solicitudes&lt;/td&gt;
+&lt;/tr&gt;
+&lt;tr&gt;
+&lt;td&gt;Jefe de Proyecto&lt;/td&gt;
+&lt;td&gt;Portal&lt;/td&gt;
+&lt;td&gt;Igual que un solicitante&lt;/td&gt;
+&lt;/tr&gt;
+&lt;tr&gt;
+&lt;td&gt;Jefe de Equipo&lt;/td&gt;
+&lt;td&gt;Portal&lt;/td&gt;
+&lt;td&gt;Aprueba o rechaza el primer paso de su equipo; ve saldos&lt;/td&gt;
+&lt;/tr&gt;
+&lt;tr&gt;
+&lt;td&gt;Administrativo&lt;/td&gt;
+&lt;td&gt;Portal&lt;/td&gt;
+&lt;td&gt;Crea solicitudes y ve las del equipo; no aprueba ni rechaza&lt;/td&gt;
+&lt;/tr&gt;
+&lt;tr&gt;
+&lt;td&gt;Director I+D&lt;/td&gt;
+&lt;td&gt;Backend&lt;/td&gt;
+&lt;td&gt;Aprueba documentos y proyectos&lt;/td&gt;
+&lt;/tr&gt;
+&lt;tr&gt;
+&lt;td&gt;Director Gerente&lt;/td&gt;
+&lt;td&gt;Backend&lt;/td&gt;
+&lt;td&gt;Firma documentos; aprueba gastos de más de 10.000 €&lt;/td&gt;
+&lt;/tr&gt;
+&lt;tr&gt;
+&lt;td&gt;Responsable de Personal y Compras&lt;/td&gt;
+&lt;td&gt;Backend&lt;/td&gt;
+&lt;td&gt;Segundo aprobador de gastos; altas y bajas de empleados&lt;/td&gt;
+&lt;/tr&gt;
+&lt;tr&gt;
+&lt;td&gt;Responsable de Clientes y Becarios&lt;/td&gt;
+&lt;td&gt;Backend&lt;/td&gt;
+&lt;td&gt;Segundo aprobador de facturas y gratificaciones; becarios&lt;/td&gt;
+&lt;/tr&gt;
+&lt;tr&gt;
+&lt;td&gt;Director Financiero&lt;/td&gt;
+&lt;td&gt;Backend&lt;/td&gt;
+&lt;td&gt;Consulta de documentos&lt;/td&gt;
+&lt;/tr&gt;
+&lt;/tbody&gt;
+&lt;/table&gt;
+&lt;blockquote&gt;
+&lt;p&gt;Las capturas de este manual se han tomado con usuarios y datos
+ficticios.&lt;/p&gt;
+&lt;/blockquote&gt;
+&lt;h2 id="tu-rol-responsable-de-personal-y-compras"&gt;Tu rol: Responsable de
+Personal y Compras&lt;/h2&gt;
+&lt;p&gt;Eres el &lt;strong&gt;segundo aprobador de los gastos&lt;/strong&gt; (compras de
+bienes o servicios, material inventariable y liquidaciones) tras el Jefe
+de Equipo, y gestionas las &lt;strong&gt;solicitudes de empleados&lt;/strong&gt;
+(nuevo, alta, baja). Trabajas en el backend.&lt;/p&gt;
+&lt;p&gt;&lt;strong&gt;Requisitos&lt;/strong&gt;: usuario interno con el perfil
+&lt;strong&gt;Responsable de Personal y compras&lt;/strong&gt;.&lt;/p&gt;
+&lt;table&gt;
+&lt;colgroup&gt;
+&lt;col style="width: 50%" /&gt;
+&lt;col style="width: 50%" /&gt;
+&lt;/colgroup&gt;
+&lt;thead&gt;
+&lt;tr&gt;
+&lt;th&gt;Puedes&lt;/th&gt;
+&lt;th&gt;Dónde&lt;/th&gt;
+&lt;/tr&gt;
+&lt;/thead&gt;
+&lt;tbody&gt;
+&lt;tr&gt;
+&lt;td&gt;Ver tus gastos y empleados pendientes&lt;/td&gt;
+&lt;td&gt;&lt;strong&gt;Solicitudes del Portal → Resumen&lt;/strong&gt;&lt;/td&gt;
+&lt;/tr&gt;
+&lt;tr&gt;
+&lt;td&gt;Aprobar o rechazar gastos (salvo gratificaciones)&lt;/td&gt;
+&lt;td&gt;&lt;strong&gt;Resumen → Gastos → Para revisar&lt;/strong&gt;&lt;/td&gt;
+&lt;/tr&gt;
+&lt;tr&gt;
+&lt;td&gt;Indicar la cuenta de inmovilizado del material inventariable&lt;/td&gt;
+&lt;td&gt;Ficha del gasto&lt;/td&gt;
+&lt;/tr&gt;
+&lt;tr&gt;
+&lt;td&gt;Aprobar, rechazar o reabrir solicitudes de empleados&lt;/td&gt;
+&lt;td&gt;&lt;strong&gt;Solicitudes del Portal → Empleados&lt;/strong&gt;&lt;/td&gt;
+&lt;/tr&gt;
+&lt;tr&gt;
+&lt;td&gt;Crear y editar cualquier cuenta analítica&lt;/td&gt;
+&lt;td&gt;App &lt;strong&gt;Cuentas Analíticas&lt;/strong&gt;&lt;/td&gt;
+&lt;/tr&gt;
+&lt;/tbody&gt;
+&lt;/table&gt;
+&lt;h2 id="cómo-hacerlo-paso-a-paso"&gt;Cómo hacerlo, paso a paso&lt;/h2&gt;
+&lt;h3 id="usar-el-panel-resumen"&gt;Usar el panel Resumen&lt;/h3&gt;
+&lt;p&gt;Abre la app &lt;strong&gt;Solicitudes del Portal&lt;/strong&gt;. Tienes las
+tarjetas &lt;strong&gt;Empleados&lt;/strong&gt; y &lt;strong&gt;Gastos&lt;/strong&gt;;
+&lt;strong&gt;Para revisar&lt;/strong&gt; te lleva a lo pendiente.&lt;/p&gt;
+&lt;p&gt;&lt;img class="img-fluid" src="/web/image/portal_requests.manual_img_responsable_personal_y_compras_01_resumen"
+alt="Panel Resumen del Responsable de Personal y Compras" /&gt;&lt;br /&gt;
+&lt;em&gt;Panel Resumen del Responsable de Personal y Compras&lt;/em&gt;&lt;/p&gt;
+&lt;h3 id="aprobar-o-rechazar-un-gasto"&gt;Aprobar o rechazar un gasto&lt;/h3&gt;
+&lt;ol type="1"&gt;
+&lt;li&gt;Recibes un correo cuando el Jefe de Equipo aprueba un gasto, o
+cuando el propio Jefe de Equipo lo solicita.&lt;/li&gt;
+&lt;li&gt;Abre &lt;strong&gt;Resumen → Gastos → Para revisar&lt;/strong&gt; y el gasto en
+&lt;strong&gt;Aprobación del Responsable de proveedores&lt;/strong&gt;.&lt;/li&gt;
+&lt;li&gt;Revisa tipo, proyecto, adjuntos, &lt;strong&gt;Saldo del Proyecto&lt;/strong&gt;
+y &lt;strong&gt;Saldo del Grupo de Trabajo&lt;/strong&gt;. Si es &lt;strong&gt;material
+inventariable&lt;/strong&gt;, rellena la &lt;strong&gt;Cuenta de
+Inmovilizado&lt;/strong&gt;.&lt;/li&gt;
+&lt;li&gt;Pulsa &lt;strong&gt;Aprobar&lt;/strong&gt;:
+&lt;ul&gt;
+&lt;li&gt;si está marcado como más de 10.000 €, pasa al Director Gerente;&lt;/li&gt;
+&lt;li&gt;si no, queda &lt;strong&gt;Aprobada&lt;/strong&gt; y se crea la &lt;strong&gt;factura
+de proveedor en borrador&lt;/strong&gt; con el PDF y la distribución analítica
+al 100 % del proyecto.&lt;/li&gt;
+&lt;/ul&gt;&lt;/li&gt;
+&lt;li&gt;O pulsa &lt;strong&gt;Rechazar&lt;/strong&gt;, escribe el motivo y acepta: pasa
+a &lt;strong&gt;Volver a revisar&lt;/strong&gt; y el solicitante recibe el motivo
+por correo.&lt;/li&gt;
+&lt;/ol&gt;
+&lt;p&gt;&lt;img class="img-fluid" src="/web/image/portal_requests.manual_img_responsable_personal_y_compras_02_gasto_aprobar"
+alt="Gasto pendiente del segundo aprobador" /&gt;&lt;br /&gt;
+&lt;em&gt;Gasto pendiente del segundo aprobador&lt;/em&gt;&lt;/p&gt;
+&lt;h3 id="gestionar-una-solicitud-de-empleado"&gt;Gestionar una solicitud de
+empleado&lt;/h3&gt;
+&lt;ol type="1"&gt;
+&lt;li&gt;Abre &lt;strong&gt;Solicitudes del Portal → Empleados&lt;/strong&gt; (o la
+tarjeta &lt;strong&gt;Empleados&lt;/strong&gt; del Resumen).&lt;/li&gt;
+&lt;li&gt;Revisa el tipo: &lt;strong&gt;Nuevo&lt;/strong&gt; (datos personales, salario,
+pagas, calendario, cuenta bancaria y adjuntos), &lt;strong&gt;Alta&lt;/strong&gt;
+(empleado y fecha) o &lt;strong&gt;Baja&lt;/strong&gt; (empleado, fecha,
+motivo).&lt;/li&gt;
+&lt;li&gt;Pulsa &lt;strong&gt;Aprobar&lt;/strong&gt;: &lt;strong&gt;Nuevo&lt;/strong&gt; crea la ficha
+de empleado con sus adjuntos; &lt;strong&gt;Alta&lt;/strong&gt; reactiva al
+empleado; &lt;strong&gt;Baja&lt;/strong&gt; lo archiva.&lt;/li&gt;
+&lt;li&gt;También puedes &lt;strong&gt;Rechazar&lt;/strong&gt;, o reabrir con &lt;strong&gt;Para
+Revisar&lt;/strong&gt; una solicitud rechazada. El solicitante recibe un
+correo en cada caso.&lt;/li&gt;
+&lt;/ol&gt;
+&lt;p&gt;&lt;img class="img-fluid" src="/web/image/portal_requests.manual_img_responsable_personal_y_compras_03_empleado"
+alt="Solicitud de empleado nuevo" /&gt;&lt;br /&gt;
+&lt;em&gt;Solicitud de empleado nuevo&lt;/em&gt;&lt;/p&gt;
+&lt;h2 id="avisos-y-preguntas-frecuentes"&gt;Avisos y preguntas
+frecuentes&lt;/h2&gt;
+&lt;p&gt;&lt;strong&gt;Correos que recibes&lt;/strong&gt;: gasto aprobado por el Jefe de
+Equipo y gasto solicitado directamente por un Jefe de Equipo.&lt;/p&gt;
+&lt;p&gt;&lt;strong&gt;Veo gratificaciones en Para revisar pero no puedo
+aprobarlas.&lt;/strong&gt; Las gratificaciones las aprueba el Responsable de
+Clientes y Becarios.&lt;/p&gt;
+&lt;p&gt;&lt;strong&gt;No recibo aviso de las solicitudes de empleado.&lt;/strong&gt; Hoy
+ese correo se envía al Responsable de Clientes y Becarios. Revisa
+&lt;strong&gt;Empleados&lt;/strong&gt; en el Resumen con regularidad.&lt;/p&gt;
+&lt;p&gt;&lt;strong&gt;¿Dónde se crean las solicitudes de empleado?&lt;/strong&gt; En el
+portal, en la dirección &lt;code&gt;/portal/hr_employee_request&lt;/code&gt;.&lt;/p&gt;
+</field>
+        </record>
+        <record id="manual_article_responsable_clientes_y_becarios" model="knowledge.article">
+            <field name="name">Manual — Responsable de Clientes y Becarios</field>
+            <field name="icon">🤝</field>
+            <field name="parent_id" ref="manual_article_root" />
+            <field name="sequence">8</field>
+            <field name="body">&lt;p&gt;&lt;a href="/web/content/portal_requests.manual_pdf_responsable_clientes_y_becarios?download=true"&gt;📄 Descargar este manual en PDF&lt;/a&gt;&lt;/p&gt;&lt;h2 id="introducción-al-portal-de-solicitudes"&gt;Introducción al Portal de
+Solicitudes&lt;/h2&gt;
+&lt;p&gt;El Portal de Solicitudes de AICIA (módulo
+&lt;code&gt;portal_requests&lt;/code&gt;, Odoo 19) centraliza las solicitudes
+internas: firma de documentos, apertura y cierre de proyectos, emisión
+de facturas y gastos. También permite consultar proyectos, pagos y
+nóminas. Cada solicitud recorre un circuito de aprobación por estados y
+el sistema avisa por correo en cada paso.&lt;/p&gt;
+&lt;p&gt;&lt;strong&gt;Dónde se trabaja&lt;/strong&gt;&lt;/p&gt;
+&lt;ul&gt;
+&lt;li&gt;&lt;strong&gt;Portal&lt;/strong&gt; (&lt;code&gt;/my&lt;/code&gt;, “Mi cuenta”): lo usan
+solicitantes, Jefes de Proyecto, Jefes de Equipo y Administrativos. No
+consume licencia.&lt;/li&gt;
+&lt;li&gt;&lt;strong&gt;Backend&lt;/strong&gt; (aplicación &lt;strong&gt;Solicitudes del
+Portal&lt;/strong&gt; de Odoo): lo usan dirección y responsables internos para
+revisar y aprobar.&lt;/li&gt;
+&lt;/ul&gt;
+&lt;p&gt;&lt;strong&gt;Conceptos clave&lt;/strong&gt;&lt;/p&gt;
+&lt;ul&gt;
+&lt;li&gt;&lt;strong&gt;Grupo de trabajo&lt;/strong&gt;: equipo con miembros, un Jefe de
+Equipo y, opcionalmente, un Administrativo.&lt;/li&gt;
+&lt;li&gt;&lt;strong&gt;Paso “Aprobación del Jefe de Equipo”&lt;/strong&gt;: primer paso
+de las solicitudes de un miembro del equipo. Solo lo aprueba o rechaza
+el Jefe de Equipo del grupo; las solicitudes del propio Jefe de Equipo
+se lo saltan.&lt;/li&gt;
+&lt;li&gt;&lt;strong&gt;Proyecto&lt;/strong&gt;: cuenta analítica con responsable, grupo
+de trabajo, miembros, saldo y presupuesto.&lt;/li&gt;
+&lt;li&gt;&lt;strong&gt;Solo PDF&lt;/strong&gt;: todo archivo subido debe ser un PDF real
+(se comprueba el contenido, no solo la extensión). Única excepción: la
+Ficha de Alta de un proyecto nuevo, que se sube en Excel.&lt;/li&gt;
+&lt;li&gt;&lt;strong&gt;Umbral de 10.000 €&lt;/strong&gt;: un gasto marcado como superior
+a 10.000 € necesita además la aprobación del Director Gerente.&lt;/li&gt;
+&lt;li&gt;&lt;strong&gt;Rechazo sin perder histórico&lt;/strong&gt;: una solicitud
+rechazada se corrige y se reenvía dentro del mismo expediente. El motivo
+del rechazo queda en el historial y llega por correo al
+solicitante.&lt;/li&gt;
+&lt;li&gt;&lt;strong&gt;Aviso por correo&lt;/strong&gt;: el solicitante recibe un correo
+con enlace cada vez que cambia el estado de su solicitud.&lt;/li&gt;
+&lt;/ul&gt;
+&lt;p&gt;&lt;strong&gt;Roles del módulo&lt;/strong&gt;&lt;/p&gt;
+&lt;table&gt;
+&lt;colgroup&gt;
+&lt;col style="width: 33%" /&gt;
+&lt;col style="width: 33%" /&gt;
+&lt;col style="width: 33%" /&gt;
+&lt;/colgroup&gt;
+&lt;thead&gt;
+&lt;tr&gt;
+&lt;th&gt;Rol&lt;/th&gt;
+&lt;th&gt;Dónde trabaja&lt;/th&gt;
+&lt;th&gt;Función principal&lt;/th&gt;
+&lt;/tr&gt;
+&lt;/thead&gt;
+&lt;tbody&gt;
+&lt;tr&gt;
+&lt;td&gt;Solicitante (usuario de portal)&lt;/td&gt;
+&lt;td&gt;Portal&lt;/td&gt;
+&lt;td&gt;Crea y sigue sus propias solicitudes&lt;/td&gt;
+&lt;/tr&gt;
+&lt;tr&gt;
+&lt;td&gt;Jefe de Proyecto&lt;/td&gt;
+&lt;td&gt;Portal&lt;/td&gt;
+&lt;td&gt;Igual que un solicitante&lt;/td&gt;
+&lt;/tr&gt;
+&lt;tr&gt;
+&lt;td&gt;Jefe de Equipo&lt;/td&gt;
+&lt;td&gt;Portal&lt;/td&gt;
+&lt;td&gt;Aprueba o rechaza el primer paso de su equipo; ve saldos&lt;/td&gt;
+&lt;/tr&gt;
+&lt;tr&gt;
+&lt;td&gt;Administrativo&lt;/td&gt;
+&lt;td&gt;Portal&lt;/td&gt;
+&lt;td&gt;Crea solicitudes y ve las del equipo; no aprueba ni rechaza&lt;/td&gt;
+&lt;/tr&gt;
+&lt;tr&gt;
+&lt;td&gt;Director I+D&lt;/td&gt;
+&lt;td&gt;Backend&lt;/td&gt;
+&lt;td&gt;Aprueba documentos y proyectos&lt;/td&gt;
+&lt;/tr&gt;
+&lt;tr&gt;
+&lt;td&gt;Director Gerente&lt;/td&gt;
+&lt;td&gt;Backend&lt;/td&gt;
+&lt;td&gt;Firma documentos; aprueba gastos de más de 10.000 €&lt;/td&gt;
+&lt;/tr&gt;
+&lt;tr&gt;
+&lt;td&gt;Responsable de Personal y Compras&lt;/td&gt;
+&lt;td&gt;Backend&lt;/td&gt;
+&lt;td&gt;Segundo aprobador de gastos; altas y bajas de empleados&lt;/td&gt;
+&lt;/tr&gt;
+&lt;tr&gt;
+&lt;td&gt;Responsable de Clientes y Becarios&lt;/td&gt;
+&lt;td&gt;Backend&lt;/td&gt;
+&lt;td&gt;Segundo aprobador de facturas y gratificaciones; becarios&lt;/td&gt;
+&lt;/tr&gt;
+&lt;tr&gt;
+&lt;td&gt;Director Financiero&lt;/td&gt;
+&lt;td&gt;Backend&lt;/td&gt;
+&lt;td&gt;Consulta de documentos&lt;/td&gt;
+&lt;/tr&gt;
+&lt;/tbody&gt;
+&lt;/table&gt;
+&lt;blockquote&gt;
+&lt;p&gt;Las capturas de este manual se han tomado con usuarios y datos
+ficticios.&lt;/p&gt;
+&lt;/blockquote&gt;
+&lt;h2 id="tu-rol-responsable-de-clientes-y-becarios"&gt;Tu rol: Responsable
+de Clientes y Becarios&lt;/h2&gt;
+&lt;p&gt;Eres el &lt;strong&gt;segundo y último aprobador de las facturas de
+cliente&lt;/strong&gt; y rectificativas: al aprobar se crea la factura en
+borrador. También eres el segundo aprobador de las
+&lt;strong&gt;gratificaciones&lt;/strong&gt; y gestionas las &lt;strong&gt;solicitudes de
+becarios&lt;/strong&gt;. Trabajas en el backend.&lt;/p&gt;
+&lt;p&gt;&lt;strong&gt;Requisitos&lt;/strong&gt;: usuario interno con el perfil
+&lt;strong&gt;Responsable de Clientes y Becarios&lt;/strong&gt;.&lt;/p&gt;
+&lt;table&gt;
+&lt;colgroup&gt;
+&lt;col style="width: 50%" /&gt;
+&lt;col style="width: 50%" /&gt;
+&lt;/colgroup&gt;
+&lt;thead&gt;
+&lt;tr&gt;
+&lt;th&gt;Puedes&lt;/th&gt;
+&lt;th&gt;Dónde&lt;/th&gt;
+&lt;/tr&gt;
+&lt;/thead&gt;
+&lt;tbody&gt;
+&lt;tr&gt;
+&lt;td&gt;Ver tus facturas, rectificativas y becarios pendientes&lt;/td&gt;
+&lt;td&gt;&lt;strong&gt;Solicitudes del Portal → Resumen&lt;/strong&gt;&lt;/td&gt;
+&lt;/tr&gt;
+&lt;tr&gt;
+&lt;td&gt;Aprobar o rechazar facturas de cliente&lt;/td&gt;
+&lt;td&gt;&lt;strong&gt;Solicitudes del Portal → Facturas&lt;/strong&gt;&lt;/td&gt;
+&lt;/tr&gt;
+&lt;tr&gt;
+&lt;td&gt;Aprobar o rechazar facturas rectificativas&lt;/td&gt;
+&lt;td&gt;&lt;strong&gt;Solicitudes del Portal → Facturas
+rectificativas&lt;/strong&gt;&lt;/td&gt;
+&lt;/tr&gt;
+&lt;tr&gt;
+&lt;td&gt;Aprobar o rechazar gratificaciones&lt;/td&gt;
+&lt;td&gt;Enlace del correo de aviso&lt;/td&gt;
+&lt;/tr&gt;
+&lt;tr&gt;
+&lt;td&gt;Aprobar, rechazar o reabrir solicitudes de becarios&lt;/td&gt;
+&lt;td&gt;&lt;strong&gt;Solicitudes del Portal → Becarios&lt;/strong&gt;&lt;/td&gt;
+&lt;/tr&gt;
+&lt;tr&gt;
+&lt;td&gt;Crear y editar cualquier cuenta analítica&lt;/td&gt;
+&lt;td&gt;App &lt;strong&gt;Cuentas Analíticas&lt;/strong&gt;&lt;/td&gt;
+&lt;/tr&gt;
+&lt;/tbody&gt;
+&lt;/table&gt;
+&lt;h2 id="cómo-hacerlo-paso-a-paso"&gt;Cómo hacerlo, paso a paso&lt;/h2&gt;
+&lt;h3 id="usar-el-panel-resumen"&gt;Usar el panel Resumen&lt;/h3&gt;
+&lt;p&gt;Abre la app &lt;strong&gt;Solicitudes del Portal&lt;/strong&gt;. &lt;strong&gt;Para
+revisar&lt;/strong&gt; de cada tarjeta te lleva a lo pendiente.&lt;/p&gt;
+&lt;p&gt;&lt;img class="img-fluid" src="/web/image/portal_requests.manual_img_responsable_clientes_y_becarios_01_resumen"
+alt="Panel Resumen del Responsable de Clientes y Becarios" /&gt;&lt;br /&gt;
+&lt;em&gt;Panel Resumen del Responsable de Clientes y Becarios&lt;/em&gt;&lt;/p&gt;
+&lt;h3 id="aprobar-o-rechazar-una-solicitud-de-factura"&gt;Aprobar o rechazar
+una solicitud de factura&lt;/h3&gt;
+&lt;ol type="1"&gt;
+&lt;li&gt;Recibes un correo cuando el Jefe de Equipo aprueba una factura, o
+cuando la solicita el propio Jefe de Equipo. Incluye código de proyecto,
+referencia interna del cliente y fecha.&lt;/li&gt;
+&lt;li&gt;Abre &lt;strong&gt;Solicitudes del Portal → Facturas&lt;/strong&gt; y la
+solicitud en &lt;strong&gt;Aprobación del Responsable de clientes&lt;/strong&gt;.
+Revisa proyecto, cliente, importe, fecha, concepto, comentario y
+adjuntos.&lt;/li&gt;
+&lt;li&gt;Pulsa &lt;strong&gt;Aprobar&lt;/strong&gt;. La solicitud queda
+&lt;strong&gt;Aprobada&lt;/strong&gt; y se crea la factura en borrador (factura:
+diario &lt;em&gt;Facturas de cliente&lt;/em&gt;, IVA &lt;em&gt;21% S&lt;/em&gt;, distribución
+analítica al 100 % del proyecto; rectificativa: abono con referencia
+&lt;em&gt;Reversión de &amp;lt;factura&amp;gt;&lt;/em&gt; y el motivo). Si el solicitante
+marcó &lt;strong&gt;Enviar Borrador&lt;/strong&gt;, el borrador se envía a los
+seguidores.&lt;/li&gt;
+&lt;li&gt;O pulsa &lt;strong&gt;Rechazar&lt;/strong&gt;, escribe el motivo y acepta: pasa
+a &lt;strong&gt;Volver a revisar&lt;/strong&gt; y el solicitante recibe el motivo.
+Al corregirla vuelve al Jefe de Equipo.&lt;/li&gt;
+&lt;/ol&gt;
+&lt;p&gt;&lt;img class="img-fluid" src="/web/image/portal_requests.manual_img_responsable_clientes_y_becarios_02_factura_aprobar"
+alt="Solicitud de factura pendiente del Responsable de clientes" /&gt;&lt;br /&gt;
+&lt;em&gt;Solicitud de factura pendiente del Responsable de clientes&lt;/em&gt;&lt;/p&gt;
+&lt;h3 id="aprobar-una-gratificación"&gt;Aprobar una gratificación&lt;/h3&gt;
+&lt;ol type="1"&gt;
+&lt;li&gt;Recibes un correo cuando el Jefe de Equipo aprueba una
+gratificación. Ábrela desde su enlace.&lt;/li&gt;
+&lt;li&gt;En &lt;strong&gt;Aprobación del Responsable de proveedores&lt;/strong&gt;,
+revisa el formulario adjunto y los saldos.&lt;/li&gt;
+&lt;li&gt;Pulsa &lt;strong&gt;Aprobar&lt;/strong&gt;: si está marcada como más de 10.000 €
+pasa al Director Gerente; si no, queda &lt;strong&gt;Aprobada&lt;/strong&gt; y se
+crea la factura de proveedor en borrador. O &lt;strong&gt;Rechazar&lt;/strong&gt;
+con el motivo.&lt;/li&gt;
+&lt;/ol&gt;
+&lt;p&gt;&lt;img class="img-fluid" src="/web/image/portal_requests.manual_img_responsable_clientes_y_becarios_03_gratificacion"
+alt="Gratificación pendiente del Responsable de Clientes y Becarios" /&gt;&lt;br /&gt;
+&lt;em&gt;Gratificación pendiente del Responsable de Clientes y
+Becarios&lt;/em&gt;&lt;/p&gt;
+&lt;h3 id="gestionar-una-solicitud-de-becario"&gt;Gestionar una solicitud de
+becario&lt;/h3&gt;
+&lt;ol type="1"&gt;
+&lt;li&gt;Recibes un correo con cada solicitud de becario nuevo. Abre
+&lt;strong&gt;Solicitudes del Portal → Becarios&lt;/strong&gt;.&lt;/li&gt;
+&lt;li&gt;Revisa el tipo: &lt;strong&gt;Nuevo&lt;/strong&gt;, &lt;strong&gt;Alta&lt;/strong&gt; o
+&lt;strong&gt;Baja&lt;/strong&gt;.&lt;/li&gt;
+&lt;li&gt;Pulsa &lt;strong&gt;Aprobar&lt;/strong&gt;: &lt;strong&gt;Nuevo&lt;/strong&gt; crea la ficha
+de empleado de tipo &lt;em&gt;becario&lt;/em&gt; con sus adjuntos;
+&lt;strong&gt;Alta&lt;/strong&gt; lo reactiva; &lt;strong&gt;Baja&lt;/strong&gt; lo archiva.
+También puedes &lt;strong&gt;Rechazar&lt;/strong&gt; o reabrir con &lt;strong&gt;Para
+Revisar&lt;/strong&gt;.&lt;/li&gt;
+&lt;/ol&gt;
+&lt;p&gt;&lt;img class="img-fluid" src="/web/image/portal_requests.manual_img_responsable_clientes_y_becarios_04_becario"
+alt="Solicitud de becario nuevo" /&gt;&lt;br /&gt;
+&lt;em&gt;Solicitud de becario nuevo&lt;/em&gt;&lt;/p&gt;
+&lt;h2 id="avisos-y-preguntas-frecuentes"&gt;Avisos y preguntas
+frecuentes&lt;/h2&gt;
+&lt;p&gt;&lt;strong&gt;Correos que recibes&lt;/strong&gt;: factura aprobada por el Jefe de
+Equipo o solicitada por él; gratificación aprobada por el Jefe de
+Equipo; becario nuevo; y también las solicitudes de
+&lt;strong&gt;empleados&lt;/strong&gt; (aunque las aprueba Personal y Compras).&lt;/p&gt;
+&lt;p&gt;&lt;strong&gt;No encuentro las gratificaciones en el Resumen.&lt;/strong&gt; La
+tarjeta Gastos no está habilitada para tu perfil y los gastos no tienen
+menú propio. Ábrelas desde el enlace del correo.&lt;/p&gt;
+&lt;p&gt;&lt;strong&gt;¿Dónde se crean las solicitudes de becario?&lt;/strong&gt; En el
+portal, en la dirección
+&lt;code&gt;/portal/hr_employee_intern_request&lt;/code&gt;.&lt;/p&gt;
+</field>
+        </record>
+        <record id="manual_article_director_financiero" model="knowledge.article">
+            <field name="name">Manual — Director Financiero</field>
+            <field name="icon">📊</field>
+            <field name="parent_id" ref="manual_article_root" />
+            <field name="sequence">9</field>
+            <field name="body">&lt;p&gt;&lt;a href="/web/content/portal_requests.manual_pdf_director_financiero?download=true"&gt;📄 Descargar este manual en PDF&lt;/a&gt;&lt;/p&gt;&lt;h2 id="introducción-al-portal-de-solicitudes"&gt;Introducción al Portal de
+Solicitudes&lt;/h2&gt;
+&lt;p&gt;El Portal de Solicitudes de AICIA (módulo
+&lt;code&gt;portal_requests&lt;/code&gt;, Odoo 19) centraliza las solicitudes
+internas: firma de documentos, apertura y cierre de proyectos, emisión
+de facturas y gastos. También permite consultar proyectos, pagos y
+nóminas. Cada solicitud recorre un circuito de aprobación por estados y
+el sistema avisa por correo en cada paso.&lt;/p&gt;
+&lt;p&gt;&lt;strong&gt;Dónde se trabaja&lt;/strong&gt;&lt;/p&gt;
+&lt;ul&gt;
+&lt;li&gt;&lt;strong&gt;Portal&lt;/strong&gt; (&lt;code&gt;/my&lt;/code&gt;, “Mi cuenta”): lo usan
+solicitantes, Jefes de Proyecto, Jefes de Equipo y Administrativos. No
+consume licencia.&lt;/li&gt;
+&lt;li&gt;&lt;strong&gt;Backend&lt;/strong&gt; (aplicación &lt;strong&gt;Solicitudes del
+Portal&lt;/strong&gt; de Odoo): lo usan dirección y responsables internos para
+revisar y aprobar.&lt;/li&gt;
+&lt;/ul&gt;
+&lt;p&gt;&lt;strong&gt;Conceptos clave&lt;/strong&gt;&lt;/p&gt;
+&lt;ul&gt;
+&lt;li&gt;&lt;strong&gt;Grupo de trabajo&lt;/strong&gt;: equipo con miembros, un Jefe de
+Equipo y, opcionalmente, un Administrativo.&lt;/li&gt;
+&lt;li&gt;&lt;strong&gt;Paso “Aprobación del Jefe de Equipo”&lt;/strong&gt;: primer paso
+de las solicitudes de un miembro del equipo. Solo lo aprueba o rechaza
+el Jefe de Equipo del grupo; las solicitudes del propio Jefe de Equipo
+se lo saltan.&lt;/li&gt;
+&lt;li&gt;&lt;strong&gt;Proyecto&lt;/strong&gt;: cuenta analítica con responsable, grupo
+de trabajo, miembros, saldo y presupuesto.&lt;/li&gt;
+&lt;li&gt;&lt;strong&gt;Solo PDF&lt;/strong&gt;: todo archivo subido debe ser un PDF real
+(se comprueba el contenido, no solo la extensión). Única excepción: la
+Ficha de Alta de un proyecto nuevo, que se sube en Excel.&lt;/li&gt;
+&lt;li&gt;&lt;strong&gt;Umbral de 10.000 €&lt;/strong&gt;: un gasto marcado como superior
+a 10.000 € necesita además la aprobación del Director Gerente.&lt;/li&gt;
+&lt;li&gt;&lt;strong&gt;Rechazo sin perder histórico&lt;/strong&gt;: una solicitud
+rechazada se corrige y se reenvía dentro del mismo expediente. El motivo
+del rechazo queda en el historial y llega por correo al
+solicitante.&lt;/li&gt;
+&lt;li&gt;&lt;strong&gt;Aviso por correo&lt;/strong&gt;: el solicitante recibe un correo
+con enlace cada vez que cambia el estado de su solicitud.&lt;/li&gt;
+&lt;/ul&gt;
+&lt;p&gt;&lt;strong&gt;Roles del módulo&lt;/strong&gt;&lt;/p&gt;
+&lt;table&gt;
+&lt;colgroup&gt;
+&lt;col style="width: 33%" /&gt;
+&lt;col style="width: 33%" /&gt;
+&lt;col style="width: 33%" /&gt;
+&lt;/colgroup&gt;
+&lt;thead&gt;
+&lt;tr&gt;
+&lt;th&gt;Rol&lt;/th&gt;
+&lt;th&gt;Dónde trabaja&lt;/th&gt;
+&lt;th&gt;Función principal&lt;/th&gt;
+&lt;/tr&gt;
+&lt;/thead&gt;
+&lt;tbody&gt;
+&lt;tr&gt;
+&lt;td&gt;Solicitante (usuario de portal)&lt;/td&gt;
+&lt;td&gt;Portal&lt;/td&gt;
+&lt;td&gt;Crea y sigue sus propias solicitudes&lt;/td&gt;
+&lt;/tr&gt;
+&lt;tr&gt;
+&lt;td&gt;Jefe de Proyecto&lt;/td&gt;
+&lt;td&gt;Portal&lt;/td&gt;
+&lt;td&gt;Igual que un solicitante&lt;/td&gt;
+&lt;/tr&gt;
+&lt;tr&gt;
+&lt;td&gt;Jefe de Equipo&lt;/td&gt;
+&lt;td&gt;Portal&lt;/td&gt;
+&lt;td&gt;Aprueba o rechaza el primer paso de su equipo; ve saldos&lt;/td&gt;
+&lt;/tr&gt;
+&lt;tr&gt;
+&lt;td&gt;Administrativo&lt;/td&gt;
+&lt;td&gt;Portal&lt;/td&gt;
+&lt;td&gt;Crea solicitudes y ve las del equipo; no aprueba ni rechaza&lt;/td&gt;
+&lt;/tr&gt;
+&lt;tr&gt;
+&lt;td&gt;Director I+D&lt;/td&gt;
+&lt;td&gt;Backend&lt;/td&gt;
+&lt;td&gt;Aprueba documentos y proyectos&lt;/td&gt;
+&lt;/tr&gt;
+&lt;tr&gt;
+&lt;td&gt;Director Gerente&lt;/td&gt;
+&lt;td&gt;Backend&lt;/td&gt;
+&lt;td&gt;Firma documentos; aprueba gastos de más de 10.000 €&lt;/td&gt;
+&lt;/tr&gt;
+&lt;tr&gt;
+&lt;td&gt;Responsable de Personal y Compras&lt;/td&gt;
+&lt;td&gt;Backend&lt;/td&gt;
+&lt;td&gt;Segundo aprobador de gastos; altas y bajas de empleados&lt;/td&gt;
+&lt;/tr&gt;
+&lt;tr&gt;
+&lt;td&gt;Responsable de Clientes y Becarios&lt;/td&gt;
+&lt;td&gt;Backend&lt;/td&gt;
+&lt;td&gt;Segundo aprobador de facturas y gratificaciones; becarios&lt;/td&gt;
+&lt;/tr&gt;
+&lt;tr&gt;
+&lt;td&gt;Director Financiero&lt;/td&gt;
+&lt;td&gt;Backend&lt;/td&gt;
+&lt;td&gt;Consulta de documentos&lt;/td&gt;
+&lt;/tr&gt;
+&lt;/tbody&gt;
+&lt;/table&gt;
+&lt;blockquote&gt;
+&lt;p&gt;Las capturas de este manual se han tomado con usuarios y datos
+ficticios.&lt;/p&gt;
+&lt;/blockquote&gt;
+&lt;h2 id="tu-rol-director-financiero"&gt;Tu rol: Director Financiero&lt;/h2&gt;
+&lt;p&gt;Hoy tu perfil es &lt;strong&gt;de consulta&lt;/strong&gt;: puedes ver las
+solicitudes de documentos, pero no participas en ningún circuito de
+aprobación ni recibes avisos.&lt;/p&gt;
+&lt;p&gt;&lt;strong&gt;Requisitos&lt;/strong&gt;: usuario interno con el perfil
+&lt;strong&gt;Director Financiero&lt;/strong&gt;.&lt;/p&gt;
+&lt;table&gt;
+&lt;colgroup&gt;
+&lt;col style="width: 50%" /&gt;
+&lt;col style="width: 50%" /&gt;
+&lt;/colgroup&gt;
+&lt;thead&gt;
+&lt;tr&gt;
+&lt;th&gt;Puedes&lt;/th&gt;
+&lt;th&gt;Dónde&lt;/th&gt;
+&lt;/tr&gt;
+&lt;/thead&gt;
+&lt;tbody&gt;
+&lt;tr&gt;
+&lt;td&gt;Consultar las solicitudes de documentos y su estado&lt;/td&gt;
+&lt;td&gt;&lt;strong&gt;Solicitudes del Portal → Documentos&lt;/strong&gt;&lt;/td&gt;
+&lt;/tr&gt;
+&lt;tr&gt;
+&lt;td&gt;Ver el PDF, la firma y el historial de cada documento&lt;/td&gt;
+&lt;td&gt;Ficha del documento&lt;/td&gt;
+&lt;/tr&gt;
+&lt;/tbody&gt;
+&lt;/table&gt;
+&lt;p&gt;&lt;strong&gt;No puedes&lt;/strong&gt; aprobar, rechazar ni firmar documentos, ni
+consultar facturas, gastos o saldos desde este módulo.&lt;/p&gt;
+&lt;h2 id="cómo-hacerlo-paso-a-paso"&gt;Cómo hacerlo, paso a paso&lt;/h2&gt;
+&lt;h3 id="consultar-documentos"&gt;Consultar documentos&lt;/h3&gt;
+&lt;ol type="1"&gt;
+&lt;li&gt;Abre la app &lt;strong&gt;Solicitudes del Portal&lt;/strong&gt; y el menú
+&lt;strong&gt;Documentos&lt;/strong&gt;.&lt;/li&gt;
+&lt;li&gt;Usa los filtros del buscador para ver los documentos por
+estado.&lt;/li&gt;
+&lt;/ol&gt;
+&lt;p&gt;&lt;img class="img-fluid" src="/web/image/portal_requests.manual_img_director_financiero_01_documentos"
+alt="Listado de solicitudes de documentos" /&gt;&lt;br /&gt;
+&lt;em&gt;Listado de solicitudes de documentos&lt;/em&gt;&lt;/p&gt;
+&lt;ol start="3" type="1"&gt;
+&lt;li&gt;Abre un documento para ver tipo, descripción, grupo de trabajo,
+solicitante, si está firmado por la empresa, la solicitud de firma y los
+adjuntos. No verás botones de aprobar, rechazar ni firmar.&lt;/li&gt;
+&lt;/ol&gt;
+&lt;p&gt;&lt;img class="img-fluid" src="/web/image/portal_requests.manual_img_director_financiero_02_documento"
+alt="Ficha de un documento en modo consulta" /&gt;&lt;br /&gt;
+&lt;em&gt;Ficha de un documento en modo consulta&lt;/em&gt;&lt;/p&gt;
+</field>
+        </record>
+        <record id="manual_img_solicitante_01_inicio" model="ir.attachment">
+            <field name="name">01_inicio.png</field>
+            <field name="datas" type="base64" file="portal_requests/data/manuals/img/solicitante/01_inicio.png" />
+            <field name="mimetype">image/png</field>
+            <field name="res_model">knowledge.article</field>
+            <field name="res_id" ref="manual_article_solicitante" />
+        </record>
+        <record id="manual_img_solicitante_02_documentos_lista" model="ir.attachment">
+            <field name="name">02_documentos_lista.png</field>
+            <field name="datas" type="base64" file="portal_requests/data/manuals/img/solicitante/02_documentos_lista.png" />
+            <field name="mimetype">image/png</field>
+            <field name="res_model">knowledge.article</field>
+            <field name="res_id" ref="manual_article_solicitante" />
+        </record>
+        <record id="manual_img_solicitante_03_documento_nuevo" model="ir.attachment">
+            <field name="name">03_documento_nuevo.png</field>
+            <field name="datas" type="base64" file="portal_requests/data/manuals/img/solicitante/03_documento_nuevo.png" />
+            <field name="mimetype">image/png</field>
+            <field name="res_model">knowledge.article</field>
+            <field name="res_id" ref="manual_article_solicitante" />
+        </record>
+        <record id="manual_img_solicitante_05_facturas_lista" model="ir.attachment">
+            <field name="name">05_facturas_lista.png</field>
+            <field name="datas" type="base64" file="portal_requests/data/manuals/img/solicitante/05_facturas_lista.png" />
+            <field name="mimetype">image/png</field>
+            <field name="res_model">knowledge.article</field>
+            <field name="res_id" ref="manual_article_solicitante" />
+        </record>
+        <record id="manual_img_solicitante_06_factura_nueva" model="ir.attachment">
+            <field name="name">06_factura_nueva.png</field>
+            <field name="datas" type="base64" file="portal_requests/data/manuals/img/solicitante/06_factura_nueva.png" />
+            <field name="mimetype">image/png</field>
+            <field name="res_model">knowledge.article</field>
+            <field name="res_id" ref="manual_article_solicitante" />
+        </record>
+        <record id="manual_img_solicitante_08_gastos_lista" model="ir.attachment">
+            <field name="name">08_gastos_lista.png</field>
+            <field name="datas" type="base64" file="portal_requests/data/manuals/img/solicitante/08_gastos_lista.png" />
+            <field name="mimetype">image/png</field>
+            <field name="res_model">knowledge.article</field>
+            <field name="res_id" ref="manual_article_solicitante" />
+        </record>
+        <record id="manual_img_solicitante_09_gasto_nuevo" model="ir.attachment">
+            <field name="name">09_gasto_nuevo.png</field>
+            <field name="datas" type="base64" file="portal_requests/data/manuals/img/solicitante/09_gasto_nuevo.png" />
+            <field name="mimetype">image/png</field>
+            <field name="res_model">knowledge.article</field>
+            <field name="res_id" ref="manual_article_solicitante" />
+        </record>
+        <record id="manual_img_solicitante_11_proyecto_nuevo" model="ir.attachment">
+            <field name="name">11_proyecto_nuevo.png</field>
+            <field name="datas" type="base64" file="portal_requests/data/manuals/img/solicitante/11_proyecto_nuevo.png" />
+            <field name="mimetype">image/png</field>
+            <field name="res_model">knowledge.article</field>
+            <field name="res_id" ref="manual_article_solicitante" />
+        </record>
+        <record id="manual_img_solicitante_04_documento_rechazado" model="ir.attachment">
+            <field name="name">04_documento_rechazado.png</field>
+            <field name="datas" type="base64" file="portal_requests/data/manuals/img/solicitante/04_documento_rechazado.png" />
+            <field name="mimetype">image/png</field>
+            <field name="res_model">knowledge.article</field>
+            <field name="res_id" ref="manual_article_solicitante" />
+        </record>
+        <record id="manual_img_solicitante_07_factura_volver_a_revisar" model="ir.attachment">
+            <field name="name">07_factura_volver_a_revisar.png</field>
+            <field name="datas" type="base64" file="portal_requests/data/manuals/img/solicitante/07_factura_volver_a_revisar.png" />
+            <field name="mimetype">image/png</field>
+            <field name="res_model">knowledge.article</field>
+            <field name="res_id" ref="manual_article_solicitante" />
+        </record>
+        <record id="manual_img_solicitante_12_mis_proyectos" model="ir.attachment">
+            <field name="name">12_mis_proyectos.png</field>
+            <field name="datas" type="base64" file="portal_requests/data/manuals/img/solicitante/12_mis_proyectos.png" />
+            <field name="mimetype">image/png</field>
+            <field name="res_model">knowledge.article</field>
+            <field name="res_id" ref="manual_article_solicitante" />
+        </record>
+        <record id="manual_img_solicitante_13_proyecto_detalle" model="ir.attachment">
+            <field name="name">13_proyecto_detalle.png</field>
+            <field name="datas" type="base64" file="portal_requests/data/manuals/img/solicitante/13_proyecto_detalle.png" />
+            <field name="mimetype">image/png</field>
+            <field name="res_model">knowledge.article</field>
+            <field name="res_id" ref="manual_article_solicitante" />
+        </record>
+        <record id="manual_img_solicitante_15_nominas" model="ir.attachment">
+            <field name="name">15_nominas.png</field>
+            <field name="datas" type="base64" file="portal_requests/data/manuals/img/solicitante/15_nominas.png" />
+            <field name="mimetype">image/png</field>
+            <field name="res_model">knowledge.article</field>
+            <field name="res_id" ref="manual_article_solicitante" />
+        </record>
+        <record id="manual_pdf_solicitante" model="ir.attachment">
+            <field name="name">Manual Portal de Solicitudes - Solicitante (usuario de portal).pdf</field>
+            <field name="datas" type="base64" file="portal_requests/data/manuals/pdf/01_solicitante.pdf" />
+            <field name="mimetype">application/pdf</field>
+            <field name="res_model">knowledge.article</field>
+            <field name="res_id" ref="manual_article_solicitante" />
+        </record>
+        <record id="manual_img_jefe_de_proyecto_01_inicio" model="ir.attachment">
+            <field name="name">01_inicio.png</field>
+            <field name="datas" type="base64" file="portal_requests/data/manuals/img/jefe_de_proyecto/01_inicio.png" />
+            <field name="mimetype">image/png</field>
+            <field name="res_model">knowledge.article</field>
+            <field name="res_id" ref="manual_article_jefe_de_proyecto" />
+        </record>
+        <record id="manual_img_jefe_de_proyecto_02_documentos_lista" model="ir.attachment">
+            <field name="name">02_documentos_lista.png</field>
+            <field name="datas" type="base64" file="portal_requests/data/manuals/img/jefe_de_proyecto/02_documentos_lista.png" />
+            <field name="mimetype">image/png</field>
+            <field name="res_model">knowledge.article</field>
+            <field name="res_id" ref="manual_article_jefe_de_proyecto" />
+        </record>
+        <record id="manual_img_jefe_de_proyecto_03_gastos_lista" model="ir.attachment">
+            <field name="name">03_gastos_lista.png</field>
+            <field name="datas" type="base64" file="portal_requests/data/manuals/img/jefe_de_proyecto/03_gastos_lista.png" />
+            <field name="mimetype">image/png</field>
+            <field name="res_model">knowledge.article</field>
+            <field name="res_id" ref="manual_article_jefe_de_proyecto" />
+        </record>
+        <record id="manual_img_jefe_de_proyecto_04_mis_proyectos" model="ir.attachment">
+            <field name="name">04_mis_proyectos.png</field>
+            <field name="datas" type="base64" file="portal_requests/data/manuals/img/jefe_de_proyecto/04_mis_proyectos.png" />
+            <field name="mimetype">image/png</field>
+            <field name="res_model">knowledge.article</field>
+            <field name="res_id" ref="manual_article_jefe_de_proyecto" />
+        </record>
+        <record id="manual_pdf_jefe_de_proyecto" model="ir.attachment">
+            <field name="name">Manual Portal de Solicitudes - Jefe de Proyecto.pdf</field>
+            <field name="datas" type="base64" file="portal_requests/data/manuals/pdf/02_jefe_de_proyecto.pdf" />
+            <field name="mimetype">application/pdf</field>
+            <field name="res_model">knowledge.article</field>
+            <field name="res_id" ref="manual_article_jefe_de_proyecto" />
+        </record>
+        <record id="manual_img_jefe_de_equipo_01_inicio" model="ir.attachment">
+            <field name="name">01_inicio.png</field>
+            <field name="datas" type="base64" file="portal_requests/data/manuals/img/jefe_de_equipo/01_inicio.png" />
+            <field name="mimetype">image/png</field>
+            <field name="res_model">knowledge.article</field>
+            <field name="res_id" ref="manual_article_jefe_de_equipo" />
+        </record>
+        <record id="manual_img_jefe_de_equipo_02_documentos_lista" model="ir.attachment">
+            <field name="name">02_documentos_lista.png</field>
+            <field name="datas" type="base64" file="portal_requests/data/manuals/img/jefe_de_equipo/02_documentos_lista.png" />
+            <field name="mimetype">image/png</field>
+            <field name="res_model">knowledge.article</field>
+            <field name="res_id" ref="manual_article_jefe_de_equipo" />
+        </record>
+        <record id="manual_img_jefe_de_equipo_03_documento_pendiente" model="ir.attachment">
+            <field name="name">03_documento_pendiente.png</field>
+            <field name="datas" type="base64" file="portal_requests/data/manuals/img/jefe_de_equipo/03_documento_pendiente.png" />
+            <field name="mimetype">image/png</field>
+            <field name="res_model">knowledge.article</field>
+            <field name="res_id" ref="manual_article_jefe_de_equipo" />
+        </record>
+        <record id="manual_img_jefe_de_equipo_07_factura_pendiente" model="ir.attachment">
+            <field name="name">07_factura_pendiente.png</field>
+            <field name="datas" type="base64" file="portal_requests/data/manuals/img/jefe_de_equipo/07_factura_pendiente.png" />
+            <field name="mimetype">image/png</field>
+            <field name="res_model">knowledge.article</field>
+            <field name="res_id" ref="manual_article_jefe_de_equipo" />
+        </record>
+        <record id="manual_img_jefe_de_equipo_09_gasto_pendiente" model="ir.attachment">
+            <field name="name">09_gasto_pendiente.png</field>
+            <field name="datas" type="base64" file="portal_requests/data/manuals/img/jefe_de_equipo/09_gasto_pendiente.png" />
+            <field name="mimetype">image/png</field>
+            <field name="res_model">knowledge.article</field>
+            <field name="res_id" ref="manual_article_jefe_de_equipo" />
+        </record>
+        <record id="manual_img_jefe_de_equipo_11_proyecto_pendiente" model="ir.attachment">
+            <field name="name">11_proyecto_pendiente.png</field>
+            <field name="datas" type="base64" file="portal_requests/data/manuals/img/jefe_de_equipo/11_proyecto_pendiente.png" />
+            <field name="mimetype">image/png</field>
+            <field name="res_model">knowledge.article</field>
+            <field name="res_id" ref="manual_article_jefe_de_equipo" />
+        </record>
+        <record id="manual_img_jefe_de_equipo_04_documento_rechazar_motivo" model="ir.attachment">
+            <field name="name">04_documento_rechazar_motivo.png</field>
+            <field name="datas" type="base64" file="portal_requests/data/manuals/img/jefe_de_equipo/04_documento_rechazar_motivo.png" />
+            <field name="mimetype">image/png</field>
+            <field name="res_model">knowledge.article</field>
+            <field name="res_id" ref="manual_article_jefe_de_equipo" />
+        </record>
+        <record id="manual_img_jefe_de_equipo_05_documento_firma_empresa" model="ir.attachment">
+            <field name="name">05_documento_firma_empresa.png</field>
+            <field name="datas" type="base64" file="portal_requests/data/manuals/img/jefe_de_equipo/05_documento_firma_empresa.png" />
+            <field name="mimetype">image/png</field>
+            <field name="res_model">knowledge.article</field>
+            <field name="res_id" ref="manual_article_jefe_de_equipo" />
+        </record>
+        <record id="manual_img_jefe_de_equipo_10_proyectos_lista" model="ir.attachment">
+            <field name="name">10_proyectos_lista.png</field>
+            <field name="datas" type="base64" file="portal_requests/data/manuals/img/jefe_de_equipo/10_proyectos_lista.png" />
+            <field name="mimetype">image/png</field>
+            <field name="res_model">knowledge.article</field>
+            <field name="res_id" ref="manual_article_jefe_de_equipo" />
+        </record>
+        <record id="manual_img_jefe_de_equipo_12_mis_proyectos" model="ir.attachment">
+            <field name="name">12_mis_proyectos.png</field>
+            <field name="datas" type="base64" file="portal_requests/data/manuals/img/jefe_de_equipo/12_mis_proyectos.png" />
+            <field name="mimetype">image/png</field>
+            <field name="res_model">knowledge.article</field>
+            <field name="res_id" ref="manual_article_jefe_de_equipo" />
+        </record>
+        <record id="manual_pdf_jefe_de_equipo" model="ir.attachment">
+            <field name="name">Manual Portal de Solicitudes - Jefe de Equipo.pdf</field>
+            <field name="datas" type="base64" file="portal_requests/data/manuals/pdf/03_jefe_de_equipo.pdf" />
+            <field name="mimetype">application/pdf</field>
+            <field name="res_model">knowledge.article</field>
+            <field name="res_id" ref="manual_article_jefe_de_equipo" />
+        </record>
+        <record id="manual_img_administrativo_01_inicio" model="ir.attachment">
+            <field name="name">01_inicio.png</field>
+            <field name="datas" type="base64" file="portal_requests/data/manuals/img/administrativo/01_inicio.png" />
+            <field name="mimetype">image/png</field>
+            <field name="res_model">knowledge.article</field>
+            <field name="res_id" ref="manual_article_administrativo" />
+        </record>
+        <record id="manual_img_administrativo_02_documentos_lista" model="ir.attachment">
+            <field name="name">02_documentos_lista.png</field>
+            <field name="datas" type="base64" file="portal_requests/data/manuals/img/administrativo/02_documentos_lista.png" />
+            <field name="mimetype">image/png</field>
+            <field name="res_model">knowledge.article</field>
+            <field name="res_id" ref="manual_article_administrativo" />
+        </record>
+        <record id="manual_img_administrativo_05_factura_equipo" model="ir.attachment">
+            <field name="name">05_factura_equipo.png</field>
+            <field name="datas" type="base64" file="portal_requests/data/manuals/img/administrativo/05_factura_equipo.png" />
+            <field name="mimetype">image/png</field>
+            <field name="res_model">knowledge.article</field>
+            <field name="res_id" ref="manual_article_administrativo" />
+        </record>
+        <record id="manual_img_administrativo_09_mis_proyectos" model="ir.attachment">
+            <field name="name">09_mis_proyectos.png</field>
+            <field name="datas" type="base64" file="portal_requests/data/manuals/img/administrativo/09_mis_proyectos.png" />
+            <field name="mimetype">image/png</field>
+            <field name="res_model">knowledge.article</field>
+            <field name="res_id" ref="manual_article_administrativo" />
+        </record>
+        <record id="manual_pdf_administrativo" model="ir.attachment">
+            <field name="name">Manual Portal de Solicitudes - Administrativo.pdf</field>
+            <field name="datas" type="base64" file="portal_requests/data/manuals/pdf/04_administrativo.pdf" />
+            <field name="mimetype">application/pdf</field>
+            <field name="res_model">knowledge.article</field>
+            <field name="res_id" ref="manual_article_administrativo" />
+        </record>
+        <record id="manual_img_director_i_d_01_resumen" model="ir.attachment">
+            <field name="name">01_resumen.png</field>
+            <field name="datas" type="base64" file="portal_requests/data/manuals/img/director_i_d/01_resumen.png" />
+            <field name="mimetype">image/png</field>
+            <field name="res_model">knowledge.article</field>
+            <field name="res_id" ref="manual_article_director_i_d" />
+        </record>
+        <record id="manual_img_director_i_d_02_documento_aprobar" model="ir.attachment">
+            <field name="name">02_documento_aprobar.png</field>
+            <field name="datas" type="base64" file="portal_requests/data/manuals/img/director_i_d/02_documento_aprobar.png" />
+            <field name="mimetype">image/png</field>
+            <field name="res_model">knowledge.article</field>
+            <field name="res_id" ref="manual_article_director_i_d" />
+        </record>
+        <record id="manual_img_director_i_d_03_proyecto_aprobar" model="ir.attachment">
+            <field name="name">03_proyecto_aprobar.png</field>
+            <field name="datas" type="base64" file="portal_requests/data/manuals/img/director_i_d/03_proyecto_aprobar.png" />
+            <field name="mimetype">image/png</field>
+            <field name="res_model">knowledge.article</field>
+            <field name="res_id" ref="manual_article_director_i_d" />
+        </record>
+        <record id="manual_img_director_i_d_04_cuentas_analiticas" model="ir.attachment">
+            <field name="name">04_cuentas_analiticas.png</field>
+            <field name="datas" type="base64" file="portal_requests/data/manuals/img/director_i_d/04_cuentas_analiticas.png" />
+            <field name="mimetype">image/png</field>
+            <field name="res_model">knowledge.article</field>
+            <field name="res_id" ref="manual_article_director_i_d" />
+        </record>
+        <record id="manual_img_director_i_d_05_grupo_de_trabajo" model="ir.attachment">
+            <field name="name">05_grupo_de_trabajo.png</field>
+            <field name="datas" type="base64" file="portal_requests/data/manuals/img/director_i_d/05_grupo_de_trabajo.png" />
+            <field name="mimetype">image/png</field>
+            <field name="res_model">knowledge.article</field>
+            <field name="res_id" ref="manual_article_director_i_d" />
+        </record>
+        <record id="manual_pdf_director_i_d" model="ir.attachment">
+            <field name="name">Manual Portal de Solicitudes - Director I+D.pdf</field>
+            <field name="datas" type="base64" file="portal_requests/data/manuals/pdf/05_director_i_d.pdf" />
+            <field name="mimetype">application/pdf</field>
+            <field name="res_model">knowledge.article</field>
+            <field name="res_id" ref="manual_article_director_i_d" />
+        </record>
+        <record id="manual_img_director_gerente_01_resumen" model="ir.attachment">
+            <field name="name">01_resumen.png</field>
+            <field name="datas" type="base64" file="portal_requests/data/manuals/img/director_gerente/01_resumen.png" />
+            <field name="mimetype">image/png</field>
+            <field name="res_model">knowledge.article</field>
+            <field name="res_id" ref="manual_article_director_gerente" />
+        </record>
+        <record id="manual_img_director_gerente_02_documento_firmar" model="ir.attachment">
+            <field name="name">02_documento_firmar.png</field>
+            <field name="datas" type="base64" file="portal_requests/data/manuals/img/director_gerente/02_documento_firmar.png" />
+            <field name="mimetype">image/png</field>
+            <field name="res_model">knowledge.article</field>
+            <field name="res_id" ref="manual_article_director_gerente" />
+        </record>
+        <record id="manual_img_director_gerente_03_gasto_mas_10000" model="ir.attachment">
+            <field name="name">03_gasto_mas_10000.png</field>
+            <field name="datas" type="base64" file="portal_requests/data/manuals/img/director_gerente/03_gasto_mas_10000.png" />
+            <field name="mimetype">image/png</field>
+            <field name="res_model">knowledge.article</field>
+            <field name="res_id" ref="manual_article_director_gerente" />
+        </record>
+        <record id="manual_pdf_director_gerente" model="ir.attachment">
+            <field name="name">Manual Portal de Solicitudes - Director Gerente.pdf</field>
+            <field name="datas" type="base64" file="portal_requests/data/manuals/pdf/06_director_gerente.pdf" />
+            <field name="mimetype">application/pdf</field>
+            <field name="res_model">knowledge.article</field>
+            <field name="res_id" ref="manual_article_director_gerente" />
+        </record>
+        <record id="manual_img_responsable_personal_y_compras_01_resumen" model="ir.attachment">
+            <field name="name">01_resumen.png</field>
+            <field name="datas" type="base64" file="portal_requests/data/manuals/img/responsable_personal_y_compras/01_resumen.png" />
+            <field name="mimetype">image/png</field>
+            <field name="res_model">knowledge.article</field>
+            <field name="res_id" ref="manual_article_responsable_personal_y_compras" />
+        </record>
+        <record id="manual_img_responsable_personal_y_compras_02_gasto_aprobar" model="ir.attachment">
+            <field name="name">02_gasto_aprobar.png</field>
+            <field name="datas" type="base64" file="portal_requests/data/manuals/img/responsable_personal_y_compras/02_gasto_aprobar.png" />
+            <field name="mimetype">image/png</field>
+            <field name="res_model">knowledge.article</field>
+            <field name="res_id" ref="manual_article_responsable_personal_y_compras" />
+        </record>
+        <record id="manual_img_responsable_personal_y_compras_03_empleado" model="ir.attachment">
+            <field name="name">03_empleado.png</field>
+            <field name="datas" type="base64" file="portal_requests/data/manuals/img/responsable_personal_y_compras/03_empleado.png" />
+            <field name="mimetype">image/png</field>
+            <field name="res_model">knowledge.article</field>
+            <field name="res_id" ref="manual_article_responsable_personal_y_compras" />
+        </record>
+        <record id="manual_pdf_responsable_personal_y_compras" model="ir.attachment">
+            <field name="name">Manual Portal de Solicitudes - Responsable de Personal y Compras.pdf</field>
+            <field name="datas" type="base64" file="portal_requests/data/manuals/pdf/07_responsable_personal_y_compras.pdf" />
+            <field name="mimetype">application/pdf</field>
+            <field name="res_model">knowledge.article</field>
+            <field name="res_id" ref="manual_article_responsable_personal_y_compras" />
+        </record>
+        <record id="manual_img_responsable_clientes_y_becarios_01_resumen" model="ir.attachment">
+            <field name="name">01_resumen.png</field>
+            <field name="datas" type="base64" file="portal_requests/data/manuals/img/responsable_clientes_y_becarios/01_resumen.png" />
+            <field name="mimetype">image/png</field>
+            <field name="res_model">knowledge.article</field>
+            <field name="res_id" ref="manual_article_responsable_clientes_y_becarios" />
+        </record>
+        <record id="manual_img_responsable_clientes_y_becarios_02_factura_aprobar" model="ir.attachment">
+            <field name="name">02_factura_aprobar.png</field>
+            <field name="datas" type="base64" file="portal_requests/data/manuals/img/responsable_clientes_y_becarios/02_factura_aprobar.png" />
+            <field name="mimetype">image/png</field>
+            <field name="res_model">knowledge.article</field>
+            <field name="res_id" ref="manual_article_responsable_clientes_y_becarios" />
+        </record>
+        <record id="manual_img_responsable_clientes_y_becarios_03_gratificacion" model="ir.attachment">
+            <field name="name">03_gratificacion.png</field>
+            <field name="datas" type="base64" file="portal_requests/data/manuals/img/responsable_clientes_y_becarios/03_gratificacion.png" />
+            <field name="mimetype">image/png</field>
+            <field name="res_model">knowledge.article</field>
+            <field name="res_id" ref="manual_article_responsable_clientes_y_becarios" />
+        </record>
+        <record id="manual_img_responsable_clientes_y_becarios_04_becario" model="ir.attachment">
+            <field name="name">04_becario.png</field>
+            <field name="datas" type="base64" file="portal_requests/data/manuals/img/responsable_clientes_y_becarios/04_becario.png" />
+            <field name="mimetype">image/png</field>
+            <field name="res_model">knowledge.article</field>
+            <field name="res_id" ref="manual_article_responsable_clientes_y_becarios" />
+        </record>
+        <record id="manual_pdf_responsable_clientes_y_becarios" model="ir.attachment">
+            <field name="name">Manual Portal de Solicitudes - Responsable de Clientes y Becarios.pdf</field>
+            <field name="datas" type="base64" file="portal_requests/data/manuals/pdf/08_responsable_clientes_y_becarios.pdf" />
+            <field name="mimetype">application/pdf</field>
+            <field name="res_model">knowledge.article</field>
+            <field name="res_id" ref="manual_article_responsable_clientes_y_becarios" />
+        </record>
+        <record id="manual_img_director_financiero_01_documentos" model="ir.attachment">
+            <field name="name">01_documentos.png</field>
+            <field name="datas" type="base64" file="portal_requests/data/manuals/img/director_financiero/01_documentos.png" />
+            <field name="mimetype">image/png</field>
+            <field name="res_model">knowledge.article</field>
+            <field name="res_id" ref="manual_article_director_financiero" />
+        </record>
+        <record id="manual_img_director_financiero_02_documento" model="ir.attachment">
+            <field name="name">02_documento.png</field>
+            <field name="datas" type="base64" file="portal_requests/data/manuals/img/director_financiero/02_documento.png" />
+            <field name="mimetype">image/png</field>
+            <field name="res_model">knowledge.article</field>
+            <field name="res_id" ref="manual_article_director_financiero" />
+        </record>
+        <record id="manual_pdf_director_financiero" model="ir.attachment">
+            <field name="name">Manual Portal de Solicitudes - Director Financiero.pdf</field>
+            <field name="datas" type="base64" file="portal_requests/data/manuals/pdf/09_director_financiero.pdf" />
+            <field name="mimetype">application/pdf</field>
+            <field name="res_model">knowledge.article</field>
+            <field name="res_id" ref="manual_article_director_financiero" />
+        </record>
+    </data>
+</odoo>

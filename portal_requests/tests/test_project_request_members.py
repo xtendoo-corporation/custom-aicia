@@ -79,6 +79,7 @@ class TestProjectRequestMembersModel(TransactionCase, ProjectRequestMembersSetup
             'member_ids': [(6, 0, [self.member_a.id, self.member_b.id])],
             'type': 'new',
         })
+        request.with_user(self.boss).action_approve_equip_boss()
         request.action_approve()
         self.assertEqual(
             set(request.created_analytic_id.member_ids.ids),
@@ -94,6 +95,7 @@ class TestProjectRequestMembersModel(TransactionCase, ProjectRequestMembersSetup
             'project_name': 'Proyecto Sin Miembros',
             'type': 'new',
         })
+        request.with_user(self.boss).action_approve_equip_boss()
         request.action_approve()
         self.assertFalse(request.created_analytic_id.member_ids)
 

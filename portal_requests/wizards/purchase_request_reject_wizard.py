@@ -21,26 +21,5 @@ class PurchaseResquestRejectWizard(models.TransientModel):
         self.ensure_one()
         if not self.request_id:
             raise models.ValidationError(_('No hay solicitud seleccionada.'))
-        #Comprobamos si el que realiza la solicitud es el jefe de equipo o el responsabel del proyecto.
-        status = 'to_revise'
-        if self.request_id.equip_boss == self.request_id.user_id:
-            status = 'approved_by_boss_group'
-        self.request_id.write({'status': status })
-        descripcion = self.descripcion or ''
-        body = (
-            'Solicitud Rechazada: {}'
-        ).format(descripcion)
-
-        # publicar como nota en el chatter (usar subtype_id con env.ref)
-        self.request_id.sudo().message_post(
-            body=body,
-            subtype_id=self.env.ref('mail.mt_note').id
-        )
-        user_to_send = self.env['res.users'].search(
-            [('id', 'in', self.request_id.user_id.ids)])
-        self.request_id._send_purchase_request_mail('rejected',user_to_send, self.request_id.user_id.name, self.request_id.project.name, notes=descripcion)
-
+        self.request_id._reject_with_reason(self.descripcion or '')
         return {'type': 'ir.actions.act_window_close'}
-
-
-

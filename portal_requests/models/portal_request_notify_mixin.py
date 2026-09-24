@@ -48,8 +48,18 @@ class PortalRequestNotifyMixin(models.AbstractModel):
             return dict(field._description_selection(self.env)).get(value, value)
         return self[field_name] if field_name else ""
 
-    def _notify_requester_state(self, state_label):
-        """Envía un correo estándar al solicitante informando del nuevo estado."""
+    def _notify_link_for(self, recipient, backend_link):
+        """Enlace para un correo según el destinatario: un usuario de portal
+        (p.ej. el Jefe de Equipo) no puede abrir el backend, así que recibe el
+        enlace al detalle de la solicitud en el portal."""
+        self.ensure_one()
+        if recipient.share:
+            return self._notify_get_portal_url()
+        return backend_link
+
+    def _notify_requester_state(self, state_label, note=None):
+        """Envía un correo estándar al solicitante informando del nuevo estado.
+        ``note`` (opcional) se añade al cuerpo, p.ej. el motivo de un rechazo."""
         Mail = self.env["mail.mail"].sudo()
         email_from = self.env.company.email or "no-reply@aicia.es"
         for record in self:
@@ -58,10 +68,12 @@ class PortalRequestNotifyMixin(models.AbstractModel):
                 continue
             url = record._notify_get_portal_url()
             title = record._notify_get_title()
+            note_html = f"<p><strong>Motivo:</strong> <em>{note}</em></p>" if note else ""
             body_html = f"""
                 <p>Estimado/a {recipient.name},</p>
                 <p>El estado de su solicitud "<strong>{title}</strong>" ha cambiado a:
                    <strong>{state_label}</strong>.</p>
+                {note_html}
                 <p><a href="{url}">Ver la solicitud en el portal</a></p>
                 <p>Saludos cordiales.</p>
             """

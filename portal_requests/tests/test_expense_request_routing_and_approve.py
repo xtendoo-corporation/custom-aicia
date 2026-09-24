@@ -191,14 +191,13 @@ class TestExpenseApproveRoute(HttpCase, ExpenseRoutingSetupMixin):
         )
         self.assertEqual(self.expense.status, 'approved_purchase_responsible')
 
-    def test_administrative_can_approve_via_portal_route(self):
+    def test_administrative_cannot_approve_via_portal_route(self):
+        # "Aprobación del Jefe de Equipo" solo la hace el Jefe de Equipo: el
+        # Administrativo no tiene un estado propio en el circuito.
         response = self._approve_as(self.administrative)
-        self.assertTrue(
-            response.headers.get('Location', '').endswith(
-                f'/my/expenses/{self.expense.id}?success=approved'
-            )
-        )
-        self.assertEqual(self.expense.status, 'approved_purchase_responsible')
+        self.assertTrue(response.headers.get('Location', '').endswith('/my'))
+        self.expense.invalidate_recordset()
+        self.assertEqual(self.expense.status, 'approved_by_boss_group')
 
 
 @tagged('post_install', '-at_install')

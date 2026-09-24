@@ -74,13 +74,16 @@ class PortalInvoiceRequest(models.Model):
         store=False,
     )
 
-    @api.depends('status', 'equip_boss', 'administrative_id')
+    @api.depends('status', 'equip_boss')
+    @api.depends_context('uid')
     def _compute_show_approve_button(self):
+        # Solo el Jefe de Equipo aprueba (o rechaza) este paso: el
+        # Administrativo únicamente crea la solicitud.
         user = self.env.user
         for rec in self:
             rec.show_approve_button = (
                 rec.status == 'approved_by_boss_group' and
-                (rec.equip_boss == user or rec.administrative_id == user)
+                rec.work_group_id._is_equip_boss_step_approver(user)
             )
 
     @api.depends('status')
@@ -110,13 +113,15 @@ class PortalInvoiceRequest(models.Model):
         }
 
     def _send_invoice_request_mail(self,type, users_to_send, move_text, user_name, company_name, partner_name, notes=""):
-            invoice_request_link = f"/web#id={self.id}&cids=1-24-28-29-32-25-30-31&menu_id=899&active_id=1&model=portal.invoice.request&view_type=form"
+            backend_link = f"/web#id={self.id}&cids=1-24-28-29-32-25-30-31&menu_id=899&active_id=1&model=portal.invoice.request&view_type=form"
             project_code = self.analytic_id.code or ''
             internal_ref = self.partner_id.ref or ''
             invoice_date = self.date.strftime('%d-%m-%Y') if self.date else ''
             if type == 'to_revise':
                 for admin_user in users_to_send:
                     admin_name = admin_user.name
+                    # El Jefe de Equipo es usuario de portal: enlace al portal.
+                    invoice_request_link = self._notify_link_for(admin_user, backend_link)
                     body_html = f"""
                                 <p>Estimado/a {admin_name},</p>
                                 <p>Se ha solicitado una nueva revisión de {move_text}, por parte de {user_name}.</p>
@@ -140,6 +145,7 @@ class PortalInvoiceRequest(models.Model):
             if type == 'approved_by_boss_group':
                 for admin_user in users_to_send:
                     admin_name = admin_user.name
+                    invoice_request_link = self._notify_link_for(admin_user, backend_link)
                     body_html = f"""
                                 <p>Estimado/a {admin_name},</p>
                                 <p>La solicitud de {move_text} en el proyecto {company_name} ha sido aprobada por el jefe de equipo ({user_name}).</p>
@@ -194,7 +200,7 @@ class PortalInvoiceRequest(models.Model):
         type = self.status
         if type == 'to_revise':
             self.status = 'approved_by_boss_group'
-            user_to_send = self.equip_boss | self.administrative_id
+            user_to_send = self.equip_boss
             move_text = self.computed_name
             # Usar sudo() para acceder a partner_id.name para evitar errores de permisos
             self._send_invoice_request_mail(type, user_to_send, move_text, self.user_id.name, self.analytic_id.name, self.partner_id.sudo().name)
@@ -235,6 +241,28 @@ class PortalInvoiceRequest(models.Model):
                     return self.show_notificacion("¡Solicitud aprobada!", "La factura borrador ha sido creada y enviada como borrador correctamente.",
                                                   "success")
             return self.show_notificacion("¡Solicitud aprobada!", "La factura borrador ha sido creada correctamente.", "success")
+
+    def _reject_with_reason(self, reason):
+        """Rechazo con motivo, común al asistente del backend y al botón
+        Rechazar del portal. A petición del cliente, el Administrativo vuelve
+        a pasar por la aprobación del Jefe de Equipo: solo se salta el paso
+        "Solicitar Revisión" cuando quien solicitó es el propio Jefe de
+        Equipo."""
+        self.ensure_one()
+        status = 'to_revise'
+        if self.equip_boss == self.user_id:
+            status = 'approved_by_boss_group'
+        self.write({'status': status})
+        reason = reason or ''
+        self.sudo().message_post(
+            body='Solicitud Rechazada: {}'.format(reason),
+            subtype_id=self.env.ref('mail.mt_note').id,
+        )
+        move_text = "factura" if self.move_type == 'out_invoice' else "factura rectificativa"
+        self._send_invoice_request_mail(
+            'rejected', self.user_id, move_text, self.user_id.name,
+            self.analytic_id.name, self.partner_id.sudo().name, notes=reason,
+        )
 
     def action_reject(self):
         self.ensure_one()

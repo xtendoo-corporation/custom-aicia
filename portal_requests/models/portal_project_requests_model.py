@@ -32,6 +32,10 @@ class PortalProjectRequest(models.Model):
     budget_file_filename = fields.Char(string="Budget Filename")
     approved = fields.Boolean(string='Approved', default=False)
     is_revised = fields.Boolean(string='Is revised', default=False, store=True)
+    status = fields.Selection([
+        ('approved_by_equip_boss', 'Aprobación del Jefe de Equipo'),
+        ('pending_review', 'Pendiente de Revisión'),
+    ], string='Estado', default='approved_by_equip_boss', tracking=True)
     computed_name = fields.Char('Computed Name', compute='_compute_name')
     type= fields.Selection([
         ('new', 'Nuevo Proyecto'),
@@ -45,6 +49,28 @@ class PortalProjectRequest(models.Model):
     def _compute_name(self):
         for record in self:
             record.computed_name = f"Solicitud de apertura - {record.project_name}"
+
+    def _initial_status_for(self, work_group, requester):
+        """Estado de arranque del circuito según quién solicita.
+
+        El propio Jefe de Equipo no necesita aprobarse a sí mismo: si es
+        quien solicita, se salta ese paso y la solicitud queda pendiente
+        directamente de la aprobación final (Director I+D). Cualquier otro
+        solicitante (incluido el Administrativo del mismo grupo) pasa
+        primero por la aprobación del Jefe de Equipo."""
+        if work_group and requester and work_group.equip_boss == requester:
+            return 'pending_review'
+        return 'approved_by_equip_boss'
+
+    @api.model_create_multi
+    def create(self, vals_list):
+        WorkGroup = self.env['portal.work.group']
+        for vals in vals_list:
+            if vals.get('work_group_id') and vals.get('user_id'):
+                work_group = WorkGroup.browse(vals['work_group_id'])
+                requester = self.env['res.users'].browse(vals['user_id'])
+                vals.setdefault('status', self._initial_status_for(work_group, requester))
+        return super().create(vals_list)
 
     def _compute_analytic_count(self):
         for record in self:
@@ -72,8 +98,37 @@ class PortalProjectRequest(models.Model):
             }
         }
 
+    def action_approve_equip_boss(self):
+        """Primer paso de revisión: el Jefe de Equipo del grupo da su visto
+        bueno y la solicitud pasa al siguiente estado, donde queda pendiente
+        de la aprobación final (Director I+D). El Administrativo no puede
+        aprobar este paso."""
+        for record in self:
+            if not record.work_group_id._is_equip_boss_step_approver(self.env.user):
+                raise UserError(_("Solo el Jefe de Equipo puede aprobar este paso."))
+            if record.status != 'approved_by_equip_boss':
+                continue
+            if record.work_group_id and record.user_id == self.env.user:
+                # Solo aplica cuando hay un grupo de trabajo con Jefe de
+                # Equipo/Administrativo distinguibles: si el propio Jefe de
+                # Equipo es quien solicita, ya se ha saltado este paso al
+                # crear la solicitud (ver _initial_status_for), así que
+                # llegar aquí como su propio solicitante solo puede ser el
+                # caso del Administrativo pidiendo para sí mismo.
+                raise UserError(_(
+                    "No puede aprobar su propia solicitud. Debe hacerlo el "
+                    "Jefe de Equipo del grupo de trabajo."
+                ))
+            record.status = 'pending_review'
+            record._notify_requester_state(_("Aprobación del Jefe de Equipo"))
+            record._notify_director_approval_pending()
+
     def action_approve(self):
         for record in self:
+            if record.status != 'pending_review':
+                raise UserError(_(
+                    "Esta solicitud debe ser aprobada primero por el Jefe de Equipo."
+                ))
             if record.type == 'new':
                 if not record.partner_id:
                     raise UserError(_("Por favor, seleccione un cliente para el proyecto."))
@@ -92,18 +147,24 @@ class PortalProjectRequest(models.Model):
         self._notify_requester_state(_("Aprobada"))
         return self.show_notificacion("¡Solicitud aprobada!", notification_text, "success")
 
-    def action_reject(self):
+    def action_reject(self, reason=None):
+        """Rechaza la solicitud. ``reason`` es el motivo indicado por el Jefe
+        de Equipo al rechazar desde el portal: se guarda en el histórico y se
+        incluye en el correo al solicitante."""
         for record in self:
             record.approved = False
             record.is_revised = True
+            body = _(
+                "Solicitud rechazada. El solicitante puede corregirla y "
+                "reenviarla sin perder el histórico."
+            )
+            if reason:
+                body = _("Solicitud rechazada. Motivo: %s", reason)
             record.sudo().message_post(
-                body=_(
-                    "Solicitud rechazada. El solicitante puede corregirla y "
-                    "reenviarla sin perder el histórico."
-                ),
+                body=body,
                 subtype_id=self.env.ref('mail.mt_note').id,
             )
-        self._notify_requester_state(_("Rechazada"))
+        self._notify_requester_state(_("Rechazada"), note=reason)
 
     def action_to_revise(self):
         for record in self:
@@ -119,6 +180,8 @@ class PortalProjectRequest(models.Model):
             if record.approved or not record.is_revised:
                 raise UserError(_("Solo puede reenviar solicitudes rechazadas."))
             record.is_revised = False
+            restart_status = record._initial_status_for(record.work_group_id, record.user_id)
+            record.status = restart_status
             record.sudo().message_post(
                 body=_(
                     "El solicitante ha corregido la solicitud y la ha "
@@ -126,11 +189,15 @@ class PortalProjectRequest(models.Model):
                 ),
                 subtype_id=self.env.ref('mail.mt_note').id,
             )
-            record._notify_project_request_approvers()
+            if restart_status == 'approved_by_equip_boss':
+                record._notify_project_request_approvers()
+            else:
+                record._notify_director_approval_pending()
 
-    def _notify_project_request_approvers(self):
-        """Avisa al grupo aprobador (Director I+D) de que una solicitud
-        rechazada ha sido corregida y reenviada a revisión."""
+    def _notify_director_approval_pending(self):
+        """Avisa al grupo aprobador (Director I+D) de que el Jefe de Equipo
+        ya ha dado su visto bueno y la solicitud queda pendiente de la
+        aprobación final."""
         self.ensure_one()
         group = self.env.ref('portal_requests.group_director_investigation_and_development')
         users_to_notify = group.sudo().user_ids
@@ -140,16 +207,54 @@ class PortalProjectRequest(models.Model):
                 continue
             body_html = f"""
                 <p>Estimado/a {admin_user.name},</p>
-                <p>El solicitante {self.user_id.name} ha corregido la solicitud de
-                proyecto <strong>{self.project_name}</strong>, previamente rechazada,
-                y la ha reenviado a revisión.</p>
+                <p>El Jefe de Equipo, {self.env.user.name}, ya ha dado su aprobación
+                para la solicitud de proyecto <strong>{self.project_name}</strong>,
+                que queda pendiente de su aprobación final.</p>
                 <p><a href="{portal_link}">Ver la solicitud</a></p>
                 <p>Saludos cordiales, Odoo</p>
             """
             self.env['mail.mail'].sudo().create({
-                'subject': _('Solicitud de proyecto reenviada a revisión'),
+                'subject': _('Solicitud de proyecto pendiente de aprobación final'),
                 'email_from': self.env.company.email or 'no-reply@aicia.es',
                 'email_to': admin_user.email,
+                'body_html': body_html,
+            }).send()
+
+    def _notify_project_request_approvers(self, resubmit=True):
+        """Avisa al Jefe de Equipo del grupo de trabajo de que tiene una
+        solicitud pendiente de su aprobación: nueva (``resubmit=False``) o
+        corregida y reenviada tras un rechazo. Sin grupo de trabajo, a todos
+        los Jefes de Equipo (salvo Administrativos), como hasta ahora."""
+        self.ensure_one()
+        recipients = self.work_group_id._equip_boss_step_recipients()
+        portal_link = self._notify_get_portal_url()
+        if resubmit:
+            subject = _('Solicitud de proyecto reenviada a revisión')
+            text = (
+                f"El solicitante {self.user_id.name} ha corregido la solicitud de "
+                f"proyecto <strong>{self.project_name}</strong>, previamente rechazada, "
+                f"y la ha reenviado a revisión."
+            )
+        else:
+            subject = _('Solicitud de proyecto pendiente de su aprobación')
+            text = (
+                f"El usuario {self.user_id.name} ha creado la solicitud de proyecto "
+                f"<strong>{self.project_name}</strong>, pendiente de su aprobación "
+                f"como Jefe de Equipo."
+            )
+        for boss in recipients:
+            if not boss.email:
+                continue
+            body_html = f"""
+                <p>Estimado/a {boss.name},</p>
+                <p>{text}</p>
+                <p><a href="{portal_link}">Ver la solicitud</a></p>
+                <p>Saludos cordiales, Odoo</p>
+            """
+            self.env['mail.mail'].sudo().create({
+                'subject': subject,
+                'email_from': self.env.company.email or 'no-reply@aicia.es',
+                'email_to': boss.email,
                 'body_html': body_html,
             }).send()
 

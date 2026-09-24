@@ -21,12 +21,6 @@ class PortalHrExpensiveRequestController(Controller):
                 [('work_group_id', 'in', allowed_work_groups.ids)]
             )
             allowed_companies = allowed_companies | wg_companies
-        if user.has_group('portal_requests.group_manager'):
-            manager_groups = request.env['portal.work.group'].search([('user_ids', 'in', user.id)])
-            if manager_groups:
-                allowed_companies = allowed_companies | request.env['account.analytic.account'].search(
-                    [('work_group_id', 'in', manager_groups.ids)]
-                )
         return request.render('portal_requests.portal_hr_expensive_request_template', {
             'companies': allowed_companies,
         })
@@ -98,9 +92,11 @@ class PortalHrExpensiveRequestController(Controller):
         return request.redirect('/my/expenses/thank-you')
 
     def send_request_email(self,to_notify_users, user_name,company_name, expensive_request):
-        expensive_request_link = f"/web#id={expensive_request.id}&cids=1-24-28-29-32-25-30-31&menu_id=899&active_id=1&model=portal.hr.expensive.request&view_type=form"
+        backend_link = f"/web#id={expensive_request.id}&cids=1-24-28-29-32-25-30-31&menu_id=899&active_id=1&model=portal.hr.expensive.request&view_type=form"
         for admin_user in to_notify_users:
             admin_name = admin_user.name
+            # El Jefe de Equipo es usuario de portal: enlace al portal.
+            expensive_request_link = expensive_request._notify_link_for(admin_user, backend_link)
             body_html = f"""
                         <p>Estimado/a {admin_name},</p>
                         <p>El usuario {user_name} ha creado una solicitud de gasto en el proyecto {company_name}.</p>

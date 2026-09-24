@@ -77,6 +77,22 @@ class PortalRequestsCustomerPortal(CustomerPortal):
                 domain = ['|', ('responsible_id', '=', user.id), ('work_group_id', 'in', boss_group_ids)]
         return domain
 
+    def _team_work_groups(self, user):
+        """Grupos de trabajo donde `user` es Jefe de Equipo o Administrativo
+        (ambos ven las solicitudes de su equipo en el portal)."""
+        if not user.has_group('portal_requests.group_equip_boss'):
+            return request.env['portal.work.group']
+        return request.env['portal.work.group'].sudo().search(
+            request.env['portal.work.group']._boss_or_administrative_domain(user)
+        )
+
+    def _can_access_expense(self, expense, user):
+        """El solicitante, o el Jefe de Equipo/Administrativo del grupo de
+        trabajo del proyecto del gasto."""
+        if expense.user_id == user:
+            return True
+        return bool(expense.work_group_id) and expense.work_group_id in self._team_work_groups(user)
+
     def _hide_project_financials(self, user):
         """El perfil Administrativo ve los mismos proyectos que el Jefe de
         Equipo, pero sin datos económicos (saldo/presupuesto)."""
@@ -132,9 +148,19 @@ class PortalRequestsCustomerPortal(CustomerPortal):
         if groupby not in searchbar_groupby:
             groupby = 'none'
 
-        project_requests = request.env['portal.project.request'].search([
-            ('user_id', '=', user.id)
-        ], order='create_date desc')
+        # El Jefe de Equipo y el Administrativo ven también las solicitudes
+        # de sus equipos, no solo las que han creado ellos.
+        team_groups = self._team_work_groups(user)
+        if team_groups:
+            project_requests = request.env['portal.project.request'].sudo().search([
+                '|',
+                ('user_id', '=', user.id),
+                ('work_group_id', 'in', team_groups.ids),
+            ], order='create_date desc')
+        else:
+            project_requests = request.env['portal.project.request'].search([
+                ('user_id', '=', user.id)
+            ], order='create_date desc')
 
         if filterby == 'pending':
             project_requests = project_requests.filtered(
@@ -540,9 +566,19 @@ class PortalRequestsCustomerPortal(CustomerPortal):
         if filterby not in searchbar_filters:
             filterby = 'all'
 
-        expenses = request.env['portal.hr.expensive.request'].search([
-            ('user_id', '=', user.id)
-        ], order='create_date desc')
+        # El Jefe de Equipo y el Administrativo ven también los gastos de los
+        # proyectos de sus equipos, no solo los que han creado ellos.
+        team_groups = self._team_work_groups(user)
+        if team_groups:
+            expenses = request.env['portal.hr.expensive.request'].sudo().search([
+                '|',
+                ('user_id', '=', user.id),
+                ('work_group_id', 'in', team_groups.ids),
+            ], order='create_date desc')
+        else:
+            expenses = request.env['portal.hr.expensive.request'].search([
+                ('user_id', '=', user.id)
+            ], order='create_date desc')
 
         if filterby != 'all':
             expenses = expenses.filtered(lambda expense: expense.status == filterby)
@@ -1089,17 +1125,17 @@ class PortalRequestsCustomerPortal(CustomerPortal):
     @http.route(['/my/expenses/<int:expense_id>'], type='http', auth="user", website=True)
     def portal_my_expense_detail(self, expense_id, success=None, **kw):
         """Muestra el detalle de una solicitud de gastos"""
-        expense = request.env['portal.hr.expensive.request'].browse(expense_id)
+        expense = request.env['portal.hr.expensive.request'].sudo().browse(expense_id)
 
-        # Verificar que la solicitud pertenece al usuario actual
-        if expense.user_id != request.env.user:
+        # Acceso: el solicitante o el Jefe de Equipo/Administrativo del grupo
+        if not expense.exists() or not self._can_access_expense(expense, request.env.user):
             return request.redirect('/my')
 
         # Generar access_token si no existe (necesario para el chatter)
         expense._portal_ensure_token()
 
         # Obtener los adjuntos relacionados con esta solicitud
-        attachments = request.env['ir.attachment'].search([
+        attachments = request.env['ir.attachment'].sudo().search([
             ('res_model', '=', 'portal.hr.expensive.request'),
             ('res_id', '=', expense_id)
         ])
@@ -1125,10 +1161,10 @@ class PortalRequestsCustomerPortal(CustomerPortal):
     @http.route(['/my/expenses/<int:expense_id>/post_message'], type='http', auth="user", website=True, methods=['POST'], csrf=True)
     def portal_expense_post_message(self, expense_id, message, **kw):
         """Permite al usuario portal enviar un mensaje en la solicitud de gastos"""
-        expense = request.env['portal.hr.expensive.request'].browse(expense_id)
+        expense = request.env['portal.hr.expensive.request'].sudo().browse(expense_id)
 
-        # Verificar que la solicitud pertenece al usuario actual
-        if expense.user_id != request.env.user:
+        # Acceso: el solicitante o el Jefe de Equipo/Administrativo del grupo
+        if not expense.exists() or not self._can_access_expense(expense, request.env.user):
             return request.redirect('/my')
 
         # Publicar el mensaje
@@ -1172,6 +1208,20 @@ class PortalRequestsCustomerPortal(CustomerPortal):
             return request.redirect('/my')
         expense.action_approve()
         return request.redirect(f'/my/expenses/{expense_id}?success=approved')
+
+    @http.route(['/my/expenses/<int:expense_id>/reject'], type='http', auth="user", website=True, methods=['POST'], csrf=True)
+    def portal_expense_reject(self, expense_id, reason=None, **kw):
+        """Rechazo del Jefe de Equipo desde el portal, en su paso, con motivo
+        obligatorio (mismo efecto que el asistente de rechazo del backend)."""
+        expense = request.env['portal.hr.expensive.request'].sudo().browse(expense_id)
+        if (not expense.exists() or expense.status != 'approved_by_boss_group'
+                or not expense.work_group_id._is_equip_boss_step_approver(request.env.user)):
+            return request.redirect('/my')
+        reason = (reason or '').strip()
+        if not reason:
+            return request.redirect(f'/my/expenses/{expense_id}?error=reason_required')
+        expense._reject_with_reason(reason)
+        return request.redirect(f'/my/expenses/{expense_id}?success=rejected')
 
     @http.route(['/my/expenses/thank-you'], type='http', auth="public", website=True)
     def portal_expense_thank_you(self, **kw):
@@ -1293,6 +1343,22 @@ class PortalRequestsCustomerPortal(CustomerPortal):
             invoice_request.action_approve()
 
         return request.redirect(f'/my/invoices/{invoice_request_id}?success=approved')
+
+    @http.route(['/my/invoices/<int:invoice_request_id>/reject'], type='http', auth="user", website=True, methods=['POST'], csrf=True)
+    def portal_invoice_reject(self, invoice_request_id, reason=None, **kw):
+        """Rechazo del Jefe de Equipo desde el portal, en su paso, con motivo
+        obligatorio (mismo efecto que el asistente de rechazo del backend).
+        El Administrativo no puede rechazar: solo crea la solicitud."""
+        invoice_request = request.env['portal.invoice.request'].sudo().browse(invoice_request_id)
+        if (not invoice_request.exists()
+                or invoice_request.status != 'approved_by_boss_group'
+                or invoice_request.equip_boss != request.env.user):
+            return request.redirect('/my')
+        reason = (reason or '').strip()
+        if not reason:
+            return request.redirect(f'/my/invoices/{invoice_request_id}?error=reason_required')
+        invoice_request._reject_with_reason(reason)
+        return request.redirect(f'/my/invoices/{invoice_request_id}?success=rejected')
 
     @http.route(['/my/invoices/<int:invoice_request_id>/request_revision'], type='http', auth="user", website=True, methods=['POST'], csrf=True)
     def portal_invoice_request_revision(self, invoice_request_id, **kw):
@@ -1511,9 +1577,60 @@ class PortalRequestsCustomerPortal(CustomerPortal):
             'success_message': success,
             'is_equip_boss': is_boss_of_group,
             'is_owner': is_owner,
+            # Botones "Aprobar"/"Rechazar" del primer paso: solo el Jefe de
+            # Equipo del grupo (nunca el Administrativo) y nunca el propio
+            # solicitante.
+            'can_approve_equip_boss': (
+                bool(document.work_group_id)
+                and document.work_group_id._is_equip_boss_step_approver(user)
+                and document.user_id != user
+            ),
+            # "Solicitar Revisión Final" (confirmar la firma de la empresa):
+            # solo el Jefe de Equipo del grupo.
+            'can_confirm_company_sign': (
+                bool(document.work_group_id)
+                and document.work_group_id._is_equip_boss_step_approver(user)
+            ),
         }
 
         return request.render("portal_requests.portal_my_document_detail", values)
+
+    @http.route(['/my/documents/<int:document_id>/approve'], type='http', auth="user", website=True, methods=['POST'], csrf=True)
+    def portal_document_approve_equip_boss(self, document_id, **kw):
+        """Aprobación del Jefe de Equipo: primer paso del circuito de aprobación.
+        Solo el Jefe de Equipo del grupo de trabajo del documento puede
+        ejecutarlo (nunca el Administrativo), y nunca el propio solicitante."""
+        user = request.env.user
+        document = request.env['document.approval'].sudo().browse(document_id)
+
+        if (not document.work_group_id
+                or not document.work_group_id._is_equip_boss_step_approver(user)
+                or document.user_id == user):
+            return request.redirect('/my')
+
+        if document.status == 'approved_by_equip_boss':
+            document.with_user(user).action_approve()
+
+        return request.redirect(f'/my/documents/{document_id}?success=equip_boss_approved')
+
+    @http.route(['/my/documents/<int:document_id>/reject'], type='http', auth="user", website=True, methods=['POST'], csrf=True)
+    def portal_document_reject_equip_boss(self, document_id, reason=None, **kw):
+        """Rechazo del Jefe de Equipo en su paso, con motivo obligatorio.
+        Mismo efecto que el rechazo del backend (estado Rechazada)."""
+        user = request.env.user
+        document = request.env['document.approval'].sudo().browse(document_id)
+
+        if (not document.exists() or not document.work_group_id
+                or not document.work_group_id._is_equip_boss_step_approver(user)
+                or document.user_id == user
+                or document.status != 'approved_by_equip_boss'):
+            return request.redirect('/my')
+
+        reason = (reason or '').strip()
+        if not reason:
+            return request.redirect(f'/my/documents/{document_id}?error=reason_required')
+        document.action_reject(reason=reason)
+        return request.redirect(f'/my/documents/{document_id}?success=rejected')
 
     @http.route(['/my/documents/<int:document_id>/request_revision'], type='http', auth="user", website=True, methods=['POST'], csrf=True)
     def portal_document_request_revision(self, document_id, **kw):
@@ -1521,12 +1638,8 @@ class PortalRequestsCustomerPortal(CustomerPortal):
         user = request.env.user
         document = request.env['document.approval'].sudo().browse(document_id)
 
-        # Solo el jefe de equipo del grupo de trabajo del documento puede ejecutar esto
-        is_boss_of_group = False
-        if user.has_group('portal_requests.group_equip_boss') and document.work_group_id:
-            is_boss_of_group = document.work_group_id._is_boss_or_administrative(user)
-
-        if not is_boss_of_group:
+        # Solo el Jefe de Equipo del grupo de trabajo (no el Administrativo)
+        if not document.work_group_id or not document.work_group_id._is_equip_boss_step_approver(user):
             return request.redirect('/my')
 
         # Verificar que el estado permite solicitar revision
@@ -2241,9 +2354,58 @@ class PortalRequestsCustomerPortal(CustomerPortal):
             'page_name': 'project_request_detail',
             'success_message': success,
             'attachments': attachments,
+            'is_equip_boss': is_boss_of_group,
+            # Botones "Aprobar"/"Rechazar" del primer paso: solo el Jefe de
+            # Equipo del grupo (nunca el Administrativo) y nunca el propio
+            # solicitante.
+            'can_approve_equip_boss': (
+                bool(project_request.work_group_id)
+                and project_request.work_group_id._is_equip_boss_step_approver(user)
+                and project_request.user_id != user
+            ),
         }
 
         return request.render("portal_requests.portal_my_project_request_detail", values)
+
+    @http.route(['/my/project_requests/<int:request_id>/approve'], type='http', auth="user", website=True, methods=['POST'], csrf=True)
+    def portal_project_request_approve_equip_boss(self, request_id, **post):
+        """Aprobación del Jefe de Equipo: primer paso del circuito de revisión.
+        Solo el Jefe de Equipo del grupo de trabajo de la solicitud puede
+        ejecutarlo (nunca el Administrativo), y nunca el propio solicitante."""
+        user = request.env.user
+        project_request = request.env['portal.project.request'].sudo().browse(request_id)
+        if not project_request.exists():
+            return request.redirect('/my')
+
+        if (not project_request.work_group_id
+                or not project_request.work_group_id._is_equip_boss_step_approver(user)
+                or project_request.user_id == user):
+            return request.redirect('/my')
+
+        if project_request.status == 'approved_by_equip_boss':
+            project_request.with_user(user).action_approve_equip_boss()
+
+        return request.redirect(f'/my/project_requests/{request_id}?success=equip_boss_approved')
+
+    @http.route(['/my/project_requests/<int:request_id>/reject'], type='http', auth="user", website=True, methods=['POST'], csrf=True)
+    def portal_project_request_reject_equip_boss(self, request_id, reason=None, **post):
+        """Rechazo del Jefe de Equipo en su paso, con motivo obligatorio.
+        Mismo efecto que el rechazo del backend (queda Rechazada y el
+        solicitante puede reenviarla)."""
+        user = request.env.user
+        project_request = request.env['portal.project.request'].sudo().browse(request_id)
+        if (not project_request.exists() or not project_request.work_group_id
+                or not project_request.work_group_id._is_equip_boss_step_approver(user)
+                or project_request.user_id == user
+                or project_request.status != 'approved_by_equip_boss'
+                or project_request.is_revised):
+            return request.redirect('/my')
+
+        reason = (reason or '').strip()
+        if not reason:
+            return request.redirect(f'/my/project_requests/{request_id}?error=reason_required')
+        project_request.action_reject(reason=reason)
+        return request.redirect(f'/my/project_requests/{request_id}?success=rejected')
 
     @http.route(['/my/project_requests/<int:request_id>/add_attachment'], type='http', auth="user", website=True, methods=['POST'], csrf=True)
     def portal_project_request_add_attachment(self, request_id, **post):
@@ -2392,8 +2554,8 @@ class PortalRequestsCustomerPortal(CustomerPortal):
         """Permite al usuario portal subir un adjunto a la solicitud de gastos"""
         expense = request.env['portal.hr.expensive.request'].sudo().browse(expense_id)
         user = request.env.user
-        # Validar acceso: propietario o jefe de grupo (opcional, aquí solo comprobamos existencia)
-        if not expense:
+        # Acceso: el solicitante o el Jefe de Equipo/Administrativo del grupo
+        if not expense.exists() or not self._can_access_expense(expense, user):
             return request.redirect('/my/expenses')
         file_storage = request.httprequest.files.get('attachment')
         if not file_storage or not hasattr(file_storage, 'filename'):

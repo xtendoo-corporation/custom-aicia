@@ -49,7 +49,7 @@ class PortalApprovalRequestController(Controller):
             'company_id': request.env.user.company_id.id,
             'user_id': request.env.user.id,
             'is_company_signed': is_company_signed,
-            'work_group_id': work_group_id,
+            'work_group_id': int(work_group_id) if work_group_id else False,
         })
 
 
@@ -64,7 +64,9 @@ class PortalApprovalRequestController(Controller):
                 'type': 'binary',
             }
             request.env['ir.attachment'].sudo().create(attachment_data)
-        self.send_request_email(approval_type, new_document_approval)
+        # Aviso al Jefe de Equipo del grupo (o al Director I+D si solicita el
+        # propio Jefe de Equipo), según el estado con el que arranca.
+        new_document_approval._notify_new_request()
 
 
         return request.redirect('/my/documents/thank-you')

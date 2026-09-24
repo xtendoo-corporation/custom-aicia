@@ -23,7 +23,8 @@ class TestDocumentResubmit(TransactionCase):
             'email': 'doc_requester_test@example.com',
             'group_ids': [(6, 0, [self.env.ref('base.group_portal').id])],
         })
-        # Director I+D con email: receptor de la notificación de reenvío.
+        # Director I+D con email: receptor de la notificación de aprobación
+        # del Jefe de Equipo.
         director_group = self.env.ref(
             'portal_requests.group_director_investigation_and_development')
         self.director = self.env['res.users'].create({
@@ -31,6 +32,15 @@ class TestDocumentResubmit(TransactionCase):
             'login': 'director_id_test',
             'email': 'director_id_test@example.com',
             'group_ids': [(6, 0, [director_group.id])],
+        })
+        # Jefe de Equipo con email: receptor de la notificación de reenvío
+        # (primer paso del circuito).
+        equip_boss_group = self.env.ref('portal_requests.group_equip_boss')
+        self.equip_boss = self.env['res.users'].create({
+            'name': 'Jefe de Equipo',
+            'login': 'equip_boss_resubmit_notify_test',
+            'email': 'equip_boss_resubmit_notify_test@example.com',
+            'group_ids': [(6, 0, [equip_boss_group.id])],
         })
         self.document = self.env['document.approval'].create({
             'type_id': self.type_approval.id,
@@ -53,7 +63,7 @@ class TestDocumentResubmit(TransactionCase):
         messages_after_reject = len(self.document.message_ids)
         self.document.action_resubmit()
         # Vuelve al inicio del circuito de aprobación.
-        self.assertEqual(self.document.status, 'approved_by_director_i_d')
+        self.assertEqual(self.document.status, 'approved_by_equip_boss')
         self.assertFalse(self.document.is_company_signed)
         # El histórico se conserva y crece (no se borra el chatter anterior).
         self.assertGreater(

@@ -93,6 +93,20 @@
             </xpath>
 
 
+            <!-- Tarjeta del manual de usuario de su rol (artículo de Knowledge), al
+                 final del grupo inferior (Mis Proyectos, Pagos, Seguridad...) -->
+            <xpath expr="//div[@id='portal_common_category']" position="inside">
+                <t t-if="request.env.user.share">
+                    <t t-call="portal.portal_docs_entry">
+                        <t t-set="icon" t-value="'/knowledge/static/description/icon.svg'"/>
+                        <t t-set="title">Manual</t>
+                        <t t-set="text">Consulta el manual de uso del portal para tu perfil</t>
+                        <t t-set="url" t-value="'/my/manual'"/>
+                        <t t-set="config_card" t-value="True"/>
+                    </t>
+                </t>
+            </xpath>
+
         </template>
     </data>
 </odoo>
