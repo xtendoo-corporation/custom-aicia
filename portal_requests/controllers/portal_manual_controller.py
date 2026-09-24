@@ -5,20 +5,8 @@ from markupsafe import Markup
 from odoo import http
 from odoo.http import request
 
-# Rol del usuario -> clave del artículo de Knowledge con su manual
-# (data/knowledge_manuals.xml: portal_requests.manual_article_<clave>).
-# El orden importa: el Administrativo implica el grupo de Jefe de Equipo.
-MANUAL_ROLES = [
-    ('portal_requests.group_administrative', 'administrativo'),
-    ('portal_requests.group_equip_boss', 'jefe_de_equipo'),
-    ('portal_requests.group_project_boss', 'jefe_de_proyecto'),
-    ('portal_requests.group_director_investigation_and_development', 'director_i_d'),
-    ('portal_requests.group_director_manager', 'director_gerente'),
-    ('portal_requests.group_personnel_purchase_responsible', 'responsable_personal_y_compras'),
-    ('portal_requests.group_intern_partner_responsible', 'responsable_clientes_y_becarios'),
-    ('portal_requests.group_financial_director', 'director_financiero'),
-]
-DEFAULT_MANUAL = 'solicitante'
+from ..models.knowledge_article import DEFAULT_MANUAL, MANUAL_ROLES
+
 
 # Imágenes del cuerpo del artículo: las del módulo (por id XML) y las que se
 # añadan después desde el editor de Knowledge (por id de adjunto).

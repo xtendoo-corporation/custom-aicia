@@ -86,13 +86,68 @@ class TestPortalManual(HttpCase):
         self.assertIn('Administrativo', response.headers.get('Content-Disposition', ''))
         self.assertTrue(response.content.startswith(b'%PDF'))
 
-    def test_internal_users_can_read_articles_in_knowledge(self):
+    def _internal(self, login, group_xmlid):
+        return self.env['res.users'].create({
+            'name': login, 'login': login, 'password': self.password,
+            'group_ids': [(6, 0, [self.env.ref('base.group_user').id, self.env.ref(group_xmlid).id])],
+        })
+
+    def _readable_manuals(self, user):
         root = self.env.ref('portal_requests.manual_article_root')
-        article = self.env.ref('portal_requests.manual_article_director_gerente')
-        self.assertTrue(article.with_user(self.internal).user_has_access)
-        # Visible en el Espacio de trabajo de Knowledge para cualquier interno
-        self.assertTrue(root.with_user(self.internal).is_article_visible)
-        self.assertTrue(article.with_user(self.internal).is_article_visible)
-        self.assertFalse(article.with_user(self.internal).user_has_write_access)
-        self.assertEqual(root.internal_permission, 'read')
-        self.assertEqual(article.parent_id, root)
+        return self.env['knowledge.article'].with_user(user).search([('parent_id', '=', root.id)])
+
+    def test_internal_user_reads_only_own_manual_in_knowledge(self):
+        director = self._internal('manual_director_id_test', 'portal_requests.group_director_investigation_and_development')
+        own = self.env.ref('portal_requests.manual_article_director_i_d')
+        root = self.env.ref('portal_requests.manual_article_root')
+        self.assertEqual(self._readable_manuals(director), own)
+        self.assertTrue(root.with_user(director).is_article_visible)
+        self.assertFalse(own.with_user(director).user_has_write_access)
+        self.assertFalse(self.env.ref('portal_requests.manual_article_director_gerente').with_user(director).user_has_access)
+        # En el lateral de Knowledge: la carpeta y solo su manual
+        sidebar = own.with_user(director).get_sidebar_articles([root.id])
+        manual_ids = set((root | root.child_ids).ids)
+        self.assertEqual({a['id'] for a in sidebar['articles']} & manual_ids, {root.id, own.id})
+
+    def test_director_manager_reads_all_manuals_in_knowledge(self):
+        manager = self._internal('manual_director_manager_test', 'portal_requests.group_director_manager')
+        root = self.env.ref('portal_requests.manual_article_root')
+        self.assertEqual(len(self._readable_manuals(manager)), len(root.child_ids))
+        self.assertEqual(len(root.child_ids), 9)
+
+    def test_odoo_administrator_with_role_reads_only_own_manual(self):
+        user = self._internal('manual_admin_partner_test', 'portal_requests.group_intern_partner_responsible')
+        user.write({'group_ids': [(4, self.env.ref('base.group_system').id)]})
+        own = self.env.ref('portal_requests.manual_article_responsable_clientes_y_becarios')
+        self.assertEqual(self._readable_manuals(user), own)
+        root = self.env.ref('portal_requests.manual_article_root')
+        sidebar = own.with_user(user).get_sidebar_articles([root.id])
+        manual_ids = set((root | root.child_ids).ids)
+        self.assertEqual({a['id'] for a in sidebar['articles']} & manual_ids, {root.id, own.id})
+
+    def test_administrator_editor_reads_all_manuals(self):
+        root = self.env.ref('portal_requests.manual_article_root')
+        self.assertEqual(len(self._readable_manuals(self.env.ref('base.user_admin'))), 9)
+        self.assertTrue(root.child_ids[:1].with_user(self.env.ref('base.user_admin')).user_has_write_access)
+
+    def test_internal_user_without_role_reads_no_manual(self):
+        root = self.env.ref('portal_requests.manual_article_root')
+        self.assertFalse(self._readable_manuals(self.internal))
+        self.assertFalse(root.with_user(self.internal).user_has_access)
+
+    def test_manual_access_follows_group_changes(self):
+        financial = self.env.ref('portal_requests.group_financial_director')
+        user = self._internal('manual_financial_test', 'portal_requests.group_financial_director')
+        own = self.env.ref('portal_requests.manual_article_director_financiero')
+        self.assertEqual(self._readable_manuals(user), own)
+        user.write({'group_ids': [(3, financial.id)]})
+        self.assertFalse(self._readable_manuals(user))
+        financial.write({'user_ids': [(4, user.id)]})
+        self.assertEqual(self._readable_manuals(user), own)
+        user.write({'active': False})
+        self.assertNotIn(user.partner_id, own.article_member_ids.partner_id)
+
+    def test_portal_users_are_not_knowledge_members(self):
+        root = self.env.ref('portal_requests.manual_article_root')
+        members = (root | root.child_ids).article_member_ids.partner_id
+        self.assertFalse(members & (self.requester | self.project_boss | self.boss | self.administrative).partner_id)

@@ -5,8 +5,7 @@
         <record id="manual_article_root" model="knowledge.article">
             <field name="name">Manuales del Portal de Solicitudes</field>
             <field name="icon">📘</field>
-            <field name="internal_permission">read</field>
-            <field name="is_article_visible_by_everyone" eval="True" />
+            <field name="internal_permission">none</field>
             <field name="article_member_ids" eval="[(0, 0, {'partner_id': ref('base.partner_admin'), 'permission': 'write'})]" />
             <field name="body">&lt;p&gt;Manuales de usuario del Portal de Solicitudes, uno por rol. Cada manual incluye capturas de pantalla y se puede descargar en PDF.&lt;/p&gt;&lt;p&gt;Los usuarios de portal ven el manual de su rol desde la tarjeta &lt;strong&gt;Manual&lt;/strong&gt; de su cuenta (&lt;code&gt;/my&lt;/code&gt;).&lt;/p&gt;</field>
         </record>
@@ -3087,4 +3086,14 @@ alt="Ficha de un documento en modo consulta" /&gt;&lt;br /&gt;
             <field name="res_id" ref="manual_article_director_financiero" />
         </record>
     </data>
+    <!-- Quién lee cada manual en Knowledge (solo su rol; el Director Gerente,
+         todos). Se recalcula en cada actualización, ver models/knowledge_article.py -->
+    <function model="knowledge.article" name="_sync_portal_manual_members" />
+    <!-- Global (sin grupos): también se aplica a los administradores de Odoo,
+         que en Knowledge ven todo. Solo leen un manual sus miembros. -->
+    <record id="rule_portal_manual_by_role" model="ir.rule">
+        <field name="name">Manuales del portal: solo su rol</field>
+        <field name="model_id" ref="knowledge.model_knowledge_article" />
+        <field name="domain_force">['|', ('is_portal_manual', '=', False), ('article_member_ids.partner_id', '=', user.partner_id.id)]</field>
+    </record>
 </odoo>
