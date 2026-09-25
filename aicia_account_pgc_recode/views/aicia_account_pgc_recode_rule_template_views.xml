@@ -1,0 +1,90 @@
+<?xml version="1.0" encoding="utf-8"?>
+<odoo>
+    <record id="view_aicia_account_pgc_recode_rule_template_tree" model="ir.ui.view">
+        <field name="name">aicia.account.pgc.recode.rule.template.tree</field>
+        <field name="model">aicia.account.pgc.recode.rule.template</field>
+        <field name="arch" type="xml">
+            <list string="Plantillas de equivalencia PGC">
+                <field name="old_code"/>
+                <field name="old_name"/>
+                <field name="target_prefix"/>
+                <field name="target_label"/>
+                <field name="create_target_account" optional="hide"/>
+                <field name="status" widget="badge"/>
+                <field name="source_row" optional="hide"/>
+            </list>
+        </field>
+    </record>
+
+    <record id="view_aicia_account_pgc_recode_rule_template_form" model="ir.ui.view">
+        <field name="name">aicia.account.pgc.recode.rule.template.form</field>
+        <field name="model">aicia.account.pgc.recode.rule.template</field>
+        <field name="arch" type="xml">
+            <form>
+                <sheet>
+                    <div class="oe_title">
+                        <h1>
+                            <field name="old_code" placeholder="Código de cuenta origen"/>
+                        </h1>
+                    </div>
+                    <group>
+                        <group string="Cuenta origen">
+                            <field name="old_code"/>
+                            <field name="old_name"/>
+                        </group>
+                        <group string="Cuenta destino">
+                            <field name="target_prefix"/>
+                            <field name="target_label"/>
+                            <field name="create_target_account"/>
+                        </group>
+                    </group>
+                    <group>
+                        <field name="status"/>
+                        <field name="source_row"/>
+                    </group>
+                    <notebook>
+                        <page string="Notas">
+                            <field name="notes" placeholder="Notas internas..."/>
+                        </page>
+                    </notebook>
+                </sheet>
+            </form>
+        </field>
+    </record>
+
+    <record id="view_aicia_account_pgc_recode_rule_template_search" model="ir.ui.view">
+        <field name="name">aicia.account.pgc.recode.rule.template.search</field>
+        <field name="model">aicia.account.pgc.recode.rule.template</field>
+        <field name="arch" type="xml">
+            <search>
+                <field name="old_code" string="Cuenta origen"/>
+                <field name="old_name"/>
+                <field name="target_prefix" string="Cuenta destino"/>
+                <field name="target_label"/>
+                <filter string="Manual" name="status_manual" domain="[('status', '=', 'manual')]"/>
+                <filter string="Borrador" name="status_draft" domain="[('status', '=', 'draft')]"/>
+                <group>
+                    <filter string="Estado inicial" name="group_by_status" context="{'group_by': 'status'}"/>
+                    <filter string="Prefijo destino" name="group_by_target" context="{'group_by': 'target_prefix'}"/>
+                </group>
+            </search>
+        </field>
+    </record>
+
+    <record id="action_aicia_account_pgc_recode_rule_template" model="ir.actions.act_window">
+        <field name="name">Plantillas de equivalencia PGC</field>
+        <field name="res_model">aicia.account.pgc.recode.rule.template</field>
+        <field name="view_mode">list,form</field>
+        <field name="help" type="html">
+            <p class="o_view_nocontent_smiling_face">
+                Catálogo maestro de equivalencias origen → destino
+            </p>
+            <p>
+                Cada plantilla define la correspondencia entre una cuenta origen
+                (código y nombre antiguos) y la cuenta destino (prefijo/código y
+                etiqueta del PGC 2008). Estas plantillas son la fuente por defecto
+                que se replica como reglas en cada compañía.
+            </p>
+        </field>
+    </record>
+</odoo>

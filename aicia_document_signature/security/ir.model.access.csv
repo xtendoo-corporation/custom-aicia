@@ -1,0 +1,6 @@
+id,name,model_id:id,group_id:id,perm_read,perm_write,perm_create,perm_unlink
+access_digital_certificate_user,digital.certificate.user,model_digital_certificate,group_document_signature_user,1,1,1,1
+access_digital_certificate_manager,digital.certificate.manager,model_digital_certificate,group_document_signature_manager,1,1,1,1
+access_document_signature_user,document.signature.user,model_document_signature,group_document_signature_user,1,1,1,1
+access_document_signature_manager,document.signature.manager,model_document_signature,group_document_signature_manager,1,1,1,1
+access_sign_document_wizard_user,sign.document.wizard.user,model_sign_document_wizard,group_document_signature_user,1,1,1,0

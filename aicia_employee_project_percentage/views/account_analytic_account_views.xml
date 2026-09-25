@@ -1,0 +1,19 @@
+<?xml version="1.0" encoding="utf-8"?>
+<odoo>
+    <!-- Smart button de Investigadores en la ficha de proyecto (cuenta analítica) -->
+    <record id="view_account_analytic_account_form_researchers" model="ir.ui.view">
+        <field name="name">account.analytic.account.form.researchers</field>
+        <field name="model">account.analytic.account</field>
+        <field name="inherit_id" ref="analytic.view_account_analytic_account_form"/>
+        <field name="arch" type="xml">
+            <xpath expr="//div[@name='button_box']" position="inside">
+                <button name="action_open_researchers"
+                        type="object"
+                        class="oe_stat_button"
+                        icon="fa-users">
+                    <field name="researcher_count" widget="statinfo" string="Investigadores"/>
+                </button>
+            </xpath>
+        </field>
+    </record>
+</odoo>

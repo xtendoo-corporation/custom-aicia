@@ -1,0 +1,48 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!-- Vista heredada para añadir el botón de previsualización en el formulario de adjuntos -->
+<odoo>
+    <data>
+        <record id="view_attachment_form_preview" model="ir.ui.view">
+            <field name="name">ir.attachment.form.preview</field>
+            <field name="model">ir.attachment</field>
+            <field name="inherit_id" ref="base.view_attachment_form"/>
+            <field name="arch" type="xml">
+                <!-- Añadimos el botón justo después del campo 'datas' -->
+                <field name="mimetype" position="after">
+                    <field name="etiqueta_ids" widget="many2many_tags" options="{'color_field': 'color'}"/>
+                <field name="categoria_ids" widget="many2many_tags" options="{'color_field': 'color'}"/>
+                </field>
+            </field>
+        </record>
+                <record id="view_attachment_tree_preview" model="ir.ui.view">
+            <field name="name">ir.attachment.tree.preview</field>
+            <field name="model">ir.attachment</field>
+            <field name="inherit_id" ref="base.view_attachment_tree"/>
+            <field name="arch" type="xml">
+                <!-- Añadimos el botón justo después del campo 'datas' -->
+                <field name="file_size" position="before">
+                    <field name="etiqueta_ids" widget="many2many_tags" options="{'color_field': 'color'}"/>
+                <field name="categoria_ids" widget="many2many_tags" options="{'color_field': 'color'}"/>
+                </field>
+                <field name="res_model" position="replace">
+                    <field name="res_model" optional="hide"/>
+                </field>
+                <field name="res_field" position="replace">
+                    <field name="res_field" optional="hide"/>
+                </field>
+                <field name="res_id" position="replace">
+                    <field name="res_id" optional="hide"/>
+                </field>
+                <field name="company_id" position="replace">
+                    <field name="company_id" optional="hide"/>
+                </field>
+                <field name="create_uid" position="replace">
+                    <field name="create_uid" optional="hide"/>
+                </field>
+                <field name="create_date" position="replace">
+                    <field name="create_date" optional="hide"/>
+                </field>
+            </field>
+        </record>
+    </data>
+</odoo>

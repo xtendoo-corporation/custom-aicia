@@ -1,0 +1,4 @@
+id,name,model_id:id,group_id:id,perm_read,perm_write,perm_create,perm_unlink
+access_aicia_payroll_config_user,aicia.payroll.config user,model_aicia_payroll_config,account.group_account_user,1,1,1,1
+access_aicia_payroll_import_user,aicia.payroll.import user,model_aicia_payroll_import,account.group_account_user,1,1,1,1
+access_aicia_payroll_import_line_user,aicia.payroll.import.line user,model_aicia_payroll_import_line,account.group_account_user,1,1,1,1

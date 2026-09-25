@@ -1,0 +1,25 @@
+<?xml version="1.0" encoding="utf-8"?>
+<odoo>
+    <record id="view_aicia_account_pgc_recode_apply_wizard_form" model="ir.ui.view">
+        <field name="name">aicia.account.pgc.recode.apply.wizard.form</field>
+        <field name="model">aicia.account.pgc.recode.apply.wizard</field>
+        <field name="arch" type="xml">
+            <form string="Aplicar lote de recodificación">
+                <group>
+                    <field name="batch_id" readonly="1"/>
+                    <field name="apply_automatic"/>
+                    <field name="apply_review_validated"/>
+                    <field name="create_missing_accounts" invisible="1"/>
+                </group>
+                <div class="alert alert-warning" role="alert">
+                    Esta acción modificará los apuntes contables según las propuestas seleccionadas. Asegúrate de haber revisado antes el resultado de la simulación.
+                    La subcuenta destino debe existir previamente en el plan contable de la compañía.
+                </div>
+                <footer>
+                    <button name="action_apply" string="Aplicar" type="object" class="btn-primary"/>
+                    <button string="Cancelar" class="btn-secondary" special="cancel"/>
+                </footer>
+            </form>
+        </field>
+    </record>
+</odoo>

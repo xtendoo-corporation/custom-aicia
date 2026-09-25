@@ -1,0 +1,19 @@
+<?xml version="1.0" encoding="utf-8"?>
+<odoo>
+    <record id="view_account_payment_register_form_inherit_aicia_distribution" model="ir.ui.view">
+        <field name="name">account.payment.register.form.inherit.aicia.distribution</field>
+        <field name="model">account.payment.register</field>
+        <field name="inherit_id" ref="account.view_account_payment_register_form"/>
+        <field name="arch" type="xml">
+            <xpath expr="//field[@name='communication']" position="before">
+                <field name="show_distribution_plan_id" invisible="1"/>
+                <label for="distribution_plan_id" invisible="not show_distribution_plan_id"/>
+                <div invisible="not show_distribution_plan_id">
+                    <field name="distribution_plan_id"
+                           options="{'no_create': True}"/>
+                </div>
+            </xpath>
+        </field>
+    </record>
+</odoo>
+

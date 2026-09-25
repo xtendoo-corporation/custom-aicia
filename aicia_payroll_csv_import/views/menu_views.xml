@@ -1,0 +1,28 @@
+<?xml version="1.0" encoding="utf-8"?>
+<odoo>
+    <menuitem
+        id="menu_aicia_payroll_root"
+        name="Nóminas"
+        parent="aicia_account_menu.menu_aicia_root"
+        sequence="60"
+        groups="account.group_account_user"
+    />
+
+    <menuitem
+        id="menu_aicia_payroll_import"
+        name="Importación nóminas"
+        parent="menu_aicia_payroll_root"
+        action="action_aicia_payroll_import"
+        sequence="10"
+        groups="account.group_account_user"
+    />
+
+    <menuitem
+        id="menu_aicia_payroll_config"
+        name="Configuración nóminas"
+        parent="menu_aicia_payroll_root"
+        action="action_aicia_payroll_config"
+        sequence="20"
+        groups="account.group_account_user"
+    />
+</odoo>

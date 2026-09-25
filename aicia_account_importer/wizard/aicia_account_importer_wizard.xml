@@ -1,0 +1,209 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!-- Copyright 2026 Xtendoo - https://www.xtendoo.es/
+     License AGPL-3.0 or later (http://www.gnu.org/licenses/agpl). -->
+<odoo>
+    <record id="action_aicia_account_importer_wizard" model="ir.actions.act_window">
+        <field name="name">Importar Apuntes Contables</field>
+        <field name="res_model">aicia.account.importer.wizard</field>
+        <field name="view_mode">form</field>
+        <field name="target">new</field>
+    </record>
+    <!-- Vista de lista para el modelo de mapeo de cuentas -->
+    <record id="view_aicia_account_importer_account_mapping_list" model="ir.ui.view">
+        <field name="name">aicia.account.importer.account.mapping.list</field>
+        <field name="model">aicia.account.importer.account.mapping</field>
+        <field name="arch" type="xml">
+            <list editable="bottom">
+                <header>
+                    <button name="action_load_default_mappings"
+                            string="Recargar mapeos por defecto"
+                            type="object"
+                            class="btn-secondary"/>
+                </header>
+                <field name="source_code" placeholder="Ej: 478 ó 478000000"/>
+                <field name="source_code_normalized" optional="hide" readonly="1"/>
+                <field name="target_account_id" required="1"/>
+            </list>
+        </field>
+    </record>
+    <record id="view_aicia_account_importer_account_mapping_form" model="ir.ui.view">
+        <field name="name">aicia.account.importer.account.mapping.form</field>
+        <field name="model">aicia.account.importer.account.mapping</field>
+        <field name="arch" type="xml">
+            <form string="Mapeo de cuenta AICIA">
+                <header>
+                    <button name="action_load_default_mappings"
+                            string="Recargar mapeos por defecto"
+                            type="object"
+                            class="btn-secondary"/>
+                </header>
+                <sheet>
+                    <group>
+                        <field name="source_code" placeholder="Ej: 478 ó 478000000"/>
+                        <field name="target_account_id" required="1"/>
+                        <field name="source_code_normalized" readonly="1"/>
+                    </group>
+                </sheet>
+            </form>
+        </field>
+    </record>
+    <record id="view_aicia_account_importer_account_mapping_search" model="ir.ui.view">
+        <field name="name">aicia.account.importer.account.mapping.search</field>
+        <field name="model">aicia.account.importer.account.mapping</field>
+        <field name="arch" type="xml">
+            <search string="Buscar mapeos AICIA">
+                <field name="source_code"/>
+                <field name="source_code_normalized"/>
+                <field name="target_account_id"/>
+            </search>
+        </field>
+    </record>
+    <record id="action_aicia_account_importer_account_mapping" model="ir.actions.act_window">
+        <field name="name">Mapeo de cuentas</field>
+        <field name="res_model">aicia.account.importer.account.mapping</field>
+        <field name="view_mode">list,form</field>
+        <field name="search_view_id" ref="view_aicia_account_importer_account_mapping_search"/>
+        <field name="help" type="html">
+            <p class="o_view_nocontent_smiling_face">
+                Crea el primer mapeo de cuenta AICIA.
+            </p>
+            <p>
+                Los mapeos son globales y se reutilizan automáticamente en próximas importaciones.
+            </p>
+        </field>
+    </record>
+    <record id="view_aicia_account_importer_wizard_form" model="ir.ui.view">
+        <field name="name">aicia.account.importer.wizard.form</field>
+        <field name="model">aicia.account.importer.wizard</field>
+        <field name="arch" type="xml">
+            <form string="Importador de Apuntes Contables">
+                <field name="state" invisible="1"/>
+                <!-- Formulario de entrada -->
+                <group>
+                    <group string="Archivos Excel">
+                        <field name="file_apuntes" widget="binary" filename="filename_apuntes"/>
+                        <field name="filename_apuntes" invisible="1"/>
+                        <field name="file_lineas" widget="binary" filename="filename_lineas"/>
+                        <field name="filename_lineas" invisible="1"/>
+                    </group>
+                    <group string="Configuración de importación">
+                        <field name="move_state"/>
+                        <field name="create_missing_partners"/>
+                        <field name="skip_anulados"/>
+                    </group>
+                </group>
+                <notebook>
+                    <!-- Pestaña Resumen: solo visible tras importar -->
+                    <page string="Resumen" name="import_summary" invisible="not import_log">
+                        <group string="Contadores">
+                            <field name="total_created" readonly="1"/>
+                            <field name="total_skipped" readonly="1"/>
+                            <field name="total_warnings" readonly="1"/>
+                            <field name="total_errors" readonly="1"/>
+                        </group>
+                        <field name="import_log" nolabel="1" colspan="2" readonly="1"/>
+                    </page>
+                    <!-- Pestaña Cuentas: mapeo legado → Odoo -->
+                    <page string="Cuentas" name="account_mapping">
+                        <div style="padding: 4px 0 8px 0;">
+                            <p style="color: #555; margin: 0 0 8px 0;">
+                                Añade aquí los códigos del sistema legado que quieras redirigir
+                                a otra cuenta de Odoo antes de importar.<br/>
+                                <strong>Ejemplo:</strong> código origen <code>478</code>
+                                → cuenta destino <code>477 - H.P. IVA repercutido</code>.<br/>
+                                El código origen puede ser un prefijo (ej: <code>478</code>)
+                                o el código completo de 9 dígitos (ej: <code>478000000</code>).<br/>
+                                Si no subes archivos Excel, el botón <strong>Importar</strong>
+                                revisa los apuntes existentes y aplica estas reglas.<br/>
+                                <em>Tras cada importación, las cuentas no encontradas se añaden
+                                automáticamente a esta lista para que las mapees.</em>
+                            </p>
+                                <button name="action_load_default_account_mappings"
+                                   string="Recargar mapeos por defecto"
+                                   type="object"
+                                   class="btn-secondary"/>
+                                <button name="action_reload_account_mappings"
+                                   string="Refrescar lista"
+                                   type="object"
+                                   class="btn-secondary"/>
+                                <button name="action_clear_account_mappings"
+                                    string="Borrar todos los mapeos"
+                                    type="object"
+                                    class="btn-danger"
+                                    confirm="¿Seguro que quieres borrar todos los mapeos globales de cuentas AICIA?"/>
+                        </div>
+                        <field name="account_mapping_ids" nolabel="1"
+                               context="{'aicia_account_importer_wizard_id': id}">
+                            <list editable="bottom">
+                                <field name="source_code" placeholder="Ej: 478 ó 478000000"/>
+                                <field name="source_code_normalized" optional="hide" readonly="1"/>
+                                <field name="target_account_id"/>
+                            </list>
+                            <form string="Mapeo de cuenta AICIA">
+                                <sheet>
+                                    <group>
+                                        <field name="source_code" placeholder="Ej: 478 ó 478000000"/>
+                                        <field name="target_account_id"/>
+                                        <field name="source_code_normalized" readonly="1"/>
+                                    </group>
+                                </sheet>
+                            </form>
+                        </field>
+                    </page>
+                    <!-- Pestaña Formato del Excel -->
+                    <page string="Formato del Excel" name="help">
+                        <div style="padding: 8px;">
+                            <p><strong>Archivo 1 — Apuntes2025.xlsx</strong> (cabecera de los asientos):</p>
+                            <table style="border-collapse: collapse; width: 100%; margin-bottom: 12px;">
+                                <tr style="background: #f0f0f0;">
+                                    <th style="border: 1px solid #ccc; padding: 4px 8px;">Columna</th>
+                                    <th style="border: 1px solid #ccc; padding: 4px 8px;">Descripción</th>
+                                    <th style="border: 1px solid #ccc; padding: 4px 8px;">Ejemplo</th>
+                                </tr>
+                                <tr><td style="border:1px solid #ccc;padding:4px 8px;"><code>ID_Apunte</code></td><td style="border:1px solid #ccc;padding:4px 8px;">Clave de unión con las líneas</td><td style="border:1px solid #ccc;padding:4px 8px;">297</td></tr>
+                                <tr><td style="border:1px solid #ccc;padding:4px 8px;"><code>Numero_Apunte</code></td><td style="border:1px solid #ccc;padding:4px 8px;">Referencia del asiento en Odoo</td><td style="border:1px solid #ccc;padding:4px 8px;">281</td></tr>
+                                <tr><td style="border:1px solid #ccc;padding:4px 8px;"><code>Fecha_Contable</code></td><td style="border:1px solid #ccc;padding:4px 8px;">Entero YYYYMMDD</td><td style="border:1px solid #ccc;padding:4px 8px;">20250103</td></tr>
+                                <tr><td style="border:1px solid #ccc;padding:4px 8px;"><code>Descripcion</code></td><td style="border:1px solid #ccc;padding:4px 8px;">Descripción del asiento</td><td style="border:1px solid #ccc;padding:4px 8px;">CULLIGAM/ CUOTA</td></tr>
+                                <tr><td style="border:1px solid #ccc;padding:4px 8px;"><code>Validado</code></td><td style="border:1px solid #ccc;padding:4px 8px;">True/False — solo se importan True</td><td style="border:1px solid #ccc;padding:4px 8px;">True</td></tr>
+                                <tr><td style="border:1px solid #ccc;padding:4px 8px;"><code>Anulado</code></td><td style="border:1px solid #ccc;padding:4px 8px;">True/False — se omiten si "Omitir anulados"</td><td style="border:1px solid #ccc;padding:4px 8px;">False</td></tr>
+                            </table>
+                            <p><strong>Archivo 2 — Lineas_Apunte2025.xlsx</strong> (líneas contables):</p>
+                            <table style="border-collapse: collapse; width: 100%; margin-bottom: 12px;">
+                                <tr style="background: #f0f0f0;">
+                                    <th style="border: 1px solid #ccc; padding: 4px 8px;">Columna</th>
+                                    <th style="border: 1px solid #ccc; padding: 4px 8px;">Descripción</th>
+                                    <th style="border: 1px solid #ccc; padding: 4px 8px;">Ejemplo</th>
+                                </tr>
+                                <tr><td style="border:1px solid #ccc;padding:4px 8px;"><code>ID_Apunte</code></td><td style="border:1px solid #ccc;padding:4px 8px;">Clave de unión con cabecera</td><td style="border:1px solid #ccc;padding:4px 8px;">297</td></tr>
+                                <tr><td style="border:1px solid #ccc;padding:4px 8px;"><code>Cuenta_Contable</code></td><td style="border:1px solid #ccc;padding:4px 8px;">9 dígitos — 400/430 → colectiva</td><td style="border:1px solid #ccc;padding:4px 8px;">430003604</td></tr>
+                                <tr><td style="border:1px solid #ccc;padding:4px 8px;"><code>Descripcion</code></td><td style="border:1px solid #ccc;padding:4px 8px;">Descripción de la línea / nombre tercero</td><td style="border:1px solid #ccc;padding:4px 8px;">SPHERAG TECK LOT</td></tr>
+                                <tr><td style="border:1px solid #ccc;padding:4px 8px;"><code>Importe</code></td><td style="border:1px solid #ccc;padding:4px 8px;">Entero en CÉNTIMOS (÷100 = euros)</td><td style="border:1px solid #ccc;padding:4px 8px;">21982 → 219,82€</td></tr>
+                                <tr><td style="border:1px solid #ccc;padding:4px 8px;"><code>Tipo_Contable</code></td><td style="border:1px solid #ccc;padding:4px 8px;">D = Debe / H = Haber</td><td style="border:1px solid #ccc;padding:4px 8px;">D</td></tr>
+                            </table>
+                            <p style="color: #666;">
+                                <strong>Cuentas colectivas:</strong>
+                                400xxxxxx → <strong>400000</strong> (Proveedores) |
+                                430xxxxxx → <strong>430000</strong> (Clientes) |
+                                572xxxxxx → <strong>572000</strong> (Bancos).
+                                El resto se normaliza a 6 dígitos quitando ceros finales.
+                            </p>
+                        </div>
+                    </page>
+                </notebook>
+                <footer>
+                    <button name="action_import"
+                            string="Importar"
+                            type="object"
+                            class="btn-primary"/>
+                    <button name="action_delete_draft_moves"
+                            string="Limpiar borradores"
+                            type="object"
+                            class="btn-danger"
+                            confirm="¿Eliminar todos los asientos en borrador del diario seleccionado?"/>
+                    <button string="Cerrar"
+                            special="cancel"/>
+                </footer>
+            </form>
+        </field>
+    </record>
+</odoo>

@@ -1,0 +1,16 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!-- License AGPL-3.0 or later (https://www.gnu.org/licenses/agpl). -->
+<odoo>
+    <!-- Eliminada inserción redundante de Distribución Analítica en cabecera; se mantiene solo la definida en aicia_account_cash_distribution -->
+    <record id="view_move_analytic_account_tree" model="ir.ui.view">
+        <field name="name">account.move.analytic.account.tree</field>
+        <field name="model">account.move</field>
+        <field name="inherit_id" ref="account.view_invoice_tree"/>
+        <field name="arch" type="xml">
+            <!-- Inserta el grupo de trabajo en una columna estable de la lista de facturas -->
+            <xpath expr="//field[@name='invoice_user_id']" position="after">
+                <field name="work_group_id"/>
+            </xpath>
+        </field>
+    </record>
+</odoo>
