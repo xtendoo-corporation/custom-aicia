@@ -27,21 +27,21 @@ except ImportError:
 #    Col 1: Numero_Apunte      → referencia del asiento (account.move.ref)
 #    Col 2: Fecha_Contable     → entero YYYYMMDD  (ej: 20250103)
 #    Col 3: Fecha_Introduccion → datetime (no se usa)
-#    Col 4: Descripcion        → nombre del asiento
-#    Col 5: Numero_Documento   → referencia adicional
-#    Col 6: Importe_Total      → en céntimos (solo informativo)
-#    Col 7: Validado           → True/False; solo se importan los True
-#    Col 8: Anulado            → True/False; se omiten los True si skip_anulados
+#    Col 4: Importe_Total         → en céntimos (solo informativo)
+#    Col 5: Validado              → True/False; solo se importan los True
+#    Col 6: Anulado               → True/False; se omiten los True si skip_anulados
+#    Col 7: Descripcion           → nombre del asiento
+#    Col 8: Numero_Documento      → referencia adicional
 #    Col 9: Clase_Apunte       → "M" = Nómina (tratamiento especial); resto ignorado
 #
 #  Lineas_Apunte2025.xlsx — hoja "Lineas_Apunte"  (líneas contables)
 #    Col 0: ID_Apunte          → clave de unión con Apuntes (col 0 de ambos ficheros)
 #    Col 1: ID_Linea           → identificador de línea (no se usa)
-#    Col 2: Cuenta_Contable    → 9 dígitos (ej: 430003604)
-#    Col 3: ID_Departamento    → proyecto analítico si ID_Proyecto es 0
-#    Col 4: ID_Proyecto        → proyecto analítico
-#    Col 5: Descripcion        → descripción de la línea
-#    Col 6: Importe            → entero en CÉNTIMOS (siempre positivo)
+#    Col 2: ID_Departamento    → proyecto analítico si ID_Proyecto es 0
+#    Col 3: ID_Proyecto        → proyecto analítico
+#    Col 4: Importe            → entero en CÉNTIMOS (siempre positivo)
+#    Col 5: Cuenta_Contable    → 9 dígitos (ej: 430003604)
+#    Col 6: Descripcion        → descripción de la línea
 #    Col 7: Tipo_Contable      → "D" = Debe / "H" = Haber
 #
 #  Reglas de transformación:
@@ -83,20 +83,20 @@ APUNTES_COLS = {
     "id": 0,
     "numero": 1,
     "fecha": 2,
-    "descripcion": 4,
-    "numero_documento": 5,
-    "validado": 7,
-    "anulado": 8,
+    "descripcion": 7,
+    "numero_documento": 8,
+    "validado": 5,
+    "anulado": 6,
     "clase_apunte": 9,
 }
 
 LINEAS_COLS = {
     "id_apunte": 0,   # ID_Apunte — clave de unión con la cabecera (col 0 de ambos ficheros)
-    "cuenta": 2,
-    "id_departamento": 3,  # ID_Departamento → proyecto analítico cuando ID_Proyecto=0
-    "id_proyecto": 4,  # ID_Proyecto → cuenta analítica (ref en account.analytic.account)
-    "descripcion": 5,
-    "importe": 6,
+    "id_departamento": 2,  # ID_Departamento → proyecto analítico cuando ID_Proyecto=0
+    "id_proyecto": 3,  # ID_Proyecto → cuenta analítica (ref en account.analytic.account)
+    "importe": 4,
+    "cuenta": 5,
+    "descripcion": 6,
     "tipo": 7,
 }
 
@@ -956,8 +956,8 @@ class AiciaAccountImporterWizard(models.TransientModel):
             except (ValueError, TypeError):
                 id_apunte = str(id_apunte).strip()
 
-            validado = row[c["validado"]]
-            anulado = row[c["anulado"]]
+            validado = self._parse_excel_boolean(row[c["validado"]])
+            anulado = self._parse_excel_boolean(row[c["anulado"]])
 
             if not validado:
                 discarded_rows.append(
@@ -1022,6 +1022,17 @@ class AiciaAccountImporterWizard(models.TransientModel):
                 % {"rows": data_rows, "details": details}
             )
         return apuntes
+
+    @staticmethod
+    def _parse_excel_boolean(value) -> bool:
+        """Convierte booleanos Excel y textos VERDADERO/FALSO a bool."""
+        if isinstance(value, str):
+            normalized_value = value.strip().lower()
+            if normalized_value in {"verdadero", "true", "sí", "si", "yes", "1"}:
+                return True
+            if normalized_value in {"falso", "false", "no", "0", ""}:
+                return False
+        return bool(value)
 
     # ── Parseo de Lineas_Apunte2025.xlsx ─────────────────────────────────────
 

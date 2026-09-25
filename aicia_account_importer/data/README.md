@@ -18,11 +18,11 @@ Contiene las **cabeceras** de los asientos contables.
 | 1        | Numero_Apunte      | Entero            | `100`            | Usado como `ref` en Odoo        |
 | 2        | Fecha_Contable     | Entero YYYYMMDD   | `20250103`       | Se convierte a `date`           |
 | 3        | Fecha_Introduccion | Entero YYYYMMDD   | `20250104`       | No se importa                   |
-| 4        | Descripcion        | Texto             | `"Venta enero"`  | `narration` del asiento         |
-| 5        | Numero_Documento   | Texto             | `"DOC-001"`      | Campo informativo                |
-| 6        | Importe_Total      | Entero (céntimos) | `121000`         | Solo referencial, no se importa |
-| 7        | Validado           | Booleano          | `True`           | Solo se importan los `True`     |
-| 8        | Anulado            | Booleano          | `False`          | Se omiten los `True` si activo  |
+| 4        | Importe_Total      | Entero (céntimos) | `121000`         | Solo referencial, no se importa |
+| 5        | Validado           | Booleano          | `True`           | Solo se importan los `True`     |
+| 6        | Anulado            | Booleano          | `False`          | Se omiten los `True` si activo  |
+| 7        | Descripcion        | Texto             | `"Venta enero"`  | `narration` del asiento         |
+| 8        | Numero_Documento   | Texto             | `"DOC-001"`      | Campo informativo                |
 | 9        | Clase_Apunte       | Texto             | `"R"`            | No se importa                   |
 
 - Filas totales aprox.: **10.779**
@@ -39,11 +39,11 @@ Contiene las **líneas** de cada asiento contable.
 |----------|------------------|-------------------|---------------|---------------------------------------------|
 | 0        | ID_Apunte        | Entero            | `12345`       | Clave de unión con Apuntes                  |
 | 1        | ID_Linea         | Entero            | `1`           | No se importa                               |
-| 2        | Cuenta_Contable  | Texto (9 dígitos) | `"430003604"` | Ver reglas de normalización abajo           |
-| 3        | ID_Departamento  | Entero            | `0`           | Proyecto analítico si `ID_Proyecto=0`       |
-| 4        | ID_Proyecto      | Entero            | `0`           | Proyecto analítico; `0` usa el departamento |
-| 5        | Descripcion      | Texto             | `"Cliente A"` | `name` de la línea del asiento              |
-| 6        | Importe          | Entero (céntimos) | `21982`       | Se divide entre 100 → `219,82 €`            |
+| 2        | ID_Departamento  | Entero            | `0`           | Proyecto analítico si `ID_Proyecto=0`       |
+| 3        | ID_Proyecto      | Entero            | `0`           | Proyecto analítico; `0` usa el departamento |
+| 4        | Importe          | Entero (céntimos) | `21982`       | Se divide entre 100 → `219,82 €`            |
+| 5        | Cuenta_Contable  | Texto (9 dígitos) | `"430003604"` | Ver reglas de normalización abajo           |
+| 6        | Descripcion      | Texto             | `"Cliente A"` | `name` de la línea del asiento              |
 | 7        | Tipo_Contable    | Texto `D` o `H`   | `"D"`         | `D`=Debe (debit) / `H`=Haber (credit)       |
 
 - Filas totales aprox.: **47.606**

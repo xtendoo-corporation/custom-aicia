@@ -69,11 +69,14 @@ class TestAiciaAccountImporterWizard(TransactionCase):
         ws.title = "Apuntes"
         ws.append([
             "ID_Apunte", "Numero_Apunte", "Fecha_Contable", "Fecha_Introduccion",
-            "Descripcion", "Numero_Documento", "Importe_Total", "Validado",
-            "Anulado", "Clase_Apunte",
+            "Importe_Total", "Validado", "Anulado", "Descripcion",
+            "Numero_Documento", "Clase_Apunte",
         ])
         for row in rows:
-            ws.append(row)
+            ws.append([
+                row[0], row[1], row[2], row[3], row[6], row[7], row[8],
+                row[4], row[5], row[9],
+            ])
         buf = BytesIO()
         wb.save(buf)
         return buf.getvalue()
@@ -88,11 +91,14 @@ class TestAiciaAccountImporterWizard(TransactionCase):
         ws = wb.active
         ws.title = "Lineas_Apunte"
         ws.append([
-            "ID_Apunte", "ID_Linea", "Cuenta_Contable", "ID_Departamento",
-            "ID_Proyecto", "Descripcion", "Importe", "Tipo_Contable",
+            "ID_Apunte", "ID_Linea", "ID_Departamento", "ID_Proyecto",
+            "Importe", "Cuenta_Contable", "Descripcion", "Tipo_Contable",
         ])
         for row in rows:
-            ws.append(row)
+            ws.append([
+                row[0], row[1], row[3], row[4], row[6], row[2], row[5],
+                row[7],
+            ])
         buf = BytesIO()
         wb.save(buf)
         return buf.getvalue()
@@ -171,6 +177,11 @@ class TestAiciaAccountImporterWizard(TransactionCase):
     def test_parse_fecha_contable_invalid_returns_today(self):
         wizard = self._make_wizard()
         self.assertEqual(wizard._parse_fecha_contable("no-es-fecha"), date.today())
+
+    def test_parse_excel_boolean_accepts_spanish_text_values(self):
+        wizard = self._make_wizard()
+        self.assertTrue(wizard._parse_excel_boolean("VERDADERO"))
+        self.assertFalse(wizard._parse_excel_boolean("FALSO"))
 
     # ── Tests: cuentas colectivas ─────────────────────────────────────────────
 
