@@ -93,6 +93,12 @@ class AiciaImporterWizard(models.TransientModel):
     )
     filename_employees = fields.Char(string="Nombre del archivo de personal")
 
+    data_file_departments = fields.Binary(
+        string="Archivo de Departamentos",
+        help="Seleccione el archivo Excel con los departamentos a importar.",
+    )
+    filename_departments = fields.Char(string="Nombre del archivo de departamentos")
+
     data_file_projects = fields.Binary(
         string="Archivo de Proyectos",
         help="Seleccione el archivo Excel con los proyectos a importar.",
@@ -135,7 +141,7 @@ class AiciaImporterWizard(models.TransientModel):
                   "Por favor, instálela con: pip install openpyxl")
             )
 
-        if not self.data_file_suppliers and not self.data_file_customers and not self.data_file_employees and not self.data_file_projects and not self.data_file_project_assignments:
+        if not self.data_file_suppliers and not self.data_file_customers and not self.data_file_employees and not self.data_file_projects and not self.data_file_project_assignments and not self.data_file_departments:
             raise UserError(_("Por favor, seleccione al menos un archivo para importar."))
 
         _logger.info("=" * 80)
@@ -185,6 +191,17 @@ class AiciaImporterWizard(models.TransientModel):
             all_errors.extend([f"[Personal] {e}" for e in result['error_list']])
             import_types.append('employees')
             _logger.info(f">>> PERSONAL: {result['created']} creados, {result['updated']} actualizados, {result['errors']} errores")
+
+        # Importar departamentos si se proporciona el archivo
+        if self.data_file_departments:
+            _logger.info(">>> Iniciando importación de DEPARTAMENTOS")
+            result = self._import_departments(self.data_file_departments)
+            total_created += result['created']
+            total_updated += result['updated']
+            total_errors += result['errors']
+            all_errors.extend([f"[Departamentos] {e}" for e in result['error_list']])
+            import_types.append('departments')
+            _logger.info(f">>> DEPARTAMENTOS: {result['created']} creados, {result['updated']} actualizados, {result['errors']} errores")
 
         # Importar proyectos si se proporciona el archivo
         if self.data_file_projects:
@@ -246,6 +263,8 @@ class AiciaImporterWizard(models.TransientModel):
                 entity_text = 'Clientes'
             elif import_types[0] == 'employees':
                 entity_text = 'Empleados'
+            elif import_types[0] == 'departments':
+                entity_text = 'Departamentos'
             elif import_types[0] == 'projects':
                 entity_text = 'Proyectos'
             elif import_types[0] == 'project_assignments':
@@ -1495,6 +1514,120 @@ class AiciaImporterWizard(models.TransientModel):
             _logger.error(f"Stack trace completo:\n{traceback.format_exc()}")
 
 
+    @staticmethod
+    def _cell_to_str(value):
+        """Convierte una celda a texto conservando el 0 (que en Python es falsy)."""
+        if value is None or value is False or value == '':
+            return ''
+        if isinstance(value, float) and value.is_integer():
+            return str(int(value))
+        return str(value).strip()
+
+    def _find_department(self, dep_code):
+        """Busca el departamento cuyo nombre empieza por el código a 2 dígitos ('05-...')."""
+        return self.env['hr.department'].search([
+            ('name', '=like', f'{str(dep_code).zfill(2)}-%')
+        ], limit=1)
+
+    def _get_general_project_vals(self, departamento):
+        """Código y nombre del proyecto general de un departamento (ID_Proyecto = 0).
+
+        Código: ID_Departamento a 4 dígitos ('5' -> '0005').
+        Nombre: nombre del departamento sin el prefijo numérico + ' GENERAL'.
+        """
+        department = self._find_department(departamento)
+        if not department:
+            return False
+        name = re.sub(r'^\d+-', '', department.name).strip()
+        if not name.upper().endswith('GENERAL'):
+            name = f"{name} GENERAL"
+        return {'code': departamento.zfill(4), 'name': name}
+
+    def _import_departments(self, file_data):
+        """Importa departamentos (hr.department) desde un archivo Excel.
+
+        Columnas: ID_Departamento, Nombre, Observaciones, ID_DepartamentoPadre.
+        El nombre se guarda como 'NN-NOMBRE', formato que usan el resto de importadores.
+        """
+        result = {
+            'created': 0,
+            'updated': 0,
+            'errors': 0,
+            'error_list': []
+        }
+        try:
+            file_content = b64decode(file_data)
+            workbook = openpyxl.load_workbook(BytesIO(file_content))
+            sheet = workbook.active
+
+            headers = {}
+            for col_idx, cell in enumerate(sheet[1], start=1):
+                if cell.value:
+                    headers[cell.value.strip()] = col_idx
+
+            missing_columns = [col for col in ('ID_Departamento', 'Nombre') if col not in headers]
+            if missing_columns:
+                error_msg = f"Faltan columnas requeridas: {', '.join(missing_columns)}"
+                result['errors'] += 1
+                result['error_list'].append(error_msg)
+                return result
+
+            # Los padres pueden aparecer después de sus hijos: se asignan en una segunda pasada
+            pending_parents = []
+            for row_idx, row in enumerate(sheet.iter_rows(min_row=2, values_only=True), start=2):
+                try:
+                    data = dict(zip(headers.keys(), row))
+                    dep_code = self._cell_to_str(data.get('ID_Departamento'))
+                    nombre = self._cell_to_str(data.get('Nombre'))
+                    observaciones = self._cell_to_str(data.get('Observaciones'))
+                    parent_code = self._cell_to_str(data.get('ID_DepartamentoPadre'))
+
+                    if not dep_code or not nombre:
+                        result['errors'] += 1
+                        result['error_list'].append(f"Fila {row_idx}: Sin ID_Departamento o Nombre")
+                        continue
+
+                    vals = {'name': f"{dep_code.zfill(2)}-{nombre}"}
+                    if observaciones:
+                        vals['note'] = observaciones
+
+                    department = self._find_department(dep_code)
+                    if department:
+                        if not self.update_existing:
+                            continue
+                        department.write(vals)
+                        result['updated'] += 1
+                        _logger.info(f"✓ Departamento actualizado: {vals['name']}")
+                    else:
+                        department = self.env['hr.department'].create(vals)
+                        result['created'] += 1
+                        _logger.info(f"✓ Departamento creado: {vals['name']}")
+
+                    if parent_code:
+                        pending_parents.append((row_idx, department, parent_code))
+                except Exception as e:
+                    result['errors'] += 1
+                    result['error_list'].append(f"Fila {row_idx}: {str(e)}")
+                    _logger.error(f"✗ Error procesando fila {row_idx}: {str(e)}")
+
+            for row_idx, department, parent_code in pending_parents:
+                parent = self._find_department(parent_code)
+                if parent:
+                    department.parent_id = parent
+                else:
+                    result['errors'] += 1
+                    result['error_list'].append(
+                        f"Fila {row_idx}: Departamento padre '{parent_code}' no encontrado"
+                    )
+
+        except Exception as e:
+            result['errors'] += 1
+            error_msg = f"Error general al procesar archivo: {str(e)}"
+            result['error_list'].append(error_msg)
+            _logger.error(f"✗ {error_msg}")
+
+        return result
+
     def _import_projects(self, file_data):
         # """Importa proyectos (cuentas analíticas) desde un archivo Excel."""
         result = {
@@ -1533,11 +1666,23 @@ class AiciaImporterWizard(models.TransientModel):
                     data = dict(zip(headers.keys(), row))
 
                     # Obtener valores de las celdas
-                    codigo = str(data.get('Codigo', '') or data.get('ID_Proyecto', '')).strip()
+                    codigo = self._cell_to_str(data.get('Codigo')) or self._cell_to_str(data.get('ID_Proyecto'))
                     nombre = str(data.get('Nombre', '')).strip() if data.get('Nombre') else ''
                     cliente = str(data.get('ID_Cliente', '')).strip() if data.get('ID_Cliente') else ''
                     sujeto_convenio = data.get('Sujeto_Convenio', True)
-                    departamento = str(data.get('ID_Departamento', '')).strip() if data.get('ID_Departamento') else ''
+                    departamento = self._cell_to_str(data.get('ID_Departamento'))
+
+                    # ID_Proyecto 0 = proyecto general del departamento
+                    if codigo == '0':
+                        general_vals = self._get_general_project_vals(departamento) if departamento else False
+                        if not general_vals:
+                            result['errors'] += 1
+                            result['error_list'].append(
+                                f"Fila {row_idx}: Proyecto general sin departamento válido (ID_Departamento='{departamento}')"
+                            )
+                            continue
+                        codigo = general_vals['code']
+                        nombre = general_vals['name']
                     observaciones = str(data.get('Observaciones', '')).strip() if data.get('Observaciones') else ''
                     jefe_proyecto = str(data.get('Jefe_Proyecto', '')).strip() if data.get('Jefe_Proyecto') else ''
                     presupuesto = data.get('Presupuesto', 0)
@@ -1580,11 +1725,8 @@ class AiciaImporterWizard(models.TransientModel):
 
                     # Buscar departamento
                     department_id = False
-                    if departamento is not None and departamento != '':
-                        dep_code = str(departamento).zfill(2)
-                        department = self.env['hr.department'].search([
-                            ('name', 'ilike', f'{dep_code}-')
-                        ], limit=1)
+                    if departamento:
+                        department = self._find_department(departamento)
                         if department:
                             department_id = department.id
                             print("Departamento encontrado:", department.name)
@@ -1739,17 +1881,10 @@ class AiciaImporterWizard(models.TransientModel):
                     data = dict(zip(headers.keys(), row))
 
                     # Obtener valores — float->int->str para evitar "123.0", preservando ceros a la izquierda si ya es str
-                    def _to_str(v):
-                        if v in (None, '', False):
-                            return ''
-                        if isinstance(v, float):
-                            return str(int(v)).strip()
-                        return str(v).strip()
-
-                    id_proyecto = _to_str(data.get('ID_Proyecto'))
-                    id_personal = _to_str(data.get('ID_Personal'))
-                    id_departamento = _to_str(data.get('ID_Departamento'))
-                    jefe_proyecto = _to_str(data.get('Jefe_Proyecto'))
+                    id_proyecto = self._cell_to_str(data.get('ID_Proyecto'))
+                    id_personal = self._cell_to_str(data.get('ID_Personal'))
+                    id_departamento = self._cell_to_str(data.get('ID_Departamento'))
+                    jefe_proyecto = self._cell_to_str(data.get('Jefe_Proyecto'))
 
                     _logger.info(f">>> Fila {row_idx}: ID_Proyecto={repr(data.get('ID_Proyecto'))} -> '{id_proyecto}' | ID_Personal={repr(data.get('ID_Personal'))} -> '{id_personal}' | Jefe_Proyecto={repr(data.get('Jefe_Proyecto'))} -> '{jefe_proyecto}'")
 
@@ -1761,6 +1896,15 @@ class AiciaImporterWizard(models.TransientModel):
                     if not id_personal:
                         _logger.warning(f"Fila {row_idx}: Sin ID de personal, saltando...")
                         continue
+
+                    # ID_Proyecto 0 = proyecto general del departamento (código 00XX)
+                    if id_proyecto == '0':
+                        if not id_departamento:
+                            error_msg = f"Fila {row_idx}: Proyecto general (ID_Proyecto=0) sin ID_Departamento"
+                            result['error_list'].append(error_msg)
+                            _logger.warning(f"✗ {error_msg}")
+                            continue
+                        id_proyecto = id_departamento.zfill(4)
 
                     # Buscar el proyecto por código
                     project = self.env['account.analytic.account'].search([

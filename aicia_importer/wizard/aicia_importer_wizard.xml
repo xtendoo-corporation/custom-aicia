@@ -259,6 +259,7 @@
                                     <li>Primera fila: encabezados de columnas</li>
                                     <li><b>Columnas:</b> Codigo (o ID_Proyecto), Nombre, Cliente, Activo</li>
                                     <li><b>Codigo:</b> Código único del proyecto (opcional)</li>
+                                    <li><b>ID_Proyecto = 0:</b> proyecto general del departamento. Código = ID_Departamento a 4 dígitos (0005) y nombre = departamento + " GENERAL". Importe antes los departamentos.</li>
                                     <li><b>Nombre:</b> Nombre del proyecto (obligatorio)</li>
                                     <li><b>Cliente:</b> Nombre o referencia del cliente asociado (opcional)</li>
                                     <li><b>Activo:</b> TRUE/FALSE o 1/0 para indicar si está activo (opcional, por defecto TRUE)</li>
@@ -287,6 +288,73 @@
                 </footer>
             </form>
         </field>
+    </record>
+
+    <!-- Vista para DEPARTAMENTOS -->
+    <record id="aicia_importer_departments_view" model="ir.ui.view">
+        <field name="name">AICIA - Importador de Departamentos</field>
+        <field name="model">aicia.importer.wizard</field>
+        <field name="priority">10</field>
+        <field name="arch" type="xml">
+            <form string="Importador de Departamentos AICIA">
+                <field name="state" invisible="1"/>
+                <group invisible="state == 'done'">
+                    <field name="data_file_departments" filename="filename_departments" widget="binary"/>
+                    <field name="filename_departments" invisible="1"/>
+                </group>
+                <group invisible="state == 'done'">
+                    <field name="update_existing"/>
+                </group>
+
+                <group invisible="state == 'draft'">
+                    <field name="import_log" nolabel="1" colspan="2"/>
+                </group>
+
+                <notebook invisible="state == 'done'">
+                    <page string="Información">
+                        <group>
+                            <p>
+                                Este asistente permite importar departamentos desde archivos Excel (.xlsx).
+                            </p>
+                            <p>
+                                <b>Formato esperado:</b>
+                                <ul>
+                                    <li>Primera fila: encabezados de columnas</li>
+                                    <li><b>ID_Departamento:</b> Código numérico del departamento (obligatorio)</li>
+                                    <li><b>Nombre:</b> Nombre del departamento (obligatorio)</li>
+                                    <li><b>Observaciones:</b> Notas del departamento (opcional)</li>
+                                    <li><b>ID_DepartamentoPadre:</b> Código del departamento padre (opcional)</li>
+                                </ul>
+                            </p>
+                            <p>
+                                Los departamentos se guardan como "NN-NOMBRE" (ej. "05-INGENIERIA DE ORGANIZACION")
+                                y se buscan por ese prefijo numérico.
+                            </p>
+                        </group>
+                    </page>
+                </notebook>
+                <footer>
+                    <button
+                        name="import_suppliers"
+                        string="Importar"
+                        type="object"
+                        class="btn-primary"
+                        invisible="state == 'done'"
+                    />
+                    <button string="Cerrar" class="btn-primary" special="cancel" invisible="state == 'draft'"/>
+                    <button string="Cancelar" class="btn-secondary" special="cancel" invisible="state == 'done'"/>
+                </footer>
+            </form>
+        </field>
+    </record>
+
+    <!-- Acción para DEPARTAMENTOS -->
+    <record id="aicia_importer_departments_action" model="ir.actions.act_window">
+        <field name="name">Importar Departamentos</field>
+        <field name="res_model">aicia.importer.wizard</field>
+        <field name="view_mode">form</field>
+        <field name="view_id" ref="aicia_importer_departments_view"/>
+        <field name="target">new</field>
     </record>
 
     <!-- Acción para PROYECTOS -->

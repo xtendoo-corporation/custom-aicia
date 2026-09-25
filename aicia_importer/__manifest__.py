@@ -2,7 +2,7 @@
     "name": "AICIA - Importador de Clientes, Proveedores, Empleados y Proyectos",
     "author": "Xtendoo",
     "category": "Extra Tools",
-    "version": "19.0.1.0.5",
+    "version": "19.0.1.0.6",
     "depends": [
         "base",
         "purchase",
@@ -11,6 +11,7 @@
         "analytic",
         "portal_requests",
         "aicia_employee_project_percentage",
+        "aicia_account_menu",
     ],
     "license": "AGPL-3",
     "application": True,
