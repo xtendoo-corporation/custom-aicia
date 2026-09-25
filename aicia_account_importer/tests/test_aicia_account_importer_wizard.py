@@ -926,8 +926,9 @@ class TestAiciaAccountImporterWizard(TransactionCase):
             file_lineas=self._enc(lineas),
             skip_anulados=True,
         )
-        with self.assertRaises(UserError):
-            # No hay asientos válidos → UserError del _parse_apuntes
+        with self.assertRaisesRegex(
+            UserError, r"fila Excel 2.*ID_Apunte=5.*Anulado=True"
+        ):
             wizard.action_import()
 
     def test_import_skips_not_validated(self):
@@ -941,7 +942,9 @@ class TestAiciaAccountImporterWizard(TransactionCase):
         wizard = self._make_wizard(
             file_apuntes=self._enc(apuntes), file_lineas=self._enc(lineas)
         )
-        with self.assertRaises(UserError):
+        with self.assertRaisesRegex(
+            UserError, r"fila Excel 2.*ID_Apunte=6.*Validado=False"
+        ):
             wizard.action_import()
 
     def test_import_no_lines_for_entry_is_error(self):

@@ -935,10 +935,21 @@ class AiciaAccountImporterWizard(models.TransientModel):
         ws = wb.worksheets[0]
 
         apuntes = {}
+        discarded_rows = []
+        data_rows = 0
         c = APUNTES_COLS
-        for row in ws.iter_rows(min_row=2, values_only=True):
+        for excel_row, row in enumerate(
+            ws.iter_rows(min_row=2, values_only=True), start=2
+        ):
+            if not any(value is not None for value in row):
+                continue
+            data_rows += 1
             id_apunte = row[c["id"]]
             if id_apunte is None:
+                discarded_rows.append(
+                    _("fila Excel %(row)d: ID_Apunte vacío")
+                    % {"row": excel_row}
+                )
                 continue
             try:
                 id_apunte = int(float(id_apunte))
@@ -949,8 +960,30 @@ class AiciaAccountImporterWizard(models.TransientModel):
             anulado = row[c["anulado"]]
 
             if not validado:
+                discarded_rows.append(
+                    _(
+                        "fila Excel %(row)d, ID_Apunte=%(id)s: "
+                        "Validado=%(validado)s"
+                    )
+                    % {
+                        "row": excel_row,
+                        "id": id_apunte,
+                        "validado": validado,
+                    }
+                )
                 continue
             if self.skip_anulados and anulado:
+                discarded_rows.append(
+                    _(
+                        "fila Excel %(row)d, ID_Apunte=%(id)s: "
+                        "Anulado=%(anulado)s"
+                    )
+                    % {
+                        "row": excel_row,
+                        "id": id_apunte,
+                        "anulado": anulado,
+                    }
+                )
                 continue
 
             numero_raw = row[c["numero"]]
@@ -975,11 +1008,18 @@ class AiciaAccountImporterWizard(models.TransientModel):
             }
 
         if not apuntes:
+            details = "; ".join(discarded_rows[:20]) or _("sin detalle")
+            if len(discarded_rows) > 20:
+                details += _("; ... (%d filas descartadas en total)") % len(
+                    discarded_rows
+                )
             raise UserError(
                 _(
                     "El archivo Apuntes2025.xlsx no contiene asientos válidos "
-                    "(Validado=True, Anulado=False)."
+                    "(Validado=True, Anulado=False). Se han leído %(rows)d "
+                    "filas de datos y se han descartado: %(details)s"
                 )
+                % {"rows": data_rows, "details": details}
             )
         return apuntes
 
