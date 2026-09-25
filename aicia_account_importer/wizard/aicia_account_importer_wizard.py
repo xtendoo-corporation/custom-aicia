@@ -598,9 +598,6 @@ class AiciaAccountImporterWizard(models.TransientModel):
             raise UserError(
                 _("La librería 'openpyxl' no está instalada en el servidor.")
             )
-        self.write({"state": "processing"})
-        self.env.cr.commit()
-
         self._append_import_activity(activity_log, "info", _("Leyendo archivo de apuntes."))
         apuntes = self._parse_apuntes(b64decode(self.file_apuntes))
         self._append_import_activity(
@@ -617,6 +614,10 @@ class AiciaAccountImporterWizard(models.TransientModel):
             "success",
             _("%d líneas contables leídas.") % total_lineas,
         )
+        self._validate_analytic_assignments(apuntes, lineas_by_apunte)
+
+        self.write({"state": "processing"})
+        self.env.cr.commit()
 
         # Construir diccionario de mapeo de cuentas {source_code: account_record}
         account_mapping = self._get_account_mapping_rules()
@@ -1063,6 +1064,47 @@ class AiciaAccountImporterWizard(models.TransientModel):
             )
 
         return lineas_by_apunte
+
+    def _validate_analytic_assignments(
+        self, apuntes: dict, lineas_by_apunte: dict
+    ):
+        """Impide importar líneas sin una cuenta analítica resoluble."""
+        analytic_by_code = {}
+        missing_assignments = []
+
+        for id_apunte, lineas in lineas_by_apunte.items():
+            if id_apunte not in apuntes:
+                continue
+            for line_number, linea in enumerate(lineas, start=1):
+                analytic_code = str(linea.get("id_proyecto") or "").strip()
+                analytic = analytic_by_code.get(analytic_code)
+                if analytic_code and analytic is None:
+                    analytic = self.env["account.analytic.account"].search(
+                        [("code", "=", analytic_code)], limit=1
+                    )
+                    analytic_by_code[analytic_code] = analytic
+                if analytic:
+                    continue
+                missing_assignments.append(
+                    _("ID=%(id)s, línea %(line)d, código '%(code)s'")
+                    % {
+                        "id": id_apunte,
+                        "line": line_number,
+                        "code": analytic_code or _("vacío"),
+                    }
+                )
+
+        if missing_assignments:
+            details = "; ".join(missing_assignments[:20])
+            if len(missing_assignments) > 20:
+                details += _("; ... (%d líneas en total)") % len(missing_assignments)
+            raise UserError(
+                _(
+                    "No se puede iniciar la importación porque hay líneas sin "
+                    "cuenta analítica asignada. Revisa: %s"
+                )
+                % details
+            )
 
     # ── Procesamiento de un asiento ───────────────────────────────────────────
 

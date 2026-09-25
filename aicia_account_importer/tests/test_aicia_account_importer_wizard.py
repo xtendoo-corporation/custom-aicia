@@ -1410,11 +1410,10 @@ class TestAiciaAccountImporterWizard(TransactionCase):
         for line in move.line_ids:
             self.assertEqual(line.analytic_distribution, {str(analytic.id): 100.0})
 
-    def test_import_project_empty_leaves_no_analytic(self):
-        """Celda ID_Proyecto vacía (None) → sin distribución analítica."""
+    def test_import_project_empty_blocks_import_before_creating_moves(self):
+        """Una línea sin ID_Proyecto impide crear cualquier asiento."""
         self._ensure_account("430000", "Clientes", "asset_receivable")
         self._ensure_account("700000", "Ventas", "income")
-        self._ensure_analytic_account("0000", "Departamento 0")
 
         apuntes = self._make_apuntes_xlsx([
             [43, 4300, 20250115, None, "Sin proyecto", "DOC", 30000, True, False, "R"],
@@ -1426,12 +1425,36 @@ class TestAiciaAccountImporterWizard(TransactionCase):
         wizard = self._make_wizard(
             file_apuntes=self._enc(apuntes), file_lineas=self._enc(lineas)
         )
-        wizard.action_import()
+        with self.assertRaisesRegex(UserError, "sin cuenta analítica asignada"):
+            wizard.action_import()
 
-        move = self._find_move_by_legacy_number("4300")
-        self.assertTrue(move)
-        for line in move.line_ids:
-            self.assertFalse(
-                line.analytic_distribution,
-                "Sin ID_Proyecto no debe asignarse distribución analítica",
-            )
+        self.assertFalse(
+            self._find_move_by_legacy_number("4300"),
+            "No debe crearse ningún asiento si falta una analítica",
+        )
+
+    def test_import_missing_analytic_account_blocks_import(self):
+        """Una analítica inexistente bloquea todos los asientos del lote."""
+        self._ensure_account("430000", "Clientes", "asset_receivable")
+        self._ensure_account("700000", "Ventas", "income")
+        analytic = self._ensure_analytic_account("23", "Proyecto 23")
+
+        apuntes = self._make_apuntes_xlsx([
+            [45, 4500, 20250115, None, "Proyecto válido", "DOC", 30000, True, False, "R"],
+            [46, 4600, 20250115, None, "Proyecto inexistente", "DOC", 30000, True, False, "R"],
+        ])
+        lineas = self._make_lineas_xlsx([
+            [45, 1, "430000001", 11, 23, "Test", 30000, "D"],
+            [45, 2, "700000000", 11, 23, "Test", 30000, "H"],
+            [46, 1, "430000001", 11, 9999, "Test", 30000, "D"],
+            [46, 2, "700000000", 11, 9999, "Test", 30000, "H"],
+        ])
+        wizard = self._make_wizard(
+            file_apuntes=self._enc(apuntes), file_lineas=self._enc(lineas)
+        )
+        with self.assertRaisesRegex(UserError, "sin cuenta analítica asignada"):
+            wizard.action_import()
+
+        self.assertTrue(analytic)
+        self.assertFalse(self._find_move_by_legacy_number("4500"))
+        self.assertFalse(self._find_move_by_legacy_number("4600"))
