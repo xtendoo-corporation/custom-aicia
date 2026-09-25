@@ -38,8 +38,8 @@ except ImportError:
 #    Col 0: ID_Apunte          → clave de unión con Apuntes (col 0 de ambos ficheros)
 #    Col 1: ID_Linea           → identificador de línea (no se usa)
 #    Col 2: Cuenta_Contable    → 9 dígitos (ej: 430003604)
-#    Col 3: ID_Departamento    → analítico (futuro uso)
-#    Col 4: ID_Proyecto        → analítico (futuro uso)
+#    Col 3: ID_Departamento    → proyecto analítico si ID_Proyecto es 0
+#    Col 4: ID_Proyecto        → proyecto analítico
 #    Col 5: Descripcion        → descripción de la línea
 #    Col 6: Importe            → entero en CÉNTIMOS (siempre positivo)
 #    Col 7: Tipo_Contable      → "D" = Debe / "H" = Haber
@@ -93,6 +93,7 @@ APUNTES_COLS = {
 LINEAS_COLS = {
     "id_apunte": 0,   # ID_Apunte — clave de unión con la cabecera (col 0 de ambos ficheros)
     "cuenta": 2,
+    "id_departamento": 3,  # ID_Departamento → proyecto analítico cuando ID_Proyecto=0
     "id_proyecto": 4,  # ID_Proyecto → cuenta analítica (ref en account.analytic.account)
     "descripcion": 5,
     "importe": 6,
@@ -1011,12 +1012,45 @@ class AiciaAccountImporterWizard(models.TransientModel):
 
             importe = round(importe_cents / 100, 2)
 
-            # ID_Proyecto → cuenta analítica (col 4)
+            # ID_Proyecto → cuenta analítica (col 4). Cuando vale 0, el
+            # proyecto analítico se obtiene de ID_Departamento (col 3).
+            id_departamento_raw = (
+                row[c["id_departamento"]]
+                if len(row) > c["id_departamento"]
+                else None
+            )
             id_proyecto_raw = row[c["id_proyecto"]] if len(row) > c["id_proyecto"] else None
             try:
-                id_proyecto = int(float(id_proyecto_raw)) if id_proyecto_raw is not None else None
+                id_proyecto_value = (
+                    int(float(id_proyecto_raw))
+                    if id_proyecto_raw is not None
+                    else None
+                )
             except (ValueError, TypeError):
-                id_proyecto = str(id_proyecto_raw).strip() if id_proyecto_raw else None
+                id_proyecto_value = (
+                    str(id_proyecto_raw).strip() if id_proyecto_raw else None
+                )
+
+            if id_proyecto_value == 0:
+                try:
+                    departamento = (
+                        int(float(id_departamento_raw))
+                        if id_departamento_raw is not None
+                        else None
+                    )
+                except (ValueError, TypeError):
+                    departamento = (
+                        str(id_departamento_raw).strip()
+                        if id_departamento_raw
+                        else None
+                    )
+                id_proyecto = (
+                    str(departamento).zfill(4)
+                    if departamento is not None
+                    else None
+                )
+            else:
+                id_proyecto = id_proyecto_value
 
             lineas_by_apunte[id_apunte].append(
                 {
@@ -1272,9 +1306,9 @@ class AiciaAccountImporterWizard(models.TransientModel):
                 "Cuenta '%s' no encontrada ni en colectivas ni en el plan contable."
             ) % account_lookup_code, None
 
-        # ── Distribución analítica por ID_Proyecto (100%) ────────────────────
-        # ID_Proyecto=0 es un proyecto válido ([0] AICIA), por lo que se debe
-        # distinguir explícitamente de la ausencia de valor (None).
+        # ── Distribución analítica por proyecto/departamento (100%) ──────────
+        # ID_Proyecto=0 indica que el código analítico debe salir de
+        # ID_Departamento, ya normalizado a cuatro dígitos durante el parseo.
         analytic_distribution = {}
         id_proyecto = linea.get("id_proyecto")
         if id_proyecto is not None:

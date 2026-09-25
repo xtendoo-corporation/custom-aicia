@@ -1361,17 +1361,17 @@ class TestAiciaAccountImporterWizard(TransactionCase):
         self.assertEqual(len(moves), 1, "No debe duplicarse el asiento reimportado")
 
     def test_import_project_zero_assigns_aicia_analytic(self):
-        """ID_Proyecto=0 asigna la cuenta analítica [0] AICIA (0 no es 'sin proyecto')."""
+        """ID_Proyecto=0 usa ID_Departamento como código analítico de 4 dígitos."""
         self._ensure_account("430000", "Clientes", "asset_receivable")
         self._ensure_account("700000", "Ventas", "income")
-        analytic = self._ensure_analytic_account("0", "AICIA")
+        analytic = self._ensure_analytic_account("0011", "Departamento 11")
 
         apuntes = self._make_apuntes_xlsx([
             [42, 4200, 20250115, None, "Proyecto 0", "DOC", 30000, True, False, "R"],
         ])
         lineas = self._make_lineas_xlsx([
-            [42, 1, "430000001", 0, 0, "Test", 30000, "D"],
-            [42, 2, "700000000", 0, 0, "Test", 30000, "H"],
+            [42, 1, "430000001", 11, 0, "Test", 30000, "D"],
+            [42, 2, "700000000", 11, 0, "Test", 30000, "H"],
         ])
         wizard = self._make_wizard(
             file_apuntes=self._enc(apuntes), file_lineas=self._enc(lineas)
@@ -1384,14 +1384,37 @@ class TestAiciaAccountImporterWizard(TransactionCase):
             self.assertEqual(
                 line.analytic_distribution,
                 {str(analytic.id): 100.0},
-                "Toda línea con ID_Proyecto=0 debe imputarse al proyecto AICIA",
+                "Toda línea con ID_Proyecto=0 debe usar el departamento como proyecto",
             )
+
+    def test_import_project_nonzero_keeps_project_code(self):
+        """ID_Proyecto distinto de cero mantiene su código original."""
+        self._ensure_account("430000", "Clientes", "asset_receivable")
+        self._ensure_account("700000", "Ventas", "income")
+        analytic = self._ensure_analytic_account("23", "Proyecto 23")
+
+        apuntes = self._make_apuntes_xlsx([
+            [44, 4400, 20250115, None, "Proyecto 23", "DOC", 30000, True, False, "R"],
+        ])
+        lineas = self._make_lineas_xlsx([
+            [44, 1, "430000001", 11, 23, "Test", 30000, "D"],
+            [44, 2, "700000000", 11, 23, "Test", 30000, "H"],
+        ])
+        wizard = self._make_wizard(
+            file_apuntes=self._enc(apuntes), file_lineas=self._enc(lineas)
+        )
+        wizard.action_import()
+
+        move = self._find_move_by_legacy_number("4400")
+        self.assertTrue(move)
+        for line in move.line_ids:
+            self.assertEqual(line.analytic_distribution, {str(analytic.id): 100.0})
 
     def test_import_project_empty_leaves_no_analytic(self):
         """Celda ID_Proyecto vacía (None) → sin distribución analítica."""
         self._ensure_account("430000", "Clientes", "asset_receivable")
         self._ensure_account("700000", "Ventas", "income")
-        self._ensure_analytic_account("0", "AICIA")
+        self._ensure_analytic_account("0000", "Departamento 0")
 
         apuntes = self._make_apuntes_xlsx([
             [43, 4300, 20250115, None, "Sin proyecto", "DOC", 30000, True, False, "R"],
