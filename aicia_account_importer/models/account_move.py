@@ -8,7 +8,7 @@ class AccountMove(models.Model):
     _inherit = "account.move"
 
     numero_asiento_aicia = fields.Char(
-        string="Nº Asiento AICIA",
+        string="Asiento AICIA",
         index=True,
         copy=False,
         readonly=True,

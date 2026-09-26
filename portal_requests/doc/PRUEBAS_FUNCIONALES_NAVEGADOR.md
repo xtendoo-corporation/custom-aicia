@@ -15,6 +15,11 @@
 
 ## 0. Configuración inicial (rellena antes de empezar)
 
+> Los nombres, logins y contraseñas concretos de cada usuario de prueba, junto
+> con los pasos exactos para crearlos desde el navegador, están en
+> [`USUARIOS_PRUEBA.md`](./USUARIOS_PRUEBA.md). Copia sus valores en la tabla
+> siguiente.
+
 Sustituye estos valores por los reales del entorno antes de ejecutar:
 
 | Variable | Valor a usar | Ejemplo |
@@ -28,6 +33,13 @@ Sustituye estos valores por los reales del entorno antes de ejecutar:
 | `USER_RESP_CLIENTES` / `PASS_RESP_CLIENTES` | **Responsable de Clientes y Becarios** | |
 | `USER_DG` / `PASS_DG` | **Director Gerente** | |
 | `PROYECTO_PRUEBA` | Nombre de un proyecto/analítica de prueba | |
+| `EQUIPO_PRUEBA` | Equipo de trabajo (`portal.work.group`) al que pertenece `USER_SOLICITANTE` | |
+| `EMPLEADO_INACTIVO` | Un `hr.employee` archivado, para probar altas (I3/J3) | |
+| `EMPLEADO_ACTIVO` | Un `hr.employee` activo, para probar bajas (I4/J4) | |
+| `USER_SIN_EMPLEADO` / `PASS_SIN_EMPLEADO` | Usuario de portal **sin** `hr.employee` vinculado (L1) | |
+| `USER_CON_EMPLEADO` / `PASS_CON_EMPLEADO` | Usuario con `hr.employee` vinculado, para nóminas (L2-L5) | |
+| `ATTACHMENT_ID_NOMINA_AJENA` | Id de un adjunto `nomina_*` de **otro** empleado (visible en backend → Adjuntos), para la prueba de seguridad L5 | |
+| `PROVEEDOR_PRUEBA` | Un `res.partner` proveedor, para la orden de compra (G1) | |
 | `EMAIL_BANDEJA` | Cómo revisar correos (buzón real o Odoo → Ajustes → Técnico → Correos electrónicos) | |
 
 **Archivos de prueba que necesitarás preparar en el equipo:**
@@ -35,6 +47,8 @@ Sustituye estos valores por los reales del entorno antes de ejecutar:
 - `documento_falso.txt` — un archivo de texto renombrado o no PDF.
 - `falso.pdf` — un archivo con extensión `.pdf` pero contenido que **no** es PDF
   (por ejemplo, un `.txt` renombrado a `.pdf`).
+- `nomina_enero_2025.pdf` — copia de `documento_valido.pdf` renombrada con el
+  patrón `nomina_<concepto>_<año>.pdf`, para las pruebas del Bloque L.
 
 > **Cómo verificar correos:** siempre que una prueba diga "comprueba que se envía
 > un correo", revísalo en `EMAIL_BANDEJA`. En Odoo backend:
@@ -252,6 +266,18 @@ gratificación admite un único documento. La solicitud se crea correctamente.
 **Resultado esperado:** la solicitud se crea con **todos** los archivos
 adjuntos.
 
+### F2b. Pago de material inventariable: archivo de inventario con prefijo
+**Precondiciones:** sesión como `USER_SOLICITANTE`; dos PDF válidos.
+**Pasos:**
+1. Navega a `URL_BASE/portal/hr_expensive_request`.
+2. Selecciona **"Pago de material inventariable"** y `PROYECTO_PRUEBA`.
+3. Adjunta un PDF como justificante y otro en el campo específico de
+   **archivo de inventario**.
+4. **Envía**.
+**Resultado esperado:** la solicitud se crea con ambos adjuntos; el archivo de
+inventario se guarda con el nombre prefijado **`inventario_<nombre original>`**
+para distinguirlo del resto de justificantes.
+
 ### F3. Gasto por debajo de 10.000 € — el DG NO es notificado
 **Objetivo:** verificar el umbral.
 **Precondiciones:** poder aprobar como `USER_JEFE_EQUIPO` y `USER_RESP_COMPRAS`.
@@ -291,18 +317,40 @@ Compras.
 
 ## Bloque G — Pagos / órdenes de compra
 
-### G1. Notificación al Responsable de Proveedores
-**Precondiciones:** sesión como `USER_SOLICITANTE`.
-**Pasos:**
-1. Navega a `URL_BASE/portal/purchase_order_request` (o crea una solicitud de
-   pago desde `URL_BASE/my/payments`).
-2. Completa los datos, adjunta `documento_valido.pdf` y **Envía**.
-3. Revisa `EMAIL_BANDEJA` del **Responsable de Proveedores** (`personal@aicia.es`).
-**Resultado esperado:** el Responsable de Proveedores recibe la notificación de
-pago. El adjunto que llega es correcto y legible (no un archivo "RAW" sin
-sentido).
+> **Nota de código (verificar con negocio):** el controlador de
+> `/portal/purchase_order_request` notifica actualmente a los usuarios del
+> grupo técnico **"Ajustes → Usuarios y compañías"** (`base.group_system`,
+> administradores del sistema), **no** al grupo funcional "Responsable de
+> Personal y Compras" (`personal@aicia.es`) que describe el manual de usuario.
+> La prueba G1 debe ejecutarse comprobando **ambos** buzones para confirmar
+> cuál es el comportamiento real y si coincide con lo esperado por negocio.
 
-### G2. Visualización/descarga de adjuntos en solicitudes pendientes
+### G1. Notificación al crear una orden de compra
+**Precondiciones:** sesión como `USER_SOLICITANTE`; existe un proveedor
+(`res.partner`) de prueba.
+**Pasos:**
+1. Navega a `URL_BASE/portal/purchase_order_request`.
+2. Selecciona el **proveedor**, escribe un **concepto** reconocible (p. ej.
+   `Concepto prueba G1`) y **Envía**.
+3. Revisa `EMAIL_BANDEJA` de los **administradores del sistema** (`base.group_system`)
+   y, por comparación, la del **Responsable de Personal y Compras**.
+**Resultado esperado:** se crea una `purchase.order` en borrador con una línea
+de nota (sin producto ni importe) con el concepto introducido. Se envía un
+correo con el nombre del proveedor, la referencia de la orden y el concepto.
+Anota **a quién llega realmente** el correo (para contrastar con el manual).
+
+### G2. Redirección tras enviar la orden de compra
+**Precondiciones:** igual que G1.
+**Pasos:**
+1. Repite el envío de G1.
+2. Observa la URL final del navegador tras pulsar **Enviar**.
+**Resultado esperado:** *(caso a confirmar)* la redirección actual es a
+`/contactus-thank-you` (página genérica de contacto), no a una página de
+agradecimiento propia del flujo de pagos/compras como ocurre en documentos,
+facturas o gastos. Confirma si esto es intencionado o una inconsistencia a
+corregir.
+
+### G3. Visualización/descarga de adjuntos en solicitudes pendientes
 **Precondiciones:** una solicitud (proyecto o pago) con adjuntos, en estado
 pendiente.
 **Pasos:**
@@ -310,6 +358,18 @@ pendiente.
 2. Intenta **previsualizar** y **descargar** el adjunto.
 **Resultado esperado:** el adjunto se **visualiza y descarga** correctamente
 (prueba de regresión del error de renombrado/procesado de archivos).
+
+### G4. Acceso al listado y detalle de pagos (`/my/payments`)
+**Precondiciones:** un pago (`account.payment`) vinculado a una factura con
+distribución analítica sobre un proyecto cuyo **responsable** es
+`USER_SOLICITANTE` (o su Jefe de Equipo).
+**Pasos:**
+1. Inicia sesión como el usuario responsable del proyecto.
+2. Navega a `URL_BASE/my/payments`.
+3. Abre el detalle de un pago concreto.
+**Resultado esperado:** el listado muestra el pago; el detalle muestra el
+**importe** correctamente. Un usuario **sin relación** con el proyecto no debe
+ver ese pago en su listado.
 
 ---
 
@@ -327,6 +387,347 @@ pendiente.
 **Resultado esperado:** se pueden **ver y editar** los participantes desde la
 vista de proyecto; se guardan el porcentaje y la fecha de inicio; el 0 % no
 provoca errores de cálculo.
+
+---
+
+## Bloque I — Solicitudes de personal: Empleado
+
+**Formulario:** `URL_BASE/portal/hr_employee_request` · **Modelo:**
+`portal.hr.employee.request` · **Tipos:** `new` (nuevo), `alta`, `baja`.
+
+> **Nota de código (verificar con negocio):** en el controlador, el correo de
+> notificación al **Responsable de Clientes y Becarios** para el tipo `new`
+> solo se envía **dentro del bloque que procesa el archivo `prl_annex`**. Si el
+> solicitante no adjunta el anexo PRL, la solicitud se crea igualmente pero **no
+> se envía ningún correo**. Además, el tipo `alta` **no envía correo en ningún
+> caso** (solo `new` y `baja` lo hacen). Las pruebas I2 e I3 verifican
+> explícitamente estos dos casos.
+
+### I1. Alta de nuevo empleado con todos los documentos
+**Precondiciones:** sesión como `USER_SOLICITANTE`; tres PDF válidos
+(`documento_valido.pdf` sirve para los tres).
+**Pasos:**
+1. Navega a `URL_BASE/portal/hr_employee_request`.
+2. Selecciona **Tipo: Nuevo**, rellena nombre, identificación, teléfono,
+   email de trabajo, salario, número de pagas, calendario de recursos y cuenta
+   bancaria.
+3. Adjunta un PDF en **cada uno** de los tres campos: informe de vida laboral,
+   CV y anexo PRL.
+4. **Envía**.
+5. Revisa `EMAIL_BANDEJA` del **Responsable de Clientes y Becarios**.
+**Resultado esperado:** se crea la solicitud (`portal.hr.employee.request`,
+tipo `new`) con los tres adjuntos. El Responsable de Clientes y Becarios
+**recibe** un correo con el nombre del solicitante, el proyecto y un enlace a
+la solicitud.
+
+### I2. Alta de nuevo empleado SIN anexo PRL — comprobar si notifica
+**Precondiciones:** igual que I1 pero sin el archivo de anexo PRL.
+**Pasos:**
+1. Repite I1 dejando **vacío** el campo de anexo PRL (solo sube vida laboral y
+   CV).
+2. **Envía**.
+3. Revisa `EMAIL_BANDEJA` del Responsable de Clientes y Becarios.
+**Resultado esperado:** *(caso a confirmar, ver nota de código superior)* la
+solicitud se crea correctamente con los dos adjuntos aportados, pero **no**
+llega correo de notificación al Responsable, porque el envío está condicionado
+a la presencia del anexo PRL. Documenta si esto reproduce el comportamiento
+descrito.
+
+### I3. Reactivación de un empleado inactivo (tipo "alta") — comprobar si notifica
+**Precondiciones:** existe un `hr.employee` **archivado** (inactivo) en el
+sistema.
+**Pasos:**
+1. Navega a `URL_BASE/portal/hr_employee_request`.
+2. Selecciona **Tipo: Alta**, elige el empleado inactivo y una fecha de alta.
+3. **Envía**.
+4. Revisa `EMAIL_BANDEJA` del Responsable de Clientes y Becarios.
+**Resultado esperado:** *(caso a confirmar)* se crea la solicitud de alta, pero
+**no se envía ningún correo** de notificación (el controlador no llama al envío
+de correo para este tipo). Confirma si el Responsable debería ser notificado
+también en este caso.
+
+### I4. Baja de un empleado activo
+**Precondiciones:** existe un `hr.employee` activo.
+**Pasos:**
+1. Navega a `URL_BASE/portal/hr_employee_request`.
+2. Selecciona **Tipo: Baja**, elige el empleado, la fecha de baja, el motivo de
+   baja y notas adicionales.
+3. **Envía**.
+4. Revisa `EMAIL_BANDEJA` del Responsable de Clientes y Becarios.
+**Resultado esperado:** se crea la solicitud de baja y el Responsable de
+Clientes y Becarios **recibe** correo de notificación.
+
+### I5. Rechazo de archivos no PDF en la solicitud de empleado
+**Precondiciones:** sesión como `USER_SOLICITANTE`; `documento_falso.txt`.
+**Pasos:**
+1. Repite I1 pero sube `documento_falso.txt` en el campo de CV.
+2. **Envía**.
+**Resultado esperado:** la solicitud **no se completa**; el sistema exige PDF
+también en este formulario (informe de vida laboral, CV y anexo PRL).
+
+### I6. Aprobación de una solicitud de empleado nuevo (backend)
+**Precondiciones:** una solicitud tipo `new` creada (I1), acceso backend con
+permiso sobre `portal.hr.employee.request`.
+**Pasos:**
+1. En backend, abre **Solicitudes del Portal → Solicitudes de Empleado**.
+2. Abre la solicitud de I1 y pulsa **Aprobar**.
+**Resultado esperado:** se crea un registro `hr.employee` con los datos de la
+solicitud y los adjuntos se copian al nuevo empleado; la solicitud queda
+marcada como **aprobada** y **revisada**; el solicitante recibe correo de
+cambio de estado ("Aprobada").
+
+---
+
+## Bloque J — Solicitudes de personal: Becario
+
+**Formulario:** `URL_BASE/portal/hr_employee_intern_request` · **Modelo:**
+`portal.hr.employee.intern.request` · **Tipos:** `new`, `alta`, `baja`.
+
+El formulario y la lógica son estructuralmente **idénticos** al Bloque I
+(mismo patrón de controlador y modelo, aplicado a becarios). Repite las mismas
+pruebas cambiando de formulario:
+
+### J1. Alta de nuevo becario con todos los documentos
+Repite I1 en `URL_BASE/portal/hr_employee_intern_request`. **Resultado
+esperado:** igual que I1 (correo "Solicitud de nuevo becario" al Responsable de
+Clientes y Becarios).
+
+### J2. Alta de nuevo becario SIN anexo PRL — comprobar si notifica
+Repite I2 en el formulario de becario. **Resultado esperado:** *(caso a
+confirmar)* mismo comportamiento que I2: sin anexo PRL, no se envía correo.
+
+### J3. Reactivación de un becario inactivo (tipo "alta") — comprobar si notifica
+Repite I3 en el formulario de becario. **Resultado esperado:** *(caso a
+confirmar)* mismo comportamiento que I3: no se envía correo para "alta".
+
+### J4. Baja de un becario activo
+Repite I4 en el formulario de becario. **Resultado esperado:** se notifica
+correctamente ("Solicitud de baja de becario") al Responsable de Clientes y
+Becarios.
+
+### J5. Rechazo de archivos no PDF en la solicitud de becario
+Repite I5 en el formulario de becario. **Resultado esperado:** igual que I5.
+
+---
+
+## Bloque K — Apertura y cierre de proyecto (dos rutas distintas)
+
+> **Nota de código (verificar con negocio):** el módulo expone **dos** vías
+> distintas para el "cierre de proyecto", con modelos y destinatarios
+> **diferentes**:
+> - `URL_BASE/portal/project_request` con **Tipo: Finalizar Proyecto**, que
+>   crea un `portal.project.request` y notifica al **Director I+D**.
+> - `URL_BASE/portal/project_end_request` (formulario independiente), que crea
+>   un `portal.project.end.request` y notifica a los **administradores del
+>   sistema** (`base.group_system`), no al Director I+D.
+>
+> Las pruebas K3 y K4 comprueban ambas rutas por separado; documenta cuál es la
+> vía "oficial" y si la duplicidad es intencionada.
+
+### K1. Apertura de nuevo proyecto con contrato y presupuesto en PDF
+**Precondiciones:** sesión como `USER_SOLICITANTE`, miembro de un equipo de
+trabajo (`portal.work.group`); dos PDF válidos.
+**Pasos:**
+1. Navega a `URL_BASE/portal/project_request`.
+2. Selecciona **Tipo: Nuevo Proyecto**, el **equipo de trabajo**, nombre del
+   proyecto, cliente, fechas de inicio y fin.
+3. Adjunta `documento_valido.pdf` como **contrato firmado** y como
+   **presupuesto**.
+4. **Envía**.
+5. Revisa `EMAIL_BANDEJA` del **Director I+D**.
+**Resultado esperado:** se crea el `portal.project.request` (tipo `new`) con
+ambos adjuntos; el Director I+D recibe correo con el nombre del proyecto y las
+fechas.
+
+### K2. Rechazo de archivos no PDF en la apertura de proyecto
+**Precondiciones:** igual que K1; `documento_falso.txt`.
+**Pasos:**
+1. Repite K1 subiendo `documento_falso.txt` como presupuesto.
+2. **Envía**.
+**Resultado esperado:** la solicitud **no se completa** (validación PDF sobre
+contrato y presupuesto).
+
+### K3. Cierre de proyecto — vía `/portal/project_request` (tipo "Finalizar Proyecto")
+**Precondiciones:** existe un proyecto analítico (`account.analytic.account`)
+del equipo del solicitante.
+**Pasos:**
+1. Navega a `URL_BASE/portal/project_request`.
+2. Selecciona **Tipo: Finalizar Proyecto**, elige el **proyecto** de la lista,
+   la **fecha de fin** y un **concepto**.
+3. **Envía**.
+4. Revisa `EMAIL_BANDEJA` del **Director I+D**.
+**Resultado esperado:** se crea el `portal.project.request` (tipo `end`); el
+Director I+D recibe correo "Solicitud de Finalización de proyecto".
+
+### K4. Cierre de proyecto — vía `/portal/project_end_request` (formulario alternativo)
+**Precondiciones:** sesión como `USER_SOLICITANTE`.
+**Pasos:**
+1. Navega a `URL_BASE/portal/project_end_request`.
+2. Rellena **compañía/proyecto**, **fecha de fin** y **concepto**.
+3. **Envía**.
+4. Revisa `EMAIL_BANDEJA` de los **administradores del sistema**
+   (`base.group_system`) y, por comparación, la del Director I+D.
+**Resultado esperado:** *(caso a confirmar)* se crea un
+`portal.project.end.request` independiente del anterior; el correo llega a los
+administradores del sistema, **no** al Director I+D. Confirma con negocio si
+ambas rutas deben coexistir o si una debe eliminarse/redirigirse a la otra.
+
+---
+
+## Bloque L — Nóminas (`/my/nomina`)
+
+Las nóminas se gestionan como **adjuntos** (`ir.attachment`) sobre el
+`hr.employee` vinculado al usuario, con el nombre en el patrón
+`nomina_<algo>_<año>.pdf` (el año se extrae del último segmento antes de la
+extensión).
+
+**Archivo de prueba adicional necesario:** un PDF nombrado siguiendo el patrón,
+por ejemplo `nomina_enero_2025.pdf` (contenido de `documento_valido.pdf`).
+
+### L1. Usuario sin empleado vinculado
+**Precondiciones:** un usuario de portal **sin** `hr.employee` asociado
+(`user_id` no coincide con ningún empleado).
+**Pasos:**
+1. Inicia sesión con ese usuario y navega a `URL_BASE/my/nomina`.
+**Resultado esperado:** se muestra una página de "sin datos" (no hay
+nóminas ni errores); no se produce un error 500.
+
+### L2. Empleado sin nóminas adjuntas
+**Precondiciones:** usuario con `hr.employee` vinculado, sin adjuntos
+`nomina_*`.
+**Pasos:**
+1. Navega a `URL_BASE/my/nomina`.
+**Resultado esperado:** el listado aparece **vacío**, sin errores.
+
+### L3. Listado y agrupación por año
+**Precondiciones:** el empleado del usuario tiene adjunto
+`nomina_enero_2025.pdf` (subido en backend sobre su `hr.employee`).
+**Pasos:**
+1. Navega a `URL_BASE/my/nomina`.
+2. Cambia el agrupamiento a **"Año"**.
+**Resultado esperado:** la nómina aparece listada; al agrupar por año, se
+muestra bajo el grupo **"2025"**.
+
+### L4. Descarga de la propia nómina
+**Precondiciones:** igual que L3.
+**Pasos:**
+1. Desde `URL_BASE/my/nomina`, pulsa **descargar** sobre `nomina_enero_2025.pdf`.
+**Resultado esperado:** el PDF se descarga correctamente con el nombre
+original.
+
+### L5. Intento de descarga de la nómina de OTRO empleado (control de acceso)
+**Precondiciones:** un adjunto `nomina_*` perteneciente a **otro** empleado
+(no el del usuario logueado); anota su `attachment_id` (visible en backend).
+**Pasos:**
+1. Inicia sesión como `USER_SOLICITANTE` (u otro usuario con empleado propio).
+2. Navega directamente a
+   `URL_BASE/my/nomina/download/<attachment_id_de_otro_empleado>`, sustituyendo
+   por el id anotado.
+**Resultado esperado:** el sistema **deniega** el acceso (página no encontrada
+o error), **no** debe descargar el PDF de otro empleado. Esta es una prueba de
+seguridad importante (control de acceso indebido/IDOR) y debe **pasar
+obligatoriamente**.
+
+---
+
+## Bloque M — Rechazo de solicitudes con motivo (asistentes de rechazo)
+
+Aplica a **solicitudes de gasto** (`purchase.request.reject.wizard`) y
+**solicitudes de factura** (`invoice.request.reject.wizard`), ambos accesibles
+solo desde backend.
+
+### M1. Rechazo de un gasto con motivo — el solicitante no es el Jefe de Equipo
+**Precondiciones:** una solicitud de gasto en estado `Aprobación del Jefe de
+Equipo` o posterior, cuyo solicitante **no** sea el Jefe de Equipo del
+proyecto. Acceso backend con rol que pueda rechazar (Jefe de Equipo o
+Responsable de Compras, según el estado).
+**Pasos:**
+1. En backend, abre la solicitud de gasto.
+2. Pulsa **Rechazar** (abre el asistente de rechazo).
+3. Escribe una **descripción** del motivo, por ejemplo `Falta justificante`.
+4. Confirma.
+**Resultado esperado:** la solicitud pasa a estado **`Volver a revisar`**; se
+añade una nota en el chatter con el motivo; el **solicitante** recibe un correo
+de rechazo con el motivo.
+
+### M2. Rechazo de un gasto con motivo — el solicitante SÍ es el Jefe de Equipo
+**Precondiciones:** una solicitud de gasto creada por el propio Jefe de Equipo
+del proyecto.
+**Pasos:**
+1. Repite M1 sobre esta solicitud.
+**Resultado esperado:** al rechazar, la solicitud vuelve a
+**`Aprobación del Jefe de Equipo`** (no a "Volver a revisar", porque el
+solicitante y el jefe de equipo son la misma persona) y se notifica igualmente
+con el motivo.
+
+### M3. Rechazo de una solicitud de factura con motivo
+**Precondiciones:** una solicitud de emisión de factura pendiente.
+**Pasos:**
+1. En backend, abre la solicitud de factura y pulsa **Rechazar**.
+2. Escribe un motivo y confirma.
+**Resultado esperado:** mismo comportamiento que M1/M2 aplicado a
+`portal.invoice.request` (estado `to_revise` o `approved_by_boss_group` según
+quién solicitó, nota en el chatter y correo al solicitante con el motivo).
+
+---
+
+## Bloque N — Dashboard de solicitudes por rol
+
+**Modelo:** `portal.request.dashboard` · **Acceso:** backend, menú principal de
+Solicitudes del Portal.
+
+### N1. El Director I+D ve solo los documentos que le corresponden
+**Precondiciones:** documentos en distintos estados (`approved_by_director_i_d`,
+`sign_company`, `final_revision`, `approved_by_director_gerente`).
+**Pasos:**
+1. Inicia sesión como `USER_DIRECTOR_ID` y abre el dashboard.
+2. Pulsa la tarjeta **"Documentos para revisar"**.
+**Resultado esperado:** el listado solo incluye documentos en los estados
+`approved_by_director_i_d`, `final_revision` y `sign_company`; **no** aparecen
+los que ya están en `approved_by_director_gerente`.
+
+### N2. El Responsable de Personal y Compras ve solo los gastos en su paso
+**Precondiciones:** gastos en distintos estados.
+**Pasos:**
+1. Inicia sesión como `USER_RESP_COMPRAS` y abre el dashboard.
+2. Pulsa **"Gastos para revisar"**.
+**Resultado esperado:** solo aparecen gastos en estado
+`approved_purchase_responsible`.
+
+### N3. El Jefe de Equipo ve solo los gastos de su propio equipo
+**Precondiciones:** gastos en estado `approved_by_boss_group` de distintos
+equipos.
+**Pasos:**
+1. Inicia sesión como `USER_JEFE_EQUIPO` y abre el dashboard.
+2. Pulsa **"Gastos para revisar"**.
+**Resultado esperado:** solo aparecen los gastos cuyo `equip_boss` es
+`USER_JEFE_EQUIPO`; no aparecen los de otros equipos.
+
+---
+
+## Bloque O — Firma digital (Sign)
+
+> Requiere que el módulo `sign` (Enterprise) esté disponible y, si aplica, el
+> certificado de firma instalado en el entorno (ver nota en
+> [sección 8 del manual](../MANUAL_USUARIO.md#8-firma-electrónica-y-archivos-firmados)).
+
+### O1. Enviar a firmar un documento sin adjunto — debe bloquearse
+**Precondiciones:** un `document.approval` **sin** ningún adjunto PDF asociado.
+**Pasos:**
+1. En backend, abre el documento y pulsa **"Enviar a firmar"**
+   (`action_send_to_sign`).
+**Resultado esperado:** el sistema **bloquea** la acción con un aviso claro
+indicando que hay que subir el PDF antes de enviar a firmar. No se crea
+ninguna plantilla de firma.
+
+### O2. Reenvío a firma cancela la solicitud de firma anterior
+**Precondiciones:** un documento que ya tiene una `sign.request` **pendiente**
+(no firmada) asociada (de un envío previo a firmar).
+**Pasos:**
+1. Pulsa de nuevo **"Enviar a firmar"** sobre el mismo documento.
+**Resultado esperado:** la solicitud de firma anterior queda **cancelada** y se
+genera una plantilla/solicitud de firma nueva; no quedan dos solicitudes de
+firma activas simultáneamente para el mismo documento.
 
 ---
 
@@ -358,7 +759,73 @@ Rellena una fila por prueba ejecutada:
 | F5 | | | |
 | G1 | | | |
 | G2 | | | |
+| G3 | | | |
+| G4 | | | |
 | H1 | | | |
+| I1 | | | |
+| I2 | | | |
+| I3 | | | |
+| I4 | | | |
+| I5 | | | |
+| I6 | | | |
+| J1 | | | |
+| J2 | | | |
+| J3 | | | |
+| J4 | | | |
+| J5 | | | |
+| K1 | | | |
+| K2 | | | |
+| K3 | | | |
+| K4 | | | |
+| L1 | | | |
+| L2 | | | |
+| L3 | | | |
+| L4 | | | |
+| L5 | | | |
+| M1 | | | |
+| M2 | | | |
+| M3 | | | |
+| N1 | | | |
+| N2 | | | |
+| N3 | | | |
+| O1 | | | |
+| O2 | | | |
 
 > **Al terminar:** entrega un resumen con el número de pruebas PASA/FALLA/
-> BLOQUEADA y, para cada FALLA, los pasos exactos para reproducirla.
+> BLOQUEADA y, para cada FALLA, los pasos exactos para reproducirla. Marca con
+> especial atención las pruebas de **seguridad** (L5) y las marcadas como
+> *"caso a confirmar"* (I2, I3, J2, J3, G1, G2, K4), que reflejan
+> comportamientos observados en el código a validar con negocio, no bugs
+> confirmados.
+
+---
+
+## Anexo — Relación de ficheros del módulo por bloque
+
+Para quien ejecute o revise las pruebas y necesite consultar el código fuente
+que implementa cada caso de uso (ruta relativa a
+`odoo/custom/src/custom-aicia/portal_requests/`):
+
+| Bloque | Controlador(es) | Modelo(s) | Vista(s) principal(es) | Tests unitarios relacionados |
+|---|---|---|---|---|
+| A — Acceso y perfiles | `controllers/portal_main.py`, `controllers/portal_utils.py` | `models/res_users.py`, `models/work_group.py` | `views/portal_user_templates/*` | `tests/test_gestor_access.py` |
+| B — Restricción PDF | `controllers/portal_pdf_utils.py`, `controllers/portal_approval_request_controller.py` | — | `views/portal_approval_request_template.xml` | `tests/test_pdf_utils.py`, `tests/test_pdf_restriction_http.py` |
+| C — Firma y trazabilidad | `controllers/portal_approval_request_controller.py` | `models/document_approval.py`, `models/sign_request_inherit.py` | `views/portal_my_document_detail.xml`, `views/interface/aicia_approval_documents.xml` | `tests/test_document_resubmit.py`, `tests/test_signed_suffix.py` |
+| D — Notificaciones de estado | `models/portal_request_notify_mixin.py` | (mixin usado por todos los modelos de solicitud) | — | `tests/test_state_change_notifications.py`, `tests/test_notification_recipients.py` |
+| E — Emisión de factura | `controllers/portal_invoice_requests_controller.py` | `models/portal_inovice_requests_model.py` | `views/portal_invoice_requests_template.xml`, `views/portal_user_templates/portal_my_invoice_detail.xml` | — |
+| F — Gastos y umbral 10.000 € | `controllers/portal_hr_expensive_request_controller.py` | `models/portal_hr_expensive_request_model.py` | `views/interface/portal_hr_expensive_request.xml` | `tests/test_expense_threshold.py`, `tests/test_expense_type.py` |
+| G — Pagos / órdenes de compra | `controllers/portal_purchase_order_requests_controller.py`, `controllers/portal_payment_requests_controller.py` | `models/account_payment.py` | `views/portal_user_templates/portal_my_payments.xml`, `views/portal_user_templates/portal_my_payment_detail.xml`, `views/account_payment_views.xml` | `tests/test_portal_payments.py` |
+| H — Proyectos e investigadores | — (vista heredada de proyecto) | `models/project_project_inherit.py`, `models/account_analytic_inherit.py` | `views/interface/account_analytic_inherit_views.xml` | — |
+| I — Empleado | `controllers/portal_hr_employee_request_controller.py` | `models/portal_hr_employee_request_model.py` | `views/portal_hr_employee_requests_template.xml`, `views/interface/portal_employee_request.xml` | — |
+| J — Becario | `controllers/portal_hr_employee_intern_request_controller.py` | `models/portal_hr_employee_intern_request_model.py` | `views/portal_hr_employee_intern_requests_template.xml`, `views/interface/portal_employee_intern_request.xml` | — |
+| K — Apertura/cierre de proyecto | `controllers/portal_project_requests_controller.py`, `controllers/portal_project_end_request_controller.py` | `models/portal_project_requests_model.py`, `models/portal_project_end_request_model.py` | `views/portal_project_requests_template.xml`, `views/portal_project_end_request_template.xml`, `views/interface/portal_project_request.xml` | — |
+| L — Nóminas | `controllers/portal_nominas_controller.py` | `hr.employee` (estándar), `ir.attachment` | `views/portal_user_templates/portal_my_nomina.xml` | — |
+| M — Rechazo con motivo | `wizards/purchase_request_reject_wizard.py`, `wizards/invoice_request_reject_wizard.py` | `models/portal_hr_expensive_request_model.py`, `models/portal_inovice_requests_model.py` | `wizards/purchase_request_reject_wizard.xml`, `wizards/invoice_request_reject_wizard.xml` | — |
+| N — Dashboard por rol | — | `models/portal_request_dashboard.py` | `data/dashboard.xml`, `security/dashboard_permision.xml` | — |
+| O — Firma digital (Sign) | — | `models/document_approval.py`, `models/sign_request_inherit.py`, `models/sign_send_request_inherit.py` | `views/interface/aicia_approval_documents.xml` | `tests/test_signed_suffix.py` |
+
+**Ficheros transversales** (aplican a varios bloques):
+- `models/portal_request_notify_mixin.py` — notificación de cambio de estado (Bloque D, usado por C/E/F/I/J/K).
+- `controllers/portal_pdf_utils.py` — validación PDF (`is_pdf`/`ensure_pdf`), usado en B/I/J/K/F.
+- `models/work_group.py`, `security/ir.model.access.csv`, `data/res_group_data.xml` — grupos y visibilidad por equipo (Bloque A, base de casi todos los bloques).
+- `__manifest__.py` — lista completa de vistas y datos cargados por el módulo.

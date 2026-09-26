@@ -15,4 +15,26 @@
             </field>
         </field>
     </record>
+
+    <record id="view_move_tree_aicia_numero_asiento" model="ir.ui.view">
+        <field name="name">account.move.tree.aicia.numero.asiento</field>
+        <field name="model">account.move</field>
+        <field name="inherit_id" ref="account.view_move_tree" />
+        <field name="arch" type="xml">
+            <field name="ref" position="after">
+                <field name="numero_asiento_aicia" optional="show" />
+            </field>
+        </field>
+    </record>
+
+    <record id="view_move_search_aicia_numero_asiento" model="ir.ui.view">
+        <field name="name">account.move.search.aicia.numero.asiento</field>
+        <field name="model">account.move</field>
+        <field name="inherit_id" ref="account.view_account_move_filter" />
+        <field name="arch" type="xml">
+            <field name="ref" position="after">
+                <field name="numero_asiento_aicia" string="Asiento AICIA" />
+            </field>
+        </field>
+    </record>
 </odoo>
