@@ -1187,29 +1187,14 @@ class AiciaAccountImporterWizard(models.TransientModel):
 
         # Detectar el diario automáticamente según las cuentas de las líneas
         journal = self._get_journal_for_lines(lineas, is_nomina=is_nomina, runtime=runtime)
-        # Idempotencia: busca en el diario detectado usando una marca técnica.
-        legacy_marker = self._legacy_import_marker(legacy_number)
+        # Idempotencia: el número AICIA es la referencia estable del legado.
         runtime = runtime or {}
-        existing = runtime.get("existing_moves", {}).get((journal.id, legacy_marker))
+        existing = runtime.get("existing_moves", {}).get(legacy_number)
         if existing and not isinstance(existing, dict):
             existing = {
                 "id": existing.id,
                 "state": existing.state,
             }
-        if not existing:
-            existing_move = self.env["account.move"].search(
-                [
-                    ("journal_id", "=", journal.id),
-                    ("state", "in", ["draft", "posted"]),
-                    ("narration", "ilike", legacy_marker),
-                ],
-                limit=1,
-            )
-            if existing_move:
-                existing = {"id": existing_move.id, "state": existing_move.state}
-                runtime.setdefault("existing_moves", {})[
-                    (journal.id, legacy_marker)
-                ] = existing
         if existing:
             state_label = {"draft": "borrador", "posted": "confirmado"}.get(
                 existing["state"], existing["state"]
@@ -1298,7 +1283,7 @@ class AiciaAccountImporterWizard(models.TransientModel):
 
         try:
             move = self.env["account.move"].create(move_vals)
-            runtime.setdefault("existing_moves", {})[(journal.id, legacy_marker)] = move
+            runtime.setdefault("existing_moves", {})[legacy_number] = move
             if not line_warnings and self.move_state == "posted":
                 move.action_post()
 
@@ -2030,7 +2015,7 @@ class AiciaAccountImporterWizard(models.TransientModel):
             "analytic_by_code": analytic_by_code,
             "partner_by_ref": {},
             "nomina_partner_by_ref": {},
-            "existing_moves": self._prepare_existing_move_index(apuntes, lineas_by_apunte),
+            "existing_moves": self._prepare_existing_move_index(),
         }
 
     @staticmethod
@@ -2058,43 +2043,21 @@ class AiciaAccountImporterWizard(models.TransientModel):
         prefixes.append((source_code, target_account))
         compiled["prefixes"] = sorted(prefixes, key=lambda rule: len(rule[0]), reverse=True)
 
-    def _prepare_existing_move_index(self, apuntes, lineas_by_apunte):
-        journals = self.env["account.journal"].search(
-            [("company_id", "=", self.env.company.id)]
-        )
-        journals_by_type = {}
-        for journal in journals:
-            journals_by_type.setdefault(journal.type, journal)
-        fallback_journal = journals[:1]
-        journal_ids = set()
-        for id_apunte, cabecera in apuntes.items():
-            lineas = lineas_by_apunte.get(id_apunte) or []
-            is_nomina = str(cabecera.get("numero_documento", "") or "").upper().startswith(
-                "NO-"
-            )
-            journal_type = self._get_journal_type_for_lines(lineas, is_nomina=is_nomina)
-            journal = journals_by_type.get(journal_type) or fallback_journal
-            if journal:
-                journal_ids.add(journal.id)
-
-        if not journal_ids:
-            return {}
-
+    def _prepare_existing_move_index(self):
+        """Indexa los asientos existentes por su número AICIA."""
         moves = self.env["account.move"].search_read(
             [
-                ("journal_id", "in", sorted(journal_ids)),
+                ("company_id", "=", self.env.company.id),
                 ("state", "in", ["draft", "posted"]),
-                ("narration", "ilike", "[AICIA_IMPORT_ID:"),
+                ("numero_asiento_aicia", "!=", False),
             ],
-            ["journal_id", "state", "narration"],
+            ["numero_asiento_aicia", "state"],
         )
         existing_moves = {}
         for move in moves:
-            marker = self._extract_legacy_marker_from_narration(move.get("narration"))
-            journal_data = move.get("journal_id")
-            journal_id = journal_data[0] if journal_data else False
-            if marker and journal_id:
-                existing_moves[(journal_id, marker)] = move
+            legacy_number = str(move.get("numero_asiento_aicia") or "").strip()
+            if legacy_number:
+                existing_moves[legacy_number] = move
         return existing_moves
 
     @staticmethod

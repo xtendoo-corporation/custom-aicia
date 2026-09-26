@@ -1402,6 +1402,20 @@ class TestAiciaAccountImporterWizard(TransactionCase):
             file_apuntes=self._enc(apuntes), file_lineas=self._enc(lineas)
         )
         wizard.action_import()
+        existing_move = self._find_move_by_legacy_number("4100")
+        general_journal = self.env["account.journal"].search(
+            [
+                ("type", "=", "general"),
+                ("company_id", "=", self.env.company.id),
+                ("id", "!=", existing_move.journal_id.id),
+            ],
+            limit=1,
+        )
+        if general_journal:
+            existing_move.write(
+                {"journal_id": general_journal.id, "narration": False}
+            )
+
         wizard2 = self._make_wizard(
             file_apuntes=self._enc(apuntes), file_lineas=self._enc(lineas)
         )
