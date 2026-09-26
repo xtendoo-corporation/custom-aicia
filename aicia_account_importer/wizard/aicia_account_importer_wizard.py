@@ -1532,7 +1532,7 @@ class AiciaAccountImporterWizard(models.TransientModel):
           1. Prefijo colectivo (400/430/572) → devuelve/crea la cuenta colectiva.
              (Omitido si skip_collective=True, p.ej. en asientos de nómina)
           2. Normaliza a 6 dígitos (quitando ceros finales) y busca exacta.
-          3. Busca por prefijo de 3 dígitos como último recurso.
+          3. Crea la subcuenta normalizada si no existe.
         """
         if not code:
             return None
@@ -1569,25 +1569,42 @@ class AiciaAccountImporterWizard(models.TransientModel):
             self._register_automatic_account_mapping(code, account, runtime=runtime)
             return account
 
-        # ── 4. Búsqueda por prefijo de 3 dígitos ─────────────────────────────
+        # ── 4. Crear la subcuenta si no existe ───────────────────────────────
+        return self._create_missing_import_account(
+            normalized, missing_accounts=missing_accounts, runtime=runtime
+        )
+
+    def _create_missing_import_account(
+        self,
+        code: str,
+        missing_accounts: set = None,
+        runtime: dict | None = None,
+    ):
+        """Crea una subcuenta mínima para no perder la línea importada."""
+        if not code:
+            return None
         runtime = runtime or {}
-        account = runtime.get("accounts_by_prefix", {}).get(code[:3]) or None
-        if account is None and "accounts_by_prefix" not in runtime:
-            account = (
-                self.env["account.account"].search(
-                    [
-                        ("code", "=like", code[:3] + "%"),
-                        ("company_ids", "in", [self.env.company.id]),
-                    ],
-                    limit=1,
-                )
-                or None
-            )
-            runtime.setdefault("accounts_by_prefix", {})[code[:3]] = account
+        account = self._get_exact_account_by_code(code, runtime=runtime)
         if account:
-            self._register_automatic_account_mapping(code, account, runtime=runtime)
-        if not account and missing_accounts is not None:
-            missing_accounts.add(code)
+            return account
+        account_type = self.env[
+            "aicia.account.importer.account.mapping"
+        ]._guess_account_type_for_code(code)
+        account = self.env["account.account"].create(
+            {
+                "code": code,
+                "name": "* Cuenta no encontrada",
+                "account_type": account_type,
+                "company_ids": [(4, self.env.company.id)],
+            }
+        )
+        runtime.setdefault("accounts_by_code", {})[code] = account
+        runtime.setdefault("accounts_by_prefix", {}).setdefault(code[:3], account)
+        self._register_automatic_account_mapping(
+            code, account, runtime=runtime
+        )
+        if missing_accounts is not None:
+            missing_accounts.discard(code)
         return account
 
     def _register_automatic_account_mapping(

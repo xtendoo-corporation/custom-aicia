@@ -957,6 +957,32 @@ class TestAiciaAccountImporterWizard(TransactionCase):
         wizard.action_import()
         self.assertTrue(self._find_move_by_legacy_number("600"))
 
+    def test_import_creates_missing_subaccount(self):
+        """Una subcuenta inexistente se crea para conservar la línea."""
+        self._ensure_account("700000", "Ventas", "income")
+        apuntes = self._make_apuntes_xlsx([
+            [7, 700, 20250115, None, "Cuenta nueva", "DOC", 0, True, False, "R"],
+        ])
+        lineas = self._make_lineas_xlsx([
+            [7, 1, "998999999", 0, 0, "Gasto", 10000, "D"],
+            [7, 2, "700000000", 0, 0, "Venta", 10000, "H"],
+        ])
+        wizard = self._make_wizard(
+            file_apuntes=self._enc(apuntes), file_lineas=self._enc(lineas)
+        )
+        wizard.action_import()
+
+        account = self.env["account.account"].search(
+            [
+                ("code", "=", "998999"),
+                ("company_ids", "in", [self.env.company.id]),
+            ],
+            limit=1,
+        )
+        self.assertTrue(account)
+        self.assertEqual(account.name, "* Cuenta no encontrada")
+        self.assertTrue(self._find_move_by_legacy_number("700"))
+
     def test_import_no_lines_for_entry_is_error(self):
         """Asiento válido sin líneas en Lineas_Apunte → error en log."""
         apuntes = self._make_apuntes_xlsx([
