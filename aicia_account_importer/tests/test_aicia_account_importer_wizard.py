@@ -1131,6 +1131,44 @@ class TestAiciaAccountImporterWizard(TransactionCase):
         self.assertEqual(wizard.total_errors, 4)
         commit.assert_called_once_with()
 
+    def test_should_save_import_progress_only_every_batch(self):
+        """El progreso solo se guarda cada IMPORT_PROGRESS_BATCH_SIZE asientos."""
+        wizard_model = self.env["aicia.account.importer.wizard"]
+        self.assertFalse(wizard_model._should_save_import_progress(1))
+        self.assertFalse(wizard_model._should_save_import_progress(99))
+        self.assertTrue(wizard_model._should_save_import_progress(100))
+        self.assertFalse(wizard_model._should_save_import_progress(101))
+        self.assertTrue(wizard_model._should_save_import_progress(200))
+
+    def test_import_small_batch_does_not_save_progress_per_entry(self):
+        """Con menos asientos que el lote no se guarda progreso intermedio."""
+        self._ensure_account("572000", "Bancos", "asset_cash")
+        self._ensure_account("700000", "Ventas", "income")
+        analytic = self._ensure_analytic_account("23", "Proyecto 23")
+
+        apuntes = self._make_apuntes_xlsx([
+            [47, 4700, 20250115, None, "Lote 1", "DOC", 10000, True, False, "R"],
+            [48, 4800, 20250115, None, "Lote 2", "DOC", 10000, True, False, "R"],
+        ])
+        lineas = self._make_lineas_xlsx([
+            [47, 1, "572000001", 11, 23, "Test", 10000, "D"],
+            [47, 2, "700000000", 11, 23, "Test", 10000, "H"],
+            [48, 1, "572000001", 11, 23, "Test", 10000, "D"],
+            [48, 2, "700000000", 11, 23, "Test", 10000, "H"],
+        ])
+        wizard = self._make_wizard(
+            file_apuntes=self._enc(apuntes), file_lineas=self._enc(lineas)
+        )
+        with patch.object(
+            type(wizard), "_save_import_progress", autospec=True
+        ) as save_progress, patch.object(self.env.cr, "commit"):
+            wizard.action_import()
+
+        save_progress.assert_not_called()
+        self.assertTrue(analytic)
+        self.assertEqual(wizard.state, "done")
+        self.assertEqual(wizard.total_created, 2)
+
     def test_no_files_applies_account_mapping_to_existing_move_lines(self):
         """Sin archivos → aplica el mapeo global sobre apuntes existentes."""
         source_account = self._ensure_account(

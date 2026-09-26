@@ -90,6 +90,10 @@ APUNTES_COLS = {
     "clase_apunte": 9,
 }
 
+# Nº de asientos procesados entre cada guardado (write + commit) del progreso.
+# Guardar en cada asiento regenera el log HTML completo y ralentiza la importación.
+IMPORT_PROGRESS_BATCH_SIZE = 100
+
 LINEAS_COLS = {
     "id_apunte": 0,   # ID_Apunte — clave de unión con la cabecera (col 0 de ambos ficheros)
     "id_departamento": 2,  # ID_Departamento → proyecto analítico cuando ID_Proyecto=0
@@ -668,16 +672,17 @@ class AiciaAccountImporterWizard(models.TransientModel):
                 results.append(result)
                 self._append_import_activity(activity_log, "error", result["msg"])
                 errors += 1
-                self._save_import_progress(
-                    results,
-                    missing_accounts,
-                    missing_partners,
-                    activity_log,
-                    created,
-                    skipped,
-                    warnings,
-                    errors,
-                )
+                if self._should_save_import_progress(index):
+                    self._save_import_progress(
+                        results,
+                        missing_accounts,
+                        missing_partners,
+                        activity_log,
+                        created,
+                        skipped,
+                        warnings,
+                        errors,
+                    )
                 continue
 
             result = self._process_asiento(
@@ -702,16 +707,17 @@ class AiciaAccountImporterWizard(models.TransientModel):
                 errors += 1
                 activity_status = "error"
             self._append_import_activity(activity_log, activity_status, result["msg"])
-            self._save_import_progress(
-                results,
-                missing_accounts,
-                missing_partners,
-                activity_log,
-                created,
-                skipped,
-                warnings,
-                errors,
-            )
+            if self._should_save_import_progress(index):
+                self._save_import_progress(
+                    results,
+                    missing_accounts,
+                    missing_partners,
+                    activity_log,
+                    created,
+                    skipped,
+                    warnings,
+                    errors,
+                )
 
         AccountMapping = self.env["aicia.account.importer.account.mapping"]
         existing_sources = set(runtime.get("mapping_sources", set()))
@@ -783,6 +789,11 @@ class AiciaAccountImporterWizard(models.TransientModel):
             "views": [(False, "form")],
             "target": "new",
         }
+
+    @staticmethod
+    def _should_save_import_progress(index: int) -> bool:
+        """Indica si toca confirmar el progreso tras procesar el asiento index."""
+        return index % IMPORT_PROGRESS_BATCH_SIZE == 0
 
     def _save_import_progress(
         self,
