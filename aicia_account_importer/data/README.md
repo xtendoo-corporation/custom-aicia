@@ -19,15 +19,16 @@ Contiene las **cabeceras** de los asientos contables.
 | 2        | Fecha_Contable     | Entero YYYYMMDD   | `20250103`       | Se convierte a `date`           |
 | 3        | Fecha_Introduccion | Entero YYYYMMDD   | `20250104`       | No se importa                   |
 | 4        | Importe_Total      | Entero (céntimos) | `121000`         | Solo referencial, no se importa |
-| 5        | Validado           | Booleano          | `True`           | Solo se importan los `True`     |
+| 5        | Validado           | Booleano          | `True`           | Informativo; se importan `True` y `False` |
 | 6        | Anulado            | Booleano          | `False`          | Se omiten los `True` si activo  |
 | 7        | Descripcion        | Texto             | `"Venta enero"`  | `narration` del asiento         |
 | 8        | Numero_Documento   | Texto             | `"DOC-001"`      | Campo informativo                |
 | 9        | Clase_Apunte       | Texto             | `"R"`            | No se importa                   |
 
 - Filas totales aprox.: **10.779**
-- Solo se procesan las filas con `Validado=True` (y `Anulado=False` si el
-  check `skip_anulados` está activado en el wizard).
+- Se procesan las filas con `Validado=True` y `Validado=False`. El campo es
+  informativo. Las filas con `Anulado=True` se omiten si el check
+  `skip_anulados` está activado en el wizard.
 
 ---
 

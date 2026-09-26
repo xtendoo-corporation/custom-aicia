@@ -19,7 +19,7 @@ Cubre:
   - Idempotencia (duplicados omitidos por Numero_Apunte)
   - Asientos no cuadrados → error en log
   - Asientos anulados omitidos con skip_anulados=True
-  - Asientos no validados omitidos
+  - Asientos con Validado=False importados
   - Sin archivos → reaplica el mapeo sobre apuntes existentes
   - Sin líneas para un asiento → error en log
   - Estado draft y posted tras la importación
@@ -942,21 +942,20 @@ class TestAiciaAccountImporterWizard(TransactionCase):
         ):
             wizard.action_import()
 
-    def test_import_skips_not_validated(self):
-        """Asientos con Validado=False no se importan."""
+    def test_import_includes_not_validated(self):
+        """Asientos con Validado=False también se importan."""
         apuntes = self._make_apuntes_xlsx([
             [6, 600, 20250115, None, "No validado", "DOC", 0, False, False, "R"],
         ])
         lineas = self._make_lineas_xlsx([
             [6, 1, "430000001", 0, 0, "Test", 10000, "D"],
+            [6, 2, "700000000", 0, 0, "Test", 10000, "H"],
         ])
         wizard = self._make_wizard(
             file_apuntes=self._enc(apuntes), file_lineas=self._enc(lineas)
         )
-        with self.assertRaisesRegex(
-            UserError, r"fila Excel 2.*ID_Apunte=6.*Validado=False"
-        ):
-            wizard.action_import()
+        wizard.action_import()
+        self.assertTrue(self._find_move_by_legacy_number("600"))
 
     def test_import_no_lines_for_entry_is_error(self):
         """Asiento válido sin líneas en Lineas_Apunte → error en log."""
