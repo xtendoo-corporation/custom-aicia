@@ -90,6 +90,7 @@
                         <field name="move_state"/>
                         <field name="create_missing_partners"/>
                         <field name="skip_anulados"/>
+                        <field name="default_analytic_account_id"/>
                     </group>
                 </group>
                 <notebook>

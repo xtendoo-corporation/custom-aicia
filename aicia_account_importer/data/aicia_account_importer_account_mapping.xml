@@ -1,5 +1,10 @@
 <?xml version="1.0" encoding="utf-8"?>
 <odoo noupdate="1">
+    <record id="aicia_importer_default_analytic_code" model="ir.config_parameter">
+        <field name="key">aicia_importer.default_analytic_code</field>
+        <field name="value">0000</field>
+    </record>
+
     <record id="mapping_default_100000000" model="aicia.account.importer.account.mapping.default">
         <field name="source_code">100000000</field>
         <field name="target_account_code">100000</field>

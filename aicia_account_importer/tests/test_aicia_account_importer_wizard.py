@@ -51,10 +51,12 @@ class TestAiciaAccountImporterWizard(TransactionCase):
     # ── Helpers ───────────────────────────────────────────────────────────────
 
     def _make_wizard(self, **kwargs):
+        default_analytic = self._ensure_analytic_account("0000", "AICIA GENERAL")
         defaults = {
             "move_state": "draft",
             "create_missing_partners": True,
             "skip_anulados": True,
+            "default_analytic_account_id": default_analytic.id,
         }
         defaults.update(kwargs)
         return self.env["aicia.account.importer.wizard"].create(defaults)
@@ -1209,8 +1211,8 @@ class TestAiciaAccountImporterWizard(TransactionCase):
         )
         self.assertEqual(len(activity_log), 3)
 
-    def test_save_import_progress_commits_partial_results(self):
-        """El progreso se confirma para conservar los asientos ya importados."""
+    def test_save_import_progress_does_not_commit_partial_results(self):
+        """El progreso no confirma para permitir rollback transaccional."""
         wizard = self._make_wizard()
         with patch.object(self.env.cr, "commit") as commit:
             wizard._save_import_progress(
@@ -1219,6 +1221,7 @@ class TestAiciaAccountImporterWizard(TransactionCase):
                 missing_partners={},
                 activity_log=[],
                 created=1,
+                replaced=0,
                 skipped=2,
                 warnings=3,
                 errors=4,
@@ -1228,7 +1231,7 @@ class TestAiciaAccountImporterWizard(TransactionCase):
         self.assertEqual(wizard.total_skipped, 2)
         self.assertEqual(wizard.total_warnings, 3)
         self.assertEqual(wizard.total_errors, 4)
-        commit.assert_called_once_with()
+        commit.assert_not_called()
 
     def test_should_save_import_progress_only_every_batch(self):
         """El progreso solo se guarda cada IMPORT_PROGRESS_BATCH_SIZE asientos."""
@@ -1576,7 +1579,7 @@ class TestAiciaAccountImporterWizard(TransactionCase):
             self.assertEqual(line.analytic_distribution, {str(analytic.id): 100.0})
 
     def test_import_project_empty_allows_lines_without_analytic(self):
-        """Una línea sin proyecto ni departamento se importa sin analítica."""
+        """Una línea sin proyecto recibe AICIA GENERAL."""
         self._ensure_account("430000", "Clientes", "asset_receivable")
         self._ensure_account("700000", "Ventas", "income")
 
@@ -1594,7 +1597,35 @@ class TestAiciaAccountImporterWizard(TransactionCase):
 
         move = self._find_move_by_legacy_number("4300")
         self.assertTrue(move)
-        self.assertFalse(any(move.line_ids.mapped("analytic_distribution")))
+        default = self._ensure_analytic_account("0000", "AICIA GENERAL")
+        self.assertTrue(all(move.line_ids.mapped("analytic_distribution")))
+        self.assertTrue(
+            all(
+                line.analytic_distribution == {str(default.id): 100.0}
+                for line in move.line_ids
+            )
+        )
+        self.assertEqual(
+            self.env["account.move.line"].search_count(
+                [
+                    ("move_id", "=", move.id),
+                    ("analytic_distribution", "=", False),
+                ]
+            ),
+            0,
+        )
+
+    def test_resolve_analytic_normalizes_excel_float_project(self):
+        """Los proyectos Excel tipo 2419.0 se resuelven como 2419."""
+        analytic = self._ensure_analytic_account("2419", "Proyecto 2419")
+        wizard = self._make_wizard()
+        self.assertEqual(
+            wizard._resolve_analytic(
+                2419.0,
+                {"2419": analytic},
+            ),
+            analytic,
+        )
 
     def test_import_missing_analytic_account_blocks_import(self):
         """Una analítica inexistente bloquea todos los asientos del lote."""
@@ -1615,7 +1646,7 @@ class TestAiciaAccountImporterWizard(TransactionCase):
         wizard = self._make_wizard(
             file_apuntes=self._enc(apuntes), file_lineas=self._enc(lineas)
         )
-        with self.assertRaisesRegex(UserError, "sin cuenta analítica asignada"):
+        with self.assertRaisesRegex(UserError, "sin cuenta analítica en Odoo"):
             wizard.action_import()
 
         self.assertTrue(analytic)

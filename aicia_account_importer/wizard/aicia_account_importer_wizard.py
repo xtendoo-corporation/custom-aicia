@@ -402,6 +402,16 @@ class AiciaAccountImporterWizard(models.TransientModel):
     filename_lineas = fields.Char()
 
     # ── Configuración ────────────────────────────────────────────────────────
+    default_analytic_account_id = fields.Many2one(
+        "account.analytic.account",
+        string="Analítica por defecto",
+        required=True,
+        default=lambda self: self._default_analytic_account_id(),
+        help=(
+            "Se asigna a las líneas cuyo proyecto y departamento sean cero. "
+            "Por defecto se usa la cuenta analítica con código 0000."
+        ),
+    )
     move_state = fields.Selection(
         [("draft", "Borrador"), ("posted", "Confirmado")],
         string="Estado de los asientos importados",
@@ -463,6 +473,18 @@ class AiciaAccountImporterWizard(models.TransientModel):
     )
 
     # ── Acción principal ─────────────────────────────────────────────────────
+
+    @api.model
+    def _default_analytic_account_id(self):
+        code = (
+            self.env["ir.config_parameter"]
+            .sudo()
+            .get_param("aicia_importer.default_analytic_code", "0000")
+        )
+        analytic = self.env["account.analytic.account"].with_context(
+            active_test=False
+        ).search([("code", "=", code)], limit=1)
+        return analytic.id
 
     def _reload_account_mapping_ids(self):
         self.write(
@@ -619,10 +641,12 @@ class AiciaAccountImporterWizard(models.TransientModel):
             "success",
             _("%d líneas contables leídas.") % total_lineas,
         )
-        self._validate_analytic_assignments(apuntes, lineas_by_apunte)
+        analytic_by_code = self._prepare_analytic_cache()
+        self._validate_analytic_assignments(
+            apuntes, lineas_by_apunte, analytic_by_code
+        )
 
         self.write({"state": "processing"})
-        self.env.cr.commit()
 
         # Construir diccionario de mapeo de cuentas {source_code: account_record}
         account_mapping = self._get_account_mapping_rules()
@@ -633,10 +657,11 @@ class AiciaAccountImporterWizard(models.TransientModel):
             % len(account_mapping.get("prefixes", account_mapping)),
         )
         runtime = self._prepare_import_runtime(
-            apuntes, lineas_by_apunte, account_mapping
+            apuntes, lineas_by_apunte, account_mapping, analytic_by_code
         )
         results = []
         created = replaced = skipped = errors = warnings = 0
+        created_move_ids = []
         missing_accounts = set()
         missing_partners = {}
         total_apuntes = len(apuntes)
@@ -696,6 +721,8 @@ class AiciaAccountImporterWizard(models.TransientModel):
                 runtime=runtime,
             )
             results.append(result)
+            if result.get("move_id"):
+                created_move_ids.append(result["move_id"])
             if result["status"] == "created":
                 created += 1
                 activity_status = "success"
@@ -760,6 +787,18 @@ class AiciaAccountImporterWizard(models.TransientModel):
                 _("Las cuentas no encontradas ya existían en el mapeo global."),
             )
 
+        missing_analytic_lines = self.env["account.move.line"].search_count(
+            [
+                ("move_id", "in", created_move_ids),
+                ("analytic_distribution", "=", False),
+            ]
+        )
+        if missing_analytic_lines:
+            raise UserError(
+                _("%s líneas sin analítica; importación cancelada")
+                % missing_analytic_lines
+            )
+
         self._reload_account_mapping_ids()
         self._append_import_activity(
             activity_log,
@@ -817,7 +856,7 @@ class AiciaAccountImporterWizard(models.TransientModel):
         warnings,
         errors,
     ):
-        """Guarda y confirma el progreso para no perder asientos procesados."""
+        """Actualiza el progreso sin confirmar la transacción de importación."""
         self.write(
             {
                 "total_created": created,
@@ -830,7 +869,6 @@ class AiciaAccountImporterWizard(models.TransientModel):
                 ),
             }
         )
-        self.env.cr.commit()
 
     def _action_apply_account_mappings_to_existing_move_lines(self):
         """Aplica los mapeos guardados sobre apuntes contables ya existentes."""
@@ -1128,47 +1166,50 @@ class AiciaAccountImporterWizard(models.TransientModel):
         return lineas_by_apunte
 
     def _validate_analytic_assignments(
-        self, apuntes: dict, lineas_by_apunte: dict
+        self, apuntes: dict, lineas_by_apunte: dict, analytic_by_code: dict
     ):
-        """Valida únicamente las analíticas informadas en el Excel."""
-        analytic_by_code = {}
-        missing_assignments = []
+        """Valida los proyectos informados antes de crear ningún asiento."""
+        missing_codes = set()
 
         for id_apunte, lineas in lineas_by_apunte.items():
             if id_apunte not in apuntes:
                 continue
-            for line_number, linea in enumerate(lineas, start=1):
-                analytic_code = str(linea.get("id_proyecto") or "").strip()
-                if not analytic_code:
+            for linea in lineas:
+                analytic_code = self._analytic_code(linea.get("id_proyecto"))
+                if analytic_code == "0":
                     continue
-                analytic = analytic_by_code.get(analytic_code)
-                if analytic is None:
-                    analytic = self.env["account.analytic.account"].search(
-                        [("code", "=", analytic_code)], limit=1
-                    )
-                    analytic_by_code[analytic_code] = analytic
-                if analytic:
+                if analytic_by_code.get(analytic_code):
                     continue
-                missing_assignments.append(
-                    _("ID=%(id)s, línea %(line)d, código '%(code)s'")
-                    % {
-                        "id": id_apunte,
-                        "line": line_number,
-                        "code": analytic_code or _("vacío"),
-                    }
-                )
+                missing_codes.add(analytic_code)
 
-        if missing_assignments:
-            details = "; ".join(missing_assignments[:20])
-            if len(missing_assignments) > 20:
-                details += _("; ... (%d líneas en total)") % len(missing_assignments)
+        if missing_codes:
+            details = ", ".join(sorted(missing_codes))
             raise UserError(
                 _(
-                    "No se puede iniciar la importación porque hay líneas sin "
-                    "cuenta analítica asignada. Revisa: %s"
+                    "No se puede iniciar la importación porque hay proyectos "
+                    "sin cuenta analítica en Odoo. Revisa: %s"
                 )
                 % details
             )
+
+    @staticmethod
+    def _analytic_code(id_proyecto):
+        try:
+            return str(int(float(id_proyecto or 0)))
+        except (TypeError, ValueError):
+            return str(id_proyecto or "0").strip()
+
+    def _resolve_analytic(self, id_proyecto, cache):
+        code = self._analytic_code(id_proyecto)
+        if code == "0":
+            analytic = self.default_analytic_account_id
+        else:
+            analytic = cache.get(code)
+        if not analytic:
+            raise UserError(
+                _("Proyecto %s sin cuenta analítica en Odoo") % code
+            )
+        return analytic
 
     # ── Procesamiento de un asiento ───────────────────────────────────────────
 
@@ -1315,6 +1356,7 @@ class AiciaAccountImporterWizard(models.TransientModel):
                 return {
                     "status": "warning",
                     "replaced": replacement,
+                    "move_id": move.id,
                     "ref": legacy_number,
                     "msg": _(
                         "Asiento Nº %s%s %s en BORRADOR (ID Odoo %d) "
@@ -1329,6 +1371,7 @@ class AiciaAccountImporterWizard(models.TransientModel):
                 }
             return {
                 "status": "replaced" if replacement else "created",
+                "move_id": move.id,
                 "ref": legacy_number,
                 "msg": (
                     _("Asiento Nº %s%s reemplazado (ID Odoo %d).")
@@ -1428,25 +1471,10 @@ class AiciaAccountImporterWizard(models.TransientModel):
                 "Cuenta '%s' no encontrada ni en colectivas ni en el plan contable."
             ) % account_lookup_code, None
 
-        # ── Distribución analítica por proyecto/departamento (100%) ──────────
-        # ID_Proyecto=0 indica que el código analítico debe salir de
-        # ID_Departamento, ya normalizado a cuatro dígitos durante el parseo.
-        analytic_distribution = {}
-        id_proyecto = linea.get("id_proyecto")
-        if id_proyecto is not None:
-            runtime = runtime or {}
-            analytic = runtime.get("analytic_by_code", {}).get(str(id_proyecto))
-            if analytic is None:
-                analytic = self.env["account.analytic.account"].search(
-                    [("code", "=", str(id_proyecto))], limit=1
-                )
-                runtime.setdefault("analytic_by_code", {})[str(id_proyecto)] = analytic
-            if analytic:
-                analytic_distribution = {str(analytic.id): 100.0}
-            else:
-                _logger.debug(
-                    "Cuenta analítica no encontrada para ID_Proyecto=%s", id_proyecto
-                )
+        runtime = runtime or {}
+        analytic = self._resolve_analytic(
+            linea.get("id_proyecto"), runtime.get("analytic_by_code", {})
+        )
 
         return (
             {
@@ -1455,7 +1483,7 @@ class AiciaAccountImporterWizard(models.TransientModel):
                 "name": linea["descripcion"] or asiento_desc or "/",
                 "debit": linea["debit"],
                 "credit": linea["credit"],
-                "analytic_distribution": analytic_distribution or False,
+                "analytic_distribution": {str(analytic.id): 100.0},
             },
             None,
             warning_msg,
@@ -2030,7 +2058,19 @@ class AiciaAccountImporterWizard(models.TransientModel):
             runtime.setdefault("nomina_partner_by_ref", {})[ref_code] = partner
         return partner
 
-    def _prepare_import_runtime(self, apuntes, lineas_by_apunte, account_mapping):
+    def _prepare_analytic_cache(self):
+        analytics = self.env["account.analytic.account"].with_context(
+            active_test=False
+        ).search([])
+        analytic_by_code = {analytic.code: analytic for analytic in analytics}
+        for analytic in analytics:
+            normalized_code = self._analytic_code(analytic.code)
+            analytic_by_code.setdefault(normalized_code, analytic)
+        return analytic_by_code
+
+    def _prepare_import_runtime(
+        self, apuntes, lineas_by_apunte, account_mapping, analytic_by_code
+    ):
         account_model = self.env["account.account"]
         accounts = account_model.search([("company_ids", "in", [self.env.company.id])])
         accounts_by_code = {account.code: account for account in accounts}
@@ -2053,19 +2093,6 @@ class AiciaAccountImporterWizard(models.TransientModel):
         journals_by_type = {}
         for journal in journals:
             journals_by_type.setdefault(journal.type, journal)
-
-        project_codes = {
-            str(linea["id_proyecto"])
-            for lineas in lineas_by_apunte.values()
-            for linea in lineas
-            if linea.get("id_proyecto") is not None
-        }
-        analytic_by_code = {}
-        if project_codes:
-            analytics = self.env["account.analytic.account"].search(
-                [("code", "in", sorted(project_codes))]
-            )
-            analytic_by_code = {analytic.code: analytic for analytic in analytics}
 
         return {
             "accounts_by_code": accounts_by_code,
