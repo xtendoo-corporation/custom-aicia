@@ -467,6 +467,9 @@ class AiciaAccountImporterWizard(models.TransientModel):
     total_created = fields.Integer(string="Asientos creados", readonly=True)
     total_replaced = fields.Integer(string="Asientos reemplazados", readonly=True)
     total_skipped = fields.Integer(string="Omitidos (ya existían)", readonly=True)
+    total_analytic_reassigned = fields.Integer(
+        string="Líneas con analítica reasignada", readonly=True
+    )
     total_errors = fields.Integer(string="Errores", readonly=True)
     total_warnings = fields.Integer(
         string="Con socios no resueltos (borrador)", readonly=True
@@ -787,6 +790,15 @@ class AiciaAccountImporterWizard(models.TransientModel):
                 _("Las cuentas no encontradas ya existían en el mapeo global."),
             )
 
+        analytic_reassigned = self._apply_analytic_reassignments(runtime)
+        if analytic_reassigned:
+            self._append_import_activity(
+                activity_log,
+                "info",
+                _("%d líneas de asientos existentes con analítica reasignada.")
+                % analytic_reassigned,
+            )
+
         missing_analytic_lines = self.env["account.move.line"].search_count(
             [
                 ("move_id", "in", created_move_ids),
@@ -822,6 +834,7 @@ class AiciaAccountImporterWizard(models.TransientModel):
                 "total_created": created,
                 "total_replaced": replaced,
                 "total_skipped": skipped,
+                "total_analytic_reassigned": analytic_reassigned,
                 "total_errors": errors,
                 "total_warnings": warnings,
                 "import_log": self._build_log_html(
@@ -1300,14 +1313,22 @@ class AiciaAccountImporterWizard(models.TransientModel):
                 state_label = {"draft": "borrador", "posted": "confirmado"}.get(
                     existing["state"], existing["state"]
                 )
+                reassigned = self._queue_analytic_reassignment(
+                    existing.get("lines", []), line_vals, runtime
+                )
+                msg = _(
+                    "Asiento Nº %s%s ya existe en Odoo (ID %d, estado: %s) "
+                    "con los mismos importes; se omite aunque cambien las "
+                    "subcuentas."
+                ) % (legacy_number, nomina_tag, existing["id"], state_label)
+                if reassigned:
+                    msg += " " + _("%d líneas con analítica reasignada.") % reassigned
                 return {
                     "status": "skipped",
+                    "move_id": existing["id"],
+                    "analytic_reassigned": reassigned,
                     "ref": legacy_number,
-                    "msg": _(
-                        "Asiento Nº %s%s ya existe en Odoo (ID %d, estado: %s) "
-                        "con los mismos importes; se omite aunque cambien las "
-                        "subcuentas."
-                    ) % (legacy_number, nomina_tag, existing["id"], state_label),
+                    "msg": msg,
                 }
             replacement = True
             existing_move = self.env["account.move"].browse(existing["id"]).exists()
@@ -1479,6 +1500,71 @@ class AiciaAccountImporterWizard(models.TransientModel):
         )
 
     # ── Resolución de cuentas contables ──────────────────────────────────────
+
+    @staticmethod
+    def _match_existing_lines(existing_lines, line_vals):
+        """Empareja líneas de Odoo con las del Excel por importe.
+
+        Dentro de un mismo importe se prioriza la coincidencia de descripción
+        y, después, el orden de creación. Devuelve ``[(existing, vals), ...]``.
+        """
+        pending_by_amount = defaultdict(list)
+        for existing_line in existing_lines:
+            pending_by_amount[existing_line["amount_key"]].append(existing_line)
+
+        new_by_amount = defaultdict(list)
+        for values in line_vals:
+            vals = values[2]
+            amount_key = (round(vals["debit"] * 100), round(vals["credit"] * 100))
+            new_by_amount[amount_key].append(vals)
+
+        pairs = []
+        for amount_key, new_lines in new_by_amount.items():
+            candidates = pending_by_amount.get(amount_key, [])
+            unmatched = []
+            for vals in new_lines:
+                same_name = next(
+                    (c for c in candidates if c["name"] == vals.get("name")), None
+                )
+                if same_name:
+                    candidates.remove(same_name)
+                    pairs.append((same_name, vals))
+                else:
+                    unmatched.append(vals)
+            pairs.extend(zip(candidates, unmatched))
+        return pairs
+
+    def _queue_analytic_reassignment(self, existing_lines, line_vals, runtime):
+        """Encola la analítica correcta para las líneas de un asiento existente."""
+        queue = runtime.setdefault("analytic_reassignments", defaultdict(list))
+        reassigned = 0
+        for existing_line, vals in self._match_existing_lines(
+            existing_lines, line_vals
+        ):
+            target = vals["analytic_distribution"]
+            current = {
+                str(key): float(value)
+                for key, value in (existing_line["analytic_distribution"] or {}).items()
+            }
+            if current == target:
+                continue
+            target_key = tuple(sorted(target.items()))
+            queue[target_key].append(existing_line["id"])
+            existing_line["analytic_distribution"] = dict(target)
+            reassigned += 1
+        return reassigned
+
+    def _apply_analytic_reassignments(self, runtime):
+        """Escribe por lotes las analíticas encoladas (sin tocar importes)."""
+        queue = runtime.pop("analytic_reassignments", {})
+        move_line_model = self.env["account.move.line"]
+        total = 0
+        for target_key, line_ids in queue.items():
+            move_line_model.browse(line_ids).write(
+                {"analytic_distribution": dict(target_key)}
+            )
+            total += len(line_ids)
+        return total
 
     @staticmethod
     def _line_amount_signature(line_vals):
@@ -2138,16 +2224,26 @@ class AiciaAccountImporterWizard(models.TransientModel):
         ]
         lines = self.env["account.move.line"].search_read(
             [("id", "in", move_line_ids)],
-            ["move_id", "debit", "credit"],
+            ["move_id", "debit", "credit", "name", "analytic_distribution"],
+            order="id",
         )
         signatures_by_move = defaultdict(list)
+        lines_by_move = defaultdict(list)
         for line in lines:
             move_id = line["move_id"][0]
-            signatures_by_move[move_id].append(
-                (
-                    round((line.get("debit") or 0.0) * 100),
-                    round((line.get("credit") or 0.0) * 100),
-                )
+            amount_key = (
+                round((line.get("debit") or 0.0) * 100),
+                round((line.get("credit") or 0.0) * 100),
+            )
+            signatures_by_move[move_id].append(amount_key)
+            lines_by_move[move_id].append(
+                {
+                    "id": line["id"],
+                    "amount_key": amount_key,
+                    "name": line.get("name") or "",
+                    "analytic_distribution": line.get("analytic_distribution")
+                    or {},
+                }
             )
         existing_moves = {}
         for move in moves:
@@ -2156,6 +2252,7 @@ class AiciaAccountImporterWizard(models.TransientModel):
                 move["amount_signature"] = tuple(
                     sorted(signatures_by_move.get(move["id"], []))
                 )
+                move["lines"] = lines_by_move.get(move["id"], [])
                 existing_moves[legacy_number] = move
         return existing_moves
 

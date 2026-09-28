@@ -1246,7 +1246,7 @@ class TestAiciaAccountImporterWizard(TransactionCase):
         """Con menos asientos que el lote no se guarda progreso intermedio."""
         self._ensure_account("572000", "Bancos", "asset_cash")
         self._ensure_account("700000", "Ventas", "income")
-        analytic = self._ensure_analytic_account("0023", "Proyecto 23")
+        analytic = self._ensure_analytic_account("23", "Proyecto 23")
 
         apuntes = self._make_apuntes_xlsx([
             [47, 4700, 20250115, None, "Lote 1", "DOC", 10000, True, False, "R"],
@@ -1614,6 +1614,117 @@ class TestAiciaAccountImporterWizard(TransactionCase):
                 ]
             ),
             0,
+        )
+
+    def _import_reassignment_case(self, legacy_id, number, move_state):
+        self._ensure_account("430000", "Clientes", "asset_receivable")
+        self._ensure_account("700000", "Ventas", "income")
+        default = self._ensure_analytic_account("0000", "AICIA GENERAL")
+        department = self._ensure_analytic_account("0001", "ING. QUIMICA GENERAL")
+        project = self._ensure_analytic_account("516", "PRACTICAS EMPRESAS")
+        apuntes = self._make_apuntes_xlsx([
+            [legacy_id, number, 20250115, None, "Reasignar", "DOC", 30000,
+             True, False, "R"],
+        ])
+        first_lines = self._make_lineas_xlsx([
+            [legacy_id, 1, "430000001", 0, 0, "Cliente", 20000, "D"],
+            [legacy_id, 2, "430000001", 0, 0, "Cliente", 10000, "D"],
+            [legacy_id, 3, "700000000", 0, 0, "Venta", 30000, "H"],
+        ])
+        self._make_wizard(
+            move_state=move_state,
+            file_apuntes=self._enc(apuntes),
+            file_lineas=self._enc(first_lines),
+        ).action_import()
+        move = self._find_move_by_legacy_number(number)
+        self.assertEqual(
+            set(move.line_ids.mapped(lambda line: str(line.analytic_distribution))),
+            {str({str(default.id): 100.0})},
+        )
+        amounts_before = move.line_ids.sorted("id").mapped(
+            lambda line: (line.account_id.id, line.debit, line.credit)
+        )
+
+        second_lines = self._make_lineas_xlsx([
+            [legacy_id, 1, "430000001", 1, 0, "Cliente", 20000, "D"],
+            [legacy_id, 2, "430000001", 3, 516, "Cliente", 10000, "D"],
+            [legacy_id, 3, "700000000", 0, 0, "Venta", 30000, "H"],
+        ])
+        wizard = self._make_wizard(
+            move_state=move_state,
+            file_apuntes=self._enc(apuntes),
+            file_lineas=self._enc(second_lines),
+        )
+        wizard.action_import()
+        return wizard, move, amounts_before, default, department, project
+
+    def _assert_reassigned(self, wizard, move, amounts_before, default,
+                           department, project):
+        self.assertEqual(wizard.total_skipped, 1)
+        self.assertEqual(wizard.total_created, 0)
+        self.assertEqual(wizard.total_analytic_reassigned, 2)
+        self.assertTrue(move.exists(), "El asiento no debe recrearse")
+        by_amount = {
+            (line.debit, line.credit): line.analytic_distribution
+            for line in move.line_ids
+        }
+        self.assertEqual(by_amount[(200.0, 0.0)], {str(department.id): 100.0})
+        self.assertEqual(by_amount[(100.0, 0.0)], {str(project.id): 100.0})
+        self.assertEqual(by_amount[(0.0, 300.0)], {str(default.id): 100.0})
+        self.assertEqual(
+            move.line_ids.sorted("id").mapped(
+                lambda line: (line.account_id.id, line.debit, line.credit)
+            ),
+            amounts_before,
+            "La reasignación solo debe cambiar la analítica",
+        )
+
+    def test_reimport_reassigns_analytics_on_existing_draft_move(self):
+        """Un asiento existente con mismos importes recibe la analítica nueva."""
+        result = self._import_reassignment_case(81, 8100, "draft")
+        self._assert_reassigned(*result)
+
+    def test_reimport_reassigns_analytics_on_existing_posted_move(self):
+        """También se reasigna la analítica en asientos confirmados."""
+        wizard, move, *rest = self._import_reassignment_case(82, 8200, "posted")
+        self.assertEqual(move.state, "posted")
+        self._assert_reassigned(wizard, move, *rest)
+        self.assertEqual(move.state, "posted")
+
+    def test_reimport_without_changes_reassigns_nothing(self):
+        """Si la analítica ya es correcta no se reescribe ninguna línea."""
+        self._import_reassignment_case(83, 8300, "draft")
+        apuntes = self._make_apuntes_xlsx([
+            [83, 8300, 20250115, None, "Reasignar", "DOC", 30000, True, False, "R"],
+        ])
+        lineas = self._make_lineas_xlsx([
+            [83, 1, "430000001", 1, 0, "Cliente", 20000, "D"],
+            [83, 2, "430000001", 3, 516, "Cliente", 10000, "D"],
+            [83, 3, "700000000", 0, 0, "Venta", 30000, "H"],
+        ])
+        wizard = self._make_wizard(
+            file_apuntes=self._enc(apuntes), file_lineas=self._enc(lineas)
+        )
+        wizard.action_import()
+        self.assertEqual(wizard.total_skipped, 1)
+        self.assertEqual(wizard.total_analytic_reassigned, 0)
+
+    def test_match_existing_lines_prefers_same_description(self):
+        """Con importes repetidos se empareja primero por descripción."""
+        existing = [
+            {"id": 1, "amount_key": (100, 0), "name": "B",
+             "analytic_distribution": {}},
+            {"id": 2, "amount_key": (100, 0), "name": "A",
+             "analytic_distribution": {}},
+        ]
+        new = [
+            (0, 0, {"debit": 1.0, "credit": 0.0, "name": "A"}),
+            (0, 0, {"debit": 1.0, "credit": 0.0, "name": "B"}),
+        ]
+        pairs = self._make_wizard()._match_existing_lines(existing, new)
+        self.assertEqual(
+            sorted((old["id"], vals["name"]) for old, vals in pairs),
+            [(1, "B"), (2, "A")],
         )
 
     def test_line_analytic_code_normalizes_excel_float_project(self):

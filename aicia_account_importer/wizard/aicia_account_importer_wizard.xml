@@ -100,6 +100,7 @@
                             <field name="total_created" readonly="1"/>
                             <field name="total_replaced" readonly="1"/>
                             <field name="total_skipped" readonly="1"/>
+                            <field name="total_analytic_reassigned" readonly="1"/>
                             <field name="total_warnings" readonly="1"/>
                             <field name="total_errors" readonly="1"/>
                         </group>
