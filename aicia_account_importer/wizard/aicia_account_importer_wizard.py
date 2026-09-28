@@ -38,8 +38,8 @@ except ImportError:
 #    Col 0: ID_Apunte          → clave de unión con Apuntes (col 0 de ambos ficheros)
 #    Col 1: ID_Linea           → identificador de línea (no se usa)
 #    Col 2: Cuenta_Contable    → 9 dígitos (ej: 430003604)
-#    Col 3: ID_Departamento    → proyecto analítico si ID_Proyecto es 0
-#    Col 4: ID_Proyecto        → proyecto analítico
+#    Col 3: ID_Departamento    → cuenta analítica de departamento
+#    Col 4: ID_Proyecto        → cuenta analítica de proyecto
 #    Col 5: Descripcion        → descripción de la línea
 #    Col 6: Importe            → entero en CÉNTIMOS (siempre positivo)
 #    Col 7: Tipo_Contable      → "D" = Debe / "H" = Haber
@@ -97,8 +97,8 @@ IMPORT_PROGRESS_BATCH_SIZE = 100
 LINEAS_COLS = {
     "id_apunte": 0,   # ID_Apunte — clave de unión con la cabecera (col 0 de ambos ficheros)
     "cuenta": 2,
-    "id_departamento": 3,  # ID_Departamento → proyecto analítico cuando ID_Proyecto=0
-    "id_proyecto": 4,  # ID_Proyecto → cuenta analítica (ref en account.analytic.account)
+    "id_departamento": 3,  # Código analítico de departamento si no hay proyecto
+    "id_proyecto": 4,  # Código analítico de proyecto
     "descripcion": 5,
     "importe": 6,
     "tipo": 7,
@@ -1113,8 +1113,9 @@ class AiciaAccountImporterWizard(models.TransientModel):
 
             importe = round(importe_cents / 100, 2)
 
-            # ID_Proyecto → cuenta analítica (col 4). Cuando vale 0, el
-            # proyecto analítico se obtiene de ID_Departamento (col 3).
+            # ID_Proyecto → cuenta analítica (col 4). Cuando vale 0, se
+            # utiliza ID_Departamento (col 3). Ambos códigos se normalizan
+            # posteriormente a cuatro posiciones.
             id_departamento_raw = (
                 row[c["id_departamento"]]
                 if len(row) > c["id_departamento"]
@@ -1194,10 +1195,17 @@ class AiciaAccountImporterWizard(models.TransientModel):
 
     @staticmethod
     def _analytic_code(id_proyecto):
+        """Normaliza un código analítico legado a cuatro posiciones."""
         try:
-            return str(int(float(id_proyecto or 0)))
+            numeric_code = int(float(id_proyecto or 0))
         except (TypeError, ValueError):
-            return str(id_proyecto or "0").strip()
+            normalized_code = str(id_proyecto or "0").strip()
+            if normalized_code.isdigit():
+                return normalized_code.zfill(4)
+            return normalized_code
+        if numeric_code == 0:
+            return "0"
+        return str(numeric_code).zfill(4)
 
     def _resolve_analytic(self, id_proyecto, cache):
         code = self._analytic_code(id_proyecto)

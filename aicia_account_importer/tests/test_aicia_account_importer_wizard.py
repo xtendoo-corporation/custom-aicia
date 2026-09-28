@@ -1246,7 +1246,7 @@ class TestAiciaAccountImporterWizard(TransactionCase):
         """Con menos asientos que el lote no se guarda progreso intermedio."""
         self._ensure_account("572000", "Bancos", "asset_cash")
         self._ensure_account("700000", "Ventas", "income")
-        analytic = self._ensure_analytic_account("23", "Proyecto 23")
+        analytic = self._ensure_analytic_account("0023", "Proyecto 23")
 
         apuntes = self._make_apuntes_xlsx([
             [47, 4700, 20250115, None, "Lote 1", "DOC", 10000, True, False, "R"],
@@ -1559,7 +1559,7 @@ class TestAiciaAccountImporterWizard(TransactionCase):
         """ID_Proyecto distinto de cero mantiene su código original."""
         self._ensure_account("430000", "Clientes", "asset_receivable")
         self._ensure_account("700000", "Ventas", "income")
-        analytic = self._ensure_analytic_account("23", "Proyecto 23")
+        analytic = self._ensure_analytic_account("0023", "Proyecto 23")
 
         apuntes = self._make_apuntes_xlsx([
             [44, 4400, 20250115, None, "Proyecto 23", "DOC", 30000, True, False, "R"],
@@ -1631,7 +1631,7 @@ class TestAiciaAccountImporterWizard(TransactionCase):
         """Una analítica inexistente bloquea todos los asientos del lote."""
         self._ensure_account("430000", "Clientes", "asset_receivable")
         self._ensure_account("700000", "Ventas", "income")
-        analytic = self._ensure_analytic_account("23", "Proyecto 23")
+        analytic = self._ensure_analytic_account("0023", "Proyecto 23")
 
         apuntes = self._make_apuntes_xlsx([
             [45, 4500, 20250115, None, "Proyecto válido", "DOC", 30000, True, False, "R"],

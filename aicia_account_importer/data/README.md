@@ -41,17 +41,19 @@ Contiene las **líneas** de cada asiento contable.
 | 0        | ID_Apunte        | Entero            | `12345`       | Clave de unión con Apuntes                  |
 | 1        | ID_Linea         | Entero            | `1`           | No se importa                               |
 | 2        | Cuenta_Contable  | Texto (9 dígitos) | `"430003604"` | Ver reglas de normalización abajo           |
-| 3        | ID_Departamento  | Entero            | `0`           | Proyecto analítico si `ID_Proyecto=0`       |
-| 4        | ID_Proyecto      | Entero            | `0`           | Proyecto analítico; `0` usa el departamento |
+| 3        | ID_Departamento  | Entero            | `0`           | Cuenta analítica de departamento             |
+| 4        | ID_Proyecto      | Entero            | `0`           | Cuenta analítica de proyecto; `0` usa el departamento |
 | 5        | Descripcion      | Texto             | `"Cliente A"` | `name` de la línea del asiento              |
 | 6        | Importe          | Entero (céntimos) | `21982`       | Se divide entre 100 → `219,82 €`            |
 | 7        | Tipo_Contable    | Texto `D` o `H`   | `"D"`         | `D`=Debe (debit) / `H`=Haber (credit)       |
 
 - Filas totales aprox.: **47.726**
 
-Las líneas con `ID_Proyecto=0` e `ID_Departamento=0` no llevan cuenta
-analítica. Si se informa un proyecto o departamento distinto de cero, ese
-código debe existir en `account.analytic.account`.
+Los códigos de `ID_Departamento` e `ID_Proyecto` se normalizan con ceros a la
+izquierda hasta cuatro dígitos (`11` → `0011`, `23` → `0023`). Si
+`ID_Proyecto` es distinto de cero se utiliza ese código; si es cero, se utiliza
+`ID_Departamento`. Cuando ambos son cero se utiliza la analítica por defecto
+seleccionada en el wizard.
 
 ---
 
