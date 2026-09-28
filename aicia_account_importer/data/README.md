@@ -55,11 +55,12 @@ La cuenta analítica de cada línea se obtiene así:
 |-----------------|-------------|--------------------------|-----------------------------------------------|
 | cualquiera      | `≠ 0`       | ID_Proyecto tal cual     | `516` → `516` (PROGRAMAS PRACTICAS EMPRESAS)  |
 | `≠ 0`           | `0`         | ID_Departamento a 4 díg. | `1` → `0001` (INGENIERIA QUIMICA Y AMBIENTAL GENERAL) |
-| `0`             | `0`         | Analítica por defecto    | `0000` (AICIA GENERAL)                        |
+| `0`             | `0`         | Departamento 0 a 4 díg.  | `0000` (AICIA GENERAL)                        |
 
 Los proyectos **no** se rellenan con ceros: el proyecto `22` (SACESA/ENSAYOS)
 es distinto del departamento `22` (`0022`, INGENIERIA TELEMATICA GENERAL). La
 búsqueda en `account.analytic.account.code` es exacta.
+Si ambas columnas están vacías (no contienen `0`), la importación se cancela.
 
 ---
 
@@ -88,16 +89,13 @@ El módulo los normaliza al plan contable español (6 dígitos) así:
 1. Ve a **Contabilidad → AICIA - Importación → Importar Apuntes Contables**.
 2. Selecciona el diario contable destino.
 3. Sube `Apuntes2025.xlsx` en el primer campo y `Lineas_Apunte2025.xlsx` en el segundo.
-4. Selecciona la **Analítica por defecto**. Se preselecciona la cuenta con
-   código `0000` (AICIA GENERAL), configurable mediante el parámetro
-   `aicia_importer.default_analytic_code`.
-5. Elige si los asientos se crean en borrador o se confirman directamente.
-6. Activa "Omitir asientos anulados" si lo deseas.
-7. Pulsa **Importar**.
+4. Elige si los asientos se crean en borrador o se confirman directamente.
+5. Activa "Omitir asientos anulados" si lo deseas.
+6. Pulsa **Importar**.
 
 Todas las líneas importadas reciben una distribución analítica del 100 %. Las
 líneas con proyecto cero reciben la analítica general de su departamento
-(`0001`, `0002`…) o la analítica por defecto si el departamento también es
-cero. Cualquier código inexistente en Odoo bloquea la importación completa.
+(`0000`, `0001`, `0002`…). Cualquier código inexistente en Odoo, incluido
+`0000`, bloquea la importación completa.
 
 El log HTML al final resume: asientos creados ✅, omitidos ⚠️ y errores ❌.

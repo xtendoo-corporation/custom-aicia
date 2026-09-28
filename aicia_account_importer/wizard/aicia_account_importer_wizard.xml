@@ -90,7 +90,6 @@
                         <field name="move_state"/>
                         <field name="create_missing_partners"/>
                         <field name="skip_anulados"/>
-                        <field name="default_analytic_account_id"/>
                     </group>
                 </group>
                 <notebook>
@@ -180,7 +179,7 @@
                                 <tr><td style="border:1px solid #ccc;padding:4px 8px;"><code>ID_Apunte</code></td><td style="border:1px solid #ccc;padding:4px 8px;">Clave de unión con cabecera</td><td style="border:1px solid #ccc;padding:4px 8px;">297</td></tr>
                                 <tr><td style="border:1px solid #ccc;padding:4px 8px;"><code>ID_Linea</code></td><td style="border:1px solid #ccc;padding:4px 8px;">Identificador de línea</td><td style="border:1px solid #ccc;padding:4px 8px;">12772</td></tr>
                                 <tr><td style="border:1px solid #ccc;padding:4px 8px;"><code>Cuenta_Contable</code></td><td style="border:1px solid #ccc;padding:4px 8px;">9 dígitos — 400/430 → colectiva</td><td style="border:1px solid #ccc;padding:4px 8px;">430003604</td></tr>
-                                <tr><td style="border:1px solid #ccc;padding:4px 8px;"><code>ID_Departamento</code></td><td style="border:1px solid #ccc;padding:4px 8px;">Si el proyecto es 0: analítica general del departamento, rellenada a 4 dígitos (1 → 0001); 0 → analítica por defecto</td><td style="border:1px solid #ccc;padding:4px 8px;">1</td></tr>
+                                <tr><td style="border:1px solid #ccc;padding:4px 8px;"><code>ID_Departamento</code></td><td style="border:1px solid #ccc;padding:4px 8px;">Si el proyecto es 0: analítica general del departamento, rellenada a 4 dígitos (1 → 0001; 0 → 0000)</td><td style="border:1px solid #ccc;padding:4px 8px;">1</td></tr>
                                 <tr><td style="border:1px solid #ccc;padding:4px 8px;"><code>ID_Proyecto</code></td><td style="border:1px solid #ccc;padding:4px 8px;">Código de la analítica del proyecto, sin rellenar; 0 usa el departamento</td><td style="border:1px solid #ccc;padding:4px 8px;">516</td></tr>
                                 <tr><td style="border:1px solid #ccc;padding:4px 8px;"><code>Descripcion</code></td><td style="border:1px solid #ccc;padding:4px 8px;">Descripción de la línea / nombre tercero</td><td style="border:1px solid #ccc;padding:4px 8px;">SPHERAG TECK LOT</td></tr>
                                 <tr><td style="border:1px solid #ccc;padding:4px 8px;"><code>Importe</code></td><td style="border:1px solid #ccc;padding:4px 8px;">Entero en CÉNTIMOS (÷100 = euros)</td><td style="border:1px solid #ccc;padding:4px 8px;">21982 → 219,82€</td></tr>

@@ -51,12 +51,11 @@ class TestAiciaAccountImporterWizard(TransactionCase):
     # ── Helpers ───────────────────────────────────────────────────────────────
 
     def _make_wizard(self, **kwargs):
-        default_analytic = self._ensure_analytic_account("0000", "AICIA GENERAL")
+        self._ensure_analytic_account("0000", "AICIA GENERAL")
         defaults = {
             "move_state": "draft",
             "create_missing_partners": True,
             "skip_anulados": True,
-            "default_analytic_account_id": default_analytic.id,
         }
         defaults.update(kwargs)
         return self.env["aicia.account.importer.wizard"].create(defaults)
@@ -310,7 +309,7 @@ class TestAiciaAccountImporterWizard(TransactionCase):
             "descripcion": "Nómina empleado",
             "debit": 100.0,
             "credit": 0.0,
-            "analytic_code": "0",
+            "analytic_code": "0000",
         }
 
         with (
@@ -333,6 +332,7 @@ class TestAiciaAccountImporterWizard(TransactionCase):
                 set(),
                 {},
                 is_nomina=True,
+                runtime={"analytic_by_code": wizard._prepare_analytic_cache()},
             )
 
         self.assertFalse(error)
@@ -357,7 +357,7 @@ class TestAiciaAccountImporterWizard(TransactionCase):
             "descripcion": "Nómina empleado",
             "debit": 100.0,
             "credit": 0.0,
-            "analytic_code": "0",
+            "analytic_code": "0000",
         }
 
         with patch.object(
@@ -372,6 +372,7 @@ class TestAiciaAccountImporterWizard(TransactionCase):
                 set(),
                 {},
                 is_nomina=True,
+                runtime={"analytic_by_code": wizard._prepare_analytic_cache()},
             )
 
         self.assertFalse(error)
@@ -1745,13 +1746,51 @@ class TestAiciaAccountImporterWizard(TransactionCase):
         self.assertEqual(wizard._line_analytic_code("1", "0"), "0001")
         self.assertEqual(wizard._line_analytic_code(1.0, None), "0001")
 
-    def test_line_analytic_code_both_zero_uses_default(self):
-        """Departamento y proyecto a 0 → analítica por defecto."""
+    def test_line_analytic_code_both_zero_uses_department_zero(self):
+        """Departamento y proyecto a 0 resuelven la cuenta 0000."""
         wizard = self._make_wizard()
-        self.assertEqual(wizard._line_analytic_code(0, 0), "0")
-        self.assertEqual(wizard._line_analytic_code(None, None), "0")
-        default = self._ensure_analytic_account("0000", "AICIA GENERAL")
-        self.assertEqual(wizard._resolve_analytic("0", {}), default)
+        self.assertEqual(wizard._line_analytic_code(0, 0), "0000")
+        self.assertEqual(wizard._line_analytic_code("0", 0.0), "0000")
+        general = self._ensure_analytic_account("0000", "AICIA GENERAL")
+        self.assertEqual(
+            wizard._resolve_analytic("0000", wizard._prepare_analytic_cache()),
+            general,
+        )
+
+    def test_import_both_analytic_columns_blank_blocks_import(self):
+        """Dos celdas vacías no equivalen al departamento cero explícito."""
+        apuntes = self._make_apuntes_xlsx([
+            [84, 8400, 20250115, None, "Sin IDs", "DOC", 30000, True, False, "R"],
+        ])
+        lineas = self._make_lineas_xlsx([
+            [84, 1, "430000001", None, None, "Cliente", 30000, "D"],
+            [84, 2, "700000000", 0, 0, "Venta", 30000, "H"],
+        ])
+        wizard = self._make_wizard(
+            file_apuntes=self._enc(apuntes), file_lineas=self._enc(lineas)
+        )
+        with self.assertRaisesRegex(UserError, "ID_Departamento ni ID_Proyecto"):
+            wizard.action_import()
+        self.assertFalse(self._find_move_by_legacy_number("8400"))
+
+    def test_import_missing_department_zero_analytic_blocks_import(self):
+        """Si falta la cuenta 0000, el par de ceros no se ignora."""
+        self._ensure_account("430000", "Clientes", "asset_receivable")
+        self._ensure_account("700000", "Ventas", "income")
+        apuntes = self._make_apuntes_xlsx([
+            [85, 8500, 20250115, None, "General", "DOC", 30000, True, False, "R"],
+        ])
+        lineas = self._make_lineas_xlsx([
+            [85, 1, "430000001", 0, 0, "Cliente", 30000, "D"],
+            [85, 2, "700000000", 0, 0, "Venta", 30000, "H"],
+        ])
+        wizard = self._make_wizard(
+            file_apuntes=self._enc(apuntes), file_lineas=self._enc(lineas)
+        )
+        with patch.object(type(wizard), "_prepare_analytic_cache", return_value={}):
+            with self.assertRaisesRegex(UserError, "0000"):
+                wizard.action_import()
+        self.assertFalse(self._find_move_by_legacy_number("8500"))
 
     def test_resolve_analytic_missing_code_raises(self):
         wizard = self._make_wizard()

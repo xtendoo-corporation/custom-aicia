@@ -402,16 +402,6 @@ class AiciaAccountImporterWizard(models.TransientModel):
     filename_lineas = fields.Char()
 
     # ── Configuración ────────────────────────────────────────────────────────
-    default_analytic_account_id = fields.Many2one(
-        "account.analytic.account",
-        string="Analítica por defecto",
-        required=True,
-        default=lambda self: self._default_analytic_account_id(),
-        help=(
-            "Se asigna a las líneas con ID_Proyecto e ID_Departamento a cero. "
-            "Por defecto se usa la cuenta analítica con código 0000."
-        ),
-    )
     move_state = fields.Selection(
         [("draft", "Borrador"), ("posted", "Confirmado")],
         string="Estado de los asientos importados",
@@ -476,18 +466,6 @@ class AiciaAccountImporterWizard(models.TransientModel):
     )
 
     # ── Acción principal ─────────────────────────────────────────────────────
-
-    @api.model
-    def _default_analytic_account_id(self):
-        code = (
-            self.env["ir.config_parameter"]
-            .sudo()
-            .get_param("aicia_importer.default_analytic_code", "0000")
-        )
-        analytic = self.env["account.analytic.account"].with_context(
-            active_test=False
-        ).search([("code", "=", code)], limit=1)
-        return analytic.id
 
     def _reload_account_mapping_ids(self):
         self.write(
@@ -1105,7 +1083,9 @@ class AiciaAccountImporterWizard(models.TransientModel):
 
         lineas_by_apunte = defaultdict(list)
         c = LINEAS_COLS
-        for row in ws.iter_rows(min_row=2, values_only=True):
+        for row_number, row in enumerate(
+            ws.iter_rows(min_row=2, values_only=True), start=2
+        ):
             id_apunte = row[c["id_apunte"]]
             if id_apunte is None:
                 continue
@@ -1134,6 +1114,17 @@ class AiciaAccountImporterWizard(models.TransientModel):
             id_proyecto_raw = (
                 row[c["id_proyecto"]] if len(row) > c["id_proyecto"] else None
             )
+            if all(
+                value is None or str(value).strip() == ""
+                for value in (id_departamento_raw, id_proyecto_raw)
+            ):
+                raise UserError(
+                    _(
+                        "La línea %(line)d del asiento ID %(entry)s no tiene "
+                        "ID_Departamento ni ID_Proyecto."
+                    )
+                    % {"line": row_number, "entry": id_apunte}
+                )
 
             lineas_by_apunte[id_apunte].append(
                 {
@@ -1152,16 +1143,14 @@ class AiciaAccountImporterWizard(models.TransientModel):
     def _validate_analytic_assignments(
         self, apuntes: dict, lineas_by_apunte: dict, analytic_by_code: dict
     ):
-        """Valida los proyectos informados antes de crear ningún asiento."""
+        """Valida los códigos analíticos antes de crear ningún asiento."""
         missing_codes = set()
 
         for id_apunte, lineas in lineas_by_apunte.items():
             if id_apunte not in apuntes:
                 continue
             for linea in lineas:
-                analytic_code = linea.get("analytic_code") or "0"
-                if analytic_code == "0":
-                    continue
+                analytic_code = linea["analytic_code"]
                 if analytic_by_code.get(analytic_code):
                     continue
                 missing_codes.add(analytic_code)
@@ -1191,22 +1180,17 @@ class AiciaAccountImporterWizard(models.TransientModel):
         - ID_Proyecto distinto de 0 → código del proyecto tal cual (``516``).
         - ID_Proyecto = 0 → cuenta general del departamento, con el ID
           rellenado a 4 dígitos (``1`` → ``0001``).
-        - Ambos a 0 → ``"0"``: se usa la analítica por defecto (``0000``).
+        - Ambos a 0 → cuenta general del departamento 0 (``0000``).
         """
         project_code = cls._analytic_code(id_proyecto)
         if project_code != "0":
             return project_code
         department_code = cls._analytic_code(id_departamento)
-        if department_code == "0":
-            return "0"
         return department_code.zfill(4)
 
     def _resolve_analytic(self, analytic_code, cache):
-        code = str(analytic_code or "0")
-        if code == "0":
-            analytic = self.default_analytic_account_id
-        else:
-            analytic = cache.get(code)
+        code = str(analytic_code)
+        analytic = cache.get(code)
         if not analytic:
             raise UserError(
                 _("Proyecto/departamento %s sin cuenta analítica en Odoo") % code
