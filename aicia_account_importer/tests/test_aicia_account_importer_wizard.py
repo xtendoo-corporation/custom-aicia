@@ -310,7 +310,7 @@ class TestAiciaAccountImporterWizard(TransactionCase):
             "descripcion": "Nómina empleado",
             "debit": 100.0,
             "credit": 0.0,
-            "id_proyecto": None,
+            "analytic_code": "0",
         }
 
         with (
@@ -357,7 +357,7 @@ class TestAiciaAccountImporterWizard(TransactionCase):
             "descripcion": "Nómina empleado",
             "debit": 100.0,
             "credit": 0.0,
-            "id_proyecto": None,
+            "analytic_code": "0",
         }
 
         with patch.object(
@@ -1559,7 +1559,8 @@ class TestAiciaAccountImporterWizard(TransactionCase):
         """ID_Proyecto distinto de cero mantiene su código original."""
         self._ensure_account("430000", "Clientes", "asset_receivable")
         self._ensure_account("700000", "Ventas", "income")
-        analytic = self._ensure_analytic_account("0023", "Proyecto 23")
+        analytic = self._ensure_analytic_account("23", "Proyecto 23")
+        self._ensure_analytic_account("0023", "ROBOTICA GENERAL")
 
         apuntes = self._make_apuntes_xlsx([
             [44, 4400, 20250115, None, "Proyecto 23", "DOC", 30000, True, False, "R"],
@@ -1615,23 +1616,50 @@ class TestAiciaAccountImporterWizard(TransactionCase):
             0,
         )
 
-    def test_resolve_analytic_normalizes_excel_float_project(self):
+    def test_line_analytic_code_normalizes_excel_float_project(self):
         """Los proyectos Excel tipo 2419.0 se resuelven como 2419."""
-        analytic = self._ensure_analytic_account("2419", "Proyecto 2419")
         wizard = self._make_wizard()
-        self.assertEqual(
-            wizard._resolve_analytic(
-                2419.0,
-                {"2419": analytic},
-            ),
-            analytic,
-        )
+        self.assertEqual(wizard._line_analytic_code(5, 2419.0), "2419")
+
+    def test_line_analytic_code_project_is_not_zero_padded(self):
+        """El proyecto 22 es '22', distinto del departamento 22 ('0022')."""
+        wizard = self._make_wizard()
+        self.assertEqual(wizard._line_analytic_code(3, 22), "22")
+        self.assertEqual(wizard._line_analytic_code(22, 0), "0022")
+
+    def test_line_analytic_code_project_zero_uses_department(self):
+        """ID_Proyecto=0 usa el general del departamento a 4 dígitos."""
+        wizard = self._make_wizard()
+        self.assertEqual(wizard._line_analytic_code(1, 0), "0001")
+        self.assertEqual(wizard._line_analytic_code("1", "0"), "0001")
+        self.assertEqual(wizard._line_analytic_code(1.0, None), "0001")
+
+    def test_line_analytic_code_both_zero_uses_default(self):
+        """Departamento y proyecto a 0 → analítica por defecto."""
+        wizard = self._make_wizard()
+        self.assertEqual(wizard._line_analytic_code(0, 0), "0")
+        self.assertEqual(wizard._line_analytic_code(None, None), "0")
+        default = self._ensure_analytic_account("0000", "AICIA GENERAL")
+        self.assertEqual(wizard._resolve_analytic("0", {}), default)
+
+    def test_resolve_analytic_missing_code_raises(self):
+        wizard = self._make_wizard()
+        with self.assertRaises(UserError):
+            wizard._resolve_analytic("99999", {})
+
+    def test_analytic_cache_uses_exact_codes(self):
+        """La caché no confunde el proyecto '22' con el departamento '0022'."""
+        project = self._ensure_analytic_account("22", "SACESA/ENSAYOS")
+        department = self._ensure_analytic_account("0022", "TELEMATICA GENERAL")
+        cache = self._make_wizard()._prepare_analytic_cache()
+        self.assertEqual(cache["22"], project)
+        self.assertEqual(cache["0022"], department)
 
     def test_import_missing_analytic_account_blocks_import(self):
         """Una analítica inexistente bloquea todos los asientos del lote."""
         self._ensure_account("430000", "Clientes", "asset_receivable")
         self._ensure_account("700000", "Ventas", "income")
-        analytic = self._ensure_analytic_account("0023", "Proyecto 23")
+        analytic = self._ensure_analytic_account("23", "Proyecto 23")
 
         apuntes = self._make_apuntes_xlsx([
             [45, 4500, 20250115, None, "Proyecto válido", "DOC", 30000, True, False, "R"],

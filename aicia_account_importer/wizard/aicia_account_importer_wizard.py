@@ -408,7 +408,7 @@ class AiciaAccountImporterWizard(models.TransientModel):
         required=True,
         default=lambda self: self._default_analytic_account_id(),
         help=(
-            "Se asigna a las líneas cuyo proyecto y departamento sean cero. "
+            "Se asigna a las líneas con ID_Proyecto e ID_Departamento a cero. "
             "Por defecto se usa la cuenta analítica con código 0000."
         ),
     )
@@ -1113,46 +1113,14 @@ class AiciaAccountImporterWizard(models.TransientModel):
 
             importe = round(importe_cents / 100, 2)
 
-            # ID_Proyecto → cuenta analítica (col 4). Cuando vale 0, se
-            # utiliza ID_Departamento (col 3). Ambos códigos se normalizan
-            # posteriormente a cuatro posiciones.
             id_departamento_raw = (
                 row[c["id_departamento"]]
                 if len(row) > c["id_departamento"]
                 else None
             )
-            id_proyecto_raw = row[c["id_proyecto"]] if len(row) > c["id_proyecto"] else None
-            try:
-                id_proyecto_value = (
-                    int(float(id_proyecto_raw))
-                    if id_proyecto_raw is not None
-                    else None
-                )
-            except (ValueError, TypeError):
-                id_proyecto_value = (
-                    str(id_proyecto_raw).strip() if id_proyecto_raw else None
-                )
-
-            if id_proyecto_value == 0:
-                try:
-                    departamento = (
-                        int(float(id_departamento_raw))
-                        if id_departamento_raw is not None
-                        else None
-                    )
-                except (ValueError, TypeError):
-                    departamento = (
-                        str(id_departamento_raw).strip()
-                        if id_departamento_raw
-                        else None
-                    )
-                id_proyecto = (
-                    str(departamento).zfill(4)
-                    if departamento not in (None, 0, "0", "")
-                    else None
-                )
-            else:
-                id_proyecto = id_proyecto_value
+            id_proyecto_raw = (
+                row[c["id_proyecto"]] if len(row) > c["id_proyecto"] else None
+            )
 
             lineas_by_apunte[id_apunte].append(
                 {
@@ -1160,7 +1128,9 @@ class AiciaAccountImporterWizard(models.TransientModel):
                     "descripcion": descripcion,
                     "debit": importe if tipo == "D" else 0.0,
                     "credit": importe if tipo == "H" else 0.0,
-                    "id_proyecto": id_proyecto,
+                    "analytic_code": self._line_analytic_code(
+                        id_departamento_raw, id_proyecto_raw
+                    ),
                 }
             )
 
@@ -1176,7 +1146,7 @@ class AiciaAccountImporterWizard(models.TransientModel):
             if id_apunte not in apuntes:
                 continue
             for linea in lineas:
-                analytic_code = self._analytic_code(linea.get("id_proyecto"))
+                analytic_code = linea.get("analytic_code") or "0"
                 if analytic_code == "0":
                     continue
                 if analytic_by_code.get(analytic_code):
@@ -1188,34 +1158,45 @@ class AiciaAccountImporterWizard(models.TransientModel):
             raise UserError(
                 _(
                     "No se puede iniciar la importación porque hay proyectos "
-                    "sin cuenta analítica en Odoo. Revisa: %s"
+                    "o departamentos sin cuenta analítica en Odoo. Revisa: %s"
                 )
                 % details
             )
 
     @staticmethod
-    def _analytic_code(id_proyecto):
-        """Normaliza un código analítico legado a cuatro posiciones."""
+    def _analytic_code(legacy_id):
+        """Normaliza un ID legado leído del Excel (evita '2419.0')."""
         try:
-            numeric_code = int(float(id_proyecto or 0))
+            return str(int(float(legacy_id or 0)))
         except (TypeError, ValueError):
-            normalized_code = str(id_proyecto or "0").strip()
-            if normalized_code.isdigit():
-                return normalized_code.zfill(4)
-            return normalized_code
-        if numeric_code == 0:
-            return "0"
-        return str(numeric_code).zfill(4)
+            return str(legacy_id or "0").strip() or "0"
 
-    def _resolve_analytic(self, id_proyecto, cache):
-        code = self._analytic_code(id_proyecto)
+    @classmethod
+    def _line_analytic_code(cls, id_departamento, id_proyecto):
+        """Código de la cuenta analítica de una línea del legado.
+
+        - ID_Proyecto distinto de 0 → código del proyecto tal cual (``516``).
+        - ID_Proyecto = 0 → cuenta general del departamento, con el ID
+          rellenado a 4 dígitos (``1`` → ``0001``).
+        - Ambos a 0 → ``"0"``: se usa la analítica por defecto (``0000``).
+        """
+        project_code = cls._analytic_code(id_proyecto)
+        if project_code != "0":
+            return project_code
+        department_code = cls._analytic_code(id_departamento)
+        if department_code == "0":
+            return "0"
+        return department_code.zfill(4)
+
+    def _resolve_analytic(self, analytic_code, cache):
+        code = str(analytic_code or "0")
         if code == "0":
             analytic = self.default_analytic_account_id
         else:
             analytic = cache.get(code)
         if not analytic:
             raise UserError(
-                _("Proyecto %s sin cuenta analítica en Odoo") % code
+                _("Proyecto/departamento %s sin cuenta analítica en Odoo") % code
             )
         return analytic
 
@@ -1481,7 +1462,7 @@ class AiciaAccountImporterWizard(models.TransientModel):
 
         runtime = runtime or {}
         analytic = self._resolve_analytic(
-            linea.get("id_proyecto"), runtime.get("analytic_by_code", {})
+            linea.get("analytic_code"), runtime.get("analytic_by_code", {})
         )
 
         return (
@@ -2067,14 +2048,13 @@ class AiciaAccountImporterWizard(models.TransientModel):
         return partner
 
     def _prepare_analytic_cache(self):
+        # Búsqueda exacta por código: los proyectos van sin relleno ("22") y
+        # los departamentos con 4 dígitos ("0022"), así que no se normaliza.
+        # Ante códigos duplicados prevalece la cuenta activa de menor id.
         analytics = self.env["account.analytic.account"].with_context(
             active_test=False
-        ).search([])
-        analytic_by_code = {analytic.code: analytic for analytic in analytics}
-        for analytic in analytics:
-            normalized_code = self._analytic_code(analytic.code)
-            analytic_by_code.setdefault(normalized_code, analytic)
-        return analytic_by_code
+        ).search([("code", "!=", False)], order="active asc, id desc")
+        return {analytic.code: analytic for analytic in analytics}
 
     def _prepare_import_runtime(
         self, apuntes, lineas_by_apunte, account_mapping, analytic_by_code

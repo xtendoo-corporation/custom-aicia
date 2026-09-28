@@ -41,19 +41,25 @@ Contiene las **líneas** de cada asiento contable.
 | 0        | ID_Apunte        | Entero            | `12345`       | Clave de unión con Apuntes                  |
 | 1        | ID_Linea         | Entero            | `1`           | No se importa                               |
 | 2        | Cuenta_Contable  | Texto (9 dígitos) | `"430003604"` | Ver reglas de normalización abajo           |
-| 3        | ID_Departamento  | Entero            | `0`           | Cuenta analítica de departamento             |
-| 4        | ID_Proyecto      | Entero            | `0`           | Cuenta analítica de proyecto; `0` usa el departamento |
+| 3        | ID_Departamento  | Entero            | `1`           | Si `ID_Proyecto=0` → analítica `0001`       |
+| 4        | ID_Proyecto      | Entero            | `516`         | Analítica `516`; `0` usa el departamento    |
 | 5        | Descripcion      | Texto             | `"Cliente A"` | `name` de la línea del asiento              |
 | 6        | Importe          | Entero (céntimos) | `21982`       | Se divide entre 100 → `219,82 €`            |
 | 7        | Tipo_Contable    | Texto `D` o `H`   | `"D"`         | `D`=Debe (debit) / `H`=Haber (credit)       |
 
 - Filas totales aprox.: **47.726**
 
-Los códigos de `ID_Departamento` e `ID_Proyecto` se normalizan con ceros a la
-izquierda hasta cuatro dígitos (`11` → `0011`, `23` → `0023`). Si
-`ID_Proyecto` es distinto de cero se utiliza ese código; si es cero, se utiliza
-`ID_Departamento`. Cuando ambos son cero se utiliza la analítica por defecto
-seleccionada en el wizard.
+La cuenta analítica de cada línea se obtiene así:
+
+| ID_Departamento | ID_Proyecto | Código analítico buscado | Ejemplo                                       |
+|-----------------|-------------|--------------------------|-----------------------------------------------|
+| cualquiera      | `≠ 0`       | ID_Proyecto tal cual     | `516` → `516` (PROGRAMAS PRACTICAS EMPRESAS)  |
+| `≠ 0`           | `0`         | ID_Departamento a 4 díg. | `1` → `0001` (INGENIERIA QUIMICA Y AMBIENTAL GENERAL) |
+| `0`             | `0`         | Analítica por defecto    | `0000` (AICIA GENERAL)                        |
+
+Los proyectos **no** se rellenan con ceros: el proyecto `22` (SACESA/ENSAYOS)
+es distinto del departamento `22` (`0022`, INGENIERIA TELEMATICA GENERAL). La
+búsqueda en `account.analytic.account.code` es exacta.
 
 ---
 
@@ -90,7 +96,8 @@ El módulo los normaliza al plan contable español (6 dígitos) así:
 7. Pulsa **Importar**.
 
 Todas las líneas importadas reciben una distribución analítica del 100 %. Las
-líneas con proyecto cero reciben la analítica por defecto; los proyectos
-distintos de cero deben existir en Odoo.
+líneas con proyecto cero reciben la analítica general de su departamento
+(`0001`, `0002`…) o la analítica por defecto si el departamento también es
+cero. Cualquier código inexistente en Odoo bloquea la importación completa.
 
 El log HTML al final resume: asientos creados ✅, omitidos ⚠️ y errores ❌.
