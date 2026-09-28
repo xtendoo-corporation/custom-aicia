@@ -6,8 +6,9 @@
 Estructura del Excel de origen:
   - Apuntes2025.xlsx: ID_Apunte, Numero_Apunte, Fecha_Contable (YYYYMMDD),
     Descripcion, Validado, Anulado
-  - Lineas_Apunte2025.xlsx: ID_Apunte, Cuenta_Contable (9 dig), Descripcion,
-    Importe (céntimos), Tipo_Contable (D/H)
+  - Lineas_Apunte2025.xlsx: ID_Apunte, ID_Linea, Cuenta_Contable,
+    ID_Departamento, ID_Proyecto, Descripcion, Importe (céntimos),
+    Tipo_Contable (D/H)
 
 Cubre:
   - Parseo de Fecha_Contable (entero YYYYMMDD, datetime, string)
@@ -91,12 +92,12 @@ class TestAiciaAccountImporterWizard(TransactionCase):
         ws = wb.active
         ws.title = "Lineas_Apunte"
         ws.append([
-            "ID_Apunte", "ID_Linea", "ID_Departamento", "ID_Proyecto",
-            "Importe", "Cuenta_Contable", "Descripcion", "Tipo_Contable",
+            "ID_Apunte", "ID_Linea", "Cuenta_Contable", "ID_Departamento",
+            "ID_Proyecto", "Descripcion", "Importe", "Tipo_Contable",
         ])
         for row in rows:
             ws.append([
-                row[0], row[1], row[3], row[4], row[6], row[2], row[5],
+                row[0], row[1], row[2], row[3], row[4], row[5], row[6],
                 row[7],
             ])
         buf = BytesIO()
@@ -902,6 +903,79 @@ class TestAiciaAccountImporterWizard(TransactionCase):
         self.assertEqual(w.total_skipped, 1)
         self.assertEqual(w.total_created, 0)
 
+    def test_import_same_amounts_skips_even_when_accounts_change(self):
+        """Mismos importes con subcuentas distintas conservan el asiento."""
+        self._ensure_account("430000", "Clientes", "asset_receivable")
+        self._ensure_account("700000", "Ventas", "income")
+        self._ensure_account("600000", "Compras", "expense")
+
+        apuntes = self._make_apuntes_xlsx([
+            [31, 3100, 20250115, None, "Mism importes", "DOC", 50000, True, False, "R"],
+        ])
+        first_lines = self._make_lineas_xlsx([
+            [31, 1, "430000001", 0, 0, "Test", 50000, "D"],
+            [31, 2, "700000000", 0, 0, "Test", 50000, "H"],
+        ])
+        self._make_wizard(
+            file_apuntes=self._enc(apuntes), file_lineas=self._enc(first_lines)
+        ).action_import()
+
+        second_lines = self._make_lineas_xlsx([
+            [31, 1, "430000001", 0, 0, "Test", 50000, "D"],
+            [31, 2, "600000000", 0, 0, "Test", 50000, "H"],
+        ])
+        wizard = self._make_wizard(
+            file_apuntes=self._enc(apuntes), file_lineas=self._enc(second_lines)
+        )
+        wizard.action_import()
+
+        self.assertEqual(wizard.total_skipped, 1)
+        self.assertEqual(wizard.total_replaced, 0)
+        self.assertEqual(
+            len(self.env["account.move"].search(
+                [("numero_asiento_aicia", "=", "3100")]
+            )),
+            1,
+        )
+
+    def test_import_replaces_existing_when_amounts_change(self):
+        """Importes distintos reemplazan el asiento anterior."""
+        self._ensure_account("430000", "Clientes", "asset_receivable")
+        self._ensure_account("700000", "Ventas", "income")
+
+        apuntes = self._make_apuntes_xlsx([
+            [32, 3200, 20250115, None, "Importe actualizado", "DOC", 50000, True, False, "R"],
+        ])
+        first_lines = self._make_lineas_xlsx([
+            [32, 1, "430000001", 0, 0, "Test", 50000, "D"],
+            [32, 2, "700000000", 0, 0, "Test", 50000, "H"],
+        ])
+        self._make_wizard(
+            file_apuntes=self._enc(apuntes), file_lineas=self._enc(first_lines)
+        ).action_import()
+
+        second_lines = self._make_lineas_xlsx([
+            [32, 1, "430000001", 0, 0, "Test", 75000, "D"],
+            [32, 2, "700000000", 0, 0, "Test", 75000, "H"],
+        ])
+        wizard = self._make_wizard(
+            file_apuntes=self._enc(apuntes), file_lineas=self._enc(second_lines)
+        )
+        wizard.action_import()
+
+        move = self._find_move_by_legacy_number("3200")
+        self.assertTrue(move)
+        self.assertEqual(wizard.total_replaced, 1)
+        self.assertEqual(wizard.total_skipped, 0)
+        self.assertEqual(sum(move.line_ids.mapped("debit")), 750.0)
+        self.assertEqual(sum(move.line_ids.mapped("credit")), 750.0)
+        self.assertEqual(
+            len(self.env["account.move"].search(
+                [("numero_asiento_aicia", "=", "3200")]
+            )),
+            1,
+        )
+
     def test_import_unbalanced_entry_is_error(self):
         """Asiento que no cuadra → error en log."""
         self._ensure_account("430000", "Clientes", "asset_receivable")
@@ -1501,8 +1575,8 @@ class TestAiciaAccountImporterWizard(TransactionCase):
         for line in move.line_ids:
             self.assertEqual(line.analytic_distribution, {str(analytic.id): 100.0})
 
-    def test_import_project_empty_blocks_import_before_creating_moves(self):
-        """Una línea sin ID_Proyecto impide crear cualquier asiento."""
+    def test_import_project_empty_allows_lines_without_analytic(self):
+        """Una línea sin proyecto ni departamento se importa sin analítica."""
         self._ensure_account("430000", "Clientes", "asset_receivable")
         self._ensure_account("700000", "Ventas", "income")
 
@@ -1510,19 +1584,17 @@ class TestAiciaAccountImporterWizard(TransactionCase):
             [43, 4300, 20250115, None, "Sin proyecto", "DOC", 30000, True, False, "R"],
         ])
         lineas = self._make_lineas_xlsx([
-            [43, 1, "430000001", 0, None, "Test", 30000, "D"],
-            [43, 2, "700000000", 0, None, "Test", 30000, "H"],
+            [43, 1, "430000001", 0, 0, "Test", 30000, "D"],
+            [43, 2, "700000000", 0, 0, "Test", 30000, "H"],
         ])
         wizard = self._make_wizard(
             file_apuntes=self._enc(apuntes), file_lineas=self._enc(lineas)
         )
-        with self.assertRaisesRegex(UserError, "sin cuenta analítica asignada"):
-            wizard.action_import()
+        wizard.action_import()
 
-        self.assertFalse(
-            self._find_move_by_legacy_number("4300"),
-            "No debe crearse ningún asiento si falta una analítica",
-        )
+        move = self._find_move_by_legacy_number("4300")
+        self.assertTrue(move)
+        self.assertFalse(any(move.line_ids.mapped("analytic_distribution")))
 
     def test_import_missing_analytic_account_blocks_import(self):
         """Una analítica inexistente bloquea todos los asientos del lote."""

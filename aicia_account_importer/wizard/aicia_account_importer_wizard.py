@@ -37,11 +37,11 @@ except ImportError:
 #  Lineas_Apunte2025.xlsx — hoja "Lineas_Apunte"  (líneas contables)
 #    Col 0: ID_Apunte          → clave de unión con Apuntes (col 0 de ambos ficheros)
 #    Col 1: ID_Linea           → identificador de línea (no se usa)
-#    Col 2: ID_Departamento    → proyecto analítico si ID_Proyecto es 0
-#    Col 3: ID_Proyecto        → proyecto analítico
-#    Col 4: Importe            → entero en CÉNTIMOS (siempre positivo)
-#    Col 5: Cuenta_Contable    → 9 dígitos (ej: 430003604)
-#    Col 6: Descripcion        → descripción de la línea
+#    Col 2: Cuenta_Contable    → 9 dígitos (ej: 430003604)
+#    Col 3: ID_Departamento    → proyecto analítico si ID_Proyecto es 0
+#    Col 4: ID_Proyecto        → proyecto analítico
+#    Col 5: Descripcion        → descripción de la línea
+#    Col 6: Importe            → entero en CÉNTIMOS (siempre positivo)
 #    Col 7: Tipo_Contable      → "D" = Debe / "H" = Haber
 #
 #  Reglas de transformación:
@@ -96,11 +96,11 @@ IMPORT_PROGRESS_BATCH_SIZE = 100
 
 LINEAS_COLS = {
     "id_apunte": 0,   # ID_Apunte — clave de unión con la cabecera (col 0 de ambos ficheros)
-    "id_departamento": 2,  # ID_Departamento → proyecto analítico cuando ID_Proyecto=0
-    "id_proyecto": 3,  # ID_Proyecto → cuenta analítica (ref en account.analytic.account)
-    "importe": 4,
-    "cuenta": 5,
-    "descripcion": 6,
+    "cuenta": 2,
+    "id_departamento": 3,  # ID_Departamento → proyecto analítico cuando ID_Proyecto=0
+    "id_proyecto": 4,  # ID_Proyecto → cuenta analítica (ref en account.analytic.account)
+    "descripcion": 5,
+    "importe": 6,
     "tipo": 7,
 }
 
@@ -455,6 +455,7 @@ class AiciaAccountImporterWizard(models.TransientModel):
     )
     import_log = fields.Html(string="Log de importación", readonly=True)
     total_created = fields.Integer(string="Asientos creados", readonly=True)
+    total_replaced = fields.Integer(string="Asientos reemplazados", readonly=True)
     total_skipped = fields.Integer(string="Omitidos (ya existían)", readonly=True)
     total_errors = fields.Integer(string="Errores", readonly=True)
     total_warnings = fields.Integer(
@@ -635,7 +636,7 @@ class AiciaAccountImporterWizard(models.TransientModel):
             apuntes, lineas_by_apunte, account_mapping
         )
         results = []
-        created = skipped = errors = warnings = 0
+        created = replaced = skipped = errors = warnings = 0
         missing_accounts = set()
         missing_partners = {}
         total_apuntes = len(apuntes)
@@ -679,6 +680,7 @@ class AiciaAccountImporterWizard(models.TransientModel):
                         missing_partners,
                         activity_log,
                         created,
+                        replaced,
                         skipped,
                         warnings,
                         errors,
@@ -697,11 +699,16 @@ class AiciaAccountImporterWizard(models.TransientModel):
             if result["status"] == "created":
                 created += 1
                 activity_status = "success"
+            elif result["status"] == "replaced":
+                replaced += 1
+                activity_status = "success"
             elif result["status"] == "skipped":
                 skipped += 1
                 activity_status = "warning"
             elif result["status"] == "warning":
                 warnings += 1
+                if result.get("replaced"):
+                    replaced += 1
                 activity_status = "warning"
             else:
                 errors += 1
@@ -714,6 +721,7 @@ class AiciaAccountImporterWizard(models.TransientModel):
                     missing_partners,
                     activity_log,
                     created,
+                    replaced,
                     skipped,
                     warnings,
                     errors,
@@ -758,10 +766,11 @@ class AiciaAccountImporterWizard(models.TransientModel):
             "success" if not errors else "warning",
             _(
                 "Importación finalizada: %(created)d creados, %(skipped)d omitidos, "
-                "%(warnings)d avisos y %(errors)d errores."
+                "%(replaced)d reemplazados, %(warnings)d avisos y %(errors)d errores."
             )
             % {
                 "created": created,
+                "replaced": replaced,
                 "skipped": skipped,
                 "warnings": warnings,
                 "errors": errors,
@@ -772,6 +781,7 @@ class AiciaAccountImporterWizard(models.TransientModel):
             {
                 "state": "done",
                 "total_created": created,
+                "total_replaced": replaced,
                 "total_skipped": skipped,
                 "total_errors": errors,
                 "total_warnings": warnings,
@@ -802,6 +812,7 @@ class AiciaAccountImporterWizard(models.TransientModel):
         missing_partners,
         activity_log,
         created,
+        replaced,
         skipped,
         warnings,
         errors,
@@ -810,6 +821,7 @@ class AiciaAccountImporterWizard(models.TransientModel):
         self.write(
             {
                 "total_created": created,
+                "total_replaced": replaced,
                 "total_skipped": skipped,
                 "total_errors": errors,
                 "total_warnings": warnings,
@@ -1097,7 +1109,7 @@ class AiciaAccountImporterWizard(models.TransientModel):
                     )
                 id_proyecto = (
                     str(departamento).zfill(4)
-                    if departamento is not None
+                    if departamento not in (None, 0, "0", "")
                     else None
                 )
             else:
@@ -1118,7 +1130,7 @@ class AiciaAccountImporterWizard(models.TransientModel):
     def _validate_analytic_assignments(
         self, apuntes: dict, lineas_by_apunte: dict
     ):
-        """Impide importar líneas sin una cuenta analítica resoluble."""
+        """Valida únicamente las analíticas informadas en el Excel."""
         analytic_by_code = {}
         missing_assignments = []
 
@@ -1127,8 +1139,10 @@ class AiciaAccountImporterWizard(models.TransientModel):
                 continue
             for line_number, linea in enumerate(lineas, start=1):
                 analytic_code = str(linea.get("id_proyecto") or "").strip()
+                if not analytic_code:
+                    continue
                 analytic = analytic_by_code.get(analytic_code)
-                if analytic_code and analytic is None:
+                if analytic is None:
                     analytic = self.env["account.analytic.account"].search(
                         [("code", "=", analytic_code)], limit=1
                     )
@@ -1182,19 +1196,6 @@ class AiciaAccountImporterWizard(models.TransientModel):
             existing = {
                 "id": existing.id,
                 "state": existing.state,
-            }
-        if existing:
-            state_label = {"draft": "borrador", "posted": "confirmado"}.get(
-                existing["state"], existing["state"]
-            )
-            nomina_tag = " 💼" if is_nomina else ""
-            return {
-                "status": "skipped",
-                "ref": legacy_number,
-                "msg": _(
-                    "Asiento Nº %s%s ya existe en Odoo (ID %d, estado: %s). "
-                    "Elimínalo o resetéalo a borrador para poder reimportarlo."
-                ) % (legacy_number, nomina_tag, existing["id"], state_label),
             }
 
         # Construir líneas del asiento
@@ -1259,6 +1260,35 @@ class AiciaAccountImporterWizard(models.TransientModel):
                 ),
             }
 
+        new_amount_signature = self._line_amount_signature(line_vals)
+        replacement = False
+        existing_move = None
+        if existing:
+            existing_amount_signature = existing.get("amount_signature", ())
+            nomina_tag = " 💼" if is_nomina else ""
+            if new_amount_signature == existing_amount_signature:
+                state_label = {"draft": "borrador", "posted": "confirmado"}.get(
+                    existing["state"], existing["state"]
+                )
+                return {
+                    "status": "skipped",
+                    "ref": legacy_number,
+                    "msg": _(
+                        "Asiento Nº %s%s ya existe en Odoo (ID %d, estado: %s) "
+                        "con los mismos importes; se omite aunque cambien las "
+                        "subcuentas."
+                    ) % (legacy_number, nomina_tag, existing["id"], state_label),
+                }
+            replacement = True
+            existing_move = self.env["account.move"].browse(existing["id"]).exists()
+            if not existing_move:
+                return {
+                    "status": "error",
+                    "ref": legacy_number,
+                    "msg": _("No se encontró el asiento existente Nº %s para reemplazarlo.")
+                    % legacy_number,
+                }
+
         move_vals = {
             "ref": self._build_move_ref(cabecera) or False,
             "name": "/",
@@ -1271,6 +1301,10 @@ class AiciaAccountImporterWizard(models.TransientModel):
 
         try:
             move = self.env["account.move"].create(move_vals)
+            if replacement:
+                if existing_move.state == "posted":
+                    existing_move.button_draft()
+                existing_move.unlink()
             runtime.setdefault("existing_moves", {})[legacy_number] = move
             if not line_warnings and self.move_state == "posted":
                 move.action_post()
@@ -1280,16 +1314,27 @@ class AiciaAccountImporterWizard(models.TransientModel):
                 refs_str = ", ".join(refs_uniq) if refs_uniq else "; ".join(line_warnings)
                 return {
                     "status": "warning",
+                    "replaced": replacement,
                     "ref": legacy_number,
                     "msg": _(
-                        "Asiento Nº %s%s creado en BORRADOR (ID Odoo %d) "
+                        "Asiento Nº %s%s %s en BORRADOR (ID Odoo %d) "
                         "— socios no resueltos: %s"
-                    ) % (legacy_number, nomina_tag, move.id, refs_str),
+                    ) % (
+                        legacy_number,
+                        nomina_tag,
+                        _("reemplazado") if replacement else _("creado"),
+                        move.id,
+                        refs_str,
+                    ),
                 }
             return {
-                "status": "created",
+                "status": "replaced" if replacement else "created",
                 "ref": legacy_number,
-                "msg": _("Asiento Nº %s%s creado (ID Odoo %d).")
+                "msg": (
+                    _("Asiento Nº %s%s reemplazado (ID Odoo %d).")
+                    if replacement
+                    else _("Asiento Nº %s%s creado (ID Odoo %d).")
+                )
                 % (legacy_number, nomina_tag, move.id),
             }
         except Exception as exc:
@@ -1417,6 +1462,19 @@ class AiciaAccountImporterWizard(models.TransientModel):
         )
 
     # ── Resolución de cuentas contables ──────────────────────────────────────
+
+    @staticmethod
+    def _line_amount_signature(line_vals):
+        """Devuelve los importes de las líneas, ignorando cuentas y orden."""
+        return tuple(
+            sorted(
+                (
+                    round(values[2]["debit"] * 100),
+                    round(values[2]["credit"] * 100),
+                )
+                for values in line_vals
+            )
+        )
 
     def _get_journal_for_lines(
         self, lineas: list, is_nomina: bool = False, runtime: dict | None = None
@@ -2056,12 +2114,33 @@ class AiciaAccountImporterWizard(models.TransientModel):
                 ("state", "in", ["draft", "posted"]),
                 ("numero_asiento_aicia", "!=", False),
             ],
-            ["numero_asiento_aicia", "state"],
+            ["numero_asiento_aicia", "state", "line_ids"],
         )
+        move_line_ids = [
+            line_id
+            for move in moves
+            for line_id in move.get("line_ids", [])
+        ]
+        lines = self.env["account.move.line"].search_read(
+            [("id", "in", move_line_ids)],
+            ["move_id", "debit", "credit"],
+        )
+        signatures_by_move = defaultdict(list)
+        for line in lines:
+            move_id = line["move_id"][0]
+            signatures_by_move[move_id].append(
+                (
+                    round((line.get("debit") or 0.0) * 100),
+                    round((line.get("credit") or 0.0) * 100),
+                )
+            )
         existing_moves = {}
         for move in moves:
             legacy_number = str(move.get("numero_asiento_aicia") or "").strip()
             if legacy_number:
+                move["amount_signature"] = tuple(
+                    sorted(signatures_by_move.get(move["id"], []))
+                )
                 existing_moves[legacy_number] = move
         return existing_moves
 
@@ -2169,6 +2248,10 @@ class AiciaAccountImporterWizard(models.TransientModel):
     ) -> str:
         """Genera el HTML del resumen de la importación."""
         created = [r for r in results if r["status"] == "created"]
+        replaced = [
+            r for r in results
+            if r["status"] == "replaced" or r.get("replaced")
+        ]
         skipped = [r for r in results if r["status"] == "skipped"]
         errors = [r for r in results if r["status"] == "error"]
         warn_results = [r for r in results if r["status"] == "warning"]
@@ -2177,6 +2260,7 @@ class AiciaAccountImporterWizard(models.TransientModel):
         html += (
             "<p><strong>Resumen:</strong> "
             f"<span style='color:green'>{len(created)} creados</span> | "
+            f"<span style='color:#2980b9'>{len(replaced)} reemplazados</span> | "
             f"<span style='color:orange'>{len(skipped)} omitidos</span> | "
             f"<span style='color:#e67e00'>{len(warn_results)} con socios no resueltos (borrador)</span> | "
             f"<span style='color:red'>{len(errors)} errores</span></p>"
