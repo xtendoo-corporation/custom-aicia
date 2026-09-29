@@ -29,7 +29,7 @@ except ImportError:
 #    Col 3: Fecha_Introduccion → datetime (no se usa)
 #    Col 4: Importe_Total         → en céntimos (solo informativo)
 #    Col 5: Validado              → True/False; informativo, no filtra asientos
-#    Col 6: Anulado               → True/False; se omiten los True si skip_anulados
+#    Col 6: Anulado               → informativo; no filtra asientos
 #    Col 7: Descripcion           → nombre del asiento
 #    Col 8: Numero_Documento      → referencia adicional
 #    Col 9: Clase_Apunte       → "M" = Nómina (tratamiento especial); resto ignorado
@@ -86,7 +86,6 @@ APUNTES_COLS = {
     "descripcion": 7,
     "numero_documento": 8,
     "validado": 5,
-    "anulado": 6,
     "clase_apunte": 9,
 }
 
@@ -415,10 +414,6 @@ class AiciaAccountImporterWizard(models.TransientModel):
             "Si está activo, crea automáticamente el partner cuando no se "
             "encuentra en Odoo. Si está inactivo, la línea queda sin partner."
         ),
-    )
-    skip_anulados = fields.Boolean(
-        string="Omitir asientos anulados",
-        default=True,
     )
 
     # ── Mapeo de cuentas ─────────────────────────────────────────────────────
@@ -981,8 +976,7 @@ class AiciaAccountImporterWizard(models.TransientModel):
     def _parse_apuntes(self, content: bytes) -> dict:
         """Lee Apuntes2025.xlsx y devuelve {ID_Apunte: cabecera_dict}.
 
-        Incluye apuntes independientemente de Validado y omite Anulado=True
-        cuando skip_anulados está activo.
+        Validado y Anulado son informativos y no filtran asientos.
         """
         wb = self._open_workbook(content, "Apuntes2025.xlsx")
         ws = wb.worksheets[0]
@@ -1008,22 +1002,6 @@ class AiciaAccountImporterWizard(models.TransientModel):
                 id_apunte = int(float(id_apunte))
             except (ValueError, TypeError):
                 id_apunte = str(id_apunte).strip()
-
-            anulado = self._parse_excel_boolean(row[c["anulado"]])
-
-            if self.skip_anulados and anulado:
-                discarded_rows.append(
-                    _(
-                        "fila Excel %(row)d, ID_Apunte=%(id)s: "
-                        "Anulado=%(anulado)s"
-                    )
-                    % {
-                        "row": excel_row,
-                        "id": id_apunte,
-                        "anulado": anulado,
-                    }
-                )
-                continue
 
             numero_raw = row[c["numero"]]
             try:
@@ -1055,24 +1033,12 @@ class AiciaAccountImporterWizard(models.TransientModel):
             raise UserError(
                 _(
                     "El archivo Apuntes2025.xlsx no contiene asientos "
-                    "importables (Anulado=False, salvo configuración "
-                    "contraria). Se han leído %(rows)d "
+                    "con ID_Apunte. Se han leído %(rows)d "
                     "filas de datos y se han descartado: %(details)s"
                 )
                 % {"rows": data_rows, "details": details}
             )
         return apuntes
-
-    @staticmethod
-    def _parse_excel_boolean(value) -> bool:
-        """Convierte booleanos Excel y textos VERDADERO/FALSO a bool."""
-        if isinstance(value, str):
-            normalized_value = value.strip().lower()
-            if normalized_value in {"verdadero", "true", "sí", "si", "yes", "1"}:
-                return True
-            if normalized_value in {"falso", "false", "no", "0", ""}:
-                return False
-        return bool(value)
 
     # ── Parseo de Lineas_Apunte2025.xlsx ─────────────────────────────────────
 

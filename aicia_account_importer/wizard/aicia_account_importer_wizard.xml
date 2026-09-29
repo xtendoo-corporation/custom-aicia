@@ -89,7 +89,6 @@
                     <group string="Configuración de importación">
                         <field name="move_state"/>
                         <field name="create_missing_partners"/>
-                        <field name="skip_anulados"/>
                     </group>
                 </group>
                 <notebook>
@@ -167,7 +166,7 @@
                                 <tr><td style="border:1px solid #ccc;padding:4px 8px;"><code>Fecha_Contable</code></td><td style="border:1px solid #ccc;padding:4px 8px;">Entero YYYYMMDD</td><td style="border:1px solid #ccc;padding:4px 8px;">20250103</td></tr>
                                 <tr><td style="border:1px solid #ccc;padding:4px 8px;"><code>Descripcion</code></td><td style="border:1px solid #ccc;padding:4px 8px;">Descripción del asiento</td><td style="border:1px solid #ccc;padding:4px 8px;">CULLIGAM/ CUOTA</td></tr>
                                 <tr><td style="border:1px solid #ccc;padding:4px 8px;"><code>Validado</code></td><td style="border:1px solid #ccc;padding:4px 8px;">True/False — informativo, se importan ambos valores</td><td style="border:1px solid #ccc;padding:4px 8px;">True</td></tr>
-                                <tr><td style="border:1px solid #ccc;padding:4px 8px;"><code>Anulado</code></td><td style="border:1px solid #ccc;padding:4px 8px;">True/False — se omiten si "Omitir anulados"</td><td style="border:1px solid #ccc;padding:4px 8px;">False</td></tr>
+                                <tr><td style="border:1px solid #ccc;padding:4px 8px;"><code>Anulado</code></td><td style="border:1px solid #ccc;padding:4px 8px;">Informativo; no filtra asientos</td><td style="border:1px solid #ccc;padding:4px 8px;">False</td></tr>
                             </table>
                             <p><strong>Archivo 2 — Lineas_Apunte2025.xlsx</strong> (líneas contables):</p>
                             <table style="border-collapse: collapse; width: 100%; margin-bottom: 12px;">

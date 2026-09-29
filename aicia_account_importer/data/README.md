@@ -20,15 +20,14 @@ Contiene las **cabeceras** de los asientos contables.
 | 3        | Fecha_Introduccion | Entero YYYYMMDD   | `20250104`       | No se importa                   |
 | 4        | Importe_Total      | Entero (céntimos) | `121000`         | Solo referencial, no se importa |
 | 5        | Validado           | Booleano          | `True`           | Informativo; se importan `True` y `False` |
-| 6        | Anulado            | Booleano          | `False`          | Se omiten los `True` si activo  |
+| 6        | Anulado            | Booleano          | `False`          | Informativo; se importan todos  |
 | 7        | Descripcion        | Texto             | `"Venta enero"`  | `narration` del asiento         |
 | 8        | Numero_Documento   | Texto             | `"DOC-001"`      | Campo informativo                |
 | 9        | Clase_Apunte       | Texto             | `"R"`            | No se importa                   |
 
 - Filas totales aprox.: **10.779**
-- Se procesan las filas con `Validado=True` y `Validado=False`. El campo es
-  informativo. Las filas con `Anulado=True` se omiten si el check
-  `skip_anulados` está activado en el wizard.
+- Se procesan todas las filas con `ID_Apunte`, tanto si `Validado` como si
+  `Anulado` son `True` o `False`. Ambos campos son informativos.
 
 ---
 
@@ -90,8 +89,7 @@ El módulo los normaliza al plan contable español (6 dígitos) así:
 2. Selecciona el diario contable destino.
 3. Sube `Apuntes2025.xlsx` en el primer campo y `Lineas_Apunte2025.xlsx` en el segundo.
 4. Elige si los asientos se crean en borrador o se confirman directamente.
-5. Activa "Omitir asientos anulados" si lo deseas.
-6. Pulsa **Importar**.
+5. Pulsa **Importar**.
 
 Todas las líneas importadas reciben una distribución analítica del 100 %. Las
 líneas con proyecto cero reciben la analítica general de su departamento

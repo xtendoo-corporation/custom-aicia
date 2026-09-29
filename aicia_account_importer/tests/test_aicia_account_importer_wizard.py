@@ -19,7 +19,7 @@ Cubre:
   - Importación completa de asientos cuadrados
   - Idempotencia (duplicados omitidos por Numero_Apunte)
   - Asientos no cuadrados → error en log
-  - Asientos anulados omitidos con skip_anulados=True
+  - Asientos con Anulado=True importados
   - Asientos con Validado=False importados
   - Sin archivos → reaplica el mapeo sobre apuntes existentes
   - Sin líneas para un asiento → error en log
@@ -55,7 +55,6 @@ class TestAiciaAccountImporterWizard(TransactionCase):
         defaults = {
             "move_state": "draft",
             "create_missing_partners": True,
-            "skip_anulados": True,
         }
         defaults.update(kwargs)
         return self.env["aicia.account.importer.wizard"].create(defaults)
@@ -179,11 +178,6 @@ class TestAiciaAccountImporterWizard(TransactionCase):
     def test_parse_fecha_contable_invalid_returns_today(self):
         wizard = self._make_wizard()
         self.assertEqual(wizard._parse_fecha_contable("no-es-fecha"), date.today())
-
-    def test_parse_excel_boolean_accepts_spanish_text_values(self):
-        wizard = self._make_wizard()
-        self.assertTrue(wizard._parse_excel_boolean("VERDADERO"))
-        self.assertFalse(wizard._parse_excel_boolean("FALSO"))
 
     # ── Tests: cuentas colectivas ─────────────────────────────────────────────
 
@@ -1000,24 +994,28 @@ class TestAiciaAccountImporterWizard(TransactionCase):
         self.assertEqual(wizard.total_created, 0)
         self.assertIn("no cuadra", wizard.import_log)
 
-    def test_import_skips_anulados(self):
-        """Asientos anulados se omiten cuando skip_anulados=True."""
+    def test_import_includes_anulados(self):
+        """Anulado=True no descarta asientos ni impide importar todo el fichero."""
+        self._ensure_account("430000", "Clientes", "asset_receivable")
+        self._ensure_account("700000", "Ventas", "income")
         apuntes = self._make_apuntes_xlsx([
-            [5, 500, 20250115, None, "Anulado", "DOC", 0, True, True, "R"],
+            [5, 500, 20250115, None, "Anulado", "DOC", 10000, True, True, "R"],
+            [7, 700, 20250115, None, "Anulado también", "DOC", 20000, False, True, "R"],
         ])
         lineas = self._make_lineas_xlsx([
             [5, 1, "430000001", 0, 0, "Test", 10000, "D"],
             [5, 2, "700000000", 0, 0, "Test", 10000, "H"],
+            [7, 1, "430000001", 0, 0, "Test", 20000, "D"],
+            [7, 2, "700000000", 0, 0, "Test", 20000, "H"],
         ])
         wizard = self._make_wizard(
             file_apuntes=self._enc(apuntes),
             file_lineas=self._enc(lineas),
-            skip_anulados=True,
         )
-        with self.assertRaisesRegex(
-            UserError, r"fila Excel 2.*ID_Apunte=5.*Anulado=True"
-        ):
-            wizard.action_import()
+        wizard.action_import()
+        self.assertEqual(wizard.total_created, 2)
+        self.assertTrue(self._find_move_by_legacy_number("500"))
+        self.assertTrue(self._find_move_by_legacy_number("700"))
 
     def test_import_includes_not_validated(self):
         """Asientos con Validado=False también se importan."""
