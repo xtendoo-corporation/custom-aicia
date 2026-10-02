@@ -14,13 +14,7 @@
         <field name="model">aicia.account.importer.account.mapping</field>
         <field name="arch" type="xml">
             <list editable="bottom">
-                <header>
-                    <button name="action_load_default_mappings"
-                            string="Recargar mapeos por defecto"
-                            type="object"
-                            class="btn-secondary"/>
-                </header>
-                <field name="source_code" placeholder="Ej: 478 ó 478000000"/>
+                <field name="source_code" placeholder="Ej: 478000 ó 478000000"/>
                 <field name="source_code_normalized" optional="hide" readonly="1"/>
                 <field name="target_account_id" required="1"/>
             </list>
@@ -31,15 +25,9 @@
         <field name="model">aicia.account.importer.account.mapping</field>
         <field name="arch" type="xml">
             <form string="Mapeo de cuenta AICIA">
-                <header>
-                    <button name="action_load_default_mappings"
-                            string="Recargar mapeos por defecto"
-                            type="object"
-                            class="btn-secondary"/>
-                </header>
                 <sheet>
                     <group>
-                        <field name="source_code" placeholder="Ej: 478 ó 478000000"/>
+                        <field name="source_code" placeholder="Ej: 478000 ó 478000000"/>
                         <field name="target_account_id" required="1"/>
                         <field name="source_code_normalized" readonly="1"/>
                     </group>
@@ -65,10 +53,11 @@
         <field name="search_view_id" ref="view_aicia_account_importer_account_mapping_search"/>
         <field name="help" type="html">
             <p class="o_view_nocontent_smiling_face">
-                Crea el primer mapeo de cuenta AICIA.
+                Sin mapeos, la cuenta destino son los 5 primeros dígitos de la cuenta legada más un 0.
             </p>
             <p>
-                Los mapeos son globales y se reutilizan automáticamente en próximas importaciones.
+                Crea un mapeo solo si quieres forzar una redirección puntual.
+                Los mapeos son globales y se reutilizan en próximas importaciones.
             </p>
         </field>
     </record>
@@ -88,7 +77,6 @@
                     </group>
                     <group string="Configuración de importación">
                         <field name="move_state"/>
-                        <field name="create_missing_partners"/>
                         <field name="skip_anulados"/>
                     </group>
                 </group>
@@ -100,6 +88,9 @@
                             <field name="total_skipped" readonly="1"/>
                             <field name="total_warnings" readonly="1"/>
                             <field name="total_errors" readonly="1"/>
+                            <field name="total_mismatches" readonly="1"/>
+                            <field name="total_debe" readonly="1"/>
+                            <field name="total_haber" readonly="1"/>
                         </group>
                         <field name="import_log" nolabel="1" colspan="2" readonly="1"/>
                     </page>
@@ -107,21 +98,21 @@
                     <page string="Cuentas" name="account_mapping">
                         <div style="padding: 4px 0 8px 0;">
                             <p style="color: #555; margin: 0 0 8px 0;">
-                                Añade aquí los códigos del sistema legado que quieras redirigir
-                                a otra cuenta de Odoo antes de importar.<br/>
-                                <strong>Ejemplo:</strong> código origen <code>478</code>
-                                → cuenta destino <code>477 - H.P. IVA repercutido</code>.<br/>
-                                El código origen puede ser un prefijo (ej: <code>478</code>)
+                                La cuenta de cada línea son los <strong>5 primeros dígitos más un 0</strong>
+                                de la cuenta legada de 9 dígitos, y el contacto se busca por los
+                                <strong>4 últimos</strong> (campo <em>Códigos AICIA</em> del contacto,
+                                único por tipo: personal, proveedor, cliente).<br/>
+                                Esta lista es <strong>opcional</strong>: úsala solo para forzar que un
+                                código legado vaya a otra cuenta de Odoo.<br/>
+                                <strong>Ejemplo:</strong> código origen <code>478000</code>
+                                → cuenta destino <code>477000 - H.P. IVA repercutido</code>.<br/>
+                                El código origen puede ser un prefijo (ej: <code>478000</code>)
                                 o el código completo de 9 dígitos (ej: <code>478000000</code>).<br/>
                                 Si no subes archivos Excel, el botón <strong>Importar</strong>
                                 revisa los apuntes existentes y aplica estas reglas.<br/>
                                 <em>Tras cada importación, las cuentas no encontradas se añaden
-                                automáticamente a esta lista para que las mapees.</em>
+                                a esta lista (sin destino) para que las mapees.</em>
                             </p>
-                                <button name="action_load_default_account_mappings"
-                                   string="Recargar mapeos por defecto"
-                                   type="object"
-                                   class="btn-secondary"/>
                                 <button name="action_reload_account_mappings"
                                    string="Refrescar lista"
                                    type="object"
@@ -135,14 +126,14 @@
                         <field name="account_mapping_ids" nolabel="1"
                                context="{'aicia_account_importer_wizard_id': id}">
                             <list editable="bottom">
-                                <field name="source_code" placeholder="Ej: 478 ó 478000000"/>
+                                <field name="source_code" placeholder="Ej: 478000 ó 478000000"/>
                                 <field name="source_code_normalized" optional="hide" readonly="1"/>
                                 <field name="target_account_id"/>
                             </list>
                             <form string="Mapeo de cuenta AICIA">
                                 <sheet>
                                     <group>
-                                        <field name="source_code" placeholder="Ej: 478 ó 478000000"/>
+                                        <field name="source_code" placeholder="Ej: 478000 ó 478000000"/>
                                         <field name="target_account_id"/>
                                         <field name="source_code_normalized" readonly="1"/>
                                     </group>
@@ -164,6 +155,7 @@
                                 <tr><td style="border:1px solid #ccc;padding:4px 8px;"><code>Numero_Apunte</code></td><td style="border:1px solid #ccc;padding:4px 8px;">Referencia del asiento en Odoo</td><td style="border:1px solid #ccc;padding:4px 8px;">281</td></tr>
                                 <tr><td style="border:1px solid #ccc;padding:4px 8px;"><code>Fecha_Contable</code></td><td style="border:1px solid #ccc;padding:4px 8px;">Entero YYYYMMDD</td><td style="border:1px solid #ccc;padding:4px 8px;">20250103</td></tr>
                                 <tr><td style="border:1px solid #ccc;padding:4px 8px;"><code>Descripcion</code></td><td style="border:1px solid #ccc;padding:4px 8px;">Descripción del asiento</td><td style="border:1px solid #ccc;padding:4px 8px;">CULLIGAM/ CUOTA</td></tr>
+                                <tr><td style="border:1px solid #ccc;padding:4px 8px;"><code>Importe_Total</code></td><td style="border:1px solid #ccc;padding:4px 8px;">Céntimos. No se usa como total: se compara con la suma de las líneas y se avisa si difiere</td><td style="border:1px solid #ccc;padding:4px 8px;">121000</td></tr>
                                 <tr><td style="border:1px solid #ccc;padding:4px 8px;"><code>Validado</code></td><td style="border:1px solid #ccc;padding:4px 8px;">True/False — solo se importan True</td><td style="border:1px solid #ccc;padding:4px 8px;">True</td></tr>
                                 <tr><td style="border:1px solid #ccc;padding:4px 8px;"><code>Anulado</code></td><td style="border:1px solid #ccc;padding:4px 8px;">True/False — se omiten si "Omitir anulados"</td><td style="border:1px solid #ccc;padding:4px 8px;">False</td></tr>
                             </table>
@@ -175,18 +167,22 @@
                                     <th style="border: 1px solid #ccc; padding: 4px 8px;">Ejemplo</th>
                                 </tr>
                                 <tr><td style="border:1px solid #ccc;padding:4px 8px;"><code>ID_Apunte</code></td><td style="border:1px solid #ccc;padding:4px 8px;">Clave de unión con cabecera</td><td style="border:1px solid #ccc;padding:4px 8px;">297</td></tr>
-                                <tr><td style="border:1px solid #ccc;padding:4px 8px;"><code>Cuenta_Contable</code></td><td style="border:1px solid #ccc;padding:4px 8px;">9 dígitos — 400/430 → colectiva</td><td style="border:1px solid #ccc;padding:4px 8px;">430003604</td></tr>
+                                <tr><td style="border:1px solid #ccc;padding:4px 8px;"><code>Cuenta_Contable</code></td><td style="border:1px solid #ccc;padding:4px 8px;">9 dígitos — 5 primeros + 0 = cuenta Odoo, 4 últimos = código AICIA del contacto</td><td style="border:1px solid #ccc;padding:4px 8px;">610003495 → cuenta 610000, contacto 3495</td></tr>
                                 <tr><td style="border:1px solid #ccc;padding:4px 8px;"><code>Descripcion</code></td><td style="border:1px solid #ccc;padding:4px 8px;">Descripción de la línea / nombre tercero</td><td style="border:1px solid #ccc;padding:4px 8px;">SPHERAG TECK LOT</td></tr>
                                 <tr><td style="border:1px solid #ccc;padding:4px 8px;"><code>Importe</code></td><td style="border:1px solid #ccc;padding:4px 8px;">Entero en CÉNTIMOS (÷100 = euros)</td><td style="border:1px solid #ccc;padding:4px 8px;">21982 → 219,82€</td></tr>
                                 <tr><td style="border:1px solid #ccc;padding:4px 8px;"><code>Tipo_Contable</code></td><td style="border:1px solid #ccc;padding:4px 8px;">D = Debe / H = Haber</td><td style="border:1px solid #ccc;padding:4px 8px;">D</td></tr>
                             </table>
                             <p style="color: #666;">
-                                <strong>Cuentas colectivas:</strong>
-                                400xxxxxx → <strong>400000</strong> (Proveedores) |
-                                430xxxxxx → <strong>430000</strong> (Clientes) |
-                                572xxxxxx → <strong>572000</strong> (Bancos).
-                                El resto se normaliza a 6 dígitos quitando ceros finales.
-                            </p>
+                                <strong>Cuenta y contacto:</strong>
+                                los 5 primeros dígitos de <code>Cuenta_Contable</code> más un 0 son la
+                                cuenta de Odoo y los 4 últimos el código AICIA del contacto (ej.
+                                <code>610003495</code> → cuenta <code>610000</code>, contacto con el
+                                código <code>3495</code>). Solo llevan contacto las cuentas de personal
+                                (460, 465, 610, 611, 616, 618), proveedores (400, 401, 410) y clientes
+                                (430, 431, 436); el código es único por tipo. Si no existe el contacto,
+                                el asiento queda en borrador. El total de cada asiento es la suma de
+                                sus líneas.
+                                </p>
                         </div>
                     </page>
                 </notebook>

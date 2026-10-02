@@ -20,6 +20,22 @@
     />
 
     <menuitem
+        id="menu_aicia_partner_code_import_wizard"
+        name="Cargar códigos AICIA (Personal)"
+        parent="menu_aicia_account_importer_root"
+        action="action_aicia_partner_code_import_wizard"
+        sequence="15"
+    />
+
+    <menuitem
+        id="menu_aicia_partner_code"
+        name="Códigos AICIA"
+        parent="menu_aicia_account_importer_root"
+        action="action_aicia_partner_code"
+        sequence="30"
+    />
+
+    <menuitem
         id="menu_aicia_account_importer_account_mapping"
         name="Mapeo de cuentas"
         parent="menu_aicia_account_importer_root"

@@ -24,59 +24,76 @@ except ImportError:
 #
 #  Apuntes2025.xlsx — hoja "Apuntes"  (cabecera del asiento)
 #    Col 0: ID_Apunte          → clave de unión con Lineas_Apunte
-#    Col 1: Numero_Apunte      → referencia del asiento (account.move.ref)
+#    Col 1: Numero_Apunte      → referencia del asiento (numero_asiento_aicia)
 #    Col 2: Fecha_Contable     → entero YYYYMMDD  (ej: 20250103)
 #    Col 3: Fecha_Introduccion → datetime (no se usa)
 #    Col 4: Descripcion        → nombre del asiento
 #    Col 5: Numero_Documento   → referencia adicional
-#    Col 6: Importe_Total      → en céntimos (solo informativo)
+#    Col 6: Importe_Total      → en céntimos; NO se usa como total. Si no coincide
+#                                con la suma de las líneas solo se anota en el log
 #    Col 7: Validado           → True/False; solo se importan los True
 #    Col 8: Anulado            → True/False; se omiten los True si skip_anulados
-#    Col 9: Clase_Apunte       → "M" = Nómina (tratamiento especial); resto ignorado
+#    Col 9: Clase_Apunte       → no se usa
 #
 #  Lineas_Apunte2025.xlsx — hoja "Lineas_Apunte"  (líneas contables)
 #    Col 0: ID_Apunte          → clave de unión con Apuntes (col 0 de ambos ficheros)
 #    Col 1: ID_Linea           → identificador de línea (no se usa)
-#    Col 2: Cuenta_Contable    → 9 dígitos (ej: 430003604)
-#    Col 3: ID_Departamento    → analítico (futuro uso)
-#    Col 4: ID_Proyecto        → analítico (futuro uso)
+#    Col 2: Cuenta_Contable    → 9 dígitos (ej: 610000495)
+#    Col 3: ID_Departamento    → no se usa
+#    Col 4: ID_Proyecto        → cuenta analítica (code en account.analytic.account)
 #    Col 5: Descripcion        → descripción de la línea
 #    Col 6: Importe            → entero en CÉNTIMOS (siempre positivo)
 #    Col 7: Tipo_Contable      → "D" = Debe / "H" = Haber
 #
 #  Reglas de transformación:
-#    - Todos los códigos de cuenta tienen 9 dígitos.
-#      Los 3 primeros son el grupo contable; los 6 siguientes identifican
-#      al tercero en el sistema legado.
-#      400xxxxxx → colectiva 400000 (Proveedores)
-#      430xxxxxx → colectiva 430000 (Clientes)
-#      572xxxxxx → colectiva 572000 (Bancos) si la exacta no existe
-#      El resto se normaliza a 6 dígitos quitando ceros finales.
-#    - Los importes están en CÉNTIMOS. Se dividen entre 100.
-#    - Tipo_Contable "D" → debit; "H" → credit.
-#    - Clave de idempotencia: Numero_Apunte (campo ref en account.move).
+#    - Cuenta_Contable tiene 9 dígitos: los 5 PRIMEROS más un "0" son la cuenta
+#      contable de Odoo y los 4 ÚLTIMOS el código AICIA del contacto asociado a
+#      la línea (aicia.partner.code). Ej.: 610003495 → cuenta 610000, contacto
+#      con el código AICIA 3495.
+#    - El código es único por TIPO de tercero (personal, proveedor, cliente). El
+#      tipo se deduce del grupo de la cuenta (3 primeros dígitos), ver
+#      PARTNER_TYPE_BY_ACCOUNT_GROUP. Las cuentas de otros grupos (bancos, gastos,
+#      ingresos…) no llevan contacto.
+#    - No se redirigen grupos ni se usan cuentas colectivas. Solo existe el
+#      mapeo manual opcional (aicia.account.importer.account.mapping).
+#    - Los importes están en CÉNTIMOS; se suman como enteros para comprobar el
+#      cuadre. El total de un asiento es siempre la suma de sus líneas.
+#    - Tipo_Contable "D" → debit; "H" → credit; otro valor es un error.
+#    - Clave de idempotencia: Numero_Apunte (marca técnica en narration).
 #    - Solo se importan apuntes con Validado=True.
 # ---------------------------------------------------------------------------
 
-# Prefijos (3 dígitos) de cuentas de terceros → cuenta colectiva Odoo 6 dígitos
-# Formato: "prefijo": ("código_colectiva", "nombre", "account_type")
-COLLECTIVE_ACCOUNT_MAP = {
-    "400": ("400000", "Proveedores", "liability_payable"),
-    "401": ("400000", "Proveedores", "liability_payable"),
-    "430": ("430000", "Clientes", "asset_receivable"),
-    "431": ("430000", "Clientes", "asset_receivable"),
-    "436": ("430000", "Clientes", "asset_receivable"),
-    # Bancos: se resuelve primero la subcuenta exacta truncada a 6 dígitos
-    # (572XXX, banco concreto). Solo si no existe se usa la colectiva 572000.
-    "572": ("572000", "Bancos", "asset_cash"),
+# Cuenta de Odoo = ACCOUNT_PREFIX_LENGTH primeros dígitos de la cuenta legada + "0"
+# (6 dígitos en total)
+ACCOUNT_PREFIX_LENGTH = 5
+ACCOUNT_CODE_LENGTH = 6
+# Código AICIA del contacto = últimos dígitos de la cuenta legada
+PARTNER_CODE_LENGTH = 4
+# Tipo de tercero de cada grupo de cuentas (3 primeros dígitos de la cuenta
+# legada). El código AICIA solo es único dentro de un mismo tipo. Los grupos que
+# no aparecen aquí no llevan contacto.
+PARTNER_TYPE_BY_ACCOUNT_GROUP = {
+    # Personal: remuneraciones y sueldos con una subcuenta por empleado
+    "460": "employee",
+    "465": "employee",
+    "610": "employee",
+    "611": "employee",
+    "616": "employee",
+    "618": "employee",
+    # Proveedores y acreedores
+    "400": "supplier",
+    "401": "supplier",
+    "410": "supplier",
+    # Clientes
+    "430": "customer",
+    "431": "customer",
+    "436": "customer",
 }
-
-# Prefijos de cuentas de terceros (excluye 572 que no es partner)
-PARTNER_ACCOUNT_PREFIXES = {"400", "401", "430", "431", "436"}
-
-# Prefijos de cuentas de nómina con subcuenta por empleado (prefijo "E" en ref)
-# 610 → Tras resolver el empleado, la línea se reclasifica a 640XXX.
-NOMINA_PARTNER_ACCOUNT_PREFIXES = {"610",}
+PARTNER_TYPE_LABELS = {
+    "employee": "Personal",
+    "supplier": "Proveedor",
+    "customer": "Cliente",
+}
 
 # Índices de columnas en cada hoja (0-based, según análisis del Excel real)
 APUNTES_COLS = {
@@ -85,6 +102,7 @@ APUNTES_COLS = {
     "fecha": 2,
     "descripcion": 4,
     "numero_documento": 5,
+    "importe_total": 6,
     "validado": 7,
     "anulado": 8,
     "clase_apunte": 9,
@@ -93,7 +111,7 @@ APUNTES_COLS = {
 LINEAS_COLS = {
     "id_apunte": 0,   # ID_Apunte — clave de unión con la cabecera (col 0 de ambos ficheros)
     "cuenta": 2,
-    "id_proyecto": 4,  # ID_Proyecto → cuenta analítica (ref en account.analytic.account)
+    "id_proyecto": 4,  # ID_Proyecto → cuenta analítica (code en account.analytic.account)
     "descripcion": 5,
     "importe": 6,
     "tipo": 7,
@@ -101,7 +119,11 @@ LINEAS_COLS = {
 
 
 class AiciaAccountImporterAccountMapping(models.Model):
-    """Línea de mapeo de cuentas: código legado → cuenta Odoo (persistente y global)."""
+    """Mapeo manual de cuentas: código legado → cuenta Odoo (persistente y global).
+
+    Es opcional y está vacío por defecto. Permite forzar una redirección
+    puntual; sin reglas, la cuenta destino son los 5 primeros dígitos más un 0.
+    """
 
     _name = "aicia.account.importer.account.mapping"
     _description = "Mapeo de cuentas para importación AICIA (persistente)"
@@ -114,7 +136,7 @@ class AiciaAccountImporterAccountMapping(models.Model):
         help=(
             "Código del sistema legado que se quiere redirigir. "
             "Puede ser el código de 9 dígitos tal cual viene del Excel "
-            "(ej: 478000000) o sólo el prefijo (ej: 478). "
+            "(ej: 478000000) o sólo el prefijo (ej: 478000). "
             "Se aplica por coincidencia exacta o por prefijo."
         ),
     )
@@ -129,20 +151,6 @@ class AiciaAccountImporterAccountMapping(models.Model):
         string="Cuenta destino (Odoo)",
         required=False,
     )
-
-    @api.model
-    def _get_default_mapping_values(self):
-        default_mapping_model = self.env[
-            "aicia.account.importer.account.mapping.default"
-        ].sudo()
-        return [
-            (
-                self._normalize_source_code(record.source_code),
-                str(record.target_account_code or "").strip(),
-            )
-            for record in default_mapping_model.search([], order="source_code")
-            if record.source_code and record.target_account_code
-        ]
 
     @api.depends("source_code")
     def _compute_source_code_normalized(self):
@@ -191,196 +199,6 @@ class AiciaAccountImporterAccountMapping(models.Model):
     def _normalize_source_code(self, code):
         return str(code or "").strip().replace(" ", "")
 
-    @api.model
-    def _load_default_mappings_stats(self):
-        """Carga mapeos por defecto sin sobrescribir configuraciones existentes."""
-        default_mappings = self._get_default_mapping_values()
-        if not default_mappings:
-            return {
-                "created": 0,
-                "created_accounts": 0,
-                "updated": 0,
-                "missing_target": 0,
-                "unchanged": 0,
-            }
-
-        source_codes = []
-        seen_sources = set()
-        target_codes = set()
-        for source_code, target_code in default_mappings:
-            normalized_source = self._normalize_source_code(source_code)
-            if not normalized_source or normalized_source in seen_sources:
-                continue
-            source_codes.append(normalized_source)
-            seen_sources.add(normalized_source)
-            target_codes.add(target_code)
-
-        account_by_code = {
-            account.code: account
-            for account in self.env["account.account"].search(
-                [
-                    ("code", "in", sorted(target_codes)),
-                    ("company_ids", "in", [self.env.company.id]),
-                ]
-            )
-        }
-        existing_mappings = {
-            mapping.source_code_normalized: mapping
-            for mapping in self.search(
-                [("source_code_normalized", "in", source_codes)]
-            )
-        }
-
-        vals_list = []
-        queued_sources = set()
-        stats = {
-            "created": 0,
-            "created_accounts": 0,
-            "updated": 0,
-            "missing_target": 0,
-            "unchanged": 0,
-        }
-        for source_code, target_code in default_mappings:
-            normalized_source = self._normalize_source_code(source_code)
-            if not normalized_source or normalized_source in queued_sources:
-                continue
-
-            target_account = account_by_code.get(target_code)
-            mapping = existing_mappings.get(normalized_source)
-            if not mapping:
-                if not target_account:
-                    target_account = self._create_missing_target_account(target_code)
-                    account_by_code[target_code] = target_account
-                    stats["created_accounts"] += 1
-                vals = {"source_code": normalized_source}
-                vals["target_account_id"] = target_account.id
-                stats["created"] += 1
-                vals_list.append(vals)
-                queued_sources.add(normalized_source)
-                continue
-
-            if not target_account:
-                target_account = self._create_missing_target_account(target_code)
-                account_by_code[target_code] = target_account
-                stats["created_accounts"] += 1
-
-            if not mapping.target_account_id:
-                mapping.write({"target_account_id": target_account.id})
-                stats["updated"] += 1
-            else:
-                stats["unchanged"] += 1
-            queued_sources.add(normalized_source)
-
-        if vals_list:
-            self.create(vals_list)
-        return stats
-
-    @api.model
-    def load_default_mappings(self):
-        self._load_default_mappings_stats()
-        return True
-
-    def _reload_active_wizard_mappings(self):
-        """Sincroniza el M2M del wizard cuando la acción se lanza desde él."""
-        wizard_id = False
-        if self.env.context.get("active_model") == "aicia.account.importer.wizard":
-            wizard_id = self.env.context.get("active_id")
-        if not wizard_id:
-            wizard_id = self.env.context.get("aicia_account_importer_wizard_id")
-        if not wizard_id:
-            return False
-
-        wizard = self.env["aicia.account.importer.wizard"].browse(wizard_id).exists()
-        if not wizard:
-            return False
-
-        wizard._reload_account_mapping_ids()
-        return wizard
-
-    def _guess_account_type_for_code(self, code):
-        """Determina un tipo contable razonable para cuentas creadas automáticamente."""
-        normalized_code = str(code or "").strip()
-        prefix = normalized_code[:3]
-        if prefix in COLLECTIVE_ACCOUNT_MAP:
-            return COLLECTIVE_ACCOUNT_MAP[prefix][2]
-
-        Account = self.env["account.account"]
-        company_domain = [("company_ids", "in", [self.env.company.id])]
-        for length in (3, 2, 1):
-            if len(normalized_code) < length:
-                continue
-            reference = Account.search(
-                company_domain + [("code", "=like", f"{normalized_code[:length]}%")],
-                order="code",
-                limit=1,
-            )
-            if reference:
-                return reference.account_type
-        return "expense"
-
-    def _create_missing_target_account(self, code):
-        """Crea la cuenta destino ausente para que el mapeo quede operativo."""
-        normalized_code = str(code or "").strip()
-        if not normalized_code:
-            raise ValidationError(_("El código de la cuenta destino por defecto es inválido."))
-
-        return self.env["account.account"].create(
-            {
-                "code": normalized_code,
-                "name": "*Cuenta no encontrada",
-                "account_type": self._guess_account_type_for_code(normalized_code),
-                "company_ids": [(4, self.env.company.id)],
-            }
-        )
-
-    def action_load_default_mappings(self):
-        stats = self.env[
-            "aicia.account.importer.account.mapping"
-        ]._load_default_mappings_stats()
-        wizard = self._reload_active_wizard_mappings()
-        message = _(
-            "Creados: %(created)d, cuentas destino creadas: %(created_accounts)d, "
-            "completados: %(updated)d, sin cambios: %(unchanged)d."
-        ) % {
-            "created": stats["created"],
-            "created_accounts": stats["created_accounts"],
-            "updated": stats["updated"],
-            "unchanged": stats["unchanged"],
-        }
-        next_action = {"type": "ir.actions.client", "tag": "reload"}
-        if wizard:
-            next_action = {
-                "type": "ir.actions.act_window",
-                "res_model": wizard._name,
-                "res_id": wizard.id,
-                "view_mode": "form",
-                "views": [(False, "form")],
-                "target": "new",
-            }
-        return {
-            "type": "ir.actions.client",
-            "tag": "display_notification",
-            "params": {
-                "title": _("Mapeos por defecto recargados"),
-                "message": message,
-                "type": "success",
-                "sticky": False,
-                "next": next_action,
-            },
-        }
-
-
-class AiciaAccountImporterAccountMappingDefault(models.Model):
-    """Catálogo técnico de mapeos por defecto cargado desde XML."""
-
-    _name = "aicia.account.importer.account.mapping.default"
-    _description = "Mapeos por defecto para importación AICIA"
-    _rec_name = "source_code"
-    _order = "source_code"
-
-    source_code = fields.Char(required=True)
-    target_account_code = fields.Char(required=True)
-
 
 class AiciaAccountImporterWizard(models.TransientModel):
     _name = "aicia.account.importer.wizard"
@@ -403,20 +221,12 @@ class AiciaAccountImporterWizard(models.TransientModel):
         default="draft",
         required=True,
     )
-    create_missing_partners = fields.Boolean(
-        string="Crear partners si no existen",
-        default=True,
-        help=(
-            "Si está activo, crea automáticamente el partner cuando no se "
-            "encuentra en Odoo. Si está inactivo, la línea queda sin partner."
-        ),
-    )
     skip_anulados = fields.Boolean(
         string="Omitir asientos anulados",
         default=True,
     )
 
-    # ── Mapeo de cuentas ─────────────────────────────────────────────────────
+    # ── Mapeo manual de cuentas ──────────────────────────────────────────────
     account_mapping_ids = fields.Many2many(
         "aicia.account.importer.account.mapping",
         "aicia_account_importer_wizard_mapping_rel",
@@ -449,10 +259,24 @@ class AiciaAccountImporterWizard(models.TransientModel):
     total_skipped = fields.Integer(string="Omitidos (ya existían)", readonly=True)
     total_errors = fields.Integer(string="Errores", readonly=True)
     total_warnings = fields.Integer(
-        string="Con socios no resueltos (borrador)", readonly=True
+        string="Con avisos (borrador)", readonly=True
+    )
+    total_mismatches = fields.Integer(
+        string="Asientos con total de cabecera ≠ suma de líneas (informativo)",
+        readonly=True,
+    )
+    total_debe = fields.Float(
+        string="Total Debe importado (suma de líneas)",
+        digits=(16, 2),
+        readonly=True,
+    )
+    total_haber = fields.Float(
+        string="Total Haber importado (suma de líneas)",
+        digits=(16, 2),
+        readonly=True,
     )
 
-    # ── Acción principal ─────────────────────────────────────────────────────
+    # ── Acciones sobre el mapeo manual ───────────────────────────────────────
 
     def _reload_account_mapping_ids(self):
         self.write(
@@ -492,41 +316,6 @@ class AiciaAccountImporterWizard(models.TransientModel):
                 "message": _("Se han recargado los mapeos globales guardados."),
                 "type": "success",
                 "sticky": False,
-            },
-        }
-
-    def action_load_default_account_mappings(self):
-        """Carga los mapeos por defecto y refresca la pestaña del wizard."""
-        self.ensure_one()
-        stats = self.env[
-            "aicia.account.importer.account.mapping"
-        ]._load_default_mappings_stats()
-        self._reload_account_mapping_ids()
-        message = _(
-            "Creados: %(created)d, cuentas destino creadas: %(created_accounts)d, "
-            "completados: %(updated)d, sin cambios: %(unchanged)d."
-        ) % {
-            "created": stats["created"],
-            "created_accounts": stats["created_accounts"],
-            "updated": stats["updated"],
-            "unchanged": stats["unchanged"],
-        }
-        return {
-            "type": "ir.actions.client",
-            "tag": "display_notification",
-            "params": {
-                "title": _("Mapeos por defecto recargados"),
-                "message": message,
-                "type": "success",
-                "sticky": False,
-                "next": {
-                    "type": "ir.actions.act_window",
-                    "res_model": self._name,
-                    "res_id": self.id,
-                    "view_mode": "form",
-                    "views": [(False, "form")],
-                    "target": "new",
-                },
             },
         }
 
@@ -573,6 +362,8 @@ class AiciaAccountImporterWizard(models.TransientModel):
             },
         }
 
+    # ── Acción principal ─────────────────────────────────────────────────────
+
     def action_import(self):
         """Punto de entrada: cruza los dos Excel y crea los account.move."""
         self.ensure_one()
@@ -611,12 +402,12 @@ class AiciaAccountImporterWizard(models.TransientModel):
             _("%d líneas contables leídas.") % total_lineas,
         )
 
-        # Construir diccionario de mapeo de cuentas {source_code: account_record}
+        # Reglas de mapeo manual de cuentas (vacías por defecto)
         account_mapping = self._get_account_mapping_rules()
         self._append_import_activity(
             activity_log,
             "info",
-            _("%d reglas de mapeo de cuentas cargadas.")
+            _("%d reglas de mapeo manual de cuentas cargadas.")
             % len(account_mapping.get("prefixes", account_mapping)),
         )
         runtime = self._prepare_import_runtime(
@@ -624,6 +415,8 @@ class AiciaAccountImporterWizard(models.TransientModel):
         )
         results = []
         created = skipped = errors = warnings = 0
+        total_debe_cents = total_haber_cents = 0
+        mismatches = []
         missing_accounts = set()
         missing_partners = {}
         total_apuntes = len(apuntes)
@@ -645,7 +438,7 @@ class AiciaAccountImporterWizard(models.TransientModel):
                 },
             )
             if not lineas:
-                ids_lineas = sorted(lineas_by_apunte.keys())
+                ids_lineas = sorted(lineas_by_apunte.keys(), key=str)
                 ids_str = ", ".join(str(x) for x in ids_lineas[:20])
                 if len(ids_lineas) > 20:
                     ids_str += f" … ({len(ids_lineas)} en total)"
@@ -671,6 +464,11 @@ class AiciaAccountImporterWizard(models.TransientModel):
                 runtime=runtime,
             )
             results.append(result)
+            if result["status"] in ("created", "warning"):
+                total_debe_cents += result.get("debe_cents", 0)
+                total_haber_cents += result.get("haber_cents", 0)
+            if result.get("header_mismatch"):
+                mismatches.append(result["header_mismatch"])
             if result["status"] == "created":
                 created += 1
                 activity_status = "success"
@@ -685,8 +483,12 @@ class AiciaAccountImporterWizard(models.TransientModel):
                 activity_status = "error"
             self._append_import_activity(activity_log, activity_status, result["msg"])
 
+        # Cuentas no encontradas: se añaden al mapeo manual (sin destino) para
+        # que el usuario pueda asignarles una cuenta y reimportar.
         AccountMapping = self.env["aicia.account.importer.account.mapping"]
-        existing_sources = set(runtime.get("mapping_sources", set()))
+        existing_sources = set(
+            AccountMapping.search([]).mapped("source_code_normalized")
+        )
         new_mappings = []
         for code in sorted(missing_accounts):
             norm_code = AccountMapping._normalize_source_code(code)
@@ -694,31 +496,30 @@ class AiciaAccountImporterWizard(models.TransientModel):
                 new_mappings.append({"source_code": norm_code})
                 existing_sources.add(norm_code)
         if new_mappings:
-            created_mappings = AccountMapping.create(new_mappings)
-            runtime.setdefault("mapping_sources", set()).update(
-                created_mappings.mapped("source_code_normalized")
-            )
-            runtime.setdefault("mapping_by_source", {}).update(
-                {
-                    mapping.source_code_normalized: mapping
-                    for mapping in created_mappings
-                    if mapping.source_code_normalized
-                }
-            )
+            AccountMapping.create(new_mappings)
             self._append_import_activity(
                 activity_log,
                 "warning",
-                _("%d cuentas no encontradas añadidas al mapeo global.")
+                _("%d cuentas no encontradas añadidas al mapeo manual.")
                 % len(new_mappings),
             )
         elif missing_accounts:
             self._append_import_activity(
                 activity_log,
                 "info",
-                _("Las cuentas no encontradas ya existían en el mapeo global."),
+                _("Las cuentas no encontradas ya existían en el mapeo manual."),
             )
 
         self._reload_account_mapping_ids()
+        self._append_import_activity(
+            activity_log,
+            "info",
+            _(
+                "Totales importados (suma de líneas): Debe %(debe).2f € — "
+                "Haber %(haber).2f €."
+            )
+            % {"debe": total_debe_cents / 100, "haber": total_haber_cents / 100},
+        )
         self._append_import_activity(
             activity_log,
             "success" if not errors else "warning",
@@ -741,8 +542,19 @@ class AiciaAccountImporterWizard(models.TransientModel):
                 "total_skipped": skipped,
                 "total_errors": errors,
                 "total_warnings": warnings,
+                "total_mismatches": len(mismatches),
+                "total_debe": total_debe_cents / 100,
+                "total_haber": total_haber_cents / 100,
                 "import_log": self._build_log_html(
-                    results, missing_accounts, missing_partners, activity_log
+                    results,
+                    missing_accounts,
+                    missing_partners,
+                    activity_log,
+                    totals={
+                        "debe": total_debe_cents / 100,
+                        "haber": total_haber_cents / 100,
+                    },
+                    mismatches=mismatches,
                 ),
             }
         )
@@ -871,6 +683,23 @@ class AiciaAccountImporterWizard(models.TransientModel):
             "target": "new",
         }
 
+    # ── Utilidades de lectura de celdas ───────────────────────────────────────
+
+    @staticmethod
+    def _cell(row, index):
+        """Valor de la celda o None si la fila es más corta que el índice."""
+        return row[index] if len(row) > index else None
+
+    @staticmethod
+    def _to_cents(value) -> int:
+        """Convierte un importe del Excel (céntimos) a entero.
+
+        Lanza ValueError/TypeError si el valor no es numérico.
+        """
+        if value is None or value == "":
+            return 0
+        return int(round(float(value)))
+
     # ── Parseo de Apuntes2025.xlsx ────────────────────────────────────────────
 
     def _parse_apuntes(self, content: bytes) -> dict:
@@ -884,7 +713,7 @@ class AiciaAccountImporterWizard(models.TransientModel):
         apuntes = {}
         c = APUNTES_COLS
         for row in ws.iter_rows(min_row=2, values_only=True):
-            id_apunte = row[c["id"]]
+            id_apunte = self._cell(row, c["id"])
             if id_apunte is None:
                 continue
             try:
@@ -892,33 +721,46 @@ class AiciaAccountImporterWizard(models.TransientModel):
             except (ValueError, TypeError):
                 id_apunte = str(id_apunte).strip()
 
-            validado = row[c["validado"]]
-            anulado = row[c["anulado"]]
+            validado = self._cell(row, c["validado"])
+            anulado = self._cell(row, c["anulado"])
 
             if not validado:
                 continue
             if self.skip_anulados and anulado:
                 continue
 
-            numero_raw = row[c["numero"]]
+            numero_raw = self._cell(row, c["numero"])
             try:
                 numero_key = int(float(numero_raw))
             except (ValueError, TypeError):
                 numero_key = str(numero_raw).strip()
 
-            # Clase_Apunte: "M" = nómina; puede estar en col 9 o ser None
-            clase_raw = row[c["clase_apunte"]] if len(row) > c["clase_apunte"] else None
-            clase_apunte = str(clase_raw or "").strip().upper()
+            # Importe_Total de la cabecera (céntimos). Solo sirve para avisar si
+            # no coincide con la suma de las líneas; None si falta o no es válido.
+            try:
+                importe_total = self._cell(row, c["importe_total"])
+                importe_total = (
+                    None
+                    if importe_total is None or importe_total == ""
+                    else self._to_cents(importe_total)
+                )
+            except (ValueError, TypeError):
+                importe_total = None
+
+            clase_raw = self._cell(row, c["clase_apunte"])
 
             # Clave: ID_Apunte (col 0) — es la clave de unión con el fichero de líneas.
-            # Numero_Apunte (col 1) se guarda en "numero" y se usa como ref del asiento en Odoo.
+            # Numero_Apunte (col 1) se guarda en "numero" y se usa como nº de asiento AICIA.
             apuntes[id_apunte] = {
                 "id": id_apunte,
                 "numero": numero_key,
-                "fecha": self._parse_fecha_contable(row[c["fecha"]]),
-                "descripcion": str(row[c["descripcion"]] or "").strip(),
-                "numero_documento": str(row[c["numero_documento"]] or "").strip(),
-                "clase_apunte": clase_apunte,
+                "fecha": self._parse_fecha_contable(self._cell(row, c["fecha"])),
+                "descripcion": str(self._cell(row, c["descripcion"]) or "").strip(),
+                "numero_documento": str(
+                    self._cell(row, c["numero_documento"]) or ""
+                ).strip(),
+                "importe_total": importe_total,
+                "clase_apunte": str(clase_raw or "").strip().upper(),
             }
 
         if not apuntes:
@@ -933,14 +775,19 @@ class AiciaAccountImporterWizard(models.TransientModel):
     # ── Parseo de Lineas_Apunte2025.xlsx ─────────────────────────────────────
 
     def _parse_lineas(self, content: bytes) -> dict:
-        """Lee Lineas_Apunte2025.xlsx y devuelve {ID_Apunte: [linea_dict, ...]}."""
+        """Lee Lineas_Apunte2025.xlsx y devuelve {ID_Apunte: [linea_dict, ...]}.
+
+        Cada línea lleva su importe en céntimos enteros ("cents") para sumar sin
+        errores de coma flotante. Las líneas con importe o tipo inválidos llevan
+        el motivo en "error" y hacen fallar el asiento al que pertenecen.
+        """
         wb = self._open_workbook(content, "Lineas_Apunte2025.xlsx")
         ws = wb.worksheets[0]
 
         lineas_by_apunte = defaultdict(list)
         c = LINEAS_COLS
         for row in ws.iter_rows(min_row=2, values_only=True):
-            id_apunte = row[c["id_apunte"]]
+            id_apunte = self._cell(row, c["id_apunte"])
             if id_apunte is None:
                 continue
             # Normalizar a int para que el cruce con Apuntes funcione
@@ -949,31 +796,44 @@ class AiciaAccountImporterWizard(models.TransientModel):
                 id_apunte = int(float(id_apunte))
             except (ValueError, TypeError):
                 id_apunte = str(id_apunte).strip()
-            cuenta_raw = row[c["cuenta"]]
+            cuenta_raw = self._cell(row, c["cuenta"])
             if isinstance(cuenta_raw, (int, float)):
                 cuenta = str(int(cuenta_raw)).zfill(9)
             else:
                 cuenta = str(cuenta_raw or "").strip().zfill(9)
-            importe_cents = row[c["importe"]] or 0
-            tipo = str(row[c["tipo"]] or "").strip().upper()
-            descripcion = str(row[c["descripcion"]] or "").strip()
+            tipo = str(self._cell(row, c["tipo"]) or "").strip().upper()
+            descripcion = str(self._cell(row, c["descripcion"]) or "").strip()
 
-            importe = round(importe_cents / 100, 2)
+            error = None
+            cents = 0
+            importe_raw = self._cell(row, c["importe"])
+            try:
+                cents = self._to_cents(importe_raw)
+            except (ValueError, TypeError):
+                error = _("Importe no numérico '%s'") % importe_raw
+            if not error and cents < 0:
+                error = _("Importe negativo '%s'") % importe_raw
+            if not error and tipo not in ("D", "H"):
+                error = _("Tipo_Contable inválido '%s' (debe ser D o H)") % tipo
 
             # ID_Proyecto → cuenta analítica (col 4)
-            id_proyecto_raw = row[c["id_proyecto"]] if len(row) > c["id_proyecto"] else None
+            id_proyecto_raw = self._cell(row, c["id_proyecto"])
             try:
                 id_proyecto = int(float(id_proyecto_raw)) if id_proyecto_raw is not None else None
             except (ValueError, TypeError):
                 id_proyecto = str(id_proyecto_raw).strip() if id_proyecto_raw else None
 
+            importe = round(cents / 100, 2)
             lineas_by_apunte[id_apunte].append(
                 {
                     "cuenta": cuenta,
                     "descripcion": descripcion,
+                    "cents": cents,
+                    "tipo": tipo,
                     "debit": importe if tipo == "D" else 0.0,
                     "credit": importe if tipo == "H" else 0.0,
                     "id_proyecto": id_proyecto,
+                    "error": error,
                 }
             )
 
@@ -990,11 +850,18 @@ class AiciaAccountImporterWizard(models.TransientModel):
         account_mapping: dict = None,
         runtime: dict | None = None,
     ) -> dict:
-        """Crea un account.move a partir de la cabecera y sus líneas."""
+        """Crea un account.move a partir de la cabecera y sus líneas.
+
+        El total del asiento es siempre la suma de sus líneas (en céntimos). Si
+        la cabecera trae un Importe_Total distinto, no se usa: el asiento se
+        importa igual y la diferencia solo queda anotada en el log.
+        """
         legacy_number = str(cabecera["numero"])
         # ── Detectar si es un asiento de nómina ──────────────────────────────
-        # Criterio: Numero_Documento empieza por "NO-" (insensible a mayúsculas)
+        # Criterio: Numero_Documento empieza por "NO-" (insensible a mayúsculas).
+        # Solo afecta al diario: las nóminas van siempre al diario misceláneo.
         is_nomina = str(cabecera.get("numero_documento", "") or "").upper().startswith("NO-")
+        nomina_tag = " 💼" if is_nomina else ""
 
         # Detectar el diario automáticamente según las cuentas de las líneas
         journal = self._get_journal_for_lines(lineas, is_nomina=is_nomina, runtime=runtime)
@@ -1025,7 +892,6 @@ class AiciaAccountImporterWizard(models.TransientModel):
             state_label = {"draft": "borrador", "posted": "confirmado"}.get(
                 existing["state"], existing["state"]
             )
-            nomina_tag = " 💼" if is_nomina else ""
             return {
                 "status": "skipped",
                 "ref": legacy_number,
@@ -1041,8 +907,12 @@ class AiciaAccountImporterWizard(models.TransientModel):
         line_warnings = []
         for linea in lineas:
             vals, error, warning = self._build_line_vals(
-                linea, cabecera["descripcion"], missing_accounts, missing_partners,
-                account_mapping, is_nomina=is_nomina, runtime=runtime,
+                linea,
+                cabecera["descripcion"],
+                missing_accounts,
+                missing_partners,
+                account_mapping,
+                runtime=runtime,
             )
             if error:
                 errors.append(error)
@@ -1050,8 +920,6 @@ class AiciaAccountImporterWizard(models.TransientModel):
                 line_vals.append((0, 0, vals))
                 if warning:
                     line_warnings.append(warning)
-
-        nomina_tag = " 💼" if is_nomina else ""
 
         if errors:
             return {
@@ -1068,21 +936,10 @@ class AiciaAccountImporterWizard(models.TransientModel):
                 % (legacy_number, nomina_tag),
             }
 
-        # ── Propagar partner a TODAS las líneas del mismo asiento ────────────
-        partner_id_asiento = None
-        for _cmd, _id, v in line_vals:
-            if v.get("partner_id"):
-                partner_id_asiento = v["partner_id"]
-                break
-        if partner_id_asiento:
-            for _cmd, _id, v in line_vals:
-                if not v.get("partner_id"):
-                    v["partner_id"] = partner_id_asiento
-
-        # Validar cuadre contable
-        total_debe = sum(v[2]["debit"] for v in line_vals)
-        total_haber = sum(v[2]["credit"] for v in line_vals)
-        if abs(total_debe - total_haber) > 0.005:
+        # ── Totales a partir de las líneas (enteros en céntimos) ─────────────
+        debe_cents = sum(linea["cents"] for linea in lineas if linea["tipo"] == "D")
+        haber_cents = sum(linea["cents"] for linea in lineas if linea["tipo"] == "H")
+        if debe_cents != haber_cents:
             return {
                 "status": "error",
                 "ref": legacy_number,
@@ -1091,10 +948,21 @@ class AiciaAccountImporterWizard(models.TransientModel):
                 ) % (
                     legacy_number,
                     nomina_tag,
-                    total_debe,
-                    total_haber,
-                    abs(total_debe - total_haber),
+                    debe_cents / 100,
+                    haber_cents / 100,
+                    abs(debe_cents - haber_cents) / 100,
                 ),
+            }
+
+        # El Importe_Total de la cabecera no se usa como total: solo se compara
+        # con la suma de las líneas para anotar en el log los descuadres del legado.
+        header_cents = cabecera.get("importe_total")
+        header_mismatch = None
+        if header_cents is not None and header_cents != debe_cents:
+            header_mismatch = {
+                "ref": legacy_number,
+                "header": header_cents / 100,
+                "lines": debe_cents / 100,
             }
 
         move_vals = {
@@ -1108,28 +976,8 @@ class AiciaAccountImporterWizard(models.TransientModel):
         }
 
         try:
-            move = self.env["account.move"].create(move_vals)
-            runtime.setdefault("existing_moves", {})[(journal.id, legacy_marker)] = move
-            if not line_warnings and self.move_state == "posted":
-                move.action_post()
-
-            if line_warnings:
-                refs_uniq = sorted({w.split("'")[1] for w in line_warnings if "'" in w})
-                refs_str = ", ".join(refs_uniq) if refs_uniq else "; ".join(line_warnings)
-                return {
-                    "status": "warning",
-                    "ref": legacy_number,
-                    "msg": _(
-                        "Asiento Nº %s%s creado en BORRADOR (ID Odoo %d) "
-                        "— socios no resueltos: %s"
-                    ) % (legacy_number, nomina_tag, move.id, refs_str),
-                }
-            return {
-                "status": "created",
-                "ref": legacy_number,
-                "msg": _("Asiento Nº %s%s creado (ID Odoo %d).")
-                % (legacy_number, nomina_tag, move.id),
-            }
+            with self.env.cr.savepoint():
+                move = self.env["account.move"].create(move_vals)
         except Exception as exc:
             return {
                 "status": "error",
@@ -1137,6 +985,45 @@ class AiciaAccountImporterWizard(models.TransientModel):
                 "msg": _("Error al crear asiento Nº %s%s: %s")
                 % (legacy_number, nomina_tag, str(exc)),
             }
+        runtime.setdefault("existing_moves", {})[(journal.id, legacy_marker)] = move
+
+        needs_review = bool(line_warnings)
+        post_error = None
+        if not needs_review and self.move_state == "posted":
+            try:
+                with self.env.cr.savepoint():
+                    move.action_post()
+            except Exception as exc:
+                post_error = str(exc)
+
+        totals = {"debe_cents": debe_cents, "haber_cents": haber_cents}
+        reasons = []
+        if line_warnings:
+            refs_uniq = sorted({w.split("'")[1] for w in line_warnings if "'" in w})
+            reasons.append(
+                _("contactos no resueltos: %s")
+                % (", ".join(refs_uniq) if refs_uniq else "; ".join(line_warnings))
+            )
+        if post_error:
+            reasons.append(_("no se pudo confirmar: %s") % post_error)
+        if reasons:
+            return {
+                "status": "warning",
+                "ref": legacy_number,
+                "msg": _(
+                    "Asiento Nº %s%s creado en BORRADOR (ID Odoo %d) — %s"
+                ) % (legacy_number, nomina_tag, move.id, "; ".join(reasons)),
+                "header_mismatch": header_mismatch,
+                **totals,
+            }
+        return {
+            "status": "created",
+            "ref": legacy_number,
+            "msg": _("Asiento Nº %s%s creado (ID Odoo %d).")
+            % (legacy_number, nomina_tag, move.id),
+            "header_mismatch": header_mismatch,
+            **totals,
+        }
 
     def _build_line_vals(
         self,
@@ -1145,81 +1032,59 @@ class AiciaAccountImporterWizard(models.TransientModel):
         missing_accounts: set,
         missing_partners: dict,
         account_mapping: dict = None,
-        is_nomina: bool = False,
         runtime: dict | None = None,
     ) -> tuple:
         """Construye el dict de valores para una account.move.line.
 
-        Para nóminas (is_nomina=True):
-          - Las cuentas se resuelven sin aplicar cuentas colectivas (640, 642, 465…
-            se buscan directamente en el plan contable).
-          - Si la cuenta legada es 610XXXXXX, primero se resuelve el empleado y
-            después la línea se reclasifica a 640XXX, siempre con 6 dígitos.
+        La cuenta legada de 9 dígitos se divide en:
+          - 5 primeros + "0" → cuenta contable de Odoo
+          - 4 últimos         → código AICIA del contacto (aicia.partner.code),
+                                único por tipo de tercero
+
+        Solo los grupos de cuenta con tipo de tercero (personal, proveedor,
+        cliente) llevan contacto. Devuelve (vals, error, warning). Si no existe
+        contacto con ese código, la línea se crea sin contacto y se devuelve un
+        aviso.
         """
+        if linea.get("error"):
+            return None, linea["error"], None
+
         legacy_account_code = linea["cuenta"]
-        partner = None
-        warning_msg = None
 
-        if is_nomina:
-            # Nóminas: partner con prefijo "E" en cuentas con subcuenta de empleado.
-            if legacy_account_code[:3] in NOMINA_PARTNER_ACCOUNT_PREFIXES:
-                ref_code = self._partner_ref_from_account(
-                    legacy_account_code, is_nomina=True
-                )
-                partner = self._resolve_partner_nomina(ref_code, runtime=runtime)
-                if not partner:
-                    if self.create_missing_partners:
-                        partner = self._create_partner(
-                            ref_code, legacy_account_code, linea["descripcion"],
-                            is_nomina=True, runtime=runtime,
-                        )
-                    else:
-                        warning_msg = _(
-                            "Empleado no encontrado para ref '%s' (cuenta legada: %s)"
-                        ) % (ref_code, legacy_account_code)
-                        if missing_partners is not None:
-                            missing_partners[ref_code] = legacy_account_code
-        else:
-            if legacy_account_code[:3] in PARTNER_ACCOUNT_PREFIXES:
-                ref_code = self._partner_ref_from_account(legacy_account_code)
-                partner = self._resolve_partner(ref_code, runtime=runtime)
-                if not partner:
-                    if self.create_missing_partners:
-                        partner = self._create_partner(
-                            ref_code, legacy_account_code, linea["descripcion"], runtime=runtime
-                        )
-                    else:
-                        warning_msg = _(
-                            "Socio no encontrado para ref '%s' (cuenta legada: %s)"
-                        ) % (ref_code, legacy_account_code)
-                        if missing_partners is not None:
-                            missing_partners[ref_code] = legacy_account_code
-
-        account = None
-        account_lookup_code = legacy_account_code
-        if is_nomina:
-            account = self._match_account_mapping(legacy_account_code, account_mapping)
-            if not account:
-                account_lookup_code = self._get_nomina_account_code_for_lookup(
-                    legacy_account_code
-                )
-
-        if not account:
-            account = self._get_account(
-                account_lookup_code,
-                missing_accounts,
-                account_mapping,
-                skip_collective=is_nomina,
-                runtime=runtime,
-            )
-        if account and account_lookup_code != legacy_account_code:
-            self._register_automatic_account_mapping(
-                legacy_account_code, account, runtime=runtime
-            )
+        account = self._get_account(
+            legacy_account_code,
+            missing_accounts,
+            account_mapping,
+            runtime=runtime,
+        )
         if not account:
             return None, _(
-                "Cuenta '%s' no encontrada ni en colectivas ni en el plan contable."
-            ) % account_lookup_code, None
+                "Cuenta '%(account)s' no encontrada en el plan contable "
+                "(cuenta legada: %(legacy)s)."
+            ) % {
+                "account": self._odoo_account_code(legacy_account_code),
+                "legacy": legacy_account_code,
+            }, None
+
+        partner = None
+        warning_msg = None
+        partner_type = PARTNER_TYPE_BY_ACCOUNT_GROUP.get(legacy_account_code[:3])
+        if partner_type:
+            partner_code = self._partner_code_from_account(legacy_account_code)
+            partner = self._resolve_partner_by_aicia_code(
+                partner_code, partner_type, runtime=runtime
+            )
+            if not partner:
+                warning_msg = _(
+                    "Contacto no encontrado para el código AICIA '%(code)s' de tipo "
+                    "%(type)s (cuenta legada: %(legacy)s)"
+                ) % {
+                    "code": partner_code,
+                    "type": PARTNER_TYPE_LABELS[partner_type],
+                    "legacy": legacy_account_code,
+                }
+                if missing_partners is not None:
+                    missing_partners[(partner_type, partner_code)] = legacy_account_code
 
         # ── Distribución analítica por ID_Proyecto (100%) ────────────────────
         # ID_Proyecto=0 es un proyecto válido ([0] AICIA), por lo que se debe
@@ -1231,7 +1096,7 @@ class AiciaAccountImporterWizard(models.TransientModel):
             analytic = runtime.get("analytic_by_code", {}).get(str(id_proyecto))
             if analytic is None:
                 analytic = self.env["account.analytic.account"].search(
-                    [("code", "=", str(id_proyecto))], limit=1
+                    [("code", "=", str(id_proyecto))], order="id", limit=1
                 )
                 runtime.setdefault("analytic_by_code", {})[str(id_proyecto)] = analytic
             if analytic:
@@ -1254,7 +1119,7 @@ class AiciaAccountImporterWizard(models.TransientModel):
             warning_msg,
         )
 
-    # ── Resolución de cuentas contables ──────────────────────────────────────
+    # ── Resolución de diarios ────────────────────────────────────────────────
 
     def _get_journal_for_lines(
         self, lineas: list, is_nomina: bool = False, runtime: dict | None = None
@@ -1297,172 +1162,67 @@ class AiciaAccountImporterWizard(models.TransientModel):
             return "purchase"
         return "general"
 
-    def _normalize_account_code_to_six_digits(self, code: str) -> str:
-        """Devuelve el código contable truncado a 6 dígitos, rellenando con ceros."""
-        normalized_code = str(code or "").strip().replace(" ", "")
-        if not normalized_code:
-            return ""
-        return normalized_code[:6].ljust(6, "0")
+    # ── Resolución de cuentas contables ──────────────────────────────────────
 
-    def _get_nomina_account_code_for_lookup(self, code: str) -> str:
-        """Devuelve la cuenta contable efectiva para líneas de nómina.
+    @staticmethod
+    def _odoo_account_code(legacy_code: str) -> str:
+        """Cuenta de Odoo (6 dígitos) de una cuenta legada: 5 primeros + "0"."""
+        return str(legacy_code or "")[:ACCOUNT_PREFIX_LENGTH] + "0"
 
-        Regla especial:
-          - 610XXXXXX → 640XXX, manteniendo siempre 6 dígitos.
-        """
-        six_digit_code = self._normalize_account_code_to_six_digits(code)
-        if six_digit_code.startswith("610"):
-            return f"640{six_digit_code[3:6]}"
-        return code
+    @staticmethod
+    def _partner_code_from_account(legacy_code: str) -> str:
+        """Código AICIA del contacto: últimos dígitos de la cuenta legada, como número."""
+        last = str(legacy_code or "")[-PARTNER_CODE_LENGTH:]
+        return str(int(last)) if last.isdigit() else last
 
     def _get_exact_account_by_code(self, code: str, runtime: dict | None = None):
-        """Busca una cuenta exacta de la empresa sin aplicar fallback adicional."""
+        """Busca una cuenta exacta de la empresa por su código."""
         if not code:
             return None
-        runtime = runtime or {}
-        account = runtime.get("accounts_by_code", {}).get(code)
-        if account is not None:
-            return account
+        if runtime is None:
+            runtime = {}
+        cache = runtime.setdefault("accounts_by_code", {})
+        if code in cache:
+            return cache[code] or None
+        if runtime.get("accounts_preloaded"):
+            return None
         account = self.env["account.account"].search(
             [("code", "=", code), ("company_ids", "in", [self.env.company.id])],
             limit=1,
         )
-        runtime.setdefault("accounts_by_code", {})[code] = account
-        if account and code[:3] not in runtime.setdefault("accounts_by_prefix", {}):
-            runtime["accounts_by_prefix"][code[:3]] = account
-        return account
-
-    def _get_collective_prefix(self, code: str) -> str | None:
-        """Devuelve el prefijo de 3 dígitos si el código tiene cuenta colectiva."""
-        prefix = code[:3]
-        return prefix if prefix in COLLECTIVE_ACCOUNT_MAP else None
-
-    def _normalize_account_code_for_lookup(self, code: str) -> str:
-        """Normaliza el código legado para resolver la cuenta Odoo.
-
-        Regla especial para bancos 572:
-          - 572XXXXXX siempre se trunca a 572XXX (6 dígitos) para evitar
-            cuentas contables de más de 6 posiciones en la conversión.
-
-        Regla general:
-          - el resto mantiene la normalización histórica del módulo, quitando
-            ceros finales sobre los primeros 6 dígitos.
-        """
-        normalized_code = str(code or "").strip().replace(" ", "")
-        if not normalized_code:
-            return ""
-        if normalized_code.startswith("572"):
-            return normalized_code[:6]
-        return normalized_code[:6].rstrip("0") or normalized_code[:3]
+        cache[code] = account
+        return account or None
 
     def _get_account(
         self,
         code: str,
         missing_accounts: set = None,
         account_mapping: dict = None,
-        skip_collective: bool = False,
         runtime: dict | None = None,
     ):
         """Resuelve la cuenta Odoo a partir del código legado de 9 dígitos.
 
         Orden de resolución:
-          0. Mapeo manual del usuario (account_mapping_ids) — tiene prioridad absoluta.
-          1. Prefijo colectivo (400/430/572) → devuelve/crea la cuenta colectiva.
-             (Omitido si skip_collective=True, p.ej. en asientos de nómina)
-          2. Normaliza a 6 dígitos (quitando ceros finales) y busca exacta.
-          3. Busca por prefijo de 3 dígitos como último recurso.
+          1. Mapeo manual del usuario (account_mapping_ids): exacto o por prefijo.
+          2. Cuenta de Odoo cuyo código son los 5 primeros dígitos del código
+             legado más un "0".
+
+        Si no existe, devuelve None y registra el código de 6 dígitos en
+        missing_accounts. No hay cuentas colectivas, redirecciones de grupo ni
+        búsquedas por prefijo.
         """
         if not code:
             return None
 
-        # ── 0. Mapeo manual definido por el usuario ───────────────────────────
         mapped_account = self._match_account_mapping(code, account_mapping)
         if mapped_account:
             return mapped_account
 
-        normalized = self._normalize_account_code_for_lookup(code)
-
-        # ── 1. Subcuentas de bancos 572 → truncado exacto a 6 dígitos ─────────
-        if not skip_collective and code.startswith("572"):
-            account = self._get_exact_account_by_code(normalized, runtime=runtime)
-            if account:
-                self._register_automatic_account_mapping(code, account, runtime=runtime)
-                return account
-
-        # ── 2. Prefijo colectivo ──────────────────────────────────────────────
-        # Se omite en nóminas para que 640xxxxxx → 640000 por normalización directa
-        if not skip_collective:
-            prefix = self._get_collective_prefix(code)
-            if prefix:
-                col_code, col_name, col_type = COLLECTIVE_ACCOUNT_MAP[prefix]
-                account = self._get_or_create_account(
-                    col_code, col_name, col_type, runtime=runtime
-                )
-                self._register_automatic_account_mapping(code, account, runtime=runtime)
-                return account
-
-        # ── 3. Normalizar a 6 dígitos ─────────────────────────────────────────
-        account = self._get_exact_account_by_code(normalized, runtime=runtime)
-        if account:
-            self._register_automatic_account_mapping(code, account, runtime=runtime)
-            return account
-
-        # ── 4. Búsqueda por prefijo de 3 dígitos ─────────────────────────────
-        runtime = runtime or {}
-        account = runtime.get("accounts_by_prefix", {}).get(code[:3]) or None
-        if account is None and "accounts_by_prefix" not in runtime:
-            account = (
-                self.env["account.account"].search(
-                    [
-                        ("code", "=like", code[:3] + "%"),
-                        ("company_ids", "in", [self.env.company.id]),
-                    ],
-                    limit=1,
-                )
-                or None
-            )
-            runtime.setdefault("accounts_by_prefix", {})[code[:3]] = account
-        if account:
-            self._register_automatic_account_mapping(code, account, runtime=runtime)
+        account_code = self._odoo_account_code(code)
+        account = self._get_exact_account_by_code(account_code, runtime=runtime)
         if not account and missing_accounts is not None:
-            missing_accounts.add(code)
+            missing_accounts.add(account_code)
         return account
-
-    def _register_automatic_account_mapping(
-        self, source_code: str, target_account, runtime: dict | None = None
-    ):
-        """Persiste cambios automáticos de subcuentas para revisión futura."""
-        if not source_code or not target_account:
-            return
-
-        AccountMapping = self.env["aicia.account.importer.account.mapping"]
-        normalized_source = AccountMapping._normalize_source_code(source_code)
-        if not normalized_source:
-            return
-
-        runtime = runtime or {}
-        mapping = runtime.get("mapping_by_source", {}).get(normalized_source)
-        if mapping is None and normalized_source not in runtime.get("mapping_sources", set()):
-            mapping = AccountMapping.search(
-                [("source_code_normalized", "=", normalized_source)], limit=1
-            )
-            runtime.setdefault("mapping_by_source", {})[normalized_source] = mapping
-            runtime.setdefault("mapping_sources", set()).add(normalized_source)
-        if not mapping:
-            mapping = AccountMapping.create(
-                {
-                    "source_code": normalized_source,
-                    "target_account_id": target_account.id,
-                }
-            )
-            runtime.setdefault("mapping_by_source", {})[normalized_source] = mapping
-            runtime.setdefault("mapping_sources", set()).add(normalized_source)
-            self._store_runtime_mapping_rule(normalized_source, target_account, runtime=runtime)
-            return
-
-        if not mapping.target_account_id:
-            mapping.write({"target_account_id": target_account.id})
-            self._store_runtime_mapping_rule(normalized_source, target_account, runtime=runtime)
 
     def _get_account_mapping_rules(self, runtime: dict | None = None):
         """Devuelve reglas persistentes ordenadas: exactas antes que prefijos."""
@@ -1491,13 +1251,16 @@ class AiciaAccountImporterWizard(models.TransientModel):
             return Account.browse()
 
         domain = [("company_ids", "in", [self.env.company.id])]
-        if len(normalized_source) < 6:
+        if len(normalized_source) < ACCOUNT_CODE_LENGTH:
             domain.append(("code", "=like", f"{normalized_source}%"))
         else:
-            candidate_codes = {normalized_source}
-            if len(normalized_source) > 6:
-                candidate_codes.add(normalized_source[:6])
-            domain.append(("code", "in", sorted(candidate_codes)))
+            # Código legado de 9 dígitos → cuenta de Odoo (5 primeros + "0")
+            account_code = (
+                normalized_source
+                if len(normalized_source) == ACCOUNT_CODE_LENGTH
+                else self._odoo_account_code(normalized_source)
+            )
+            domain.append(("code", "=", account_code))
 
         source_accounts = Account.search(domain)
         if target_account:
@@ -1511,21 +1274,14 @@ class AiciaAccountImporterWizard(models.TransientModel):
         normalized_code = self.env[
             "aicia.account.importer.account.mapping"
         ]._normalize_source_code(code)
-        normalized_for_map = self._normalize_account_code_for_lookup(normalized_code)
         mapping_rules = account_mapping or self._get_account_mapping_rules()
 
         if isinstance(mapping_rules, dict):
-            exact_rules = mapping_rules.get("exact", {})
-            target_account = exact_rules.get(normalized_code) or exact_rules.get(
-                normalized_for_map
-            )
+            target_account = mapping_rules.get("exact", {}).get(normalized_code)
             if target_account:
                 return target_account
-
             for source_code, target_account in mapping_rules.get("prefixes", []):
-                if normalized_code.startswith(source_code) or normalized_for_map.startswith(
-                    source_code
-                ):
+                if normalized_code.startswith(source_code):
                     _logger.debug(
                         "Cuenta '%s' redirigida a '%s' por prefijo de usuario '%s'.",
                         code,
@@ -1536,279 +1292,46 @@ class AiciaAccountImporterWizard(models.TransientModel):
             return None
 
         for source_code, target_account in mapping_rules:
-            if normalized_code == source_code or normalized_for_map == source_code:
-                _logger.debug(
-                    "Cuenta '%s' redirigida a '%s' por mapeo exacto.",
-                    code,
-                    target_account.code,
-                )
+            if normalized_code == source_code:
                 return target_account
-
         for source_code, target_account in mapping_rules:
-            if normalized_code.startswith(source_code) or normalized_for_map.startswith(
-                source_code
-            ):
-                _logger.debug(
-                    "Cuenta '%s' redirigida a '%s' por prefijo de usuario '%s'.",
-                    code,
-                    target_account.code,
-                    source_code,
-                )
+            if normalized_code.startswith(source_code):
                 return target_account
-
         return None
 
-    def _get_or_create_account(
-        self, code: str, name: str, account_type: str, runtime: dict | None = None
+    # ── Resolución de contactos ──────────────────────────────────────────────
+
+    def _resolve_partner_by_aicia_code(
+        self, code: str, partner_type: str, runtime: dict | None = None
     ):
-        """Obtiene la cuenta colectiva; la crea si no existe en el plan contable."""
-        runtime = runtime or {}
-        account = runtime.get("accounts_by_code", {}).get(code)
-        if account is None:
-            account = self.env["account.account"].search(
-                [("code", "=", code), ("company_ids", "in", [self.env.company.id])],
-                limit=1,
-            )
-        if not account:
-            account = self.env["account.account"].create(
-                {
-                    "code": code,
-                    "name": name,
-                    "account_type": account_type,
-                    "company_ids": [(4, self.env.company.id)],
-                }
-            )
-            _logger.info(
-                "Cuenta colectiva '%s - %s' creada automáticamente.", code, name
-            )
-        runtime.setdefault("accounts_by_code", {})[code] = account
-        runtime.setdefault("accounts_by_prefix", {}).setdefault(code[:3], account)
-        return account
+        """Devuelve el contacto que tiene ese código AICIA para ese tipo, o None.
 
-    # ── Resolución de partners ────────────────────────────────────────────────
-
-    def _partner_ref_from_account(self, code: str, is_nomina: bool = False) -> str:
-        """Construye el ref del partner a partir del código de cuenta legado de 9 dígitos.
-
-        Los últimos 5 dígitos del código identifican al tercero en el sistema legado.
-        El prefijo de letra se determina por el tipo de cuenta:
-          430/431/436      → "C" (cliente)
-          400/401          → "P" (proveedor)
-          610 en nómina    → "E" (empleado)
-
-        Ejemplos:
-          "430003604" → "C03604"
-          "400001234" → "P01234"
-          "610001234" (nómina) → "E01234"
+        El código son los 4 últimos dígitos de la cuenta legada. Un contacto
+        puede tener varios códigos; cada código pertenece a un único contacto
+        dentro de su tipo de tercero (personal, proveedor, cliente).
         """
-        prefix = code[:3] if code else ""
-        last5 = code[-5:] if len(code) >= 5 else code
-        if is_nomina:
-            tipo = "E"
-        elif prefix in {"430", "431", "436"}:
-            tipo = "C"
-        else:
-            tipo = "P"
-        return f"{tipo}{last5}"
-
-    def _resolve_partner(self, ref_code: str, runtime: dict | None = None):
-        """Busca el partner en res.partner para el ref_code derivado de la cuenta legada.
-
-        Cadena de búsqueda (en orden, sin duplicados):
-          Paso 1 — campo específico ``codigo_cliente`` ó ``codigo_proveedor``.
-          Paso 2 — campo estándar ``ref``.
-        """
-        if not ref_code:
+        code = str(code or "").strip()
+        if not code or not partner_type:
             return None
-        runtime = runtime or {}
-        if ref_code in runtime.get("partner_by_ref", {}):
-            return runtime["partner_by_ref"][ref_code]
-
-        tipo = ref_code[0]    # "C" o "P"
-        digits = ref_code[1:]
-        digits_int = str(int(digits)) if digits.isdigit() else digits.lstrip("0") or "0"
-        tipo_contrario = "P" if tipo == "C" else "C"
-
-        candidatos_especificos = list(dict.fromkeys([
-            f"C{digits}", f"C{digits_int}", f"C{digits.zfill(6)}",
-            f"P{digits}", f"P{digits_int}", f"P{digits.zfill(6)}",
-            digits, digits_int,
-        ]))
-        candidatos_ref = list(dict.fromkeys([
-            ref_code,
-            f"{tipo}{digits_int}",
-            f"{tipo}{digits.zfill(6)}",
-            f"{tipo_contrario}{digits}",
-            f"{tipo_contrario}{digits_int}",
-            f"{tipo_contrario}{digits.zfill(6)}",
-            digits, digits_int,
-        ]))
-
-        campo_especifico = "codigo_cliente" if tipo == "C" else "codigo_proveedor"
-        partner_model = self.env["res.partner"]
-        if campo_especifico in partner_model._fields:
-            for val in candidatos_especificos:
-                partner = partner_model.search(
-                    [(campo_especifico, "=", val)], limit=1
-                )
-                if partner:
-                    _logger.debug(
-                        "Partner encontrado por %s='%s' (ref_code='%s').",
-                        campo_especifico, val, ref_code,
-                    )
-                    runtime.setdefault("partner_by_ref", {})[ref_code] = partner
-                    return partner
-
-        for ref in candidatos_ref:
-            partner = partner_model.search([("ref", "=", ref)], limit=1)
-            if partner:
-                _logger.debug(
-                    "Partner encontrado por ref='%s' (ref_code='%s').", ref, ref_code
-                )
-                runtime.setdefault("partner_by_ref", {})[ref_code] = partner
-                return partner
-
-        runtime.setdefault("partner_by_ref", {})[ref_code] = None
-        return None
-
-    def _resolve_partner_nomina(self, ref_code: str, runtime: dict | None = None):
-        """Busca el partner del empleado via hr.employee.codigo_empleado.
-
-        Construye candidatos a partir del código (prefijo "E" + últimos 5 dígitos),
-        busca en hr.employee por campo ``codigo_empleado`` y devuelve el
-        res.partner asociado al empleado (employee.partner_id / address_home_id).
-
-        Candidatos de búsqueda:
-          E03604, E3604, E003604, 03604, 3604
-        """
-        if not ref_code:
-            return None
-        runtime = runtime or {}
-        if ref_code in runtime.get("nomina_partner_by_ref", {}):
-            return runtime["nomina_partner_by_ref"][ref_code]
-
-        digits = ref_code[1:]  # últimos 5 dígitos de la cuenta
-        digits_int = str(int(digits)) if digits.isdigit() else digits.lstrip("0") or "0"
-
-        candidatos = list(dict.fromkeys([
-            ref_code,                   # E03604
-            f"E{digits_int}",           # E3604
-            f"E{digits.zfill(6)}",      # E003604
-            digits,                     # 03604
-            digits_int,                 # 3604
-        ]))
-
-        # ── Buscar primero en hr.employee por codigo_empleado ─────────────────
-        if self.env.registry.models.get("hr.employee"):
-            Employee = self.env["hr.employee"]
-            for cand in candidatos:
-                employee = Employee.search(
-                    [("codigo_empleado", "=", cand)], limit=1
-                )
-                if employee:
-                    partner = self._get_employee_partner(employee)
-                    if partner:
-                        _logger.debug(
-                            "Empleado encontrado por codigo_empleado='%s' → partner ID %d.",
-                            cand, partner.id,
-                        )
-                        runtime.setdefault("nomina_partner_by_ref", {})[ref_code] = partner
-                        return partner
-                    _logger.debug(
-                        "Empleado encontrado por codigo_empleado='%s' pero sin partner asociado.",
-                        cand,
-                    )
-                    runtime.setdefault("nomina_partner_by_ref", {})[ref_code] = None
-                    return None
-
-        # ── Fallback: buscar en res.partner por campo ref ─────────────────────
-        for cand in candidatos:
-            partner = self.env["res.partner"].search(
-                [("ref", "=", cand)], limit=1
-            )
-            if partner:
-                _logger.debug(
-                    "Empleado encontrado por ref='%s' (ref_code='%s').", cand, ref_code
-                )
-                runtime.setdefault("nomina_partner_by_ref", {})[ref_code] = partner
-                return partner
-        runtime.setdefault("nomina_partner_by_ref", {})[ref_code] = None
-        return None
-
-    def _get_employee_partner(self, employee):
-        """Devuelve el partner asociado usando los campos disponibles en la versión."""
-        for field_name in (
-            "partner_id",
-            "work_contact_id",
-            "address_home_id",
-            "private_address_id",
-            "home_address_id",
-        ):
-            if field_name in getattr(employee, "_fields", {}):
-                partner = getattr(employee, field_name)
-                if partner:
-                    return partner
-        return None
-
-    def _create_partner(
-        self,
-        ref_code: str,
-        account_code: str,
-        name: str,
-        is_nomina: bool = False,
-        runtime: dict | None = None,
-    ):
-        """Crea un partner a partir del ref_code y el código de cuenta legado.
-
-        - Cuentas 430/431/436 → customer_rank=1
-        - Cuentas 400/401    → supplier_rank=1
-        - Nómina (is_nomina) → sin customer_rank ni supplier_rank (empleado)
-        - Nombre: descripción de la línea o ref_code si no hay descripción.
-        """
-        runtime = runtime or {}
-        cached_partner = runtime.get("partner_by_ref", {}).get(ref_code)
-        if cached_partner:
-            return cached_partner
-        existing = self.env["res.partner"].search([("ref", "=", ref_code)], limit=1)
-        if existing:
-            runtime.setdefault("partner_by_ref", {})[ref_code] = existing
-            return existing
-
-        prefix = account_code[:3] if account_code else ""
-        is_customer = not is_nomina and prefix in {"430", "431", "436"}
-        is_supplier = not is_nomina and prefix in {"400", "401"}
-        vals = {
-            "name": name or ref_code,
-            "ref": ref_code,
-            "customer_rank": 1 if is_customer else 0,
-            "supplier_rank": 1 if is_supplier else 0,
-        }
-        partner = self.env["res.partner"].create(vals)
-        tipo_label = "Empleado" if is_nomina else "Partner"
-        _logger.info(
-            "%s '%s' (ref=%s) creado automáticamente.", tipo_label, vals["name"], ref_code
+        if runtime is None:
+            runtime = {}
+        cache = runtime.setdefault("partner_by_aicia_code", {})
+        key = (partner_type, code)
+        if key in cache:
+            return cache[key]
+        record = self.env["aicia.partner.code"].search(
+            [("partner_type", "=", partner_type), ("code", "=", code)], limit=1
         )
-        runtime.setdefault("partner_by_ref", {})[ref_code] = partner
-        if is_nomina:
-            runtime.setdefault("nomina_partner_by_ref", {})[ref_code] = partner
+        partner = record.partner_id or None
+        cache[key] = partner
         return partner
+
+    # ── Preparación del contexto de importación ──────────────────────────────
 
     def _prepare_import_runtime(self, apuntes, lineas_by_apunte, account_mapping):
         account_model = self.env["account.account"]
         accounts = account_model.search([("company_ids", "in", [self.env.company.id])])
         accounts_by_code = {account.code: account for account in accounts}
-        accounts_by_prefix = {}
-        for account in accounts:
-            accounts_by_prefix.setdefault(account.code[:3], account)
-
-        mapping_model = self.env["aicia.account.importer.account.mapping"]
-        mappings = mapping_model.search([])
-        mapping_by_source = {
-            mapping.source_code_normalized: mapping
-            for mapping in mappings
-            if mapping.source_code_normalized
-        }
-        mapping_sources = set(mapping_by_source)
 
         journals = self.env["account.journal"].search(
             [("company_id", "=", self.env.company.id)]
@@ -1825,22 +1348,44 @@ class AiciaAccountImporterWizard(models.TransientModel):
         }
         analytic_by_code = {}
         if project_codes:
+            # Si varias cuentas analíticas comparten código se usa la de menor id,
+            # de forma determinista (en vez de la última que devuelva la búsqueda).
             analytics = self.env["account.analytic.account"].search(
-                [("code", "in", sorted(project_codes))]
+                [("code", "in", sorted(project_codes))], order="id"
             )
-            analytic_by_code = {analytic.code: analytic for analytic in analytics}
+            for analytic in analytics:
+                analytic_by_code.setdefault(analytic.code, analytic)
+
+        # Códigos AICIA de contacto presentes en el fichero: una sola búsqueda.
+        partner_keys = set()
+        for lineas in lineas_by_apunte.values():
+            for linea in lineas:
+                cuenta = linea.get("cuenta")
+                partner_type = PARTNER_TYPE_BY_ACCOUNT_GROUP.get(cuenta[:3]) if cuenta else None
+                if partner_type:
+                    partner_keys.add(
+                        (partner_type, self._partner_code_from_account(cuenta))
+                    )
+        partner_by_aicia_code = {key: None for key in partner_keys}
+        if partner_keys:
+            for record in self.env["aicia.partner.code"].search(
+                [
+                    ("partner_type", "in", sorted({t for t, _c in partner_keys})),
+                    ("code", "in", sorted({c for _t, c in partner_keys})),
+                ]
+            ):
+                key = (record.partner_type, record.code)
+                if key in partner_by_aicia_code:
+                    partner_by_aicia_code[key] = record.partner_id
 
         return {
             "accounts_by_code": accounts_by_code,
-            "accounts_by_prefix": accounts_by_prefix,
-            "mapping_by_source": mapping_by_source,
-            "mapping_sources": mapping_sources,
+            "accounts_preloaded": True,
             "compiled_mapping_rules": self._compile_account_mapping_rules(account_mapping),
             "journals_by_type": journals_by_type,
             "fallback_journal": journals[:1],
             "analytic_by_code": analytic_by_code,
-            "partner_by_ref": {},
-            "nomina_partner_by_ref": {},
+            "partner_by_aicia_code": partner_by_aicia_code,
             "existing_moves": self._prepare_existing_move_index(apuntes, lineas_by_apunte),
         }
 
@@ -1856,18 +1401,6 @@ class AiciaAccountImporterWizard(models.TransientModel):
             exact[source_code] = target_account
             prefixes.append((source_code, target_account))
         return {"exact": exact, "prefixes": prefixes}
-
-    def _store_runtime_mapping_rule(
-        self, source_code, target_account, runtime: dict | None = None
-    ):
-        runtime = runtime or {}
-        compiled = runtime.get("compiled_mapping_rules")
-        if not compiled or not source_code or not target_account:
-            return
-        compiled.setdefault("exact", {})[source_code] = target_account
-        prefixes = [rule for rule in compiled.get("prefixes", []) if rule[0] != source_code]
-        prefixes.append((source_code, target_account))
-        compiled["prefixes"] = sorted(prefixes, key=lambda rule: len(rule[0]), reverse=True)
 
     def _prepare_existing_move_index(self, apuntes, lineas_by_apunte):
         journals = self.env["account.journal"].search(
@@ -2001,6 +1534,8 @@ class AiciaAccountImporterWizard(models.TransientModel):
         missing_accounts: set = None,
         missing_partners: dict = None,
         activity_log: list = None,
+        totals: dict = None,
+        mismatches: list = None,
     ) -> str:
         """Genera el HTML del resumen de la importación."""
         created = [r for r in results if r["status"] == "created"]
@@ -2013,9 +1548,14 @@ class AiciaAccountImporterWizard(models.TransientModel):
             "<p><strong>Resumen:</strong> "
             f"<span style='color:green'>{len(created)} creados</span> | "
             f"<span style='color:orange'>{len(skipped)} omitidos</span> | "
-            f"<span style='color:#e67e00'>{len(warn_results)} con socios no resueltos (borrador)</span> | "
+            f"<span style='color:#e67e00'>{len(warn_results)} con avisos (borrador)</span> | "
             f"<span style='color:red'>{len(errors)} errores</span></p>"
         )
+        if totals:
+            html += (
+                "<p><strong>Totales importados (suma de las líneas):</strong> "
+                f"Debe {totals['debe']:,.2f} € — Haber {totals['haber']:,.2f} €</p>"
+            )
 
         # ── Actividad cronológica de importación ─────────────────────────────
         if activity_log:
@@ -2042,56 +1582,72 @@ class AiciaAccountImporterWizard(models.TransientModel):
                 )
             html += "</ul></div>"
 
+        # ── Totales de cabecera que no coinciden con la suma de líneas ───────
+        if mismatches:
+            html += (
+                "<hr/>"
+                f"<p><strong style='color:#1f4e79'>🧮 Total de cabecera distinto de la "
+                f"suma de líneas ({len(mismatches)} asientos — informativo: se importan "
+                f"con la suma de sus líneas):</strong></p><ul>"
+            )
+            for m in mismatches:
+                html += (
+                    f"<li style='color:#1f4e79'>Nº {escape(str(m['ref']))}: "
+                    f"cabecera {m['header']:,.2f} € — líneas {m['lines']:,.2f} €</li>"
+                )
+            html += "</ul>"
+
         # ── Cuentas no encontradas ────────────────────────────────────────────
         missing = missing_accounts or set()
         if missing:
             html += (
                 "<hr/>"
                 f"<p><strong style='color:#8B0000'>🔍 Cuentas no encontradas en el "
-                f"plan contable ({len(missing)} únicas — créalas antes de reimportar):"
-                f"</strong></p>"
+                f"plan contable ({len(missing)} únicas — créalas o mapéalas antes de "
+                f"reimportar):</strong></p>"
                 "<ul style='columns:3; column-gap:24px; list-style:none; padding:0;'>"
             )
             for code in sorted(missing):
                 html += (
                     f"<li style='color:#8B0000; padding:1px 0;'>"
-                    f"<code>{code}</code></li>"
+                    f"<code>{escape(str(code))}</code></li>"
                 )
             html += "</ul>"
 
-        # ── Socios no encontrados ─────────────────────────────────────────────
+        # ── Contactos no encontrados ──────────────────────────────────────────
         missing_p = missing_partners or {}
         if missing_p:
             html += (
                 "<hr/>"
-                f"<p><strong style='color:#7B3F00'>👤 Socios no encontrados por ref "
-                f"({len(missing_p)} únicos — sus asientos quedaron en borrador):"
+                f"<p><strong style='color:#7B3F00'>👤 Contactos no encontrados por código "
+                f"AICIA y tipo ({len(missing_p)} únicos — sus asientos quedaron en borrador):"
                 f"</strong></p>"
                 "<ul style='columns:3; column-gap:24px; list-style:none; padding:0;'>"
             )
-            for ref_code, cuenta in sorted(missing_p.items()):
+            for (ptype, ref_code), cuenta in sorted(missing_p.items()):
                 html += (
                     f"<li style='color:#7B3F00; padding:2px 0;'>"
-                    f"<code>{ref_code}</code>"
-                    f"<span style='color:#999; font-size:10px;'> (cta: {cuenta})</span>"
+                    f"<code>{escape(str(ref_code))}</code> "
+                    f"<span style='color:#999; font-size:10px;'>"
+                    f"({escape(PARTNER_TYPE_LABELS.get(ptype, ptype))}, "
+                    f"cta: {escape(str(cuenta))})</span>"
                     f"</li>"
                 )
             html += '</ul>'
-        # ─────────────────────────────────────────────────────────────────────
 
         if errors:
             html += "<hr/><p><strong style='color:red'>❌ Errores:</strong></p><ul>"
             for r in errors:
-                html += f"<li style='color:red'>{r['msg']}</li>"
+                html += f"<li style='color:red'>{escape(r['msg'])}</li>"
             html += "</ul>"
 
         if warn_results:
             html += (
                 "<hr/><p><strong style='color:#e67e00'>"
-                "⚠️ Con socios no resueltos (borrador):</strong></p><ul>"
+                "⚠️ Con avisos (borrador):</strong></p><ul>"
             )
             for r in warn_results:
-                html += f"<li style='color:#e67e00'>{r['msg']}</li>"
+                html += f"<li style='color:#e67e00'>{escape(r['msg'])}</li>"
             html += "</ul>"
 
         if skipped:
@@ -2100,13 +1656,13 @@ class AiciaAccountImporterWizard(models.TransientModel):
                 "⏭️ Omitidos (ya existían):</strong></p><ul>"
             )
             for r in skipped:
-                html += f"<li style='color:orange'>{r['msg']}</li>"
+                html += f"<li style='color:orange'>{escape(r['msg'])}</li>"
             html += "</ul>"
 
         if created:
             html += "<hr/><p><strong style='color:green'>✅ Creados:</strong></p><ul>"
             for r in created:
-                html += f"<li style='color:green'>{r['msg']}</li>"
+                html += f"<li style='color:green'>{escape(r['msg'])}</li>"
             html += "</ul>"
 
         html += "</div>"
