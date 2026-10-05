@@ -1391,23 +1391,22 @@ class AiciaImporterWizard(models.TransientModel):
                 # Aplicar actualizaciones si hay cambios
                 if user_vals_to_update:
                     try:
-                        existing_user.sudo().write(user_vals_to_update)
+                        with self.env.cr.savepoint():
+                            existing_user.sudo().write(user_vals_to_update)
                         _logger.info(f"✓ Usuario actualizado correctamente con write() - login: {new_login}, email: {email}")
                     except Exception as e:
-                        # Si falla el write(), intentar actualizar el login y email directamente con SQL
-                        if login_changed:
-                            _logger.warning(f"Write falló, usando SQL para actualizar login y email: {str(e)}")
-                            self.env.cr.execute(
-                                "UPDATE res_users SET login = %s, email = %s WHERE id = %s",
-                                (new_login, email, existing_user.id)
-                            )
-                            # Actualizar otros campos sin login ni email
-                            user_vals_without_login_email = {k: v for k, v in user_vals_to_update.items() if k not in ['login', 'email']}
-                            if user_vals_without_login_email:
-                                existing_user.sudo().write(user_vals_without_login_email)
-                            _logger.info(f"✓ Usuario actualizado con SQL - login: {new_login}, email: {email}")
-                        else:
+                        if not login_changed:
                             raise
+                        # El savepoint evita abortar la transacción del resto de filas
+                        error_msg = f"Usuario portal - {full_name}: no se pudo cambiar el login a '{new_login}': {str(e)}"
+                        result['error_list'].append(error_msg)
+                        _logger.warning(f"✗ {error_msg}")
+                        partner_vals_to_update.pop('email', None)
+                        user_vals_to_update = {
+                            k: v for k, v in user_vals_to_update.items() if k not in ('login', 'email')
+                        }
+                        if user_vals_to_update:
+                            existing_user.sudo().write(user_vals_to_update)
 
                 if partner_vals_to_update:
                     partner.sudo().write(partner_vals_to_update)
