@@ -76,6 +76,16 @@ Los códigos de cuenta tienen **9 dígitos** en el sistema legado y se dividen a
 
   Se cambia en `PARTNER_TYPE_BY_ACCOUNT_GROUP` (`wizard/aicia_account_importer_wizard.py`).
   Las líneas de cualquier otro grupo (bancos 572, gastos, ingresos…) no llevan contacto.
+- **Cuentas sin socio.** Por criterio contable algunas cuentas de los grupos de tercero
+  no llevan contacto. Se definen en *Importación contable → Cuentas sin socio* (cuenta de
+  9 dígitos o prefijo). Para esas líneas no se busca contacto ni se avisa. Por defecto hay
+  11 reglas (pendientes de confirmar con el contable):
+  - 7 cuentas generales con código 0, importadas con 6 dígitos: `430000000`, `401000000`,
+    `400000000`, `436000000`, `616000000`, `610000000`, `465000000`.
+  - 4 cuentas especiales que **no son un tercero**, importadas con los **9 dígitos** como
+    cuenta de Odoo (se crean si no existen): `618000200`, `401000200`, `401000300`,
+    `401000400`. Sin esta regla tomarían el contacto que casualmente tiene el código 200,
+    300 o 400.
 - Si no existe ningún contacto con ese código y tipo, la línea se importa sin
   contacto, el asiento queda en **borrador** y se lista en el log. No se crean contactos.
 - El **Mapeo de cuentas** es opcional y está vacío por defecto: sirve para forzar

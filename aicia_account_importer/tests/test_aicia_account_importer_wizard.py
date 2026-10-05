@@ -704,14 +704,15 @@ class TestAiciaAccountImporterWizard(TransactionCase):
         self.assertFalse(mapping.target_account_id)
 
     def test_import_zero_code_is_looked_up_like_any_other(self):
-        """610000000 busca el código 0 (0000) del tipo personal."""
+        """611000000 (sin regla "sin socio") busca el código 0 del tipo personal."""
         self._ensure_basic_accounts()
+        self._ensure_account("611000", "Retenciones test", "expense")
         generico = self._make_partner("Contacto cero", "0000")
 
         wizard = self._import(
             [[1, 100, 20250115, None, "Gasto", "DOC", 1000, True, False, "R"]],
             [
-                [1, 1, "610000000", 0, 0, "Gasto", 1000, "D"],
+                [1, 1, "611000000", 0, 0, "Gasto", 1000, "D"],
                 [1, 2, "572000001", 0, 0, "Pago", 1000, "H"],
             ],
         )
@@ -861,6 +862,229 @@ class TestAiciaAccountImporterWizard(TransactionCase):
         )
         self.assertIn("missing_account_mode", view.arch_db)
         self.assertIn("fallback_account_id", view.arch_db)
+
+    # ── Tests: cuentas sin socio ─────────────────────────────────────────────
+
+    def _no_partner_rule(self, source_code, **vals):
+        return self.env["aicia.account.importer.no.partner.account"].create(
+            dict({"source_code": source_code}, **vals)
+        )
+
+    def test_default_no_partner_rules_cover_the_eleven_accounts(self):
+        Rule = self.env["aicia.account.importer.no.partner.account"]
+        self.assertEqual(Rule.search_count([]), 11)
+        full = Rule.search([("use_full_code", "=", True)]).mapped("source_code")
+        self.assertEqual(
+            sorted(full), ["401000200", "401000300", "401000400", "618000200"]
+        )
+        self.assertTrue(Rule.search([("source_code", "=", "430000000")]))
+
+    def test_general_zero_account_has_no_contact_and_no_warning(self):
+        """430000000 (cuenta general de clientes): sin contacto, sin aviso, 6 dígitos."""
+        self._ensure_basic_accounts()
+        general = self._ensure_account("430000", "Clientes", "asset_receivable")
+        wizard = self._import(
+            [[1, 100, 20250115, None, "Cobro", "DOC", 1000, True, False, "R"]],
+            [
+                [1, 1, "572000001", 0, 0, "Banco", 1000, "D"],
+                [1, 2, "430000000", 0, 0, "Clientes", 1000, "H"],
+            ],
+        )
+        self.assertEqual(wizard.total_created, 1)
+        self.assertEqual(wizard.total_warnings, 0)
+        move = self._find_move_by_legacy_number("100")
+        credit_line = move.line_ids.filtered(lambda line: line.credit > 0)
+        self.assertEqual(credit_line.account_id, general)
+        self.assertFalse(credit_line.partner_id)
+
+    def test_special_account_is_imported_with_nine_digits_and_without_contact(self):
+        """618000200 no toma el contacto 200 y la cuenta lleva los 9 dígitos."""
+        self._ensure_basic_accounts()
+        empleado = self._make_partner("Empleado 200", "200")
+        self.assertFalse(self._account_by_code("618000200"))
+
+        wizard = self._import(
+            [[1, 100, 20250115, None, "Póliza", "DOC", 5000, True, False, "R"]],
+            [
+                [1, 1, "618000200", 0, 0, "Póliza de seguro", 5000, "D"],
+                [1, 2, "572000001", 0, 0, "Banco", 5000, "H"],
+            ],
+        )
+
+        account = self._account_by_code("618000200")
+        self.assertTrue(account)
+        self.assertEqual(account.name, "Póliza de seguro La Estrella")
+        self.assertFalse(self._account_by_code("618000"))
+        self.assertEqual(wizard.total_created, 1)
+        self.assertEqual(wizard.total_warnings, 0)
+        move = self._find_move_by_legacy_number("100")
+        debit_line = move.line_ids.filtered(lambda line: line.debit > 0)
+        self.assertEqual(debit_line.account_id, account)
+        self.assertNotEqual(debit_line.partner_id, empleado)
+        self.assertFalse(debit_line.partner_id)
+
+    def test_special_supplier_account_does_not_take_the_supplier_with_that_code(self):
+        self._ensure_basic_accounts()
+        proveedor = self._make_partner("Proveedor 200", "200", partner_type="supplier")
+        self._import(
+            [[1, 100, 20250115, None, "Convenio", "DOC", 5000, True, False, "R"]],
+            [
+                [1, 1, "572000001", 0, 0, "Banco", 5000, "D"],
+                [1, 2, "401000200", 0, 0, "Liquidación convenio", 5000, "H"],
+            ],
+        )
+        move = self._find_move_by_legacy_number("100")
+        credit_line = move.line_ids.filtered(lambda line: line.credit > 0)
+        self.assertEqual(credit_line.account_id.code, "401000200")
+        self.assertNotEqual(credit_line.partner_id, proveedor)
+
+    def test_special_account_uses_the_existing_nine_digit_account(self):
+        self._ensure_basic_accounts()
+        existing = self._ensure_account("618000200", "Cuenta ya existente", "expense")
+        wizard = self._import(
+            [[1, 100, 20250115, None, "Póliza", "DOC", 5000, True, False, "R"]],
+            [
+                [1, 1, "618000200", 0, 0, "Póliza", 5000, "D"],
+                [1, 2, "572000001", 0, 0, "Banco", 5000, "H"],
+            ],
+        )
+        self.assertEqual(wizard.total_accounts_created, 0)
+        self.assertEqual(len(self._account_by_code("618000200")), 1)
+        move = self._find_move_by_legacy_number("100")
+        self.assertEqual(
+            move.line_ids.filtered(lambda line: line.debit > 0).account_id, existing
+        )
+
+    def test_special_account_created_once_for_all_its_lines(self):
+        self._ensure_basic_accounts()
+        wizard = self._import(
+            [
+                [1, 100, 20250115, None, "Uno", "DOC", 1000, True, False, "R"],
+                [2, 101, 20250116, None, "Dos", "DOC", 2000, True, False, "R"],
+            ],
+            [
+                [1, 1, "618000200", 0, 0, "Uno", 1000, "D"],
+                [1, 2, "572000001", 0, 0, "Uno", 1000, "H"],
+                [2, 1, "618000200", 0, 0, "Dos", 2000, "D"],
+                [2, 2, "572000001", 0, 0, "Dos", 2000, "H"],
+            ],
+        )
+        self.assertEqual(wizard.total_accounts_created, 1)
+        self.assertEqual(len(self._account_by_code("618000200")), 1)
+
+    def test_no_partner_lines_are_reported_in_the_log(self):
+        self._ensure_basic_accounts()
+        self._ensure_account("430000", "Clientes", "asset_receivable")
+        wizard = self._import(
+            [[1, 100, 20250115, None, "Cobro", "DOC", 1000, True, False, "R"]],
+            [
+                [1, 1, "572000001", 0, 0, "Banco", 1000, "D"],
+                [1, 2, "430000000", 0, 0, "Clientes", 1000, "H"],
+            ],
+        )
+        self.assertIn("cuentas sin socio", wizard.import_log)
+
+    def test_special_account_in_error_mode_reports_the_nine_digit_code(self):
+        self._ensure_basic_accounts()
+        wizard = self._import(
+            [[1, 100, 20250115, None, "Póliza", "DOC", 5000, True, False, "R"]],
+            [
+                [1, 1, "618000200", 0, 0, "Póliza", 5000, "D"],
+                [1, 2, "572000001", 0, 0, "Banco", 5000, "H"],
+            ],
+            missing_account_mode="error",
+        )
+        self.assertEqual(wizard.total_errors, 1)
+        self.assertIn("618000200", wizard.import_log)
+
+    def test_special_account_in_fallback_mode_goes_to_the_reserve_account(self):
+        self._ensure_basic_accounts()
+        reserva = self._ensure_account("999999", "Cuenta de reserva", "expense")
+        self._import(
+            [[1, 100, 20250115, None, "Póliza", "DOC", 5000, True, False, "R"]],
+            [
+                [1, 1, "618000200", 0, 0, "Póliza", 5000, "D"],
+                [1, 2, "572000001", 0, 0, "Banco", 5000, "H"],
+            ],
+            missing_account_mode="fallback",
+            fallback_account_id=reserva.id,
+        )
+        move = self._find_move_by_legacy_number("100")
+        debit_line = move.line_ids.filtered(lambda line: line.debit > 0)
+        self.assertEqual(debit_line.account_id, reserva)
+        self.assertEqual(debit_line.name, "[618000200] Póliza")
+
+    def test_manual_mapping_wins_over_the_nine_digit_rule(self):
+        self._ensure_basic_accounts()
+        destino = self._ensure_account("629000", "Otros servicios test", "expense")
+        self.env["aicia.account.importer.account.mapping"].create(
+            {"source_code": "618000200", "target_account_id": destino.id}
+        )
+        self._import(
+            [[1, 100, 20250115, None, "Póliza", "DOC", 5000, True, False, "R"]],
+            [
+                [1, 1, "618000200", 0, 0, "Póliza", 5000, "D"],
+                [1, 2, "572000001", 0, 0, "Banco", 5000, "H"],
+            ],
+        )
+        move = self._find_move_by_legacy_number("100")
+        self.assertEqual(
+            move.line_ids.filtered(lambda line: line.debit > 0).account_id, destino
+        )
+
+    def test_user_rule_by_prefix_removes_the_contact_lookup(self):
+        """Una regla de prefijo (611) cubre todas las cuentas que empiezan así."""
+        self._ensure_basic_accounts()
+        self._ensure_account("611000", "Retenciones test", "expense")
+        self._make_partner("Empleado 123", "123")
+        self._no_partner_rule("611")
+        wizard = self._import(
+            [[1, 100, 20250115, None, "Retención", "DOC", 1000, True, False, "R"]],
+            [
+                [1, 1, "611000123", 0, 0, "Retención", 1000, "D"],
+                [1, 2, "572000001", 0, 0, "Banco", 1000, "H"],
+            ],
+        )
+        self.assertEqual(wizard.total_warnings, 0)
+        move = self._find_move_by_legacy_number("100")
+        self.assertFalse(move.line_ids.mapped("partner_id"))
+        self.assertEqual(
+            move.line_ids.filtered(lambda line: line.debit > 0).account_id.code, "611000"
+        )
+
+    def test_more_specific_rule_wins_over_a_prefix_rule(self):
+        self._no_partner_rule("611")
+        self._no_partner_rule("611000123", use_full_code=True, account_name="Específica")
+        wizard = self._make_wizard()
+        self.assertEqual(wizard._target_account_code("611000123"), "611000123")
+        self.assertEqual(wizard._target_account_code("611000999"), "611000")
+
+    def test_full_code_requires_nine_digit_rule(self):
+        with self.assertRaises(ValidationError):
+            self._no_partner_rule("611", use_full_code=True)
+
+    def test_rule_source_code_must_be_numeric(self):
+        with self.assertRaises(ValidationError):
+            self._no_partner_rule("61A000200")
+        with self.assertRaises(ValidationError):
+            self._no_partner_rule("1234567890")
+
+    def test_rule_source_code_is_unique(self):
+        with self.assertRaises(IntegrityError), mute_logger("odoo.sql_db"):
+            with self.env.cr.savepoint():
+                self._no_partner_rule("430000000")
+
+    def test_rule_source_code_is_stripped(self):
+        rule = self._no_partner_rule(" 612 000 001 ")
+        self.assertEqual(rule.source_code, "612000001")
+
+    def test_rules_view_and_menu_exist(self):
+        self.assertTrue(
+            self.env.ref("aicia_account_importer.action_aicia_no_partner_account")
+        )
+        self.assertTrue(
+            self.env.ref("aicia_account_importer.menu_aicia_no_partner_account")
+        )
 
     # ── Tests: importación — totales ─────────────────────────────────────────
 

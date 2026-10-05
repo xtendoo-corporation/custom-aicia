@@ -1,0 +1,68 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!-- Copyright 2026 Xtendoo - https://www.xtendoo.es/
+     License AGPL-3.0 or later (http://www.gnu.org/licenses/agpl). -->
+<odoo noupdate="1">
+    <record id="no_partner_account_401000000" model="aicia.account.importer.no.partner.account">
+        <field name="source_code">401000000</field>
+        <field name="name">Provisión facturas proveedores pendientes de recibir</field>
+        <field name="note">Cuenta general del grupo (código 0)</field>
+    </record>
+    <record id="no_partner_account_430000000" model="aicia.account.importer.no.partner.account">
+        <field name="source_code">430000000</field>
+        <field name="name">Clientes</field>
+        <field name="note">Cuenta general del grupo (código 0)</field>
+    </record>
+    <record id="no_partner_account_616000000" model="aicia.account.importer.no.partner.account">
+        <field name="source_code">616000000</field>
+        <field name="name">Provisiones de personal por devengo (desplazamientos y viajes)</field>
+        <field name="note">Cuenta general del grupo (código 0)</field>
+    </record>
+    <record id="no_partner_account_400000000" model="aicia.account.importer.no.partner.account">
+        <field name="source_code">400000000</field>
+        <field name="name">Proveedores</field>
+        <field name="note">Cuenta general del grupo (código 0)</field>
+    </record>
+    <record id="no_partner_account_610000000" model="aicia.account.importer.no.partner.account">
+        <field name="source_code">610000000</field>
+        <field name="name">Provisiones de personal por devengo (sueldos y salarios)</field>
+        <field name="note">Cuenta general del grupo (código 0)</field>
+    </record>
+    <record id="no_partner_account_465000000" model="aicia.account.importer.no.partner.account">
+        <field name="source_code">465000000</field>
+        <field name="name">Remuneraciones pendientes de pago</field>
+        <field name="note">Cuenta general del grupo (código 0)</field>
+    </record>
+    <record id="no_partner_account_436000000" model="aicia.account.importer.no.partner.account">
+        <field name="source_code">436000000</field>
+        <field name="name">Clientes de dudoso cobro</field>
+        <field name="note">Cuenta general del grupo (código 0)</field>
+    </record>
+    <record id="no_partner_account_618000200" model="aicia.account.importer.no.partner.account">
+        <field name="source_code">618000200</field>
+        <field name="name">Póliza de seguro</field>
+        <field name="note">Cuenta especial: no es un tercero (pendiente de confirmar con el contable)</field>
+        <field name="use_full_code" eval="True"/>
+        <field name="account_name">Póliza de seguro La Estrella</field>
+    </record>
+    <record id="no_partner_account_401000200" model="aicia.account.importer.no.partner.account">
+        <field name="source_code">401000200</field>
+        <field name="name">Acreedora liquidación convenio</field>
+        <field name="note">Cuenta especial: no es un tercero (pendiente de confirmar con el contable)</field>
+        <field name="use_full_code" eval="True"/>
+        <field name="account_name">US acreedora liquidación convenio</field>
+    </record>
+    <record id="no_partner_account_401000400" model="aicia.account.importer.no.partner.account">
+        <field name="source_code">401000400</field>
+        <field name="name">Liquidación convenio proyectos europeos</field>
+        <field name="note">Cuenta especial: no es un tercero (pendiente de confirmar con el contable)</field>
+        <field name="use_full_code" eval="True"/>
+        <field name="account_name">Liquidación convenio US PRY europeos</field>
+    </record>
+    <record id="no_partner_account_401000300" model="aicia.account.importer.no.partner.account">
+        <field name="source_code">401000300</field>
+        <field name="name">Facturas pendientes de reclamar</field>
+        <field name="note">Cuenta especial: no es un tercero (pendiente de confirmar con el contable)</field>
+        <field name="use_full_code" eval="True"/>
+        <field name="account_name">Facturas pendientes de reclamar</field>
+    </record>
+</odoo>

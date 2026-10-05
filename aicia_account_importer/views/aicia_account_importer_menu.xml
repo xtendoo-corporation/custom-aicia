@@ -28,6 +28,14 @@
     />
 
     <menuitem
+        id="menu_aicia_no_partner_account"
+        name="Cuentas sin socio"
+        parent="menu_aicia_account_importer_root"
+        action="action_aicia_no_partner_account"
+        sequence="25"
+    />
+
+    <menuitem
         id="menu_aicia_partner_code"
         name="Códigos AICIA"
         parent="menu_aicia_account_importer_root"

@@ -54,6 +54,10 @@ except ImportError:
 #      tipo se deduce del grupo de la cuenta (3 primeros dígitos), ver
 #      PARTNER_TYPE_BY_ACCOUNT_GROUP. Las cuentas de otros grupos (bancos, gastos,
 #      ingresos…) no llevan contacto.
+#    - Cuentas sin socio (aicia.account.importer.no.partner.account): por criterio
+#      contable algunas cuentas de los grupos de tercero no llevan contacto (p. ej.
+#      las generales con código 0). No se busca contacto ni se avisa. Las reglas de
+#      9 dígitos con "use_full_code" se importan con los 9 dígitos como cuenta.
 #    - No se redirigen grupos ni se usan cuentas colectivas. Solo existe el
 #      mapeo manual opcional (aicia.account.importer.account.mapping).
 #    - Los importes están en CÉNTIMOS; se suman como enteros para comprobar el
@@ -549,6 +553,13 @@ class AiciaAccountImporterWizard(models.TransientModel):
                 _("Las cuentas no encontradas ya existían en el mapeo manual."),
             )
 
+        no_partner_lines = runtime.get("no_partner_lines", 0)
+        if no_partner_lines:
+            self._append_import_activity(
+                activity_log,
+                "info",
+                _("%d líneas de cuentas sin socio importadas sin contacto.") % no_partner_lines,
+            )
         created_accounts = runtime.get("created_accounts", {})
         origin_counts = runtime.get("account_origin_counts", {})
         if created_accounts:
@@ -1126,13 +1137,18 @@ class AiciaAccountImporterWizard(models.TransientModel):
                 "Cuenta '%(account)s' no encontrada en el plan contable "
                 "(cuenta legada: %(legacy)s)."
             ) % {
-                "account": self._odoo_account_code(legacy_account_code),
+                "account": self._target_account_code(legacy_account_code, runtime),
                 "legacy": legacy_account_code,
             }, None
 
         partner = None
         warning_msg = None
         partner_type = PARTNER_TYPE_BY_ACCOUNT_GROUP.get(legacy_account_code[:3])
+        if partner_type and self._no_partner_rule(legacy_account_code, runtime):
+            # Cuenta sin socio por criterio contable: sin contacto y sin aviso
+            partner_type = None
+            if runtime is not None:
+                runtime["no_partner_lines"] = runtime.get("no_partner_lines", 0) + 1
         if partner_type:
             partner_code = self._partner_code_from_account(legacy_account_code)
             partner = self._resolve_partner_by_aicia_code(
@@ -1232,6 +1248,42 @@ class AiciaAccountImporterWizard(models.TransientModel):
 
     # ── Resolución de cuentas contables ──────────────────────────────────────
 
+    def _load_no_partner_rules(self):
+        """Reglas de cuentas sin socio, las más específicas primero."""
+        rules = [
+            {
+                "code": rule.source_code,
+                "full": bool(rule.use_full_code) and len(rule.source_code) == 9,
+                "name": rule.account_name or rule.name or "",
+            }
+            for rule in self.env["aicia.account.importer.no.partner.account"].search([])
+        ]
+        return sorted(rules, key=lambda rule: len(rule["code"]), reverse=True)
+
+    @staticmethod
+    def _match_no_partner_rule(code, rules):
+        for rule in rules or ():
+            if code.startswith(rule["code"]):
+                return rule
+        return None
+
+    def _no_partner_rule(self, code, runtime):
+        """Regla "sin socio" de una cuenta legada de 9 dígitos, o None."""
+        if runtime is None:
+            rules = self._load_no_partner_rules()
+        else:
+            rules = runtime.get("no_partner_rules")
+            if rules is None:
+                rules = runtime["no_partner_rules"] = self._load_no_partner_rules()
+        return self._match_no_partner_rule(code, rules)
+
+    def _target_account_code(self, legacy_code, runtime=None):
+        """Código de la cuenta de Odoo: 9 dígitos si la regla lo pide, si no 5 + "0"."""
+        rule = self._no_partner_rule(legacy_code, runtime)
+        if rule and rule["full"]:
+            return legacy_code
+        return self._odoo_account_code(legacy_code)
+
     @staticmethod
     def _odoo_account_code(legacy_code: str) -> str:
         """Cuenta de Odoo (6 dígitos) de una cuenta legada: 5 primeros + "0"."""
@@ -1285,7 +1337,8 @@ class AiciaAccountImporterWizard(models.TransientModel):
         Orden de resolución:
           1. Mapeo manual del usuario (opcional): exacto o por prefijo → "mapped".
           2. Cuenta de Odoo cuyo código son los 5 primeros dígitos más un "0"
-             → "found".
+             → "found". Si la cuenta tiene una regla "sin socio" con 9 dígitos,
+             la cuenta de Odoo es el código legado completo.
           3. Si no existe, según ``missing_account_mode``:
              - "create": se crea la cuenta → "created".
              - "fallback": se usa la cuenta de reserva → "fallback".
@@ -1301,7 +1354,9 @@ class AiciaAccountImporterWizard(models.TransientModel):
         if mapped_account:
             return mapped_account, "mapped"
 
-        account_code = self._odoo_account_code(code)
+        rule = self._no_partner_rule(code, runtime)
+        full = bool(rule and rule["full"])
+        account_code = self._target_account_code(code, runtime)
         account = self._get_exact_account_by_code(account_code, runtime=runtime)
         if account:
             return account, "found"
@@ -1310,7 +1365,9 @@ class AiciaAccountImporterWizard(models.TransientModel):
             runtime = {}
         mode = self.missing_account_mode or "error"
         if mode == "create":
-            account = self._create_legacy_account(account_code, runtime)
+            account = self._create_legacy_account(
+                account_code, runtime, name=rule["name"] if full else None
+            )
             self._count_account_origin(runtime, "created", account_code)
             return account, "created"
         if mode == "fallback" and self.fallback_account_id:
@@ -1350,7 +1407,7 @@ class AiciaAccountImporterWizard(models.TransientModel):
                 return cache[prefix]
         return "expense"
 
-    def _create_legacy_account(self, account_code, runtime):
+    def _create_legacy_account(self, account_code, runtime, name=None):
         """Crea la cuenta que falta en Odoo (una sola vez por código)."""
         created = runtime.setdefault("created_accounts", {})
         if account_code in created:
@@ -1358,7 +1415,7 @@ class AiciaAccountImporterWizard(models.TransientModel):
         account = self.env["account.account"].create(
             {
                 "code": account_code,
-                "name": _("*Cuenta legada %s (revisar)") % account_code,
+                "name": name or _("*Cuenta legada %s (revisar)") % account_code,
                 "account_type": self._guess_account_type(account_code, runtime),
                 "company_ids": [(4, self.env.company.id)],
             }
@@ -1500,12 +1557,13 @@ class AiciaAccountImporterWizard(models.TransientModel):
                 analytic_by_code.setdefault(analytic.code, analytic)
 
         # Códigos AICIA de contacto presentes en el fichero: una sola búsqueda.
+        no_partner_rules = self._load_no_partner_rules()
         partner_keys = set()
         for lineas in lineas_by_apunte.values():
             for linea in lineas:
                 cuenta = linea.get("cuenta")
                 partner_type = PARTNER_TYPE_BY_ACCOUNT_GROUP.get(cuenta[:3]) if cuenta else None
-                if partner_type:
+                if partner_type and not self._match_no_partner_rule(cuenta, no_partner_rules):
                     partner_keys.add(
                         (partner_type, self._partner_code_from_account(cuenta))
                     )
@@ -1529,6 +1587,7 @@ class AiciaAccountImporterWizard(models.TransientModel):
             "fallback_journal": journals[:1],
             "analytic_by_code": analytic_by_code,
             "partner_by_aicia_code": partner_by_aicia_code,
+            "no_partner_rules": no_partner_rules,
             "existing_moves": self._prepare_existing_move_index(apuntes, lineas_by_apunte),
         }
 
