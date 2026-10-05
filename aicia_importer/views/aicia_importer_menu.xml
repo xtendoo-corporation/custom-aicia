@@ -42,13 +42,13 @@
         sequence="100"
     />
 
-<!--    <menuitem-->
-<!--        id="aicia_importer_employees_menu"-->
-<!--        name="Importar Personal"-->
-<!--        parent="aicia_menu_hr"-->
-<!--        action="aicia_importer_employees_action"-->
-<!--        sequence="10"-->
-<!--    />-->
+    <menuitem
+        id="aicia_importer_employees_menu"
+        name="Importar Personal"
+        parent="aicia_menu_hr"
+        action="aicia_importer_employees_action"
+        sequence="10"
+    />
 
 <!--    <menuitem-->
 <!--        id="aicia_update_work_groups_menu"-->
