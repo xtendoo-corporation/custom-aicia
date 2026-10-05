@@ -225,6 +225,27 @@ class AiciaAccountImporterWizard(models.TransientModel):
         string="Omitir asientos anulados",
         default=True,
     )
+    missing_account_mode = fields.Selection(
+        [
+            ("create", "Crear la cuenta en Odoo"),
+            ("fallback", "Enviar a una cuenta de reserva"),
+            ("error", "No importar el asiento (error)"),
+        ],
+        string="Si la cuenta no existe en Odoo",
+        default="create",
+        required=True,
+        help=(
+            "Crear: se crea la cuenta (5 primeros dígitos + 0) con el nombre "
+            "'*Cuenta legada XXXXXX (revisar)' para renombrarla después. "
+            "Cuenta de reserva: la línea va a la cuenta elegida y su nombre lleva "
+            "el código legado. Error: el asiento no se importa."
+        ),
+    )
+    fallback_account_id = fields.Many2one(
+        "account.account",
+        string="Cuenta de reserva",
+        help="Cuenta a la que van las líneas cuya cuenta no existe en Odoo.",
+    )
 
     # ── Mapeo manual de cuentas ──────────────────────────────────────────────
     account_mapping_ids = fields.Many2many(
@@ -260,6 +281,9 @@ class AiciaAccountImporterWizard(models.TransientModel):
     total_errors = fields.Integer(string="Errores", readonly=True)
     total_warnings = fields.Integer(
         string="Con avisos (borrador)", readonly=True
+    )
+    total_accounts_created = fields.Integer(
+        string="Cuentas creadas automáticamente", readonly=True
     )
     total_mismatches = fields.Integer(
         string="Asientos con total de cabecera ≠ suma de líneas (informativo)",
@@ -327,28 +351,33 @@ class AiciaAccountImporterWizard(models.TransientModel):
         self.write({"account_mapping_ids": [(5, 0, 0)]})
         return False
 
-    def action_delete_draft_moves(self):
-        """Elimina todos los asientos en borrador de los diarios de importación."""
+    DELETE_BATCH = 500
+
+    def action_delete_imported_moves(self):
+        """Elimina los asientos creados por este importador, confirmados o no.
+
+        Solo toca los asientos que llevan Nº de asiento AICIA, es decir, los que
+        importó este módulo. Los confirmados se pasan antes a borrador. No toca
+        facturas ni asientos creados de otra forma.
+        """
         self.ensure_one()
-        draft_moves = self.env["account.move"].search(
-            [
-                ("state", "=", "draft"),
-                ("journal_id.type", "in", ["sale", "purchase", "general"]),
-            ]
-        )
-        count = len(draft_moves)
+        Move = self.env["account.move"].with_context(force_delete=True)
+        moves = Move.search([("numero_asiento_aicia", "!=", False)])
+        count = len(moves)
         if not count:
-            raise UserError(
-                _("No hay asientos en borrador en los diarios de importación.")
-            )
-        draft_moves.unlink()
-        _logger.info("Limpieza: %d borradores eliminados.", count)
+            raise UserError(_("No hay asientos importados por el importador AICIA."))
+        ids = moves.ids
+        for start in range(0, count, self.DELETE_BATCH):
+            batch = Move.browse(ids[start : start + self.DELETE_BATCH])
+            batch.filtered(lambda m: m.state != "draft").button_draft()
+            batch.unlink()
+            _logger.info("Borrado de importados: %d/%d", min(start + self.DELETE_BATCH, count), count)
         return {
             "type": "ir.actions.client",
             "tag": "display_notification",
             "params": {
-                "title": _("Limpieza completada"),
-                "message": _("%d asientos en borrador eliminados.") % count,
+                "title": _("Asientos importados eliminados"),
+                "message": _("%d asientos importados eliminados.") % count,
                 "type": "success",
                 "sticky": False,
                 "next": {
@@ -373,6 +402,16 @@ class AiciaAccountImporterWizard(models.TransientModel):
             raise UserError(
                 _("Debes subir los dos archivos Excel antes de importar.")
             )
+
+        if self.missing_account_mode == "fallback":
+            if not self.fallback_account_id:
+                raise UserError(
+                    _("Elige la cuenta de reserva o cambia la opción de cuentas inexistentes.")
+                )
+            if self.env.company not in self.fallback_account_id.company_ids:
+                raise UserError(
+                    _("La cuenta de reserva no pertenece a la compañía actual.")
+                )
 
         activity_log = []
         self._append_import_activity(
@@ -510,6 +549,25 @@ class AiciaAccountImporterWizard(models.TransientModel):
                 _("Las cuentas no encontradas ya existían en el mapeo manual."),
             )
 
+        created_accounts = runtime.get("created_accounts", {})
+        origin_counts = runtime.get("account_origin_counts", {})
+        if created_accounts:
+            self._append_import_activity(
+                activity_log,
+                "warning",
+                _("%d cuentas creadas automáticamente; revisa su nombre y tipo.")
+                % len(created_accounts),
+            )
+        fallback_counts = {
+            code: n for (origin, code), n in origin_counts.items() if origin == "fallback"
+        }
+        if fallback_counts:
+            self._append_import_activity(
+                activity_log,
+                "warning",
+                _("%(lines)d líneas de %(accounts)d cuentas inexistentes enviadas a la cuenta de reserva.")
+                % {"lines": sum(fallback_counts.values()), "accounts": len(fallback_counts)},
+            )
         self._reload_account_mapping_ids()
         self._append_import_activity(
             activity_log,
@@ -543,6 +601,7 @@ class AiciaAccountImporterWizard(models.TransientModel):
                 "total_errors": errors,
                 "total_warnings": warnings,
                 "total_mismatches": len(mismatches),
+                "total_accounts_created": len(created_accounts),
                 "total_debe": total_debe_cents / 100,
                 "total_haber": total_haber_cents / 100,
                 "import_log": self._build_log_html(
@@ -555,6 +614,11 @@ class AiciaAccountImporterWizard(models.TransientModel):
                         "haber": total_haber_cents / 100,
                     },
                     mismatches=mismatches,
+                    created_accounts={
+                        code: (acc.display_name, origin_counts.get(("created", code), 0))
+                        for code, acc in created_accounts.items()
+                    },
+                    fallback_accounts=fallback_counts,
                 ),
             }
         )
@@ -1051,7 +1115,7 @@ class AiciaAccountImporterWizard(models.TransientModel):
 
         legacy_account_code = linea["cuenta"]
 
-        account = self._get_account(
+        account, origin = self._resolve_account(
             legacy_account_code,
             missing_accounts,
             account_mapping,
@@ -1110,7 +1174,11 @@ class AiciaAccountImporterWizard(models.TransientModel):
             {
                 "account_id": account.id,
                 "partner_id": partner.id if partner else False,
-                "name": linea["descripcion"] or asiento_desc or "/",
+                "name": self._line_name(
+                    linea["descripcion"] or asiento_desc or "/",
+                    origin,
+                    legacy_account_code,
+                ),
                 "debit": linea["debit"],
                 "credit": linea["credit"],
                 "analytic_distribution": analytic_distribution or False,
@@ -1200,28 +1268,103 @@ class AiciaAccountImporterWizard(models.TransientModel):
         account_mapping: dict = None,
         runtime: dict | None = None,
     ):
-        """Resuelve la cuenta Odoo a partir del código legado de 9 dígitos.
+        """Cuenta Odoo para un código legado de 9 dígitos (ver _resolve_account)."""
+        return self._resolve_account(
+            code, missing_accounts, account_mapping, runtime=runtime
+        )[0]
+
+    def _resolve_account(
+        self,
+        code: str,
+        missing_accounts: set = None,
+        account_mapping: dict = None,
+        runtime: dict | None = None,
+    ):
+        """Devuelve (cuenta, origen) para un código legado de 9 dígitos.
 
         Orden de resolución:
-          1. Mapeo manual del usuario (account_mapping_ids): exacto o por prefijo.
-          2. Cuenta de Odoo cuyo código son los 5 primeros dígitos del código
-             legado más un "0".
+          1. Mapeo manual del usuario (opcional): exacto o por prefijo → "mapped".
+          2. Cuenta de Odoo cuyo código son los 5 primeros dígitos más un "0"
+             → "found".
+          3. Si no existe, según ``missing_account_mode``:
+             - "create": se crea la cuenta → "created".
+             - "fallback": se usa la cuenta de reserva → "fallback".
+             - "error": devuelve (None, "missing") y registra el código de
+               6 dígitos en ``missing_accounts``.
 
-        Si no existe, devuelve None y registra el código de 6 dígitos en
-        missing_accounts. No hay cuentas colectivas, redirecciones de grupo ni
-        búsquedas por prefijo.
+        No hay cuentas colectivas, redirecciones de grupo ni búsquedas por prefijo.
         """
         if not code:
-            return None
+            return None, "missing"
 
         mapped_account = self._match_account_mapping(code, account_mapping)
         if mapped_account:
-            return mapped_account
+            return mapped_account, "mapped"
 
         account_code = self._odoo_account_code(code)
         account = self._get_exact_account_by_code(account_code, runtime=runtime)
-        if not account and missing_accounts is not None:
+        if account:
+            return account, "found"
+
+        if runtime is None:
+            runtime = {}
+        mode = self.missing_account_mode or "error"
+        if mode == "create":
+            account = self._create_legacy_account(account_code, runtime)
+            self._count_account_origin(runtime, "created", account_code)
+            return account, "created"
+        if mode == "fallback" and self.fallback_account_id:
+            self._count_account_origin(runtime, "fallback", account_code)
+            return self.fallback_account_id, "fallback"
+        if missing_accounts is not None:
             missing_accounts.add(account_code)
+        return None, "missing"
+
+    @staticmethod
+    def _count_account_origin(runtime, origin, account_code):
+        counts = runtime.setdefault("account_origin_counts", {})
+        counts[(origin, account_code)] = counts.get((origin, account_code), 0) + 1
+
+    @staticmethod
+    def _line_name(name, origin, legacy_code):
+        """En la cuenta de reserva el nombre de la línea conserva el código legado."""
+        return f"[{legacy_code}] {name}" if origin == "fallback" else name
+
+    def _guess_account_type(self, account_code, runtime):
+        """Tipo contable de una cuenta nueva: el de la cuenta más parecida del plan."""
+        cache = runtime.setdefault("account_type_by_prefix", {})
+        Account = self.env["account.account"]
+        for length in (3, 2, 1):
+            prefix = account_code[:length]
+            if prefix not in cache:
+                reference = Account.search(
+                    [
+                        ("code", "=like", f"{prefix}%"),
+                        ("company_ids", "in", [self.env.company.id]),
+                    ],
+                    order="code",
+                    limit=1,
+                )
+                cache[prefix] = reference.account_type if reference else None
+            if cache[prefix]:
+                return cache[prefix]
+        return "expense"
+
+    def _create_legacy_account(self, account_code, runtime):
+        """Crea la cuenta que falta en Odoo (una sola vez por código)."""
+        created = runtime.setdefault("created_accounts", {})
+        if account_code in created:
+            return created[account_code]
+        account = self.env["account.account"].create(
+            {
+                "code": account_code,
+                "name": _("*Cuenta legada %s (revisar)") % account_code,
+                "account_type": self._guess_account_type(account_code, runtime),
+                "company_ids": [(4, self.env.company.id)],
+            }
+        )
+        created[account_code] = account
+        runtime.setdefault("accounts_by_code", {})[account_code] = account
         return account
 
     def _get_account_mapping_rules(self, runtime: dict | None = None):
@@ -1536,6 +1679,8 @@ class AiciaAccountImporterWizard(models.TransientModel):
         activity_log: list = None,
         totals: dict = None,
         mismatches: list = None,
+        created_accounts: dict = None,
+        fallback_accounts: dict = None,
     ) -> str:
         """Genera el HTML del resumen de la importación."""
         created = [r for r in results if r["status"] == "created"]
@@ -1594,6 +1739,36 @@ class AiciaAccountImporterWizard(models.TransientModel):
                 html += (
                     f"<li style='color:#1f4e79'>Nº {escape(str(m['ref']))}: "
                     f"cabecera {m['header']:,.2f} € — líneas {m['lines']:,.2f} €</li>"
+                )
+            html += "</ul>"
+
+        # ── Cuentas creadas automáticamente / enviadas a la cuenta de reserva ─
+        if created_accounts:
+            html += (
+                "<hr/>"
+                f"<p><strong style='color:#7B3F00'>🆕 Cuentas creadas automáticamente "
+                f"({len(created_accounts)} — revisa su nombre y tipo):</strong></p>"
+                "<ul style='columns:2; column-gap:24px; list-style:none; padding:0;'>"
+            )
+            for code, (name, lines_count) in sorted(created_accounts.items()):
+                html += (
+                    f"<li style='padding:1px 0;'><code>{escape(str(code))}</code> "
+                    f"<span style='color:#999; font-size:10px;'>"
+                    f"({lines_count} líneas)</span></li>"
+                )
+            html += "</ul>"
+        if fallback_accounts:
+            html += (
+                "<hr/>"
+                f"<p><strong style='color:#7B3F00'>↪️ Cuentas inexistentes enviadas a la "
+                f"cuenta de reserva ({len(fallback_accounts)}):</strong></p>"
+                "<ul style='columns:2; column-gap:24px; list-style:none; padding:0;'>"
+            )
+            for code, lines_count in sorted(fallback_accounts.items()):
+                html += (
+                    f"<li style='padding:1px 0;'><code>{escape(str(code))}</code> "
+                    f"<span style='color:#999; font-size:10px;'>"
+                    f"({lines_count} líneas)</span></li>"
                 )
             html += "</ul>"
 

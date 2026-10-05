@@ -308,12 +308,12 @@ class TestAiciaAccountImporterWizard(TransactionCase):
 
     def test_get_account_does_not_create_accounts(self):
         before = self.env["account.account"].search_count([])
-        wizard = self._make_wizard()
+        wizard = self._make_wizard(missing_account_mode="error")
         wizard._get_account("699999123", set())
         self.assertEqual(self.env["account.account"].search_count([]), before)
 
     def test_get_account_missing_returns_none_and_registers_six_digit_code(self):
-        wizard = self._make_wizard()
+        wizard = self._make_wizard(missing_account_mode="error")
         missing = set()
         self.assertIsNone(wizard._get_account("699999123", missing))
         self.assertEqual(missing, {"699990"})
@@ -321,7 +321,7 @@ class TestAiciaAccountImporterWizard(TransactionCase):
     def test_get_account_has_no_prefix_fallback(self):
         """Sin la cuenta exacta de 6 dígitos no se usa otra del mismo grupo."""
         self._ensure_account("610000", "Gastos test", "expense")
-        wizard = self._make_wizard()
+        wizard = self._make_wizard(missing_account_mode="error")
         self.assertIsNone(wizard._get_account("610999123", set()))
 
     def test_get_account_keeps_trailing_zeros(self):
@@ -691,6 +691,7 @@ class TestAiciaAccountImporterWizard(TransactionCase):
                 [1, 1, "699999123", 0, 0, "Gasto", 1000, "D"],
                 [1, 2, "572000001", 0, 0, "Pago", 1000, "H"],
             ],
+            missing_account_mode="error",
         )
 
         self.assertEqual(wizard.total_errors, 1)
@@ -719,6 +720,147 @@ class TestAiciaAccountImporterWizard(TransactionCase):
         move = self._find_move_by_legacy_number("100")
         debit_line = move.line_ids.filtered(lambda line: line.debit > 0)
         self.assertEqual(debit_line.partner_id, generico)
+
+    # ── Tests: cuentas que no existen en Odoo ────────────────────────────────
+
+    def _account_by_code(self, code):
+        return self.env["account.account"].search(
+            [("code", "=", code), ("company_ids", "in", [self.env.company.id])]
+        )
+
+    def test_default_mode_creates_missing_accounts(self):
+        self.assertEqual(self._make_wizard().missing_account_mode, "create")
+
+    def test_missing_account_is_created_and_the_entry_is_imported(self):
+        """Sin mapeo previo: la cuenta que falta se crea y el asiento se importa."""
+        self._ensure_account("572000", "Bancos test", "asset_cash")
+        self._make_partner("Empleado 495", "495")
+        self.assertFalse(self._account_by_code("699990"))
+
+        wizard = self._import(
+            [[1, 100, 20250115, None, "Gasto", "DOC", 1000, True, False, "R"]],
+            [
+                [1, 1, "699990495", 0, 0, "Gasto", 1000, "D"],
+                [1, 2, "572000001", 0, 0, "Pago", 1000, "H"],
+            ],
+        )
+
+        account = self._account_by_code("699990")
+        self.assertTrue(account)
+        self.assertIn("*Cuenta legada 699990", account.name)
+        self.assertEqual(wizard.total_errors, 0)
+        self.assertEqual(wizard.total_accounts_created, 1)
+        move = self._find_move_by_legacy_number("100")
+        self.assertEqual(
+            move.line_ids.filtered(lambda line: line.debit > 0).account_id, account
+        )
+        self.assertIn("Cuentas creadas automáticamente", wizard.import_log)
+        self.assertIn("699990", wizard.import_log)
+
+    def test_created_account_is_reused_by_every_line(self):
+        self._ensure_account("572000", "Bancos test", "asset_cash")
+        wizard = self._import(
+            [
+                [1, 100, 20250115, None, "Uno", "DOC", 1000, True, False, "R"],
+                [2, 101, 20250116, None, "Dos", "DOC", 2000, True, False, "R"],
+            ],
+            [
+                [1, 1, "699990000", 0, 0, "Uno", 1000, "D"],
+                [1, 2, "572000001", 0, 0, "Uno", 1000, "H"],
+                [2, 1, "699990000", 0, 0, "Dos", 2000, "D"],
+                [2, 2, "572000001", 0, 0, "Dos", 2000, "H"],
+            ],
+        )
+        self.assertEqual(wizard.total_accounts_created, 1)
+        self.assertEqual(len(self._account_by_code("699990")), 1)
+
+    def test_created_account_copies_the_type_of_the_closest_account(self):
+        # Grupo 996: no existe en ningún plan, así que la referencia es la nuestra
+        self._ensure_account("996000", "Ingresos test", "income")
+        wizard = self._make_wizard()
+        account = wizard._get_account("996990000", set())
+        self.assertEqual(account.account_type, "income")
+
+    def test_created_account_defaults_to_expense_without_reference(self):
+        wizard = self._make_wizard()
+        account = wizard._get_account("899990000", set())
+        self.assertTrue(account)
+        self.assertTrue(account.account_type)
+
+    def test_created_accounts_do_not_touch_the_manual_mapping(self):
+        self._ensure_account("572000", "Bancos test", "asset_cash")
+        count = self.env["aicia.account.importer.account.mapping"].search_count([])
+        self._import(
+            [[1, 100, 20250115, None, "Gasto", "DOC", 1000, True, False, "R"]],
+            [
+                [1, 1, "699990000", 0, 0, "Gasto", 1000, "D"],
+                [1, 2, "572000001", 0, 0, "Pago", 1000, "H"],
+            ],
+        )
+        self.assertEqual(
+            self.env["aicia.account.importer.account.mapping"].search_count([]),
+            count,
+        )
+
+    def test_fallback_mode_sends_the_line_to_the_reserve_account(self):
+        self._ensure_account("572000", "Bancos test", "asset_cash")
+        reserva = self._ensure_account("999999", "Cuenta de reserva", "expense")
+
+        wizard = self._import(
+            [[1, 100, 20250115, None, "Gasto", "DOC", 1000, True, False, "R"]],
+            [
+                [1, 1, "699990123", 0, 0, "Gasto concreto", 1000, "D"],
+                [1, 2, "572000001", 0, 0, "Pago", 1000, "H"],
+            ],
+            missing_account_mode="fallback",
+            fallback_account_id=reserva.id,
+        )
+
+        self.assertEqual(wizard.total_errors, 0)
+        self.assertEqual(wizard.total_accounts_created, 0)
+        self.assertFalse(self._account_by_code("699990"))
+        move = self._find_move_by_legacy_number("100")
+        debit_line = move.line_ids.filtered(lambda line: line.debit > 0)
+        self.assertEqual(debit_line.account_id, reserva)
+        self.assertEqual(debit_line.name, "[699990123] Gasto concreto")
+        self.assertIn("cuenta de reserva", wizard.import_log)
+
+    def test_fallback_mode_does_not_rename_lines_of_existing_accounts(self):
+        self._ensure_basic_accounts()
+        reserva = self._ensure_account("999999", "Cuenta de reserva", "expense")
+        self._make_partner("Empleado 495", "495")
+        self._import(
+            [[1, 100, 20250115, None, "Gasto", "DOC", 1000, True, False, "R"]],
+            [
+                [1, 1, "610000495", 0, 0, "Gasto", 1000, "D"],
+                [1, 2, "572000001", 0, 0, "Pago", 1000, "H"],
+            ],
+            missing_account_mode="fallback",
+            fallback_account_id=reserva.id,
+        )
+        move = self._find_move_by_legacy_number("100")
+        self.assertEqual(
+            move.line_ids.filtered(lambda line: line.debit > 0).name, "Gasto"
+        )
+
+    def test_fallback_mode_without_reserve_account_raises(self):
+        wizard = self._make_wizard(
+            missing_account_mode="fallback",
+            file_apuntes=self._enc(self._make_apuntes_xlsx([
+                [1, 100, 20250115, None, "Gasto", "DOC", 1000, True, False, "R"]])),
+            file_lineas=self._enc(self._make_lineas_xlsx([
+                [1, 1, "699990000", 0, 0, "Gasto", 1000, "D"],
+                [1, 2, "572000001", 0, 0, "Pago", 1000, "H"]])),
+        )
+        with self.assertRaises(UserError):
+            wizard.action_import()
+
+    def test_wizard_view_has_missing_account_option(self):
+        view = self.env.ref(
+            "aicia_account_importer.view_aicia_account_importer_wizard_form"
+        )
+        self.assertIn("missing_account_mode", view.arch_db)
+        self.assertIn("fallback_account_id", view.arch_db)
 
     # ── Tests: importación — totales ─────────────────────────────────────────
 

@@ -78,6 +78,10 @@
                     <group string="Configuración de importación">
                         <field name="move_state"/>
                         <field name="skip_anulados"/>
+                        <field name="missing_account_mode"/>
+                        <field name="fallback_account_id"
+                               invisible="missing_account_mode != 'fallback'"
+                               required="missing_account_mode == 'fallback'"/>
                     </group>
                 </group>
                 <notebook>
@@ -88,6 +92,7 @@
                             <field name="total_skipped" readonly="1"/>
                             <field name="total_warnings" readonly="1"/>
                             <field name="total_errors" readonly="1"/>
+                            <field name="total_accounts_created" readonly="1"/>
                             <field name="total_mismatches" readonly="1"/>
                             <field name="total_debe" readonly="1"/>
                             <field name="total_haber" readonly="1"/>
@@ -102,6 +107,9 @@
                                 de la cuenta legada de 9 dígitos, y el contacto se busca por los
                                 <strong>4 últimos</strong> (campo <em>Códigos AICIA</em> del contacto,
                                 único por tipo: personal, proveedor, cliente).<br/>
+                                Si una cuenta no existe en Odoo, la opción <strong>Si la cuenta no
+                                existe en Odoo</strong> decide qué pasa: se crea (por defecto), va a una
+                                cuenta de reserva o el asiento da error. <strong>No hace falta mapear.</strong><br/>
                                 Esta lista es <strong>opcional</strong>: úsala solo para forzar que un
                                 código legado vaya a otra cuenta de Odoo.<br/>
                                 <strong>Ejemplo:</strong> código origen <code>478000</code>
@@ -110,8 +118,8 @@
                                 o el código completo de 9 dígitos (ej: <code>478000000</code>).<br/>
                                 Si no subes archivos Excel, el botón <strong>Importar</strong>
                                 revisa los apuntes existentes y aplica estas reglas.<br/>
-                                <em>Tras cada importación, las cuentas no encontradas se añaden
-                                a esta lista (sin destino) para que las mapees.</em>
+                                <em>Con la opción "No importar el asiento (error)", las cuentas no
+                                encontradas se añaden a esta lista (sin destino) para que las mapees.</em>
                             </p>
                                 <button name="action_reload_account_mappings"
                                    string="Refrescar lista"
@@ -191,11 +199,11 @@
                             string="Importar"
                             type="object"
                             class="btn-primary"/>
-                    <button name="action_delete_draft_moves"
-                            string="Limpiar borradores"
+                    <button name="action_delete_imported_moves"
+                            string="Borrar asientos importados"
                             type="object"
                             class="btn-danger"
-                            confirm="¿Eliminar todos los asientos en borrador del diario seleccionado?"/>
+                            confirm="¿Eliminar TODOS los asientos importados por el importador AICIA (los que tienen Nº de asiento AICIA), también los confirmados? No afecta a otros asientos ni facturas."/>
                     <button string="Cerrar"
                             special="cancel"/>
                 </footer>
