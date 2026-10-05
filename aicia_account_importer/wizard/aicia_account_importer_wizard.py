@@ -73,6 +73,8 @@ ACCOUNT_PREFIX_LENGTH = 5
 ACCOUNT_CODE_LENGTH = 6
 # Código AICIA del contacto = últimos dígitos de la cuenta legada
 PARTNER_CODE_LENGTH = 4
+# Líneas que se loguean por cada motivo/tipo al resolver el contacto
+PARTNER_LOG_SAMPLES = 5
 # Tipo de tercero de cada grupo de cuentas (3 primeros dígitos de la cuenta
 # legada). El código AICIA solo es único dentro de un mismo tipo. Los grupos que
 # no aparecen aquí no llevan contacto.
@@ -525,6 +527,8 @@ class AiciaAccountImporterWizard(models.TransientModel):
                 errors += 1
                 activity_status = "error"
             self._append_import_activity(activity_log, activity_status, result["msg"])
+
+        self._log_partner_summary(runtime)
 
         # Cuentas no encontradas: se añaden al mapeo manual (sin destino) para
         # que el usuario pueda asignarles una cuenta y reimportar.
@@ -1144,8 +1148,15 @@ class AiciaAccountImporterWizard(models.TransientModel):
         partner = None
         warning_msg = None
         partner_type = PARTNER_TYPE_BY_ACCOUNT_GROUP.get(legacy_account_code[:3])
+        if not partner_type:
+            self._log_partner_decision(
+                runtime, "sin_tipo", None, None, legacy_account_code, None
+            )
         if partner_type and self._no_partner_rule(legacy_account_code, runtime):
             # Cuenta sin socio por criterio contable: sin contacto y sin aviso
+            self._log_partner_decision(
+                runtime, "regla_sin_socio", partner_type, None, legacy_account_code, None
+            )
             partner_type = None
             if runtime is not None:
                 runtime["no_partner_lines"] = runtime.get("no_partner_lines", 0) + 1
@@ -1153,6 +1164,14 @@ class AiciaAccountImporterWizard(models.TransientModel):
             partner_code = self._partner_code_from_account(legacy_account_code)
             partner = self._resolve_partner_by_aicia_code(
                 partner_code, partner_type, runtime=runtime
+            )
+            self._log_partner_decision(
+                runtime,
+                "encontrado" if partner else "no_encontrado",
+                partner_type,
+                partner_code,
+                legacy_account_code,
+                partner,
             )
             if not partner:
                 warning_msg = _(
@@ -1501,6 +1520,43 @@ class AiciaAccountImporterWizard(models.TransientModel):
 
     # ── Resolución de contactos ──────────────────────────────────────────────
 
+    def _log_partner_decision(
+        self, runtime, reason, partner_type, code, legacy_code, partner
+    ):
+        """Cuenta cómo se resolvió el contacto de cada línea y loguea las primeras.
+
+        Motivos: encontrado, no_encontrado (el código no está en
+        aicia.partner.code), regla_sin_socio (cuenta sin socio por criterio
+        contable) y sin_tipo (grupo de cuenta sin tipo de tercero).
+        """
+        if runtime is None:
+            return
+        stats = runtime.setdefault("partner_stats", {})
+        key = (reason, partner_type or "-")
+        stats[key] = stats.get(key, 0) + 1
+        if stats[key] <= PARTNER_LOG_SAMPLES:
+            _logger.info(
+                "AICIA importer · contacto [%s/%s] cuenta legada=%s código=%r → %s",
+                reason,
+                partner_type or "-",
+                legacy_code,
+                code,
+                "%s (id %s)" % (partner.display_name, partner.id) if partner else "SIN SOCIO",
+            )
+
+    def _log_partner_summary(self, runtime):
+        stats = (runtime or {}).get("partner_stats", {})
+        if not stats:
+            _logger.info("AICIA importer · resumen contactos: sin líneas procesadas")
+            return
+        for (reason, partner_type), count in sorted(stats.items()):
+            _logger.info(
+                "AICIA importer · resumen contactos: %-15s %-9s %d líneas",
+                reason,
+                partner_type,
+                count,
+            )
+
     def _resolve_partner_by_aicia_code(
         self, code: str, partner_type: str, runtime: dict | None = None
     ):
@@ -1579,6 +1635,8 @@ class AiciaAccountImporterWizard(models.TransientModel):
                 if key in partner_by_aicia_code:
                     partner_by_aicia_code[key] = record.partner_id
 
+        self._log_partner_preload(partner_keys, partner_by_aicia_code, no_partner_rules)
+
         return {
             "accounts_by_code": accounts_by_code,
             "accounts_preloaded": True,
@@ -1590,6 +1648,38 @@ class AiciaAccountImporterWizard(models.TransientModel):
             "no_partner_rules": no_partner_rules,
             "existing_moves": self._prepare_existing_move_index(apuntes, lineas_by_apunte),
         }
+
+    def _log_partner_preload(self, partner_keys, partner_by_aicia_code, no_partner_rules):
+        """Diagnóstico de la precarga: qué códigos pide el fichero y cuántos existen."""
+        counts = {}
+        for record in self.env["aicia.partner.code"].search([]):
+            counts[record.partner_type] = counts.get(record.partner_type, 0) + 1
+        _logger.info(
+            "AICIA importer · tabla aicia.partner.code: %s · reglas sin socio: %d · "
+            "compañía: %s",
+            counts or "VACÍA",
+            len(no_partner_rules or []),
+            self.env.company.display_name,
+        )
+        for partner_type in sorted({t for t, _c in partner_keys}):
+            needed = {c for t, c in partner_keys if t == partner_type}
+            missing = sorted(
+                c for c in needed if partner_by_aicia_code.get((partner_type, c)) is None
+            )
+            _logger.info(
+                "AICIA importer · códigos %s pedidos por el fichero: %d · encontrados: %d "
+                "· sin contacto: %d %s",
+                partner_type,
+                len(needed),
+                len(needed) - len(missing),
+                len(missing),
+                missing[:15],
+            )
+        if not partner_keys:
+            _logger.warning(
+                "AICIA importer · ninguna línea del fichero pertenece a un grupo de "
+                "cuenta con tipo de tercero (o todas caen en reglas sin socio)."
+            )
 
     @staticmethod
     def _compile_account_mapping_rules(rules):
