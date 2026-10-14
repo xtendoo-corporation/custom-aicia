@@ -1575,7 +1575,11 @@ class TestAiciaAccountImporterWizard(TransactionCase):
         self._ensure_account("572000", "Bancos test", "asset_cash")
         por_codigo = self._make_partner("Dueño de la cuenta", "7791", partner_type="customer")
         real = self.env["res.partner"].create(
-            {"name": "Cliente de la factura", "codigo_cliente": "C7792"}
+            {
+                "name": "Cliente de la factura",
+                "codigo_cliente": "C7792",
+                "aicia_code_ids": [(0, 0, {"partner_type": "customer", "code": "7792"})],
+            }
         )
         return por_codigo, real
 
@@ -1602,7 +1606,6 @@ class TestAiciaAccountImporterWizard(TransactionCase):
 
     def test_partner_map_without_discrepancy_gives_no_warning(self):
         por_codigo, _real = self._map_setup()
-        por_codigo.write({"codigo_cliente": "C7791"})
         wizard = self._import_with_map([[100, "cliente", 7791]])
         move = self._find_move_by_legacy_number("100")
         line = move.line_ids.filtered(lambda l: l.credit > 0)
@@ -1631,6 +1634,15 @@ class TestAiciaAccountImporterWizard(TransactionCase):
         move = self._find_move_by_legacy_number("100")
         line = move.line_ids.filtered(lambda l: l.credit > 0)
         self.assertEqual(line.partner_id, por_codigo)
+
+    def test_partner_map_finds_five_digit_codes(self):
+        """Los clientes de la cuenta general tienen códigos de más de 4 cifras."""
+        self._map_setup()
+        grande = self._make_partner("Cliente 40032", "40032", partner_type="customer")
+        wizard = self._import_with_map([[100, "cliente", 40032]], account="430000000")
+        move = self._find_move_by_legacy_number("100")
+        line = move.line_ids.filtered(lambda l: l.credit > 0)
+        self.assertEqual(line.partner_id, grande)
 
     def test_partner_map_requires_its_columns(self):
         import openpyxl

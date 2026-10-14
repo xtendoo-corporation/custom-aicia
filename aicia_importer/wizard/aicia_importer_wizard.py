@@ -6,6 +6,8 @@ import re
 from odoo import _, fields, models
 from odoo.exceptions import UserError
 
+from odoo.addons.aicia_account_importer.models.aicia_partner_code import real_nif
+
 _logger = logging.getLogger(__name__)
 
 try:
@@ -179,22 +181,22 @@ class AiciaImporterWizard(models.TransientModel):
             _logger.info(">>> Iniciando importación de PROVEEDORES")
             result = self._import_file(self.data_file_suppliers, is_supplier=True, province_map=province_map)
             total_created += result['created']
-            total_updated += result['updated']
+            total_updated += result['updated'] + result.get('linked', 0)
             total_errors += result['errors']
             all_errors.extend([f"[Proveedores] {e}" for e in result['error_list']])
             import_types.append('suppliers')
-            _logger.info(f">>> PROVEEDORES: {result['created']} creados, {result['updated']} actualizados, {result['errors']} errores")
+            _logger.info(f">>> PROVEEDORES: {result['created']} creados, {result['updated']} actualizados, {result['linked']} con otro código de un contacto existente (mismo NIF), {result['errors']} errores")
 
         # Importar clientes si se proporciona el archivo
         if self.data_file_customers:
             _logger.info(">>> Iniciando importación de CLIENTES")
             result = self._import_file(self.data_file_customers, is_supplier=False, province_map=province_map)
             total_created += result['created']
-            total_updated += result['updated']
+            total_updated += result['updated'] + result.get('linked', 0)
             total_errors += result['errors']
             all_errors.extend([f"[Clientes] {e}" for e in result['error_list']])
             import_types.append('customers')
-            _logger.info(f">>> CLIENTES: {result['created']} creados, {result['updated']} actualizados, {result['errors']} errores")
+            _logger.info(f">>> CLIENTES: {result['created']} creados, {result['updated']} actualizados, {result['linked']} con otro código de un contacto existente (mismo NIF), {result['errors']} errores")
 
         # Importar personal si se proporciona el archivo
         if self.data_file_employees:
@@ -205,7 +207,7 @@ class AiciaImporterWizard(models.TransientModel):
             total_errors += result['errors']
             all_errors.extend([f"[Personal] {e}" for e in result['error_list']])
             import_types.append('employees')
-            _logger.info(f">>> PERSONAL: {result['created']} creados, {result['updated']} actualizados, {result['errors']} errores")
+            _logger.info(f">>> PERSONAL: {result['created']} creados, {result['updated']} actualizados, {result['linked']} con otro código de un contacto existente (mismo NIF), {result['errors']} errores")
 
         # Importar departamentos si se proporciona el archivo
         if self.data_file_departments:
@@ -216,7 +218,7 @@ class AiciaImporterWizard(models.TransientModel):
             total_errors += result['errors']
             all_errors.extend([f"[Departamentos] {e}" for e in result['error_list']])
             import_types.append('departments')
-            _logger.info(f">>> DEPARTAMENTOS: {result['created']} creados, {result['updated']} actualizados, {result['errors']} errores")
+            _logger.info(f">>> DEPARTAMENTOS: {result['created']} creados, {result['updated']} actualizados, {result['linked']} con otro código de un contacto existente (mismo NIF), {result['errors']} errores")
 
         # Importar proyectos si se proporciona el archivo
         if self.data_file_projects:
@@ -227,7 +229,7 @@ class AiciaImporterWizard(models.TransientModel):
             total_errors += result['errors']
             all_errors.extend([f"[Proyectos] {e}" for e in result['error_list']])
             import_types.append('projects')
-            _logger.info(f">>> PROYECTOS: {result['created']} creados, {result['updated']} actualizados, {result['errors']} errores")
+            _logger.info(f">>> PROYECTOS: {result['created']} creados, {result['updated']} actualizados, {result['linked']} con otro código de un contacto existente (mismo NIF), {result['errors']} errores")
 
         # Importar asignaciones de proyectos si se proporciona el archivo
         if self.data_file_project_assignments:
@@ -473,6 +475,13 @@ class AiciaImporterWizard(models.TransientModel):
             # La primera fila son los encabezados
             headers = rows[0]
             data_rows = rows[1:]
+            # Por ID ascendente: el código más antiguo de cada NIF es el contacto principal.
+            id_col = 'ID_Proveedor' if is_supplier else 'ID_Cliente'
+            if id_col in headers:
+                id_idx = list(headers).index(id_col)
+                data_rows.sort(
+                    key=lambda r: int(r[id_idx]) if str(r[id_idx] or '').strip().isdigit() else 10**12
+                )
             total_rows = len(data_rows)
 
             tipo = "proveedores" if is_supplier else "clientes"
@@ -481,6 +490,7 @@ class AiciaImporterWizard(models.TransientModel):
             # Procesar cada fila
             created_count = 0
             updated_count = 0
+            linked_count = 0
             error_count = 0
             errors = []
             batch_size = 50  # Hacer commit cada 50 registros
@@ -497,6 +507,8 @@ class AiciaImporterWizard(models.TransientModel):
                         created_count += 1
                     elif result == 'updated':
                         updated_count += 1
+                    elif result == 'linked':
+                        linked_count += 1
 
                     # Hacer commit cada batch_size para que se vea el progreso
                     if current % batch_size == 0:
@@ -555,6 +567,7 @@ class AiciaImporterWizard(models.TransientModel):
             return {
                 'created': created_count,
                 'updated': updated_count,
+                'linked': linked_count,
                 'errors': error_count,
                 'error_list': errors,
             }
@@ -570,6 +583,7 @@ class AiciaImporterWizard(models.TransientModel):
         data = dict(zip(headers, row))
 
         # Campos principales - Detectar si es proveedor o cliente por los campos
+        ref = False
         if is_supplier:
             id_proveedor = str(data.get('ID_Proveedor', '')).strip() if data.get('ID_Proveedor') else False
             vat = data.get('CIF')
@@ -736,38 +750,52 @@ class AiciaImporterWizard(models.TransientModel):
         contact_person = str(contact_person).strip() if contact_person is not None else False
 
 
-        # Buscar si el proveedor ya existe
-        # Prioridad: 1. por ref, 2. por vat, 3. por nombre
-        existing_partner = False
+        Code = self.env['aicia.partner.code']
+        Partner = self.env['res.partner'].with_context(import_file=True, check_vies=False, active_test=False)
+        code_type = 'supplier' if is_supplier else 'customer'
+        number = (id_proveedor if is_supplier else id_cliente) or False
+        legacy_address = ', '.join(
+            filter(None, [partner_vals.get('street'), partner_vals.get('zip'), partner_vals.get('city')])
+        ) or False
 
-        if ref:
-            if is_supplier:
-                existing_partner = self.env['res.partner'].search([('codigo_proveedor', '=', ref)], limit=1)
-                _logger.debug(f"Búsqueda por ref '{ref}': {'encontrado' if existing_partner else 'no encontrado'}")
-            else:
-                existing_partner = self.env['res.partner'].search([('codigo_cliente', '=', ref)], limit=1)
-                _logger.debug(f"Búsqueda por ref '{ref}': {'encontrado' if existing_partner else 'no encontrado'}")
+        # Buscar si el contacto ya existe. Prioridad: 1. por código AICIA (o por
+        # codigo_proveedor / codigo_cliente en bases cargadas antes de los códigos),
+        # 2. por NIF: es la misma entidad con otro código, que se añade a su contacto.
+        existing_partner = Code._partner_by_code(code_type, number) if number else Partner.browse()
+        if not existing_partner and ref:
+            existing_partner = Partner.search(
+                [('codigo_proveedor' if is_supplier else 'codigo_cliente', '=', ref)], limit=1
+            )
+        found_by_code = bool(existing_partner)
+        if not existing_partner:
+            existing_partner = self._find_partner_by_nif(partner_vals.get('vat'))
 
-        # if not existing_partner and vat:
-        #     existing_partner = self.env['res.partner'].search([('vat', '=', vat)], limit=1)
-        #     _logger.debug(f"Búsqueda por vat '{vat}': {'encontrado' if existing_partner else 'no encontrado'}")
-        #
-        # if not existing_partner:
-        #     existing_partner = self.env['res.partner'].search([('name', '=', name)], limit=1)
-        #     _logger.debug(f"Búsqueda por nombre '{name}': {'encontrado' if existing_partner else 'no encontrado'}")
         print("*"*50)
         print("partner_vals:",partner_vals)
         print("*"*50)
+        if existing_partner and not found_by_code:
+            # Mismo NIF con otro código: no se crea otro contacto ni se pisa su ficha.
+            rank = 'supplier_rank' if is_supplier else 'customer_rank'
+            if not existing_partner[rank]:
+                existing_partner.with_context(import_file=True, check_vies=False).write({rank: 1})
+            self._save_aicia_code(existing_partner, code_type, number, full_name, legacy_address)
+            if contact_person:
+                self._create_contact_person(existing_partner, contact_person, data)
+            self._create_or_update_bank_account(existing_partner, data)
+            return 'linked'
         if existing_partner:
+            self._save_aicia_code(existing_partner, code_type, number, full_name, legacy_address)
             if self.update_existing:
-                existing_partner.with_context(import_file=True,check_vies=False).write(partner_vals)
+                # Solo la ficha del código principal actualiza los datos del contacto
+                if self._is_principal_code(existing_partner, code_type, number):
+                    existing_partner.with_context(import_file=True, check_vies=False).write(partner_vals)
 
-                # Forzar complete_name si hay nombre2
-                if nombre2:
-                    self.env.cr.execute(
-                        "UPDATE res_partner SET complete_name = %s WHERE id = %s",
-                        (full_name, existing_partner.id)
-                    )
+                    # Forzar complete_name si hay nombre2
+                    if nombre2:
+                        self.env.cr.execute(
+                            "UPDATE res_partner SET complete_name = %s WHERE id = %s",
+                            (full_name, existing_partner.id)
+                        )
 
                 # Si hay persona de contacto y no existe, crearla
                 if contact_person:
@@ -780,7 +808,7 @@ class AiciaImporterWizard(models.TransientModel):
             else:
                 return 'skipped'
         else:
-            # Crear nuevo proveedor
+            # Crear nuevo contacto
             new_partner = self.env['res.partner'].with_context(import_file=True,check_vies=False).create(partner_vals)
 
             # Forzar complete_name si hay nombre2 escribiendo directamente en BD
@@ -789,6 +817,7 @@ class AiciaImporterWizard(models.TransientModel):
                     "UPDATE res_partner SET complete_name = %s WHERE id = %s",
                     (full_name, new_partner.id)
                 )
+            self._save_aicia_code(new_partner, code_type, number, full_name, legacy_address)
 
             # Si hay persona de contacto, crearla como contacto del proveedor
             if contact_person:
@@ -798,6 +827,37 @@ class AiciaImporterWizard(models.TransientModel):
             self._create_or_update_bank_account(new_partner, data)
 
             return 'created'
+
+    def _find_partner_by_nif(self, vat):
+        """Contacto con ese NIF español (misma entidad con otro código), o vacío."""
+        nif = real_nif(vat)
+        if not nif:
+            return self.env['res.partner']
+        return self.env['res.partner'].with_context(active_test=False).search(
+            [('vat', 'in', [nif, 'ES' + nif])], order='id', limit=1
+        )
+
+    def _save_aicia_code(self, partner, code_type, number, name, address):
+        """Añade el código AICIA al contacto (o refresca su denominación y dirección)."""
+        if not number:
+            return
+        Code = self.env['aicia.partner.code']
+        code = Code.search([('partner_type', '=', code_type), ('code', '=', Code._normalize_code(number))], limit=1)
+        vals = {'legacy_name': name, 'legacy_address': address}
+        if code:
+            if code.partner_id == partner:
+                code.write(vals)
+            return
+        Code.create(dict(vals, partner_id=partner.id, partner_type=code_type, code=number))
+
+    def _is_principal_code(self, partner, code_type, number):
+        """¿Es el código del contacto del que salen sus datos? El primero que se le asignó."""
+        codes = partner.aicia_code_ids
+        if not codes:
+            return True
+        first = codes.sorted('id')[0]
+        Code = self.env['aicia.partner.code']
+        return first.partner_type == code_type and first.code == Code._normalize_code(number)
 
     def _create_contact_person(self, partner, contact_name, data):
         """Crea una persona de contacto para el proveedor."""

@@ -112,6 +112,11 @@ class TestReconcile(unittest.TestCase):
         m, *_ = tool.reconcile(exp, [self.odoo(acc="610000", debit="500", credit="0", emp="1342|3311")])
         self.assertEqual(len(m), 1)
 
+    def test_partner_with_several_codes_matches_any_of_them(self):
+        """Contacto fusionado: tiene los códigos de todos sus alias."""
+        m, *_ = tool.reconcile(self.expected(("C", 1262)), [self.odoo(cli="185|1262|2000")])
+        self.assertEqual(len(m), 1)
+
     def test_no_partner_expected_but_partner_present_is_wrong(self):
         m, w, *_ = tool.reconcile(self.expected(None, "sin socio por regla contable"), [self.odoo(cli="5")])
         self.assertEqual((len(m), len(w)), (0, 1))

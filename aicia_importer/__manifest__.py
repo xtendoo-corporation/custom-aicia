@@ -2,10 +2,11 @@
     "name": "AICIA - Importador de Clientes, Proveedores, Empleados y Proyectos",
     "author": "Xtendoo",
     "category": "Extra Tools",
-    "version": "19.0.1.0.8",
+    "version": "19.0.1.1.0",
     "depends": [
         "base",
         "aicia_extra_fields",
+        "aicia_account_importer",
         "purchase",
         "sale",
         "hr",

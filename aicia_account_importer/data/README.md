@@ -88,14 +88,26 @@ Los códigos de cuenta tienen **9 dígitos** en el sistema legado y se dividen a
     300 o 400.
   - 3 anticipos de personal dado de baja con la cuenta a cero (confirmado por el contable
     de AICIA): `460000273`, `460001012`, `460001118`. Se importan con 6 dígitos y sin socio.
-- **Código de cada contacto de proveedor y cliente.** Sale de su cuenta contable de AICIAWIN
-  (`cuenta_contable_aicia`, que guarda el importador de terceros): cuando varios contactos
-  comparten cuenta, el código es del titular (el que tiene ese número de ID). Si ninguna cuenta
-  reclama un código, queda para el contacto con ese número de ID (era su cuenta antigua). Las
-  cuentas generales (código 0) no dan código. El botón *Rehacer códigos de proveedor y cliente*
-  lo recalcula todo.
+- **Código de cada contacto de proveedor y cliente.** Es el número de su `codigo_proveedor` /
+  `codigo_cliente` (el ID de AICIAWIN), sin límite de cifras: los clientes de la cuenta general
+  tienen códigos de 5 cifras y también se buscan por código. *Cargar códigos de proveedor y
+  cliente* solo añade, nunca borra. Un contacto puede tener varios códigos (de personal,
+  proveedor y cliente) y cada uno guarda la denominación y la dirección con las que AICIAWIN lo
+  dio de alta.
+- **Un contacto por NIF.** AICIAWIN daba de alta a una misma entidad con varios códigos (cambio de
+  razón social, otra dirección de facturación…), distinguidos por un correlativo en el NIF
+  (`A12345678 2`). En Odoo es un solo contacto con todos sus códigos:
+  - El importador de terceros busca por código AICIA y, si llega un código nuevo con un NIF
+    que ya existe, lo añade a ese contacto sin crear otro ni pisar su ficha.
+  - Los NIF de relleno (99999999, 00000000…) y los extranjeros no se unen nunca.
+  - Para el estado inicial hay una fusión de los duplicados que ya existen:
+    `env['aicia.partner.code'].merge_partners_by_nif(dry_run=False, commit_every=20)` desde un
+    shell de Odoo (primero con `dry_run=True`, y con copia de seguridad: es irreversible). Usa la
+    función de fusión de contactos de Odoo, así que las líneas de los asientos pasan al
+    contacto final; los códigos de los contactos fusionados quedan en él.
 - **Fichero opcional asiento → socio** (`Numero_Apunte`, `Tipo`, `ID_Tercero`): fija el socio
-  de un asiento con prioridad sobre el código de cuenta, incluso en cuentas sin socio. Las
+  de un asiento con prioridad sobre el código de cuenta, incluso en cuentas sin socio. El socio
+  se busca por su código AICIA (del tipo indicado). Las
   diferencias con el código de cuenta quedan anotadas en el log y no dejan el asiento en borrador.
   Se genera con `tools/aicia_migracion.py asiento-socio` (ver `tools/README.md`).
 - Si no existe ningún contacto con ese código y tipo, la línea se importa sin

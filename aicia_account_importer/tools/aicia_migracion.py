@@ -228,26 +228,21 @@ def expected_lines(apuntes, lineas, facturas, owners):
 
 
 def partner_matches(expected, got):
-    """¿El socio esperado es el que tiene la línea de Odoo?"""
+    """¿El socio esperado es el que tiene la línea de Odoo? Un contacto puede tener varios códigos."""
     if expected is None:
-        return got["who"] is None
+        return not (got["cli"] or got["prov"] or got["emp"])
     kind, number = expected
-    if kind == "E":
-        return str(number) in got["emp"]
-    return got["who"] == expected
+    return str(number) in {"C": got["cli"], "S": got["prov"], "E": got["emp"]}[kind]
 
 
 def reconcile(expected, odoo_rows):
     """Empareja líneas esperadas y de Odoo por asiento. Devuelve (ok, difs, solo_esperadas, solo_odoo)."""
     got = collections.defaultdict(list)
     for r in odoo_rows:
-        who = None
-        emp = set(filter(None, (r.get("emp") or "").split("|")))
-        if r.get("cli"):
-            who = ("C", int(r["cli"]))
-        elif r.get("prov"):
-            who = ("S", int(r["prov"]))
-        got[r["num"]].append({"key": (r["acc"], int(r["debit"]), int(r["credit"])), "who": who, "emp": emp, "used": False})
+        codes = {k: set(filter(None, (r.get(k) or "").split("|"))) for k in ("cli", "prov", "emp")}
+        got[r["num"]].append(
+            {"key": (r["acc"], int(r["debit"]), int(r["credit"])), "used": False, **codes}
+        )
     matched, wrong_partner, missing = [], [], []
     for num, lines in expected.items():
         pool = got.get(num, [])

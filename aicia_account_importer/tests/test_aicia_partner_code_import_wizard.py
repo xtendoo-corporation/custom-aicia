@@ -247,11 +247,11 @@ class TestAiciaSupplierCustomerCodes(TransactionCase):
         self.assertEqual(stats["created"], 0)
         self.assertGreaterEqual(stats["existing"], 1)
 
-    def test_codes_above_9999_are_skipped(self):
+    def test_codes_above_9999_are_loaded_too(self):
+        """Los clientes de la cuenta general tienen códigos de 5 cifras y se buscan por código."""
         cliente = self._partner("Cliente largo", codigo_cliente="C12345")
-        stats = self.Code.load_supplier_customer_codes()
-        self.assertFalse(cliente.aicia_code_ids)
-        self.assertGreaterEqual(stats["too_long"], 1)
+        self.Code.load_supplier_customer_codes()
+        self.assertEqual(self._code(cliente, "customer").code, "12345")
 
     def test_numbers_repeated_in_two_partners_are_skipped(self):
         uno = self._partner("Proveedor uno", codigo_proveedor="C7774")
@@ -275,103 +275,133 @@ class TestAiciaSupplierCustomerCodes(TransactionCase):
         self.assertEqual(set(ambos.aicia_code_ids.mapped("partner_type")),
                          {"supplier", "customer"})
 
-    # ── Código desde la cuenta contable AICIA ───────────────────────────────
-
-    def test_code_comes_from_the_account_not_from_the_id(self):
-        cliente = self._partner(
-            "Cliente cuenta propia",
-            codigo_cliente="C7781",
-            cuenta_contable_aicia="430007790",
-        )
+    def test_load_never_removes_codes_already_in_the_table(self):
+        """Tras fusionar, los códigos de los alias viven en el contacto final."""
+        final = self._partner("Final", codigo_cliente="C7781", aicia_code_ids=[
+            (0, 0, {"partner_type": "customer", "code": "7781"}),
+            (0, 0, {"partner_type": "customer", "code": "7782"})])
         self.Code.load_supplier_customer_codes()
-        self.assertEqual(self._code(cliente, "customer").code, "7790")
+        self.assertEqual(sorted(self._code(final, "customer").mapped("code")), ["7781", "7782"])
 
-    def test_shared_account_goes_to_the_owner_and_alias_keeps_only_its_old_id_code(self):
-        dueno = self._partner(
-            "Dueño", codigo_cliente="C7791", cuenta_contable_aicia="430007791"
-        )
-        alias = self._partner(
-            "Alias", codigo_cliente="C7795", cuenta_contable_aicia="430007791"
-        )
-        stats = self.Code.load_supplier_customer_codes()
-        self.assertEqual(self._code(dueno, "customer").code, "7791")
-        # La cuenta 7791 es del dueño; el alias solo conserva el código de su propio ID
-        self.assertEqual(self._code(alias, "customer").mapped("code"), ["7795"])
-        self.assertGreaterEqual(stats["shared"], 1)
-        self.assertGreaterEqual(stats["aliases"], 1)
-
-    def test_shared_account_without_owner_is_ambiguous(self):
-        uno = self._partner(
-            "Uno", codigo_proveedor="C7801", cuenta_contable_aicia="400007899"
-        )
-        dos = self._partner(
-            "Dos", codigo_proveedor="C7802", cuenta_contable_aicia="400007899"
-        )
-        stats = self.Code.load_supplier_customer_codes()
-        # Nadie recibe el código 7899 (ambiguo); cada uno conserva el de su ID
-        self.assertEqual(self._code(uno, "supplier").mapped("code"), ["7801"])
-        self.assertEqual(self._code(dos, "supplier").mapped("code"), ["7802"])
-        self.assertGreaterEqual(stats["ambiguous"], 1)
-
-    def test_general_account_gives_no_account_code_but_keeps_its_id_code(self):
-        particular = self._partner(
-            "Particular", codigo_cliente="C7811", cuenta_contable_aicia="430000000"
-        )
-        stats = self.Code.load_supplier_customer_codes()
-        self.assertEqual(self._code(particular, "customer").mapped("code"), ["7811"])
-        self.assertGreaterEqual(stats["general"], 1)
-        self.assertGreaterEqual(stats["fallback"], 1)
-
-    def test_general_account_never_creates_code_zero(self):
-        self._partner("Particular", codigo_cliente="C7812", cuenta_contable_aicia="430000000")
+    def test_partner_by_code_and_partners_by_codes(self):
+        cliente = self._partner("Cliente", codigo_cliente="C7791")
         self.Code.load_supplier_customer_codes()
-        self.assertFalse(self.Code.search([("partner_type", "=", "customer"), ("code", "=", "0")]))
+        self.assertEqual(self.Code._partner_by_code("customer", "07791"), cliente)
+        self.assertFalse(self.Code._partner_by_code("supplier", "7791"))
+        self.assertEqual(self.Code._partners_by_codes("customer", ["7791", "7799"]), {"7791": cliente})
 
-    def test_account_that_does_not_fit_in_four_digits_keeps_its_id_code(self):
-        cliente = self._partner(
-            "Cuenta larga", codigo_cliente="C7821", cuenta_contable_aicia="430040123"
-        )
-        stats = self.Code.load_supplier_customer_codes()
-        self.assertEqual(self._code(cliente, "customer").mapped("code"), ["7821"])
-        self.assertGreaterEqual(stats["too_long"], 1)
 
-    def test_old_id_code_is_not_given_when_another_account_claims_it(self):
-        """El alias no se queda el código de su ID si es la cuenta de otro contacto."""
-        dueno = self._partner(
-            "Dueño", codigo_cliente="C7841", cuenta_contable_aicia="430007841"
-        )
-        otro = self._partner(
-            "Otro", codigo_cliente="C7842", cuenta_contable_aicia="430007843"
-        )
-        alias = self._partner(
-            "Alias", codigo_cliente="C7843", cuenta_contable_aicia="430007841"
-        )
-        self.Code.load_supplier_customer_codes()
-        self.assertEqual(self._code(dueno, "customer").code, "7841")
-        self.assertEqual(self._code(otro, "customer").code, "7843")
-        self.assertFalse(self._code(alias, "customer"))
+class TestMergePartnersByNif(TransactionCase):
+    """Un solo contacto por NIF, con todos los códigos AICIA."""
 
-    def test_reset_removes_stale_codes_but_keeps_employee_codes(self):
-        cliente = self._partner(
-            "Cliente", codigo_cliente="C7831", cuenta_contable_aicia="430007831"
-        )
-        empleado = self._partner("Empleado", aicia_code_ids=[
-            (0, 0, {"partner_type": "employee", "code": "7832"}),
-            (0, 0, {"partner_type": "customer", "code": "7833"}),  # obsoleto
-        ])
-        self.Code.load_supplier_customer_codes(reset=True)
-        self.assertEqual(self._code(cliente, "customer").code, "7831")
-        self.assertEqual(empleado.aicia_code_ids.mapped("code"), ["7832"])
+    def setUp(self):
+        super().setUp()
+        if "codigo_cliente" not in self.env["res.partner"]._fields:
+            self.skipTest("aicia_extra_fields no instalado")
+        self.Code = self.env["aicia.partner.code"]
+        self.ctx = {"import_file": True, "check_vies": False}
 
-    def test_shared_account_without_owner_goes_to_the_partner_with_that_number(self):
-        """La cuenta 7851 la comparten dos alias; su titular (ID 7851) hoy tiene otra."""
-        titular = self._partner(
-            "Titular", codigo_cliente="C7851", cuenta_contable_aicia="430000000"
+    def _partner(self, name, vat, **vals):
+        return self.env["res.partner"].with_context(**self.ctx).create(
+            dict({"name": name, "vat": vat, "street": "Calle %s 1" % name, "city": "Sevilla"}, **vals)
         )
-        uno = self._partner("Uno", codigo_cliente="C7852", cuenta_contable_aicia="430007851")
-        dos = self._partner("Dos", codigo_cliente="C7853", cuenta_contable_aicia="430007851")
-        self.Code.load_supplier_customer_codes()
-        self.assertEqual(self._code(titular, "customer").code, "7851")
-        self.assertEqual(self._code(uno, "customer").mapped("code"), ["7852"])
-        self.assertEqual(self._code(dos, "customer").mapped("code"), ["7853"])
 
+    def test_duplicates_are_merged_into_the_oldest_code_and_keep_every_code(self):
+        a = self._partner("Cliente A", "ESA81234561", codigo_cliente="C7001", customer_rank=1)
+        b = self._partner("Cliente A nuevo nombre", "ESA81234561", codigo_cliente="C7010", customer_rank=1)
+        c = self._partner("Cliente A otra dirección", "ESA81234561", codigo_cliente="C7020", customer_rank=1)
+        stats = self.Code.merge_partners_by_nif(dry_run=False, partner_ids=(a | b | c).ids)
+        self.assertEqual(stats["errors"], [])
+        self.assertTrue(a.exists())
+        self.assertFalse(b.exists() or c.exists())
+        codes = a.aicia_code_ids.filtered(lambda r: r.partner_type == "customer")
+        self.assertEqual(sorted(codes.mapped("code")), ["7001", "7010", "7020"])
+        names = {r.code: r.legacy_name for r in codes}
+        self.assertIn("nuevo nombre", names["7010"])
+        self.assertIn("otra dirección", names["7020"])
+        self.assertIn("Calle", codes.filtered(lambda r: r.code == "7010").legacy_address)
+
+    def test_dry_run_changes_nothing(self):
+        a = self._partner("Uno", "ESB81234562", codigo_proveedor="C7101", supplier_rank=1)
+        b = self._partner("Dos", "ESB81234562", codigo_proveedor="C7102", supplier_rank=1)
+        stats = self.Code.merge_partners_by_nif(dry_run=True, partner_ids=(a | b).ids)
+        self.assertEqual((stats["groups"], stats["merged"]), (1, 1))
+        self.assertTrue(a.exists() and b.exists())
+
+    def test_customer_and_supplier_with_same_nif_become_one_partner_with_both_ranks(self):
+        cli = self._partner("Entidad", "ESC81234563", codigo_cliente="C7201", customer_rank=1)
+        prov = self._partner("Entidad proveedor", "ESC81234563", codigo_proveedor="C7301", supplier_rank=1)
+        self.Code.merge_partners_by_nif(dry_run=False, partner_ids=(cli | prov).ids)
+        survivors = (cli | prov).exists()
+        self.assertEqual(len(survivors), 1)
+        self.assertGreaterEqual(survivors.customer_rank, 1)
+        self.assertGreaterEqual(survivors.supplier_rank, 1)
+        self.assertEqual(
+            set(survivors.aicia_code_ids.mapped("partner_type")), {"customer", "supplier"}
+        )
+
+    def test_different_nifs_are_not_merged(self):
+        a = self._partner("Uno", "ESD81234564", codigo_cliente="C7401")
+        b = self._partner("Dos", "ESD81234565", codigo_cliente="C7402")
+        self.Code.merge_partners_by_nif(dry_run=False, partner_ids=(a | b).ids)
+        self.assertTrue(a.exists() and b.exists())
+
+    def test_placeholder_nif_is_never_merged(self):
+        """99999999, 00000000… son NIF de relleno: no identifican a la misma entidad."""
+        a = self._partner("Uno", "ESX9999999J", codigo_cliente="C7511")
+        b = self._partner("Dos", "ESX9999999J", codigo_cliente="C7512")
+        c = self._partner("Tres", "ES00000000T", codigo_cliente="C7513")
+        d = self._partner("Cuatro", "ES00000000T", codigo_cliente="C7514")
+        stats = self.Code.merge_partners_by_nif(dry_run=False, partner_ids=(a | b | c | d).ids)
+        self.assertEqual(stats["groups"], 0)
+        self.assertTrue((a | b | c | d).exists() == (a | b | c | d))
+
+    def test_real_nif_helper(self):
+        from ..models.aicia_partner_code import real_nif
+
+        self.assertEqual(real_nif("ESA41990490"), "A41990490")
+        self.assertEqual(real_nif("12345678z"), "12345678Z")
+        self.assertIsNone(real_nif("X9999999J"))
+        self.assertIsNone(real_nif("ES00000000T"))
+        self.assertIsNone(real_nif("FR12345678901"))
+        self.assertIsNone(real_nif(""))
+
+    def test_foreign_or_invalid_vat_is_not_merged(self):
+        a = self._partner("Uno", "FR12345678901", codigo_cliente="C7501")
+        b = self._partner("Dos", "FR12345678901", codigo_cliente="C7502")
+        self.Code.merge_partners_by_nif(dry_run=False, partner_ids=(a | b).ids)
+        self.assertTrue(a.exists() and b.exists())
+
+    def test_partner_linked_to_a_user_is_never_merged(self):
+        user_partner = self.env.user.partner_id
+        user_partner.with_context(**self.ctx).write({"vat": "ESE81234566", "codigo_cliente": "C7601"})
+        other = self._partner("Duplicado", "ESE81234566", codigo_cliente="C7602")
+        stats = self.Code.merge_partners_by_nif(dry_run=False, partner_ids=(user_partner | other).ids)
+        self.assertIn("E81234566", stats["skipped"])
+        self.assertTrue(user_partner.exists() and other.exists())
+
+    def test_journal_items_move_to_the_surviving_partner(self):
+        a = self._partner("Cliente A", "ESF81234567", codigo_cliente="C7701", customer_rank=1)
+        b = self._partner("Cliente B", "ESF81234567", codigo_cliente="C7702", customer_rank=1)
+        accounts = [
+            self.env["account.account"].create({
+                "code": code, "name": "Test " + code, "account_type": "asset_current",
+                "company_ids": [(4, self.env.company.id)],
+            }) for code in ("699971", "699972")
+        ]
+        journal = self.env["account.journal"].search(
+            [("type", "=", "general"), ("company_id", "=", self.env.company.id)], limit=1
+        ) or self.env["account.journal"].create(
+            {"name": "AICIA test", "code": "AIT", "type": "general", "company_id": self.env.company.id}
+        )
+        move = self.env["account.move"].create({
+            "journal_id": journal.id,
+            "date": "2025-01-15",
+            "line_ids": [
+                (0, 0, {"account_id": accounts[0].id, "debit": 10, "partner_id": b.id}),
+                (0, 0, {"account_id": accounts[1].id, "credit": 10}),
+            ],
+        })
+        self.Code.merge_partners_by_nif(dry_run=False, partner_ids=(a | b).ids)
+        self.assertEqual(move.line_ids.filtered(lambda l: l.debit).partner_id, a)
+        self.assertEqual(self.Code._partner_by_code("customer", "7702"), a)

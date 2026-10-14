@@ -13,6 +13,8 @@
                         <list editable="bottom">
                             <field name="partner_type"/>
                             <field name="code"/>
+                            <field name="legacy_name"/>
+                            <field name="legacy_address"/>
                         </list>
                     </field>
                 </page>

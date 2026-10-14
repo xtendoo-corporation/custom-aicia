@@ -1645,10 +1645,9 @@ class AiciaAccountImporterWizard(models.TransientModel):
     def _parse_partner_map(self, content: bytes):
         """Lee el fichero opcional asiento → socio.
 
-        Devuelve ({numero_asiento: {tipo: contacto}}, avisos). Proveedores y
-        clientes se localizan por codigo_proveedor / codigo_cliente (C + ID), así
-        que sirve también para clientes con ID mayor de 9999; el personal, por su
-        código AICIA.
+        Devuelve ({numero_asiento: {tipo: contacto}}, avisos). El socio se localiza
+        por su código AICIA (aicia.partner.code) del tipo indicado, sea cual sea
+        el número de dígitos del código.
         """
         workbook = openpyxl.load_workbook(BytesIO(content), read_only=True, data_only=True)
         rows = list(workbook.active.iter_rows(values_only=True))
@@ -1678,22 +1677,15 @@ class AiciaAccountImporterWizard(models.TransientModel):
             if number.endswith(".0"):
                 number = number[:-2]
             entries.append((number, partner_type, third))
-        Partner = self.env["res.partner"].with_context(active_test=False)
+        Code = self.env["aicia.partner.code"]
         found = {}
-        for partner_type, field in (("supplier", "codigo_proveedor"), ("customer", "codigo_cliente")):
-            ids = sorted({t for _n, pt, t in entries if pt == partner_type})
-            if ids and field in Partner._fields:
-                for partner in Partner.search([(field, "in", ["C" + t for t in ids])]):
-                    found[(partner_type, partner[field][1:])] = partner
-        employees = sorted({t for _n, pt, t in entries if pt == "employee"})
-        if employees:
-            for rec in self.env["aicia.partner.code"].search(
-                [("partner_type", "=", "employee"), ("code", "in", employees)]
-            ):
-                found[("employee", rec.code)] = rec.partner_id
+        for partner_type in ("supplier", "customer", "employee"):
+            wanted = {t for _n, pt, t in entries if pt == partner_type}
+            for code, partner in Code._partners_by_codes(partner_type, wanted).items():
+                found[(partner_type, code)] = partner
         result = {}
         for number, partner_type, third in entries:
-            partner = found.get((partner_type, third))
+            partner = found.get((partner_type, Code._normalize_code(third)))
             if not partner:
                 notes.append(
                     _("Asiento %(n)s: no existe en Odoo el %(t)s %(id)s del fichero de socios.")
