@@ -274,3 +274,104 @@ class TestAiciaSupplierCustomerCodes(TransactionCase):
         self.Code.load_supplier_customer_codes()
         self.assertEqual(set(ambos.aicia_code_ids.mapped("partner_type")),
                          {"supplier", "customer"})
+
+    # ── Código desde la cuenta contable AICIA ───────────────────────────────
+
+    def test_code_comes_from_the_account_not_from_the_id(self):
+        cliente = self._partner(
+            "Cliente cuenta propia",
+            codigo_cliente="C7781",
+            cuenta_contable_aicia="430007790",
+        )
+        self.Code.load_supplier_customer_codes()
+        self.assertEqual(self._code(cliente, "customer").code, "7790")
+
+    def test_shared_account_goes_to_the_owner_and_alias_keeps_only_its_old_id_code(self):
+        dueno = self._partner(
+            "Dueño", codigo_cliente="C7791", cuenta_contable_aicia="430007791"
+        )
+        alias = self._partner(
+            "Alias", codigo_cliente="C7795", cuenta_contable_aicia="430007791"
+        )
+        stats = self.Code.load_supplier_customer_codes()
+        self.assertEqual(self._code(dueno, "customer").code, "7791")
+        # La cuenta 7791 es del dueño; el alias solo conserva el código de su propio ID
+        self.assertEqual(self._code(alias, "customer").mapped("code"), ["7795"])
+        self.assertGreaterEqual(stats["shared"], 1)
+        self.assertGreaterEqual(stats["aliases"], 1)
+
+    def test_shared_account_without_owner_is_ambiguous(self):
+        uno = self._partner(
+            "Uno", codigo_proveedor="C7801", cuenta_contable_aicia="400007899"
+        )
+        dos = self._partner(
+            "Dos", codigo_proveedor="C7802", cuenta_contable_aicia="400007899"
+        )
+        stats = self.Code.load_supplier_customer_codes()
+        # Nadie recibe el código 7899 (ambiguo); cada uno conserva el de su ID
+        self.assertEqual(self._code(uno, "supplier").mapped("code"), ["7801"])
+        self.assertEqual(self._code(dos, "supplier").mapped("code"), ["7802"])
+        self.assertGreaterEqual(stats["ambiguous"], 1)
+
+    def test_general_account_gives_no_account_code_but_keeps_its_id_code(self):
+        particular = self._partner(
+            "Particular", codigo_cliente="C7811", cuenta_contable_aicia="430000000"
+        )
+        stats = self.Code.load_supplier_customer_codes()
+        self.assertEqual(self._code(particular, "customer").mapped("code"), ["7811"])
+        self.assertGreaterEqual(stats["general"], 1)
+        self.assertGreaterEqual(stats["fallback"], 1)
+
+    def test_general_account_never_creates_code_zero(self):
+        self._partner("Particular", codigo_cliente="C7812", cuenta_contable_aicia="430000000")
+        self.Code.load_supplier_customer_codes()
+        self.assertFalse(self.Code.search([("partner_type", "=", "customer"), ("code", "=", "0")]))
+
+    def test_account_that_does_not_fit_in_four_digits_keeps_its_id_code(self):
+        cliente = self._partner(
+            "Cuenta larga", codigo_cliente="C7821", cuenta_contable_aicia="430040123"
+        )
+        stats = self.Code.load_supplier_customer_codes()
+        self.assertEqual(self._code(cliente, "customer").mapped("code"), ["7821"])
+        self.assertGreaterEqual(stats["too_long"], 1)
+
+    def test_old_id_code_is_not_given_when_another_account_claims_it(self):
+        """El alias no se queda el código de su ID si es la cuenta de otro contacto."""
+        dueno = self._partner(
+            "Dueño", codigo_cliente="C7841", cuenta_contable_aicia="430007841"
+        )
+        otro = self._partner(
+            "Otro", codigo_cliente="C7842", cuenta_contable_aicia="430007843"
+        )
+        alias = self._partner(
+            "Alias", codigo_cliente="C7843", cuenta_contable_aicia="430007841"
+        )
+        self.Code.load_supplier_customer_codes()
+        self.assertEqual(self._code(dueno, "customer").code, "7841")
+        self.assertEqual(self._code(otro, "customer").code, "7843")
+        self.assertFalse(self._code(alias, "customer"))
+
+    def test_reset_removes_stale_codes_but_keeps_employee_codes(self):
+        cliente = self._partner(
+            "Cliente", codigo_cliente="C7831", cuenta_contable_aicia="430007831"
+        )
+        empleado = self._partner("Empleado", aicia_code_ids=[
+            (0, 0, {"partner_type": "employee", "code": "7832"}),
+            (0, 0, {"partner_type": "customer", "code": "7833"}),  # obsoleto
+        ])
+        self.Code.load_supplier_customer_codes(reset=True)
+        self.assertEqual(self._code(cliente, "customer").code, "7831")
+        self.assertEqual(empleado.aicia_code_ids.mapped("code"), ["7832"])
+
+    def test_shared_account_without_owner_goes_to_the_partner_with_that_number(self):
+        """La cuenta 7851 la comparten dos alias; su titular (ID 7851) hoy tiene otra."""
+        titular = self._partner(
+            "Titular", codigo_cliente="C7851", cuenta_contable_aicia="430000000"
+        )
+        uno = self._partner("Uno", codigo_cliente="C7852", cuenta_contable_aicia="430007851")
+        dos = self._partner("Dos", codigo_cliente="C7853", cuenta_contable_aicia="430007851")
+        self.Code.load_supplier_customer_codes()
+        self.assertEqual(self._code(titular, "customer").code, "7851")
+        self.assertEqual(self._code(uno, "customer").mapped("code"), ["7852"])
+        self.assertEqual(self._code(dos, "customer").mapped("code"), ["7853"])
+

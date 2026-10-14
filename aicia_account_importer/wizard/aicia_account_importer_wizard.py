@@ -219,6 +219,15 @@ class AiciaAccountImporterWizard(models.TransientModel):
         string="Lineas_Apunte2025.xlsx  (líneas contables)",
     )
     filename_lineas = fields.Char()
+    file_partner_map = fields.Binary(
+        string="Socio por asiento.xlsx  (opcional)",
+        help=(
+            "Columnas: Numero_Apunte, Tipo (proveedor, cliente o personal) e "
+            "ID_Tercero. El socio indicado para un asiento tiene prioridad sobre el "
+            "que resulta del código de la cuenta, y se avisa cuando difieren."
+        ),
+    )
+    filename_partner_map = fields.Char()
 
     # ── Configuración ────────────────────────────────────────────────────────
     move_state = fields.Selection(
@@ -458,6 +467,18 @@ class AiciaAccountImporterWizard(models.TransientModel):
         runtime = self._prepare_import_runtime(
             apuntes, lineas_by_apunte, account_mapping
         )
+        if self.file_partner_map:
+            runtime["partner_override"], map_notes = self._parse_partner_map(
+                b64decode(self.file_partner_map)
+            )
+            self._append_import_activity(
+                activity_log,
+                "success",
+                _("%d asientos con socio indicado en el fichero.")
+                % len(runtime["partner_override"]),
+            )
+            for note in map_notes[:50]:
+                self._append_import_activity(activity_log, "warning", note)
         results = []
         created = skipped = errors = warnings = 0
         total_debe_cents = total_haber_cents = 0
@@ -557,6 +578,24 @@ class AiciaAccountImporterWizard(models.TransientModel):
                 _("Las cuentas no encontradas ya existían en el mapeo manual."),
             )
 
+        discrepancies = runtime.get("partner_map_discrepancies", [])
+        if discrepancies:
+            self._append_import_activity(
+                activity_log,
+                "warning",
+                _(
+                    "%d líneas con socio del fichero distinto del que da el código de "
+                    "la cuenta (se usó el del fichero)."
+                )
+                % len(discrepancies),
+            )
+            for number, legacy, from_file, from_code in discrepancies[:50]:
+                self._append_import_activity(
+                    activity_log,
+                    "info",
+                    _("Asiento %(n)s, cuenta %(a)s: fichero → %(f)s · código de cuenta → %(c)s")
+                    % {"n": number, "a": legacy, "f": from_file, "c": from_code},
+                )
         no_partner_lines = runtime.get("no_partner_lines", 0)
         if no_partner_lines:
             self._append_import_activity(
@@ -936,6 +975,8 @@ class AiciaAccountImporterWizard(models.TransientModel):
         importa igual y la diferencia solo queda anotada en el log.
         """
         legacy_number = str(cabecera["numero"])
+        if runtime is not None:
+            runtime["current_legacy_number"] = legacy_number
         # ── Detectar si es un asiento de nómina ──────────────────────────────
         # Criterio: Numero_Documento empieza por "NO-" (insensible a mayúsculas).
         # Solo afecta al diario: las nóminas van siempre al diario misceláneo.
@@ -1148,7 +1189,32 @@ class AiciaAccountImporterWizard(models.TransientModel):
         partner = None
         warning_msg = None
         partner_type = PARTNER_TYPE_BY_ACCOUNT_GROUP.get(legacy_account_code[:3])
-        if not partner_type:
+        override = self._partner_from_map(partner_type, runtime)
+        if override:
+            # El fichero asiento → socio manda sobre el código de la cuenta.
+            by_code = None
+            if not self._no_partner_rule(legacy_account_code, runtime):
+                by_code = self._resolve_partner_by_aicia_code(
+                    self._partner_code_from_account(legacy_account_code),
+                    partner_type,
+                    runtime=runtime,
+                )
+            if by_code and by_code != override and runtime is not None:
+                # Informativo: no deja el asiento en borrador, solo queda anotado.
+                runtime.setdefault("partner_map_discrepancies", []).append(
+                    (
+                        runtime.get("current_legacy_number"),
+                        legacy_account_code,
+                        override.display_name,
+                        by_code.display_name,
+                    )
+                )
+            partner = override
+            self._log_partner_decision(
+                runtime, "fichero", partner_type, None, legacy_account_code, partner
+            )
+            partner_type = None
+        elif not partner_type:
             self._log_partner_decision(
                 runtime, "sin_tipo", None, None, legacy_account_code, None
             )
@@ -1556,6 +1622,92 @@ class AiciaAccountImporterWizard(models.TransientModel):
                 partner_type,
                 count,
             )
+
+    _MAP_TYPES = {
+        "proveedor": "supplier",
+        "supplier": "supplier",
+        "cliente": "customer",
+        "customer": "customer",
+        "personal": "employee",
+        "empleado": "employee",
+        "employee": "employee",
+    }
+
+    def _partner_from_map(self, partner_type, runtime):
+        """Socio que el fichero asiento → socio fija para este tipo de línea, o None."""
+        if not partner_type or not runtime:
+            return None
+        by_number = (runtime.get("partner_override") or {}).get(
+            runtime.get("current_legacy_number")
+        )
+        return (by_number or {}).get(partner_type)
+
+    def _parse_partner_map(self, content: bytes):
+        """Lee el fichero opcional asiento → socio.
+
+        Devuelve ({numero_asiento: {tipo: contacto}}, avisos). Proveedores y
+        clientes se localizan por codigo_proveedor / codigo_cliente (C + ID), así
+        que sirve también para clientes con ID mayor de 9999; el personal, por su
+        código AICIA.
+        """
+        workbook = openpyxl.load_workbook(BytesIO(content), read_only=True, data_only=True)
+        rows = list(workbook.active.iter_rows(values_only=True))
+        if not rows:
+            return {}, []
+        head = [str(c or "").strip().lower() for c in rows[0]]
+        try:
+            i_num = head.index("numero_apunte")
+            i_tipo = head.index("tipo")
+            i_id = head.index("id_tercero")
+        except ValueError:
+            raise UserError(
+                _("El fichero de socios debe tener las columnas Numero_Apunte, Tipo e ID_Tercero.")
+            )
+        notes, entries = [], []
+        for n, row in enumerate(rows[1:], start=2):
+            if not row or row[i_num] in (None, ""):
+                continue
+            partner_type = self._MAP_TYPES.get(str(row[i_tipo] or "").strip().lower())
+            third = str(row[i_id] or "").strip()
+            if third.endswith(".0"):
+                third = third[:-2]
+            if not partner_type or not third.isdigit():
+                notes.append(_("Fichero de socios, fila %d: tipo o ID no válidos.") % n)
+                continue
+            number = str(row[i_num]).strip()
+            if number.endswith(".0"):
+                number = number[:-2]
+            entries.append((number, partner_type, third))
+        Partner = self.env["res.partner"].with_context(active_test=False)
+        found = {}
+        for partner_type, field in (("supplier", "codigo_proveedor"), ("customer", "codigo_cliente")):
+            ids = sorted({t for _n, pt, t in entries if pt == partner_type})
+            if ids and field in Partner._fields:
+                for partner in Partner.search([(field, "in", ["C" + t for t in ids])]):
+                    found[(partner_type, partner[field][1:])] = partner
+        employees = sorted({t for _n, pt, t in entries if pt == "employee"})
+        if employees:
+            for rec in self.env["aicia.partner.code"].search(
+                [("partner_type", "=", "employee"), ("code", "in", employees)]
+            ):
+                found[("employee", rec.code)] = rec.partner_id
+        result = {}
+        for number, partner_type, third in entries:
+            partner = found.get((partner_type, third))
+            if not partner:
+                notes.append(
+                    _("Asiento %(n)s: no existe en Odoo el %(t)s %(id)s del fichero de socios.")
+                    % {"n": number, "t": PARTNER_TYPE_LABELS[partner_type].lower(), "id": third}
+                )
+                continue
+            previous = result.setdefault(number, {}).get(partner_type)
+            if previous and previous != partner:
+                notes.append(
+                    _("Asiento %(n)s: varios socios del mismo tipo en el fichero; se usa el último.")
+                    % {"n": number}
+                )
+            result[number][partner_type] = partner
+        return result, notes
 
     def _resolve_partner_by_aicia_code(
         self, code: str, partner_type: str, runtime: dict | None = None

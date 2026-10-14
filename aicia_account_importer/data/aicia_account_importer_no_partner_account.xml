@@ -65,4 +65,19 @@
         <field name="use_full_code" eval="True"/>
         <field name="account_name">Facturas pendientes de reclamar</field>
     </record>
+    <record id="no_partner_account_460000273" model="aicia.account.importer.no.partner.account">
+        <field name="source_code">460000273</field>
+        <field name="name">Anticipo de personal dado de baja (código 273)</field>
+        <field name="note">Persona dada de baja con la cuenta a cero; el contable de AICIA confirma que puede quedar sin socio (13/10/2026)</field>
+    </record>
+    <record id="no_partner_account_460001012" model="aicia.account.importer.no.partner.account">
+        <field name="source_code">460001012</field>
+        <field name="name">Anticipo de personal dado de baja (código 1012)</field>
+        <field name="note">Persona dada de baja con la cuenta a cero; el contable de AICIA confirma que puede quedar sin socio (13/10/2026)</field>
+    </record>
+    <record id="no_partner_account_460001118" model="aicia.account.importer.no.partner.account">
+        <field name="source_code">460001118</field>
+        <field name="name">Anticipo de personal dado de baja (código 1118)</field>
+        <field name="note">Persona dada de baja con la cuenta a cero; el contable de AICIA confirma que puede quedar sin socio (13/10/2026)</field>
+    </record>
 </odoo>

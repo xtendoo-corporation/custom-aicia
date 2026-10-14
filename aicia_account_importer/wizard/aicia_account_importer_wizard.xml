@@ -74,6 +74,8 @@
                         <field name="filename_apuntes" invisible="1"/>
                         <field name="file_lineas" widget="binary" filename="filename_lineas"/>
                         <field name="filename_lineas" invisible="1"/>
+                        <field name="file_partner_map" widget="binary" filename="filename_partner_map"/>
+                        <field name="filename_partner_map" invisible="1"/>
                     </group>
                     <group string="Configuración de importación">
                         <field name="move_state"/>

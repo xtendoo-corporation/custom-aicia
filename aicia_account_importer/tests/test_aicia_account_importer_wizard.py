@@ -870,9 +870,14 @@ class TestAiciaAccountImporterWizard(TransactionCase):
             dict({"source_code": source_code}, **vals)
         )
 
-    def test_default_no_partner_rules_cover_the_eleven_accounts(self):
+    def test_default_no_partner_rules_cover_the_fourteen_accounts(self):
+        """11 cuentas del criterio contable + 3 anticipos de personal dado de baja."""
         Rule = self.env["aicia.account.importer.no.partner.account"]
-        self.assertEqual(Rule.search_count([]), 11)
+        self.assertEqual(Rule.search_count([]), 14)
+        self.assertEqual(
+            sorted(Rule.search([("source_code", "=like", "460%")]).mapped("source_code")),
+            ["460000273", "460001012", "460001118"],
+        )
         full = Rule.search([("use_full_code", "=", True)]).mapped("source_code")
         self.assertEqual(
             sorted(full), ["401000200", "401000300", "401000400", "618000200"]
@@ -1548,3 +1553,92 @@ class TestAiciaAccountImporterWizard(TransactionCase):
                 line.analytic_distribution,
                 "Sin ID_Proyecto no debe asignarse distribución analítica",
             )
+
+    # ── Fichero opcional asiento → socio ─────────────────────────────────────
+
+    def _make_partner_map_xlsx(self, rows):
+        import openpyxl
+
+        wb = openpyxl.Workbook()
+        ws = wb.active
+        ws.append(["Numero_Apunte", "Tipo", "ID_Tercero"])
+        for row in rows:
+            ws.append(row)
+        buf = BytesIO()
+        wb.save(buf)
+        return buf.getvalue()
+
+    def _map_setup(self):
+        if "codigo_cliente" not in self.env["res.partner"]._fields:
+            self.skipTest("aicia_extra_fields no instalado")
+        self._ensure_account("430000", "Clientes test", "asset_receivable")
+        self._ensure_account("572000", "Bancos test", "asset_cash")
+        por_codigo = self._make_partner("Dueño de la cuenta", "7791", partner_type="customer")
+        real = self.env["res.partner"].create(
+            {"name": "Cliente de la factura", "codigo_cliente": "C7792"}
+        )
+        return por_codigo, real
+
+    def _import_with_map(self, map_rows, account="430007791"):
+        return self._import(
+            [[1, 100, 20250115, None, "Cobro", "DOC", 1000, True, False, "R"]],
+            [
+                [1, 1, "572000001", 0, 0, "Cobro", 1000, "D"],
+                [1, 2, account, 0, 0, "Cobro", 1000, "H"],
+            ],
+            file_partner_map=self._enc(self._make_partner_map_xlsx(map_rows)),
+        )
+
+    def test_partner_map_has_priority_over_account_code_and_logs_the_difference(self):
+        _por_codigo, real = self._map_setup()
+        wizard = self._import_with_map([[100, "cliente", 7792]])
+        move = self._find_move_by_legacy_number("100")
+        line = move.line_ids.filtered(lambda l: l.credit > 0)
+        self.assertEqual(line.partner_id, real)
+        # La discrepancia es informativa: el asiento se confirma igualmente
+        self.assertEqual(wizard.total_warnings, 0)
+        self.assertEqual(move.state, "posted" if wizard.move_state == "posted" else "draft")
+        self.assertIn("distinto del que da el código", wizard.import_log)
+
+    def test_partner_map_without_discrepancy_gives_no_warning(self):
+        por_codigo, _real = self._map_setup()
+        por_codigo.write({"codigo_cliente": "C7791"})
+        wizard = self._import_with_map([[100, "cliente", 7791]])
+        move = self._find_move_by_legacy_number("100")
+        line = move.line_ids.filtered(lambda l: l.credit > 0)
+        self.assertEqual(line.partner_id, por_codigo)
+        self.assertEqual(wizard.total_warnings, 0)
+
+    def test_partner_map_also_applies_to_accounts_without_partner_rule(self):
+        """430000000 (cuenta general, sin socio por regla) toma el socio del fichero."""
+        _por_codigo, real = self._map_setup()
+        wizard = self._import_with_map([[100, "cliente", 7792]], account="430000000")
+        move = self._find_move_by_legacy_number("100")
+        line = move.line_ids.filtered(lambda l: l.credit > 0)
+        self.assertEqual(line.partner_id, real)
+        self.assertEqual(wizard.total_warnings, 0)
+
+    def test_partner_map_only_changes_lines_of_its_type(self):
+        _por_codigo, real = self._map_setup()
+        self._import_with_map([[100, "cliente", 7792]])
+        move = self._find_move_by_legacy_number("100")
+        bank = move.line_ids.filtered(lambda l: l.debit > 0)
+        self.assertFalse(bank.partner_id)
+
+    def test_partner_map_unknown_third_falls_back_to_account_code(self):
+        por_codigo, _real = self._map_setup()
+        self._import_with_map([[100, "cliente", 99999]])
+        move = self._find_move_by_legacy_number("100")
+        line = move.line_ids.filtered(lambda l: l.credit > 0)
+        self.assertEqual(line.partner_id, por_codigo)
+
+    def test_partner_map_requires_its_columns(self):
+        import openpyxl
+
+        wb = openpyxl.Workbook()
+        wb.active.append(["a", "b"])
+        buf = BytesIO()
+        wb.save(buf)
+        with self.assertRaises(UserError):
+            self._make_wizard()._parse_partner_map(buf.getvalue())
+

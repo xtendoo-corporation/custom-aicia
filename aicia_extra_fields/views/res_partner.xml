@@ -9,6 +9,7 @@
             <!-- Añadir el campo Socio Protector después del campo 'ref' -->
             <field name="ref" position="after">
                 <field name="protecter_partner" widget="boolean_toggle"/>
+                <field name="cuenta_contable_aicia"/>
             </field>
         </field>
     </record>

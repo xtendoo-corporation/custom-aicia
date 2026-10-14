@@ -79,13 +79,25 @@ Los códigos de cuenta tienen **9 dígitos** en el sistema legado y se dividen a
 - **Cuentas sin socio.** Por criterio contable algunas cuentas de los grupos de tercero
   no llevan contacto. Se definen en *Importación contable → Cuentas sin socio* (cuenta de
   9 dígitos o prefijo). Para esas líneas no se busca contacto ni se avisa. Por defecto hay
-  11 reglas (pendientes de confirmar con el contable):
+  14 reglas (11 pendientes de confirmar con el contable y 3 confirmadas el 13/10/2026):
   - 7 cuentas generales con código 0, importadas con 6 dígitos: `430000000`, `401000000`,
     `400000000`, `436000000`, `616000000`, `610000000`, `465000000`.
   - 4 cuentas especiales que **no son un tercero**, importadas con los **9 dígitos** como
     cuenta de Odoo (se crean si no existen): `618000200`, `401000200`, `401000300`,
     `401000400`. Sin esta regla tomarían el contacto que casualmente tiene el código 200,
     300 o 400.
+  - 3 anticipos de personal dado de baja con la cuenta a cero (confirmado por el contable
+    de AICIA): `460000273`, `460001012`, `460001118`. Se importan con 6 dígitos y sin socio.
+- **Código de cada contacto de proveedor y cliente.** Sale de su cuenta contable de AICIAWIN
+  (`cuenta_contable_aicia`, que guarda el importador de terceros): cuando varios contactos
+  comparten cuenta, el código es del titular (el que tiene ese número de ID). Si ninguna cuenta
+  reclama un código, queda para el contacto con ese número de ID (era su cuenta antigua). Las
+  cuentas generales (código 0) no dan código. El botón *Rehacer códigos de proveedor y cliente*
+  lo recalcula todo.
+- **Fichero opcional asiento → socio** (`Numero_Apunte`, `Tipo`, `ID_Tercero`): fija el socio
+  de un asiento con prioridad sobre el código de cuenta, incluso en cuentas sin socio. Las
+  diferencias con el código de cuenta quedan anotadas en el log y no dejan el asiento en borrador.
+  Se genera con `tools/aicia_migracion.py asiento-socio` (ver `tools/README.md`).
 - Si no existe ningún contacto con ese código y tipo, la línea se importa sin
   contacto, el asiento queda en **borrador** y se lista en el log. No se crean contactos.
 - El **Mapeo de cuentas** es opcional y está vacío por defecto: sirve para forzar

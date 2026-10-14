@@ -15,6 +15,21 @@ except ImportError:
     openpyxl = None
 
 
+# AICIAWIN da de alta a una misma entidad con varios códigos y distingue su NIF con un
+# espacio y un correlativo ("A12345678 2"). Odoo solo quiere el NIF: el correlativo se
+# descarta y cada código sigue siendo un contacto distinto (codigo_cliente / codigo_proveedor).
+NIF_SUFFIX_RE = re.compile(r"^(?P<base>[A-Z0-9][A-Z0-9\-]{6,10}[A-Z0-9])\s+\d{1,3}$")
+
+
+def split_nif_suffix(raw):
+    """Devuelve (nif sin correlativo, correlativo) de un NIF de AICIAWIN."""
+    nif = re.sub(r"\s+", " ", str(raw or "").strip().upper())
+    match = NIF_SUFFIX_RE.match(nif)
+    if match:
+        return match.group("base"), nif[len(match.group("base")):].strip()
+    return nif, ""
+
+
 class AiciaImporterWizard(models.TransientModel):
     _name = "aicia.importer.wizard"
     _description = "Importador de Proveedores y Clientes AICIA"
@@ -602,6 +617,15 @@ class AiciaImporterWizard(models.TransientModel):
             partner_vals['customer_rank'] = 1
             partner_vals['codigo_cliente'] = ref
 
+        # Cuenta contable de AICIAWIN: el importador de apuntes la usa para
+        # localizar al contacto (no siempre coincide con el ID del tercero).
+        cuenta = data.get('Cuenta_Contable')
+        cuenta = str(cuenta).strip() if cuenta is not None else ''
+        if cuenta.endswith('.0'):
+            cuenta = cuenta[:-2]
+        if cuenta.isdigit():
+            partner_vals['cuenta_contable_aicia'] = cuenta.zfill(9)
+
         # Referencia interna (ya incluye la 'C' para clientes)
         if ref:
             partner_vals['ref'] = ref
@@ -621,7 +645,7 @@ class AiciaImporterWizard(models.TransientModel):
         print("*"*50)
         print("vat before processing:",vat)
         if vat:
-            vat = vat.upper()
+            vat, _suffix = split_nif_suffix(vat)
             print("vat after upper():",vat)
 
             # Si NO empieza por dos letras (código de país), añadir ES
@@ -980,7 +1004,7 @@ class AiciaImporterWizard(models.TransientModel):
                     # Obtener valores de las celdas
                     codigo = str(data.get('ID_Personal', '')).strip() if data.get('ID_Personal') else ''
                     nombre = str(data.get('Nombre', '')).strip() if data.get('Nombre') else ''
-                    nif = str(data.get('NIF', '')).strip() if data.get('NIF') else ''
+                    nif = split_nif_suffix(data.get('NIF'))[0] if data.get('NIF') else ''
                     direccion = str(data.get('Direccion', '')).strip() if data.get('Direccion') else ''
                     cod_postal = str(data.get('Cod_Postal', '')).strip() if data.get('Cod_Postal') else ''
                     poblacion = str(data.get('Población', '')).strip() if data.get('Población') else ''

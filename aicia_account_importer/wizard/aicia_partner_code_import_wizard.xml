@@ -66,7 +66,13 @@
                             type="object"
                             class="btn-secondary"
                             display="always"
-                            confirm="Copia codigo_proveedor y codigo_cliente de los contactos a los códigos AICIA. ¿Continuar?"/>
+                            confirm="Crea los códigos que faltan a partir de la cuenta contable AICIA de los contactos. ¿Continuar?"/>
+                    <button name="action_reload_supplier_customer_codes"
+                            string="Rehacer códigos de proveedor y cliente"
+                            type="object"
+                            class="btn-secondary"
+                            display="always"
+                            confirm="Borra todos los códigos de proveedor y cliente (no los de personal) y los vuelve a crear desde la cuenta contable AICIA. ¿Continuar?"/>
                 </header>
                 <field name="partner_id"/>
                 <field name="partner_type"/>
