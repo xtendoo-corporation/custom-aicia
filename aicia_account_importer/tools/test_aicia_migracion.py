@@ -73,6 +73,16 @@ class TestExpected(unittest.TestCase):
         line = self.exp([linea("1", "430000185", "500", "H")], own=owners(c={"430000185": [185, 1262]}))[0]
         self.assertEqual((line[3], line[4]), (("C", 185), "cuenta compartida: titular"))
 
+    def test_shared_account_of_one_entity_is_not_an_inference(self):
+        contact_of = {("C", 185): "7", ("C", 1262): "7"}
+        res = tool.expected_lines(self.apuntes, [linea("1", "430000185", "500", "H")], {}, owners(c={"430000185": [185, 1262]}), contact_of)["10"][0]
+        self.assertEqual(res[4], "cuenta compartida: misma entidad")
+
+    def test_shared_account_of_different_entities_stays_inferred(self):
+        contact_of = {("C", 185): "7", ("C", 1262): "8"}
+        res = tool.expected_lines(self.apuntes, [linea("1", "430000185", "500", "H")], {}, owners(c={"430000185": [185, 1262]}), contact_of)["10"][0]
+        self.assertEqual(res[4], "cuenta compartida: titular")
+
     def test_single_partner_account_uses_that_partner(self):
         line = self.exp([linea("1", "400000001", "500", "D")], own=owners(s={"400000001": [9]}))[0]
         self.assertEqual((line[3], line[4]), (("S", 9), "cuenta de un solo socio"))

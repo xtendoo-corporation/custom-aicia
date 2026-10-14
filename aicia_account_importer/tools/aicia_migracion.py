@@ -189,11 +189,13 @@ def target_account(legacy):
     return legacy if legacy in FULL_CODE else legacy[:5] + "0"
 
 
-def expected_lines(apuntes, lineas, facturas, owners):
+def expected_lines(apuntes, lineas, facturas, owners, contact_of=None):
     """Líneas esperadas por asiento: {num: [(cuenta Odoo, debe, haber, socio, motivo, cuenta legada, fecha)]}.
 
     ``socio`` es None o (tipo, número). ``facturas`` es {(num, tipo S/C): id}.
-    ``owners`` es {tipo: {cuenta legada: [ids con esa cuenta]}}.
+    ``owners`` es {tipo: {cuenta legada: [ids con esa cuenta]}}. ``contact_of`` es opcional,
+    {(tipo S/C, id): contacto de Odoo}: si todos los códigos de una cuenta compartida son del
+    mismo contacto (misma entidad), la línea no es una inferencia.
     """
     valid = {a["ID_Apunte"]: a for a in apuntes if is_true(a["Validado"]) and not is_true(a["Anulado"])}
     result = collections.defaultdict(list)
@@ -220,7 +222,11 @@ def expected_lines(apuntes, lineas, facturas, owners):
                 if len(members) == 1:
                     who, why = (kind, members[0]), "cuenta de un solo socio"
                 elif len(members) > 1:
-                    who, why = (kind, suffix), "cuenta compartida: titular"
+                    contacts = {(contact_of or {}).get((kind, m)) for m in members}
+                    if contact_of and len(contacts) == 1 and None not in contacts:
+                        who, why = (kind, suffix), "cuenta compartida: misma entidad"
+                    else:
+                        who, why = (kind, suffix), "cuenta compartida: titular"
                 else:
                     who, why = (kind, suffix), "cuenta antigua sin socio hoy: código = ID"
         result[num].append((target_account(legacy), debit, credit, who, why, legacy, date_ymd(a["Fecha_Contable"])))
@@ -276,7 +282,13 @@ def cmd_conciliacion(args):
         owners["S"][r["Cuenta_Contable"]].append(int(r["ID_Proveedor"]))
     for r in read_source(args, "Clientes"):
         owners["C"][r["Cuenta_Contable"]].append(int(r["ID_Cliente"]))
-    expected = expected_lines(apuntes, lineas, asiento_socio, owners)
+    contact_of = None
+    if args.odoo_codes:
+        contact_of = {
+            ("S" if r["partner_type"] == "supplier" else "C", int(r["code"])): r["partner_id"]
+            for r in read_csv(args.odoo_codes) if r["partner_type"] in ("supplier", "customer") and r["code"].isdigit()
+        }
+    expected = expected_lines(apuntes, lineas, asiento_socio, owners, contact_of)
     matched, wrong, missing, extra = reconcile(expected, odoo)
     write_conciliation(args.out, expected, odoo, matched, wrong, missing, extra)
 
@@ -325,6 +337,7 @@ def write_conciliation(path, expected, odoo, matched, wrong, missing, extra):
     certainty = {
         "por factura": "Dato", "por código de personal": "Dato (código de la cuenta)",
         "cuenta de un solo socio": "Dato", "sin socio por regla contable": "Decisión del contable",
+        "cuenta compartida: misma entidad": "Dato (todos los códigos de la cuenta son un solo contacto)",
         "cuenta compartida: titular": "Inferido", "cuenta antigua sin socio hoy: código = ID": "Inferido",
         "sin tipo de socio": "No aplica (la cuenta no lleva socio)",
     }
@@ -338,7 +351,7 @@ def write_conciliation(path, expected, odoo, matched, wrong, missing, extra):
     def fecha(f): return f"{f[6:8]}/{f[4:6]}/{f[:4]}" if len(f) == 8 else f
     sheet("Líneas inferidas", ["Nº asiento", "Fecha", "Cuenta legada", "Debe (€)", "Haber (€)", "Socio asignado", "Motivo"],
           [[int(n), fecha(l[6]), l[5], l[1] / 100, l[2] / 100, f"{l[3][0]}{l[3][1]}" if l[3] else "", l[4]]
-           for n, l in sorted(matched, key=lambda x: (int(x[0]), x[1][5])) if l[4].startswith(("cuenta compartida", "cuenta antigua"))])
+           for n, l in sorted(matched, key=lambda x: (int(x[0]), x[1][5])) if l[4].startswith(("cuenta compartida: titular", "cuenta antigua"))])
     sheet("Pendientes y diferencias", ["Nº asiento", "Fecha", "Cuenta legada", "Debe (€)", "Haber (€)", "Socio esperado", "Qué pasa"],
           [[int(n), fecha(l[6]), l[5], l[1] / 100, l[2] / 100, f"{l[3][0]}{l[3][1]}" if l[3] else "", "El socio de Odoo no es el esperado (o no tiene socio)"] for n, l in wrong]
           + [[int(n), fecha(l[6]), l[5], l[1] / 100, l[2] / 100, "", "Falta la línea en Odoo"] for n, l in missing]
@@ -361,7 +374,7 @@ def write_conciliation(path, expected, odoo, matched, wrong, missing, extra):
         [],
         ["Líneas con el socio esperado", len(matched), None, None],
         ["…de ellas inferidas (cuenta compartida o cuenta antigua)",
-         sum(1 for _n, l in matched if l[4].startswith(("cuenta compartida", "cuenta antigua"))), None, None],
+         sum(1 for _n, l in matched if l[4].startswith(("cuenta compartida: titular", "cuenta antigua"))), None, None],
         ["Líneas con socio distinto o sin socio esperado", len(wrong), None, None],
         ["Líneas que faltan en Odoo", len(missing), None, None],
         ["Líneas de más en Odoo", len(extra), None, None],
@@ -416,6 +429,8 @@ def main(argv=None):
     s.add_argument("--lineas", required=True, help="Lineas_Apunte.xlsx del ejercicio")
     s.add_argument("--odoo-lines", required=True, help="CSV de odoo_lines.sql")
     s.add_argument("--asiento-socio", help="el mismo asiento_socio.xlsx que se importó")
+    s.add_argument("--odoo-codes", help="CSV (partner_type, code, partner_id) de aicia_partner_code: "
+                                        "distingue las cuentas compartidas por una sola entidad")
     s.add_argument("--out", required=True, help="informe .xlsx")
     s.set_defaults(func=cmd_conciliacion)
 

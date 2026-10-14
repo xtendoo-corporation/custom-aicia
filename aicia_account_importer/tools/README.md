@@ -64,8 +64,12 @@ tablas del mdb a CSV y usa `--csv-dir carpeta` en lugar de `--mdb`.
        -c "\copy ($(tr '\n' ' ' < odoo_lines.sql)) to stdout csv header" > odoo_lines.csv
    python3 aicia_migracion.py conciliacion --mdb General.mdb \
        --apuntes Apuntes.xlsx --lineas Lineas_Apunte.xlsx \
-       --odoo-lines odoo_lines.csv --asiento-socio asiento_socio.xlsx --out conciliacion.xlsx
+       --odoo-lines odoo_lines.csv --asiento-socio asiento_socio.xlsx \
+       --odoo-codes odoo_codes.csv --out conciliacion.xlsx
    ```
+   `odoo_codes.csv` = `select partner_type, code, partner_id from aicia_partner_code where
+   partner_type in ('supplier','customer')` (con cabecera, en CSV). Con él, las líneas de cuentas
+   compartidas cuyos códigos son todos del mismo contacto ya no cuentan como inferidas.
    Sin docker: `psql -U odoo -d <base> -c "\copy (...) to stdout csv header" > odoo_lines.csv`.
 
 ## Criterio de aceptación
