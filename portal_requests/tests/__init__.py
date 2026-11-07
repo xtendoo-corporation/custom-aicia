@@ -27,3 +27,4 @@ from . import test_project_request_members
 from . import test_equip_boss_first_approval
 from . import test_team_boss_portal_review
 from . import test_portal_manual
+from . import test_portal_home_counters
