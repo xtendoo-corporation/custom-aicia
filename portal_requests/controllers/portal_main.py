@@ -1009,9 +1009,15 @@ class PortalRequestsCustomerPortal(CustomerPortal):
         # ])
         # values['project_request_count'] = project_request_count
 
-        # Indica si el usuario es Jefe de Equipo (controla visibilidad de la tarjeta en el home)
-        values['is_equip_boss'] = request.env.user.has_group('portal_requests.group_equip_boss')
+        return values
 
+    def _prepare_portal_layout_values(self):
+        # No va en _prepare_home_portal_values: /my/counters devuelve todas sus
+        # claves y el JS del portal espera un placeholder para cada una.
+        values = super()._prepare_portal_layout_values()
+        values['is_equip_boss'] = request.env.user.has_group(
+            'portal_requests.group_equip_boss'
+        )
         return values
 
     @http.route(['/my/expenses', '/my/expenses/page/<int:page>'], type='http', auth="user", website=True)
