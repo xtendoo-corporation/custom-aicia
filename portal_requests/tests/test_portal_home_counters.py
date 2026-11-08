@@ -57,6 +57,13 @@ class TestPortalHomeCounters(HttpCase):
         self.assertEqual(response.status_code, 200)
         self.assertIn("/my/project_requests", response.text)
 
+    def test_home_renders_counters_spinner(self):
+        """El JS elimina ``.o_portal_doc_spinner`` tras cargar contadores."""
+        self.authenticate(self.user.login, self.password)
+        response = self.url_open("/my")
+        self.assertEqual(response.status_code, 200)
+        self.assertIn("o_portal_doc_spinner", response.text)
+
     def test_home_hides_project_requests_card_for_regular_user(self):
         self.authenticate(self.user.login, self.password)
         response = self.url_open("/my")

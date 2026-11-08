@@ -26,6 +26,8 @@
                             <t t-set="config_card" t-value="True"/>
                         </t>
                     </div>
+                    <!-- Requerido por portal_home_counters: lo elimina al cargar los contadores. -->
+                    <div class="o_portal_doc_spinner spinner-border text-o-color-2 align-self-center mt-5"/>
                 </div>
             </xpath>
         </template>
