@@ -287,15 +287,12 @@ class PortalInvoiceRequest(models.Model):
             print("Factura")
             tax_ids =self.env['account.tax'].search([('name', '=', '21% S')], limit=1)
             journal_id = self.env['account.journal'].search([('name', '=', 'Facturas de cliente')], limit=1)
-            invoice = self.env['account.move'].sudo().create({
+            invoice_vals = {
                 'partner_id': self.partner_id.id,
                 'invoice_date': self.date,
                 'invoice_origin': False,
                 'journal_id': journal_id.id,
                 'move_type': 'out_invoice',
-                'analytic_distribution': {
-                    self.analytic_id.id: 100,  # 100 significa 100% de distribución
-                } if self.analytic_id else {},
                 'invoice_line_ids': [
                     (0, 0, {
                         'name': self.notes or self.analytic_id.name,
@@ -307,7 +304,13 @@ class PortalInvoiceRequest(models.Model):
                         'tax_ids': [(6, 0, tax_ids.ids)],
                     })
                 ],
-            })
+            }
+            # Header analytic field is added by aicia_account_move_analytic_account
+            if 'analytic_distribution' in self.env['account.move']._fields:
+                invoice_vals['analytic_distribution'] = {
+                    self.analytic_id.id: 100,
+                } if self.analytic_id else {}
+            invoice = self.env['account.move'].sudo().create(invoice_vals)
         else:
             print("Factura rectificativa")
             print("self.l10n_", self.l10n_es_edi_facturae_reason_code)
@@ -336,7 +339,8 @@ class PortalInvoiceRequest(models.Model):
 
         # invoice.sudo().action_post()
         self.invoice_created = invoice.id
-        self.invoice_created._onchange_analytic_distribution()
+        if hasattr(self.invoice_created, '_onchange_analytic_distribution'):
+            self.invoice_created._onchange_analytic_distribution()
         group = self.analytic_id.work_group_id
         invoice.add_followers_from_request(self)
         #self.invoice_created.add_partner_id_to_followers(group)
