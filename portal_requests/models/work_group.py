@@ -65,6 +65,8 @@ class WorkGroup(models.Model):
         if not self:
             return False
         self.ensure_one()
+        if user.has_group('portal_requests.group_aicia_admin'):
+            return True
         return self.equip_boss == user or self.administrative_id == user
 
     def _is_equip_boss_step_approver(self, user):
@@ -74,6 +76,9 @@ class WorkGroup(models.Model):
         propio en el circuito). Sin grupo de trabajo (recordset vacío, p.ej.
         las solicitudes de "Finalizar proyecto"), cualquier usuario con el
         perfil de Jefe de Equipo que no sea Administrativo."""
+        if user.has_group('portal_requests.group_aicia_admin'):
+            # El perfil Admin puede aprobar este paso en cualquier grupo.
+            return True
         if self:
             self.ensure_one()
             return self.equip_boss == user
@@ -98,5 +103,7 @@ class WorkGroup(models.Model):
     @api.model
     def _boss_or_administrative_domain(self, user):
         """Dominio ir.rule-friendly: grupos de trabajo donde `user` es Jefe
-        de Equipo o Administrativo."""
+        de Equipo o Administrativo (el perfil Admin los ve todos)."""
+        if user.has_group('portal_requests.group_aicia_admin'):
+            return [(1, '=', 1)]
         return ['|', ('equip_boss', '=', user.id), ('administrative_id', '=', user.id)]

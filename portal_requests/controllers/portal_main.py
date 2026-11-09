@@ -53,7 +53,7 @@ class PortalRequestsCustomerPortal(CustomerPortal):
         - Es el jefe de equipo del grupo de trabajo asociado a la solicitud.
         """
         user = request.env.user
-        if invoice_request.user_id == user:
+        if invoice_request.user_id == user or user.has_group('portal_requests.group_aicia_admin'):
             return True
         if invoice_request.equip_boss == user or invoice_request.administrative_id == user:
             return True
@@ -68,6 +68,8 @@ class PortalRequestsCustomerPortal(CustomerPortal):
           (saldos/presupuestos), que se oculta en la plantilla mediante
           _hide_project_financials().
         """
+        if user.has_group('portal_requests.group_aicia_admin'):
+            return []  # el perfil Admin ve todos los proyectos
         domain = [('responsible_id', '=', user.id)]
         if user.has_group('portal_requests.group_equip_boss'):
             boss_group_ids = request.env['portal.work.group'].sudo().search(
@@ -82,6 +84,7 @@ class PortalRequestsCustomerPortal(CustomerPortal):
         (ambos ven las solicitudes de su equipo en el portal)."""
         if not user.has_group('portal_requests.group_equip_boss'):
             return request.env['portal.work.group']
+        # _boss_or_administrative_domain devuelve todos los grupos para Admin
         return request.env['portal.work.group'].sudo().search(
             request.env['portal.work.group']._boss_or_administrative_domain(user)
         )
@@ -1340,8 +1343,9 @@ class PortalRequestsCustomerPortal(CustomerPortal):
         """Permite al jefe de equipo aprobar una solicitud de factura desde el portal"""
         invoice_request = request.env['portal.invoice.request'].sudo().browse(invoice_request_id)
 
-        # Solo el jefe de equipo puede usar esta acción
-        if invoice_request.equip_boss != request.env.user:
+        # Solo el jefe de equipo del grupo (o el perfil Admin) puede usar esta acción
+        if (not invoice_request.work_group_id
+                or not invoice_request.work_group_id._is_equip_boss_step_approver(request.env.user)):
             return request.redirect('/my')
 
         # Solo se puede aprobar cuando está pendiente de aprobación del jefe de equipo
@@ -1358,7 +1362,8 @@ class PortalRequestsCustomerPortal(CustomerPortal):
         invoice_request = request.env['portal.invoice.request'].sudo().browse(invoice_request_id)
         if (not invoice_request.exists()
                 or invoice_request.status != 'approved_by_boss_group'
-                or invoice_request.equip_boss != request.env.user):
+                or not invoice_request.work_group_id
+                or not invoice_request.work_group_id._is_equip_boss_step_approver(request.env.user)):
             return request.redirect('/my')
         reason = (reason or '').strip()
         if not reason:
@@ -2177,7 +2182,9 @@ class PortalRequestsCustomerPortal(CustomerPortal):
         payment = request.env['account.payment'].sudo().browse(invoice_id)
         # Validar acceso igual que en portal_my_payment_detail
         analytic_domain = [('responsible_id', '=', user.id)]
-        if user.has_group('portal_requests.group_equip_boss') and not user.has_group('portal_requests.group_administrative'):
+        if user.has_group('portal_requests.group_aicia_admin'):
+            analytic_domain = []
+        elif user.has_group('portal_requests.group_equip_boss') and not user.has_group('portal_requests.group_administrative'):
             work_groups = user.work_group_ids
             if work_groups:
                 analytic_domain = ['|', ('responsible_id', '=', user.id), ('work_group_id', 'in', work_groups.ids)]

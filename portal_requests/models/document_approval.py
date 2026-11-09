@@ -228,7 +228,10 @@ class DocumentApproval(models.Model):
 
     def action_approve(self):
         self.ensure_one()
-        if (self.status == 'approved_by_equip_boss'
+        # Un usuario con varios perfiles (p. ej. Admin) no debe encadenar varios
+        # pasos en una sola pulsación: se actúa solo sobre el estado inicial.
+        status = self.status
+        if (status == 'approved_by_equip_boss'
                 and self.work_group_id._is_equip_boss_step_approver(self.env.user)
                 and not (self.work_group_id and self.env.user == self.user_id)):
             self.status = 'approved_by_director_i_d'
@@ -236,14 +239,14 @@ class DocumentApproval(models.Model):
             user_to_send = group.sudo().user_ids
             self.send_request_email(self.type_id.name, user_to_send, "approved_by_equip_boss")
 
-        if self.status == 'approved_by_director_i_d' and self.env.user.has_group(
+        elif status == 'approved_by_director_i_d' and self.env.user.has_group(
                 "portal_requests.group_director_investigation_and_development"):
             self.status = 'approved_by_director_gerente'
             group = self.env.ref('portal_requests.group_director_manager')
             user_to_send = group.user_ids
             self.send_request_email(self.type_id.name, user_to_send, "approved_by_director_i_d")
 
-        if self.status == 'approved_by_director_gerente' and self.env.user.has_group(
+        elif status == 'approved_by_director_gerente' and self.env.user.has_group(
                 "portal_requests.group_director_manager"):
             # Sincronizar el sign.request si fue creado desde el editor visual
             self._sync_sign_request()
@@ -263,7 +266,7 @@ class DocumentApproval(models.Model):
                 self.status = 'sign_company'
                 self.send_request_email(self.type_id.name, user_to_send, "sign_director_manager")
 
-        if self.status == 'final_revision' and self.env.user.has_group(
+        elif status == 'final_revision' and self.env.user.has_group(
                 "portal_requests.group_director_investigation_and_development"):
             self.status = 'approve'
             user_to_send = self.user_id
