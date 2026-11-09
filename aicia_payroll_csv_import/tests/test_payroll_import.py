@@ -330,3 +330,14 @@ class TestAiciaPayrollImport(TransactionCase):
         self.assertTrue(payable_line)
         self.assertFalse(payable_line.analytic_distribution)
 
+
+    def test_option_field_labels_are_spanish(self):
+        config_fields = self.env["aicia.payroll.config"]._fields
+        expected_labels = {
+            "include_management_costs": "Incluir costes de gestoría",
+            "include_ct_costs": "Incluir costes CT",
+            "include_travel_costs": "Incluir costes de desplazamiento",
+            "group_by_employee": "Agrupar por empleado",
+        }
+        for field_name, label in expected_labels.items():
+            self.assertEqual(config_fields[field_name].string, label)

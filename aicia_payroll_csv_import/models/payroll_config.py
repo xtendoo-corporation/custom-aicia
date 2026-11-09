@@ -123,10 +123,16 @@ class AiciaPayrollConfig(models.Model):
         ondelete="restrict",
         domain="[('company_ids', 'parent_of', company_id)]",
     )
-    include_management_costs = fields.Boolean(default=False)
-    include_ct_costs = fields.Boolean(default=False)
-    include_travel_costs = fields.Boolean(default=False)
-    group_by_employee = fields.Boolean(default=False)
+    include_management_costs = fields.Boolean(
+        string="Incluir costes de gestoría", default=False
+    )
+    include_ct_costs = fields.Boolean(string="Incluir costes CT", default=False)
+    include_travel_costs = fields.Boolean(
+        string="Incluir costes de desplazamiento", default=False
+    )
+    group_by_employee = fields.Boolean(
+        string="Agrupar por empleado", default=False
+    )
 
     @api.model
     def _default_journal_id(self):
