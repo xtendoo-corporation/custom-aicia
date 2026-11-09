@@ -19,7 +19,6 @@
         "sign",
         "project",
         "send_draft_invoices",
-        "xtendoo_invoice_import_gemini_ai",
         "knowledge",
     ],
     "license": "AGPL-3",
