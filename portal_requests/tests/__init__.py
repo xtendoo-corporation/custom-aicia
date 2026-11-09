@@ -31,3 +31,4 @@ from . import test_portal_home_counters
 from . import test_invoice_request_create_invoice
 from . import test_expense_create_purchase_invoice
 from . import test_portal_project_request_flow
+from . import test_analytic_account_admin_access
