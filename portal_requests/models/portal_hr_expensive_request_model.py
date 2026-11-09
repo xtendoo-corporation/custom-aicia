@@ -221,42 +221,23 @@ class PortalHrExpensiveRequest(models.Model):
         attachments = self.env['ir.attachment'].search(
             [('res_model', '=', 'portal.hr.expensive.request'), ('res_id', '=', self.id)])
 
-        invoice_vals = {
-            'move_type': 'in_invoice',
-            'analytic_distribution': analytic_distribution,
-            'gemini_attachment_id': attachments[:1].id if attachments else False,
-
-        }
+        invoice_vals = {'move_type': 'in_invoice'}
+        # Header analytic field is added by aicia_account_move_analytic_account
+        if 'analytic_distribution' in self.env['account.move']._fields:
+            invoice_vals['analytic_distribution'] = analytic_distribution
         invoice = self.env['account.move'].create(invoice_vals)
-        for attachment in attachments:
-            invoice_attachment = False
-            print("-" * 50)
-            print("Attachment name:", attachment.name)
-            if attachment.name.startswith("inventario_"):
-                print("Es un archivo de inventario, se omite.")
-                print(attachment.name)
-                print(attachment.id)
-            else:
-                print("Es un archivo de factura, se selecciona.")
-                print(attachment.name)
-                print(attachment.id)
-                invoice_attachment = attachment.id
-        #añadimos el adjunto de la solicitud a la factura
-        attachments = self.env['ir.attachment'].search([('id', '=', invoice_attachment)])
+        # The invoice document is the first attachment that is not an inventory list
+        attachments = attachments.filtered(
+            lambda att: not (att.name or '').startswith('inventario_')
+        )[:1]
         for attachment in attachments:
             attachment.write({
                 'res_model': 'account.move',
                 'res_id': invoice.id,
             })
         self.invoice_created = invoice.id
-        # Supongamos que attachments es una lista de objetos con 'filename' e 'id'
-        # Queremos el primero cuyo filename NO empiece por "inventario_"
-        # Elegir el primer attachment que no empiece por "inventario_"
-        invoice.gemini_attachment_id = attachments.ids[0] if attachments else False
-        print("*"*50)
-        print("invoice.gemini_attachment_id:", invoice.gemini_attachment_id)
-        print("*"*50)
-        invoice._auto_scan_if_configured()
+        if attachments:
+            invoice.message_main_attachment_id = attachments[:1]
         if self.type in ('material_inventariable', 'liquidacion_gastos'):
             attachments = self.env['ir.attachment'].search(
                 [('res_model', '=', 'portal.hr.expensive.request'), ('res_id', '=', self.id)])
