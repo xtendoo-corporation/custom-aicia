@@ -230,7 +230,9 @@ Un único formulario cubre cuatro tipologías:
    (en PDF).
 2. **Aprueba el Jefe de Equipo** de su grupo de trabajo → se notifica al
    **segundo aprobador** (Personal y Compras, o Clientes y Becarios en el caso de
-   gratificación).
+   gratificación). El Responsable de Clientes y Becarios encuentra las
+   gratificaciones pendientes y aprobadas en el apartado **Gratificaciones**
+   de su resumen de Solicitudes del Portal.
 3. El **segundo aprobador** aprueba:
    - Si el importe **supera 10.000 €** → se escala al **Director Gerente** y se le
      notifica.

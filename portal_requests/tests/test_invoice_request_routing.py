@@ -76,7 +76,7 @@ class TestInvoiceRequestSubmitRouting(HttpCase, InvoiceRoutingSetupMixin):
             team_member_vals={'password': self.password},
         )
 
-    def _submit(self, user):
+    def _submit(self, user, amount='100.0'):
         self.authenticate(user.login, self.password)
         return self.url_open(
             '/portal/invoice_request/submit',
@@ -84,7 +84,7 @@ class TestInvoiceRequestSubmitRouting(HttpCase, InvoiceRoutingSetupMixin):
                 'csrf_token': Request.csrf_token(self),
                 'company_id': str(self.analytic.id),
                 'partner_id': str(self.partner.id),
-                'amount': '100.0',
+                'amount': amount,
                 'notes': 'Factura de prueba',
                 'move_type': 'out_invoice',
                 'date': '2026-01-01',
@@ -125,6 +125,31 @@ class TestInvoiceRequestSubmitRouting(HttpCase, InvoiceRoutingSetupMixin):
         self._submit(self.team_member)
         invoice_request = self._last_request_for(self.team_member)
         self.assertEqual(invoice_request.status, 'approved_by_boss_group')
+
+    def test_invoice_amount_accepts_decimals_in_browser(self):
+        self.boss.password = self.boss.login
+        self.browser_js(
+            '/portal/invoice_request',
+            """
+            const amount = document.querySelector('#amount');
+            for (const value of ['500.65', '0.01', '500', '-10.50']) {
+                amount.value = value;
+                if (!amount.checkValidity() || amount.valueAsNumber !== Number(value)) {
+                    throw new Error(`Importe no válido: ${value}`);
+                }
+            }
+            console.log('test successful');
+            """,
+            login=self.boss.login,
+        )
+
+    def test_invoice_amount_decimal_is_saved(self):
+        response = self._submit(self.team_member, amount='500.65')
+        self.assertTrue(
+            response.headers.get('Location', '').endswith('/my/invoices/thank-you')
+        )
+        invoice_request = self._last_request_for(self.team_member)
+        self.assertAlmostEqual(invoice_request.amount, 500.65, places=2)
 
 
 @tagged('post_install', '-at_install')

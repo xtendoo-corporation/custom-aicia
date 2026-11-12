@@ -52,6 +52,15 @@ class PortalRequestDashboard(models.Model):
             return self.open_to_revise_expensive()
 
     def open_to_revise_expensive(self):
+        if self.type == 'gratificacion':
+            return {
+                'name': _('Gratificaciones para revisar'),
+                'type': 'ir.actions.act_window',
+                'res_model': 'portal.hr.expensive.request',
+                'view_mode': 'list,form',
+                'domain': self._gratification_domain('approved_purchase_responsible'),
+                'context': {'group_by': 'project'},
+            }
         if self.env.user.has_group('portal_requests.group_director_investigation_and_development') or self.env.user.has_group(
             'portal_requests.group_director_manager'):
             return {
@@ -233,6 +242,15 @@ class PortalRequestDashboard(models.Model):
             return self.open_approved_expensive()
 
     def open_approved_expensive(self):
+        if self.type == 'gratificacion':
+            return {
+                'name': _('Gratificaciones aprobadas'),
+                'type': 'ir.actions.act_window',
+                'res_model': 'portal.hr.expensive.request',
+                'view_mode': 'list,form',
+                'domain': self._gratification_domain('approve'),
+                'context': {'group_by': 'project'},
+            }
         return {
             'name': _('Gastos Aprobadas'),
             'type': 'ir.actions.act_window',
@@ -416,7 +434,16 @@ class PortalRequestDashboard(models.Model):
                 record.count_to_revise = self.env['portal.hr.employee.intern.request'].search_count(
                     [('is_revised', '=', False)])
             elif record.model == 'portal.hr.expensive.request':
-                record.count_to_revise = self._compute_count_to_revise_expensive()
+                if record.type == 'gratificacion':
+                    record.count_to_revise = self.env['portal.hr.expensive.request'].search_count(
+                        record._gratification_domain('approved_purchase_responsible')
+                    )
+                else:
+                    record.count_to_revise = self._compute_count_to_revise_expensive()
+
+    def _gratification_domain(self, status):
+        self.ensure_one()
+        return [('type', '=', 'gratificacion'), ('status', '=', status)]
 
     def _compute_count_to_revise_expensive(self):
         if self.env.user.has_group('portal_requests.group_director_investigation_and_development'):
@@ -464,7 +491,11 @@ class PortalRequestDashboard(models.Model):
             elif record.model == 'portal.hr.employee.intern.request':
                 record.approved_text = _('Aprobados: %s', number)
             elif record.model == 'portal.hr.expensive.request':
-                record.approved_text = _('Aprobados: %s', number)
+                record.approved_text = (
+                    _('Aprobadas: %s', number)
+                    if record.type == 'gratificacion'
+                    else _('Aprobados: %s', number)
+                )
 
     def _compute_count_approved(self):
         for record in self:
@@ -489,7 +520,12 @@ class PortalRequestDashboard(models.Model):
                 record.count_approved = self.env['portal.hr.employee.intern.request'].search_count(
                     [('approved', '=', True), ('is_revised', '=', True)])
             elif record.model == 'portal.hr.expensive.request':
-                record.count_approved = self._compute_count_approved_expensive()
+                if record.type == 'gratificacion':
+                    record.count_approved = self.env['portal.hr.expensive.request'].search_count(
+                        record._gratification_domain('approve')
+                    )
+                else:
+                    record.count_approved = self._compute_count_approved_expensive()
 
     def _compute_count_approved_expensive(self):
         if self.env.user.has_group('portal_requests.group_director_investigation_and_development'):

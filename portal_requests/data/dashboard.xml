@@ -86,6 +86,17 @@
                 (4, ref('portal_requests.group_project_boss')),
             ]"/>
         </record>
+        <record id="dashboard_gratification" model="portal.request.dashboard">
+            <field name="name">Gratificaciones</field>
+            <field name="show_unapproved">False</field>
+            <field name="image" type="base64" file="portal_requests/static/description/expensive.png"/>
+            <field name="model">portal.hr.expensive.request</field>
+            <field name="type">gratificacion</field>
+            <field name="allowed_group_ids" eval="[
+                (4, ref('portal_requests.group_intern_partner_responsible')),
+                (4, ref('portal_requests.group_aicia_admin')),
+            ]"/>
+        </record>
     </data>
 </odoo>
 

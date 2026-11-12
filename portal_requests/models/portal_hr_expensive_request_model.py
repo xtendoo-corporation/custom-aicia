@@ -156,9 +156,15 @@ class PortalHrExpensiveRequest(models.Model):
     def action_approve(self):
         if self.status == 'approved_by_boss_group' and self.work_group_id._is_equip_boss_step_approver(self.env.user):
             self.status = 'approved_purchase_responsible'
-            user_to_notify = self.env['res.users'].search(
+            user_to_notify = self.env['res.users'].sudo().search(
                 [('group_ids', 'in', self.env.ref(self._second_approver_group_xmlid()).id)])
             self._send_purchase_request_mail('approved_by_boss_group', user_to_notify, self.user_id.name, self.project.name)
+            if self.type == 'gratificacion':
+                return self.show_notificacion(
+                    "¡Aprobación registrada!",
+                    "La solicitud se ha enviado al responsable de clientes y becarios para su revisión.",
+                    "success",
+                )
             return self.show_notificacion("¡Aprobación registrada!", "La solicitud ha sido aprobada y enviada al responsable de personal y compras para su revisión.", "success")
         elif self.env.user.has_group(self._second_approver_group_xmlid()) and self.status == 'approved_purchase_responsible':
             # El Director Gerente solo interviene cuando el importe supera los 10.000€.
@@ -189,7 +195,7 @@ class PortalHrExpensiveRequest(models.Model):
             # la aprobación del Jefe de Equipo al reenviar, igual que al
             # solicitar por primera vez.
             if self.equip_boss == self.user_id:
-                user_to_notify = self.env['res.users'].search([('group_ids', 'in', self.env.ref(self._second_approver_group_xmlid()).id)])
+                user_to_notify = self.env['res.users'].sudo().search([('group_ids', 'in', self.env.ref(self._second_approver_group_xmlid()).id)])
                 self.status = 'approved_purchase_responsible'
             else:
                 user_to_notify = [self.work_group_id.equip_boss]

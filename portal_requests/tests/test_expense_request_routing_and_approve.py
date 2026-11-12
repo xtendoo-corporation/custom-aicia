@@ -83,13 +83,13 @@ class TestExpenseRequestSubmitRouting(HttpCase, ExpenseRoutingSetupMixin):
             team_member_vals={'password': self.password},
         )
 
-    def _submit(self, user):
+    def _submit(self, user, expense_type='bienes_servicios'):
         self.authenticate(user.login, self.password)
         return self.url_open(
             '/portal/hr_expensive_request/submit',
             data={
                 'csrf_token': Request.csrf_token(self),
-                'expensive_type': 'bienes_servicios',
+                'expensive_type': expense_type,
                 'user_id': str(user.id),
                 'company_id': str(self.analytic.id),
                 'is_more': '',
@@ -122,6 +122,12 @@ class TestExpenseRequestSubmitRouting(HttpCase, ExpenseRoutingSetupMixin):
     def test_team_member_request_still_needs_boss_approval(self):
         self._submit(self.team_member)
         expense = self._last_request_for(self.team_member)
+        self.assertEqual(expense.status, 'approved_by_boss_group')
+
+    def test_team_member_gratification_needs_boss_approval(self):
+        self._submit(self.team_member, 'gratificacion')
+        expense = self._last_request_for(self.team_member)
+        self.assertEqual(expense.type, 'gratificacion')
         self.assertEqual(expense.status, 'approved_by_boss_group')
 
 
