@@ -1,7 +1,7 @@
 {
     "name": "Aicia portal requests",
     "summary": """Aicia portal requests""",
-    "version": "19.0.1.0.1",
+    "version": "19.0.1.0.2",
     "description": """Aicia portal requests""",
     "company": "Xtendoo",
     "website": "http://www.xtendoo.es",
@@ -18,6 +18,7 @@
         "web",
         "sign",
         "project",
+        "project_account",
         "send_draft_invoices",
         "knowledge",
     ],
@@ -54,6 +55,7 @@
         'views/interface/portal_employee_intern_request.xml',
         'views/interface/work_group_views.xml',
         'views/interface/account_analytic_inherit_views.xml',  # Nueva vista heredada
+        'views/interface/account_analytic_line_views.xml',
         'views/interface/etiqueta_categoria_views.xml',
         'views/interface/portal_hr_expensive_request.xml',
         'views/interface/ir_attachment_views.xml',

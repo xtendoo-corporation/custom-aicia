@@ -14,6 +14,7 @@ from . import portal_request_dashboard
 from . import res_users
 from . import knowledge_article
 from . import account_analytic_inherit
+from . import account_analytic_line
 from . import etiqueta_categoria
 from . import ir_attachment
 from . import account_move
