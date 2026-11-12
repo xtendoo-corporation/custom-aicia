@@ -1218,6 +1218,16 @@ class PortalRequestsCustomerPortal(CustomerPortal):
         expense.action_approve()
         return request.redirect(f'/my/expenses/{expense_id}?success=approved')
 
+    @http.route(['/my/expenses/<int:expense_id>/mark_paid'], type='http', auth="user", website=True, methods=['POST'], csrf=True)
+    def portal_expense_mark_paid(self, expense_id, **kw):
+        """Marca como pagada una gratificación aprobada (solo Responsable de
+        Clientes y Becarios, ver show_mark_paid_button en el modelo)."""
+        expense = request.env['portal.hr.expensive.request'].sudo().browse(expense_id)
+        if not expense.exists() or not expense.show_mark_paid_button:
+            return request.redirect('/my')
+        expense.action_mark_paid()
+        return request.redirect(f'/my/expenses/{expense_id}?success=marked_paid')
+
     @http.route(['/my/expenses/<int:expense_id>/reject'], type='http', auth="user", website=True, methods=['POST'], csrf=True)
     def portal_expense_reject(self, expense_id, reason=None, **kw):
         """Rechazo del Jefe de Equipo desde el portal, en su paso, con motivo

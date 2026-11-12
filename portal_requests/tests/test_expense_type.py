@@ -194,7 +194,8 @@ class TestGratificationDashboard(TransactionCase):
         expense = self._expense('gratificacion', 'approved_purchase_responsible')
         expense.with_user(self.approver).action_approve()
         self.assertEqual(expense.status, 'approve')
-        self.assertEqual(expense.invoice_created.state, 'draft')
+        self.assertFalse(expense.invoice_created)
+        self.assertTrue(expense.with_user(self.approver).show_mark_paid_button)
 
     def test_gratification_above_threshold_goes_to_director(self):
         expense = self._expense(

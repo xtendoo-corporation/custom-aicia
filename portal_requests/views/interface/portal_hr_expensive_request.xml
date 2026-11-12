@@ -80,6 +80,15 @@
                                 invisible="status != 'approved_director'"
                                 />
                         <!-- Fin botonera del Director gerente -->
+                        <!-- Marcar gratificación como pagada (Responsable de Clientes y Becarios) -->
+                        <field name="show_mark_paid_button" invisible="1"/>
+                        <button name="action_mark_paid"
+                                string="Marcar como pagada"
+                                type="object"
+                                class="btn-primary"
+                                groups="portal_requests.group_intern_partner_responsible"
+                                invisible="not show_mark_paid_button"
+                                />
                     </header>
                     <sheet>
                         <div class="oe_button_box" name="button_box">
@@ -107,6 +116,11 @@
                                 <field name="show_group_credit" invisible="1"/>
                                 <field name="group_credit"
                                     invisible="not show_group_credit"/>
+                            </group>
+                            <group string="Pago de gratificación" invisible="type != 'gratificacion'">
+                                <field name="is_paid"/>
+                                <field name="paid_date" invisible="not is_paid"/>
+                                <field name="paid_by_id" invisible="not is_paid"/>
                             </group>
                         </group>
                     </sheet>

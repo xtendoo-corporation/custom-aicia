@@ -40,6 +40,10 @@
                             <strong>¡Solicitud aprobada!</strong> La solicitud ha sido aprobada y enviada al siguiente responsable para su revisión.
                             <button type="button" class="btn-close" data-bs-dismiss="alert" aria-label="Cerrar"></button>
                         </div>
+                        <div t-if="success_message == 'marked_paid'" class="alert alert-success alert-dismissible fade show" role="alert">
+                            <strong>¡Gratificación pagada!</strong> La gratificación ha sido marcada como pagada.
+                            <button type="button" class="btn-close" data-bs-dismiss="alert" aria-label="Cerrar"></button>
+                        </div>
 
                         <div class="row">
                             <div class="col-12">
@@ -64,6 +68,16 @@
                                             <input type="hidden" name="csrf_token" t-att-value="request.csrf_token()"/>
                                             <button type="submit" class="btn btn-success">
                                                 <i class="fa fa-check me-1"/> Aprobar Solicitud
+                                            </button>
+                                        </form>
+                                        <!-- Botón Marcar como pagada (gratificación aprobada, Responsable de Clientes y Becarios) -->
+                                        <form t-if="expense.show_mark_paid_button"
+                                              method="POST"
+                                              t-attf-action="/my/expenses/#{expense.id}/mark_paid"
+                                              class="d-inline-block me-2">
+                                            <input type="hidden" name="csrf_token" t-att-value="request.csrf_token()"/>
+                                            <button type="submit" class="btn btn-primary">
+                                                <i class="fa fa-money me-1"/> Marcar como pagada
                                             </button>
                                         </form>
                                         <!-- Botón Rechazar (Jefe de Equipo, en su paso): despliega el formulario del motivo -->

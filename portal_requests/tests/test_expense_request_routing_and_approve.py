@@ -24,6 +24,9 @@
    y se quedaba sin forma de reenviarla: _compute_show_solicitar_revision
    ahora excluye explícitamente a group_administrative de ese ocultamiento.
 """
+from unittest.mock import patch
+
+from odoo.exceptions import AccessError, UserError
 from odoo.http import Request
 from odoo.tests import HttpCase, TransactionCase, tagged
 
@@ -246,3 +249,83 @@ class TestExpenseToReviseRouting(TransactionCase, ExpenseRoutingSetupMixin):
         expense = self._create_expense(self.boss, 'to_revise')
         expense = expense.with_user(self.boss)
         self.assertFalse(expense.show_solicitar_revision)
+
+
+@tagged('post_install', '-at_install')
+class TestGratificationPayment(TransactionCase, ExpenseRoutingSetupMixin):
+
+    def setUp(self):
+        super().setUp()
+        self._setup_expense_routing_team()
+        self.responsible = self.env['res.users'].create({
+            'name': 'Responsable Clientes Becarios',
+            'login': 'expense_intern_responsible_test',
+            'email': 'expense_intern_responsible_test@example.com',
+            'group_ids': [(6, 0, [
+                self.env.ref('base.group_user').id,
+                self.env.ref('portal_requests.group_intern_partner_responsible').id,
+            ])],
+        })
+
+    def _create_expense(self, expense_type='gratificacion', status='approved_purchase_responsible'):
+        return self.env['portal.hr.expensive.request'].create({
+            'user_id': self.team_member.id,
+            'type': expense_type,
+            'project': self.analytic.id,
+            'status': status,
+        })
+
+    def test_gratification_approval_does_not_create_invoice(self):
+        expense = self._create_expense()
+        with patch.object(type(expense), '_create_purchase_invoice') as create_invoice:
+            expense.with_user(self.responsible).action_approve()
+        create_invoice.assert_not_called()
+        self.assertEqual(expense.status, 'approve')
+        self.assertFalse(expense.invoice_created)
+        self.assertTrue(expense.with_user(self.responsible).show_mark_paid_button)
+
+    def test_other_type_approval_still_creates_invoice(self):
+        expense = self._create_expense(expense_type='bienes_servicios')
+        purchase = self.env['res.users'].create({
+            'name': 'Responsable Compras Gasto',
+            'login': 'expense_purchase_responsible_test',
+            'email': 'expense_purchase_responsible_test@example.com',
+            'group_ids': [(6, 0, [
+                self.env.ref('base.group_user').id,
+                self.env.ref('portal_requests.group_personnel_purchase_responsible').id,
+            ])],
+        })
+        with patch.object(type(expense), '_create_purchase_invoice') as create_invoice:
+            expense.with_user(purchase).action_approve()
+        create_invoice.assert_called_once()
+        self.assertEqual(expense.status, 'approve')
+
+    def test_mark_paid_records_payment(self):
+        expense = self._create_expense(status='approve')
+        expense.with_user(self.responsible).action_mark_paid()
+        self.assertTrue(expense.is_paid)
+        self.assertEqual(expense.paid_by_id, self.responsible)
+        self.assertTrue(expense.paid_date)
+        self.assertFalse(expense.with_user(self.responsible).show_mark_paid_button)
+
+    def test_mark_paid_twice_raises(self):
+        expense = self._create_expense(status='approve')
+        expense.with_user(self.responsible).action_mark_paid()
+        with self.assertRaises(UserError):
+            expense.with_user(self.responsible).action_mark_paid()
+
+    def test_mark_paid_rejects_non_gratification(self):
+        expense = self._create_expense(expense_type='bienes_servicios', status='approve')
+        with self.assertRaises(UserError):
+            expense.with_user(self.responsible).action_mark_paid()
+
+    def test_mark_paid_rejects_not_approved_gratification(self):
+        expense = self._create_expense(status='approved_by_boss_group')
+        with self.assertRaises(UserError):
+            expense.with_user(self.responsible).action_mark_paid()
+
+    def test_mark_paid_requires_intern_partner_responsible(self):
+        expense = self._create_expense(status='approve')
+        with self.assertRaises(AccessError):
+            expense.with_user(self.boss).action_mark_paid()
+        self.assertFalse(expense.is_paid)

@@ -1,4 +1,5 @@
-from odoo import models, fields, api
+from odoo import _, models, fields, api
+from odoo.exceptions import AccessError, UserError
 
 
 class PortalHrExpensiveRequest(models.Model):
@@ -37,6 +38,9 @@ class PortalHrExpensiveRequest(models.Model):
     is_more = fields.Boolean(string='Es más de 10000€', default=False)
     invoice_created = fields.Many2one('account.move', string='Invoice Created')
     invoice_count = fields.Integer(default=1, string='Invoice Count')
+    is_paid = fields.Boolean(string='Pagada', default=False, copy=False, tracking=True)
+    paid_date = fields.Date(string='Fecha de pago', copy=False)
+    paid_by_id = fields.Many2one('res.users', string='Pagada por', copy=False)
     inmovilizado_account_id = fields.Many2one('account.account', string='Cuenta de Inmovilizado')
     # inmovilizado_type = fields.Selection([
     #     ('computer_equipment', 'Equipo informático'),
@@ -108,6 +112,23 @@ class PortalHrExpensiveRequest(models.Model):
             else:
                 rec.show_approve_button = False
 
+    show_mark_paid_button = fields.Boolean(
+        string='Mostrar Botón Marcar como Pagada',
+        compute='_compute_show_mark_paid_button',
+        store=False,
+    )
+
+    @api.depends('type', 'status', 'is_paid')
+    @api.depends_context('uid')
+    def _compute_show_mark_paid_button(self):
+        is_intern_partner = self.env.user.has_group('portal_requests.group_intern_partner_responsible')
+        for rec in self:
+            rec.show_mark_paid_button = is_intern_partner and rec._is_gratification_pending_payment()
+
+    def _is_gratification_pending_payment(self):
+        self.ensure_one()
+        return self.type == 'gratificacion' and self.status == 'approve' and not self.is_paid
+
     show_project_credit = fields.Boolean(string='Mostrar Saldo del Proyecto', compute='_compute_show_project_credit')
     @api.depends('user_id', 'project')
     def _compute_show_project_credit(self):
@@ -177,18 +198,9 @@ class PortalHrExpensiveRequest(models.Model):
                 return self.show_notificacion("¡Aprobación registrada!",
                                               "La solicitud ha sido aprobada y enviada al director gerente para su revisión.",
                                               "success")
-            self.status = 'approve'
-            self._create_purchase_invoice()
-            return self.show_notificacion("¡Solicitud aprobada!",
-                                          "La factura borrador ha sido creada correctamente.", "success")
-
-
+            return self._complete_approval()
         elif self.env.user.has_group('portal_requests.group_director_manager') and self.status == 'approved_director':
-            self.status = 'approve'
-            #CREATE LA FACTURA EN BLANCO CON EL ADJUNTO Y LA DISTRIBUCION CONTABLE
-            self._create_purchase_invoice()
-            return self.show_notificacion("¡Solicitud aprobada!", "La factura borrador ha sido creada correctamente.",
-                                          "success")
+            return self._complete_approval()
 
         elif self.status == 'to_revise':
             # A petición del cliente, el Administrativo vuelve a pasar por
@@ -218,6 +230,37 @@ class PortalHrExpensiveRequest(models.Model):
             for account in analytic_accounts:
                 balance += account.balance
         return balance
+
+    def _complete_approval(self):
+        """Cierre de la aprobación final. Las gratificaciones no generan factura:
+        quedan aprobadas y pendientes de marcar como pagadas."""
+        self.status = 'approve'
+        if self.type == 'gratificacion':
+            return self.show_notificacion(
+                "¡Solicitud aprobada!",
+                "La gratificación ha sido aprobada. Pendiente de marcar como pagada.",
+                "success",
+            )
+        self._create_purchase_invoice()
+        return self.show_notificacion("¡Solicitud aprobada!",
+                                      "La factura borrador ha sido creada correctamente.", "success")
+
+    def action_mark_paid(self):
+        self.ensure_one()
+        if not self.env.user.has_group('portal_requests.group_intern_partner_responsible'):
+            raise AccessError(_('Solo el Responsable de Clientes y Becarios puede marcar una gratificación como pagada.'))
+        if self.type != 'gratificacion':
+            raise UserError(_('Solo las solicitudes de gratificación se pueden marcar como pagadas.'))
+        if self.is_paid:
+            raise UserError(_('La gratificación ya está marcada como pagada.'))
+        if self.status != 'approve':
+            raise UserError(_('La gratificación debe estar aprobada para marcarla como pagada.'))
+        self.write({
+            'is_paid': True,
+            'paid_date': fields.Date.context_today(self),
+            'paid_by_id': self.env.user.id,
+        })
+        self.message_post(body=_('Gratificación marcada como pagada por %s.', self.env.user.name))
 
     def _create_purchase_invoice(self):
         self.ensure_one()
