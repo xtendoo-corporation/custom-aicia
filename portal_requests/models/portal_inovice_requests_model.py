@@ -341,6 +341,7 @@ class PortalInvoiceRequest(models.Model):
         self.invoice_created = invoice.id
         if hasattr(self.invoice_created, '_onchange_analytic_distribution'):
             self.invoice_created._onchange_analytic_distribution()
+        self._copy_attachments_to_move(invoice)
         group = self.analytic_id.work_group_id
         invoice.add_followers_from_request(self)
         #self.invoice_created.add_partner_id_to_followers(group)
@@ -349,6 +350,41 @@ class PortalInvoiceRequest(models.Model):
                 body=self.comment,
                 subtype_id=self.env.ref('mail.mt_note').id,
             )
+
+    def _copy_attachments_to_move(self, move):
+        """Copia los adjuntos de la solicitud (documento de emisión) a la factura.
+
+        La solicitud no distingue el documento de emisión de otros adjuntos,
+        por lo que se copian todos. Es idempotente: un adjunto con el mismo
+        nombre y checksum que ya exista en la factura no se vuelve a copiar.
+        El sudo() se limita a leer y crear los adjuntos, ya que el usuario
+        del portal no tiene permisos sobre account.move.
+        """
+        self.ensure_one()
+        Attachment = self.env['ir.attachment'].sudo()
+        source_attachments = Attachment.search([
+            ('res_model', '=', self._name),
+            ('res_id', '=', self.id),
+        ])
+        existing = {
+            (attachment.name, attachment.checksum)
+            for attachment in Attachment.search([
+                ('res_model', '=', 'account.move'),
+                ('res_id', '=', move.id),
+            ])
+        }
+        copies = Attachment
+        for attachment in source_attachments:
+            if (attachment.name, attachment.checksum) in existing:
+                continue
+            copies |= Attachment.create({
+                'name': attachment.name,
+                'mimetype': attachment.mimetype,
+                'datas': attachment.datas,
+                'res_model': 'account.move',
+                'res_id': move.id,
+            })
+        return copies
 
     def action_view_invoice(self):
         self.ensure_one()
