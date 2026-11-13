@@ -1,0 +1,12 @@
+<?xml version="1.0" encoding="utf-8"?>
+<odoo noupdate="1">
+    <!-- Plan base; las líneas y analítica receptora se completan en post_init_hook de forma idempotente -->
+    <record id="aicia_default_distribution_plan" model="aicia.distribution.plan">
+        <field name="name">Distribución AICIA por defecto</field>
+        <field name="company_id" ref="base.main_company"/>
+    </record>
+
+    <!-- Rellenar líneas y analítica por defecto de forma resiliente -->
+    <function model="aicia.distribution.plan" name="_setup_default_plan" eval="[(ref('base.main_company'),)]"/>
+</odoo>
+

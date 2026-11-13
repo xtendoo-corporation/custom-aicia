@@ -1,0 +1,46 @@
+<!DOCTYPE html>
+
+<head>
+    <meta http-equiv="Content-Type" content="text/html; charset=utf-8" />
+    <title>AICIA - Reparto de cuentas analíticas por empleado - Xtendoo</title>
+    <meta name="author" content="Daniel Domínguez - Xtendoo" />
+    <meta http-equiv="Content-Language" content="es" />
+</head>
+
+<body>
+    <section style="width:90%;margin:5px auto;">
+        <article style="margin-left:5%;width:30%;float:left;">
+            <figure style="width:100%;">
+                <img src="logo.png" alt="" style="width:100%;">
+            </figure>
+        </article>
+        <article id="intro" style="width:50%;float:left;margin-top:40px;">
+            <h1 style="margin-top:20px;margin-left:20px;text-align: center;font-size:2.2em;">AICIA - Reparto Analítico</h1>
+            <p style="margin-left:20px;text-align:center;font-size:1.7em;">
+                Módulo que añade la sección <strong>Reparto</strong> en la ficha
+                del empleado para asignar proyectos (cuentas analíticas) con
+                porcentaje libre a cada empleado.
+            </p>
+        </article>
+        <article id="deps" style="width:50%;float:left;margin-top:10px;clear:both;">
+            <h2 style="margin-left:20px;font-size:1.8em;">Dependencias</h2>
+            <ul style="margin-left:20px;font-size:1.3em;">
+                <li>HR</li>
+                <li>Analytic</li>
+            </ul>
+        </article>
+        <article id="mods" style="width:50%;float:left;margin-top:10px;">
+            <h2 style="margin-left:30px;font-size:1.8em;">Modificaciones</h2>
+            <ul style="margin-left:20px;font-size:1.3em;">
+                <li>Nuevo modelo <code>aicia.employee.analytic.line</code> con campos:
+                    empleado, proyecto (cuenta analítica) y porcentaje.</li>
+                <li>Sección <strong>REPARTO</strong> en la pestaña <strong>Nómina</strong>
+                    de la ficha del empleado con tabla editable de proyectos y porcentajes.</li>
+            </ul>
+        </article>
+        <article style="clear:both;height: 2px;"></article>
+    </section>
+</body>
+
+</html>
+

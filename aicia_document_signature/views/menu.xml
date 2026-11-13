@@ -1,0 +1,10 @@
+<?xml version="1.0" encoding="utf-8"?>
+<odoo>
+    <data>
+        <!-- Menú raíz del módulo -->
+        <menuitem id="menu_document_signature_root"
+                  name="Firma Electrónica"
+                  web_icon="aicia_document_signature,static/description/icon.png"
+                  sequence="100"/>
+    </data>
+</odoo>

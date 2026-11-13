@@ -1,0 +1,98 @@
+<odoo>
+    <data>
+    <record id="action_unresised" model="ir.actions.act_window">
+        <field name="name">Unapproved Type Approvals</field>
+        <field name="res_model">document.approval</field>
+        <field name="view_mode">tree,form,kanban</field>
+        <field name="domain">[('type_id', '=', active_id), ('is_revised', '=', False)]</field>
+
+    </record>
+
+    <record id="view_type_approval_kanban" model="ir.ui.view">
+        <field name="name">type.approval.kanban</field>
+        <field name="model">type.approval</field>
+        <field name="arch" type="xml">
+            <kanban create="false" class="o_modules_kanban">
+                <field name="name"/>
+                <field name="count_unapproved" readonly="1"/>
+                <field name="image"/>
+                <templates>
+                    <t t-name="card">
+                        <div class="oe_module_vignette">
+                            <field name="image" widget="image" class="oe_kanban_avatar float-start me-3" />
+                            <div class="oe_module_desc">
+                                <h4 class="o_kanban_record_title" style="white-space: normal;">
+                                    <field name="name"/>
+                                </h4>
+                                <div class="oe_module_action">
+                                    <button type="action" name="%(action_unresised)d"
+                                            class="btn btn-sm btn-secondary float-end"
+                                    >To Review:
+                                        <field name="count_unapproved" readonly="1"/>
+                                    </button>
+                                </div>
+                            </div>
+                        </div>
+                    </t>
+                </templates>
+            </kanban>
+        </field>
+    </record>
+
+    <record id="action_type_approval" model="ir.actions.act_window">
+        <field name="name">Approvals document type</field>
+        <field name="res_model">type.approval</field>
+        <field name="view_mode">kanban</field>
+    </record>
+
+    <record id="action_approved" model="ir.actions.act_window">
+        <field name="name">Approved document</field>
+        <field name="res_model">document.approval</field>
+        <field name="view_mode">tree,form,kanban</field>
+        <field name="domain">[('approved', '=', True), ('company_id', '=', user.company_id.id)]</field>
+        <field name="context">{'group_by': 'type_id'}</field>
+    </record>
+    <record id="action_to_approve" model="ir.actions.act_window">
+        <field name="name">To Review document</field>
+        <field name="res_model">document.approval</field>
+        <field name="view_mode">tree,form,kanban</field>
+        <field name="domain">[('approved', '!=', True), ('is_revised', '=', False)]</field>
+        <field name="context">{'group_by': 'type_id'}</field>
+    </record>
+        <record id="action_not_approved" model="ir.actions.act_window">
+        <field name="name">Not Approved document</field>
+        <field name="res_model">document.approval</field>
+        <field name="view_mode">tree,form,kanban</field>
+        <field name="domain">[('approved', '!=', True), ('is_revised', '=', True)]</field>
+        <field name="context">{'group_by': 'type_id'}</field>
+    </record>
+
+<!--    <menuitem id="menu_type_approval_root" name="Type Approvals" sequence="10"/>-->
+        <menuitem id="menu_portal_document_request_all"
+                  name="Documentos"
+                  parent="portal_requests.portal_requests_menu"
+                  action="action_document_approval_all"
+                  groups="portal_requests.group_director_manager,portal_requests.group_director_investigation_and_development,portal_requests.group_project_boss,portal_requests.group_financial_director"
+                  sequence="10"/>
+
+<!--    <menuitem id="menu_kanban_documents" name="Documents" parent="portal_requests.menu_portal_document_request"-->
+<!--          action="action_type_approval" sequence="10"/>-->
+
+<!--    <menuitem id="action_to_approve_button" name="To review" parent="portal_requests.menu_portal_document_request"-->
+<!--          action="action_to_approve" sequence="20"/>-->
+
+<!--    <menuitem id="action_approved_button" name="Approved" parent="portal_requests.menu_portal_document_request"-->
+<!--              action="action_approved" sequence="30"/>-->
+<!--    <menuitem id="action_not_approved_button" name="Not Approved" parent="portal_requests.menu_portal_document_request"-->
+<!--          action="action_not_approved" sequence="40"/>-->
+
+     <record id="action_approved_approval" model="ir.actions.act_window">
+        <field name="name">Approved document type</field>
+        <field name="res_model">document.approval</field>
+        <field name="view_mode">tree,form,kanban</field>
+        <field name="domain">[('approved', '=', True)]</field>
+        <field name="context">{'group_by': 'type_id'}</field>
+    </record>
+
+    </data>
+</odoo>

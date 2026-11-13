@@ -1,0 +1,19 @@
+<?xml version="1.0" encoding="utf-8"?>
+<odoo>
+    <record id="view_account_analytic_account_form_inherit_closure" model="ir.ui.view">
+        <field name="name">account.analytic.account.form.inherit.closure</field>
+        <field name="model">account.analytic.account</field>
+        <field name="inherit_id" ref="analytic.view_account_analytic_account_form"/>
+        <field name="arch" type="xml">
+            <xpath expr="//sheet" position="before">
+                <header>
+                    <button name="action_open_project_closure_wizard"
+                            string="Cierre de Proyecto"
+                            type="object"
+                            class="btn-primary"
+                            icon="fa-cogs"/>
+                </header>
+            </xpath>
+        </field>
+    </record>
+</odoo>

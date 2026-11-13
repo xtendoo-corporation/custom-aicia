@@ -1,0 +1,62 @@
+<odoo>
+
+    <record id="action_unapproved_approval" model="ir.actions.act_window">
+        <field name="name">Unapproved Type Approvals</field>
+        <field name="res_model">document.approval</field>
+        <field name="view_mode">list,form</field>
+        <field name="domain">[('type_id', '=', active_id), ('approved', '=', False)]</field>
+
+    </record>
+
+    <record id="view_type_approval_kanban" model="ir.ui.view">
+        <field name="name">type.approval.kanban</field>
+        <field name="model">type.approval</field>
+        <field name="arch" type="xml">
+            <kanban create="false" class="o_modules_kanban">
+                <field name="name"/>
+                <field name="count_unapproved" readonly="1"/>
+                <field name="image"/>
+                <templates>
+                    <t t-name="kanban-box">
+                        <div class="oe_module_vignette">
+                            <field name="image" widget="image" class="oe_kanban_avatar float-start me-3" width="64" height="64"/>
+                            <div class="oe_module_desc">
+                                <h4 class="o_kanban_record_title" style="white-space: normal;">
+                                    <field name="name"/>
+                                </h4>
+                                <div class="oe_module_action">
+                                    <button type="action" name="%(action_unapproved_approval)d"
+                                            class="btn btn-sm btn-secondary float-end"
+                                    >To Review:
+                                        <field name="count_unapproved" readonly="1"/>
+                                    </button>
+                                </div>
+                            </div>
+                        </div>
+                    </t>
+                </templates>
+            </kanban>
+        </field>
+    </record>
+
+    <record id="action_type_approval" model="ir.actions.act_window">
+        <field name="name">Type Approvals</field>
+        <field name="res_model">type.approval</field>
+        <field name="view_mode">kanban</field>
+    </record>
+
+    <menuitem id="menu_type_approval_root" name="Type Approvals" sequence="10"/>
+    <menuitem id="menu_type_approval" name="Type Approvals" parent="menu_type_approval_root"
+              action="action_type_approval" sequence="10"/>
+
+     <record id="action_approved_approval" model="ir.actions.act_window">
+        <field name="name">Approved Type Approvals</field>
+        <field name="res_model">document.approval</field>
+          <field name="view_mode">list,form</field>
+        <field name="domain">[('approved', '=', True)]</field>
+        <field name="context">{'group_by': 'type_id'}</field>
+    </record>
+
+    <menuitem id="menu_approved_approval" name="Approved Type Approvals" parent="menu_type_approval_root"
+              action="action_approved_approval" sequence="20"/>
+</odoo>

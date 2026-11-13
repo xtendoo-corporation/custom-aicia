@@ -1,0 +1,52 @@
+<?xml version="1.0" ?>
+<!-- Copyright 2024 Xtendoo - https://www.xtendoo.es/ -->
+<odoo>
+    <record id="aicia_importer_payroll_view" model="ir.ui.view">
+        <field name="name">AICIA - Importador de Nóminas</field>
+        <field name="model">aicia.importer.payroll.wizard</field>
+        <field name="priority">10</field>
+        <field name="arch" type="xml">
+            <form string="Importador de Nóminas AICIA">
+                <field name="state" invisible="1"/>
+                <!-- Formulario de carga cuando state='draft' -->
+                <group invisible="state == 'done'">
+                    <field name="data_file_payroll" filename="filename_payroll" widget="binary"/>
+                    <field name="filename_payroll" invisible="1"/>
+                </group>
+                <!-- Mostrar log cuando state='done' -->
+                <group invisible="state == 'draft'">
+                    <field name="import_log" nolabel="1" colspan="2"/>
+                </group>
+                <notebook invisible="state == 'done'">
+                    <page string="Información">
+                        <group>
+                            <p>
+                                Este asistente permite importar nóminas desde archivos CSV.<br/>
+                                <b>Formato esperado:</b> El archivo debe contener una cabecera con los campos de nómina y filas con los datos de los empleados.
+                            </p>
+                        </group>
+                    </page>
+                </notebook>
+                <footer>
+                    <button
+                        name="import_payroll"
+                        string="Importar"
+                        type="object"
+                        class="btn-primary"
+                        invisible="state == 'done'"
+                    />
+                    <button string="Cerrar" class="btn-primary" special="cancel" invisible="state == 'draft'"/>
+                    <button string="Cancelar" class="btn-secondary" special="cancel" invisible="state == 'done'"/>
+                </footer>
+            </form>
+        </field>
+    </record>
+    <record id="aicia_importer_payroll_action" model="ir.actions.act_window">
+        <field name="name">Importar Nóminas</field>
+        <field name="res_model">aicia.importer.payroll.wizard</field>
+        <field name="view_mode">form</field>
+        <field name="view_id" ref="aicia_importer_payroll_view"/>
+        <field name="target">new</field>
+    </record>
+</odoo>
+

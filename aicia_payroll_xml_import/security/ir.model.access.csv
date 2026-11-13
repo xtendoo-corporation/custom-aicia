@@ -1,0 +1,4 @@
+id,name,model_id:id,group_id:id,perm_read,perm_write,perm_create,perm_unlink
+access_remittance,access.remittance,model_hr_payroll_sepa_remittance,hr.group_hr_user,1,1,1,1
+access_remittance_line,access.remittance.line,model_hr_payroll_sepa_remittance_line,hr.group_hr_user,1,1,1,1
+access_wizard,access.wizard,model_hr_payroll_sepa_import_wizard,hr.group_hr_user,1,1,1,1

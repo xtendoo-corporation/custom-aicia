@@ -1,0 +1,9 @@
+<svg width="64" height="64" viewBox="0 0 64 64" fill="none" xmlns="http://www.w3.org/2000/svg">
+  <path d="M12 6H44V38L40 44L36 38L32 44L28 38L24 44L20 38L16 44L12 38V6Z"
+        fill="#FBDBD0" stroke="#374874" stroke-width="2" stroke-linejoin="round" stroke-linecap="round"/>
+  <path d="M18 15H38" stroke="#374874" stroke-width="2" stroke-linecap="round" opacity="0.55"/>
+  <path d="M18 21H38" stroke="#374874" stroke-width="2" stroke-linecap="round" opacity="0.55"/>
+  <path d="M18 27H30" stroke="#374874" stroke-width="2" stroke-linecap="round" opacity="0.55"/>
+  <circle cx="47" cy="47" r="10" fill="#374874"/>
+  <text x="47" y="51.5" font-family="Arial, Helvetica, sans-serif" font-size="12" font-weight="700" fill="white" text-anchor="middle">€</text>
+</svg>

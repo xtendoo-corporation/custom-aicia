@@ -1,0 +1,19 @@
+<odoo>
+  <record id="view_purchase_request_reject_wizard_form" model="ir.ui.view">
+    <field name="name">view.purchase.request.reject.wizard.form</field>
+    <field name="model">purchase.request.reject.wizard</field>
+    <field name="arch" type="xml">
+      <form string="Rechazar solicitud">
+        <sheet>
+          <group>
+            <field name="descripcion"/>
+          </group>
+        </sheet>
+        <footer>
+          <button string="Aceptar" type="object" name="accept_action" class="btn-primary"/>
+          <button string="Cancelar" class="btn-secondary" special="cancel"/>
+        </footer>
+      </form>
+    </field>
+  </record>
+</odoo>
