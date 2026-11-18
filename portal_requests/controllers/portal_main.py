@@ -513,9 +513,10 @@ class PortalRequestsCustomerPortal(CustomerPortal):
         return project.name if project else 'Sin proyecto'
 
     def _expense_amount_search_values(self, expense):
-        if not expense.invoice_created:
+        amount, _currency = expense._get_accounting_amount()
+        if amount is None:
             return []
-        amount = expense.invoice_created.sudo().amount_total or 0.0
+        amount = amount or 0.0
         fixed_amount = f'{amount:.2f}'
         spanish_amount = f'{amount:,.2f}'.replace(',', 'X').replace('.', ',').replace('X', '.')
         values = [str(amount), fixed_amount, fixed_amount.replace('.', ','), spanish_amount, f'{spanish_amount} €']
@@ -524,11 +525,11 @@ class PortalRequestsCustomerPortal(CustomerPortal):
         return values
 
     def _expense_amount_label(self, expense):
-        if not expense.invoice_created:
+        amount, currency = expense._get_accounting_amount()
+        if amount is None:
             return ''
-        amount = expense.invoice_created.sudo().amount_total or 0.0
+        amount = amount or 0.0
         spanish_amount = f'{amount:,.2f}'.replace(',', 'X').replace('.', ',').replace('X', '.')
-        currency = expense.invoice_created.sudo().currency_id
         symbol = currency.symbol if currency and currency.symbol else '€'
         return f'{spanish_amount} {symbol}'
 

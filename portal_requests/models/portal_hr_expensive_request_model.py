@@ -38,6 +38,7 @@ class PortalHrExpensiveRequest(models.Model):
     is_more = fields.Boolean(string='Es más de 10000€', default=False)
     invoice_created = fields.Many2one('account.move', string='Invoice Created')
     invoice_count = fields.Integer(default=1, string='Invoice Count')
+    expense_id = fields.Many2one('hr.expense', string='Gasto', copy=False, readonly=True)
     is_paid = fields.Boolean(string='Pagada', default=False, copy=False, tracking=True)
     paid_date = fields.Date(string='Fecha de pago', copy=False)
     paid_by_id = fields.Many2one('res.users', string='Pagada por', copy=False)
@@ -233,8 +234,16 @@ class PortalHrExpensiveRequest(models.Model):
 
     def _complete_approval(self):
         """Cierre de la aprobación final. Las gratificaciones no generan factura:
-        quedan aprobadas y pendientes de marcar como pagadas."""
+        quedan aprobadas y pendientes de marcar como pagadas. Las liquidaciones
+        de gastos se reembolsan al empleado mediante un gasto de hr_expense."""
         self.status = 'approve'
+        if self.type == 'liquidacion_gastos':
+            self._create_employee_expense()
+            return self.show_notificacion(
+                "¡Solicitud aprobada!",
+                "Se ha creado el gasto del empleado, pendiente de indicar el importe y reembolsar.",
+                "success",
+            )
         if self.type == 'gratificacion':
             return self.show_notificacion(
                 "¡Solicitud aprobada!",
@@ -298,6 +307,74 @@ class PortalHrExpensiveRequest(models.Model):
         if self.type == 'material_inventariable':
             for line in invoice.invoice_line_ids:
                 line.account_id = self.inmovilizado_account_id.id
+
+    def _get_requester_employee(self):
+        """Ficha de empleado del solicitante, a quien se reembolsa el gasto.
+        Si tiene varias, se prefiere la de la compañía activa."""
+        self.ensure_one()
+        employees = self.env['hr.employee'].sudo().search(
+            [('user_id', '=', self.user_id.id)])
+        employee = (
+            employees.filtered(lambda emp: emp.company_id == self.env.company)[:1]
+            or employees[:1]
+        )
+        if not employee:
+            raise UserError(_(
+                'El solicitante %s no tiene ficha de empleado. Créela antes de '
+                'aprobar la liquidación de gastos para poder reembolsarle el importe.',
+                self.user_id.name,
+            ))
+        return employee
+
+    def _create_employee_expense(self):
+        """Gasto de hr_expense pagado por el empleado, a quien se reembolsa.
+
+        Queda en borrador porque la solicitud del portal no recoge el importe
+        y hr_expense no admite gastos enviados o aprobados con importe cero:
+        Contabilidad indica el importe, lo aprueba, lo contabiliza y registra
+        el reembolso. Se crea con sudo porque los aprobadores del portal no
+        tienen permisos de Gastos."""
+        self.ensure_one()
+        employee = self._get_requester_employee()
+        expense = self.env['hr.expense'].sudo().create({
+            'name': _('Liquidación de gastos - %s', self.project.name),
+            'employee_id': employee.id,
+            'company_id': employee.company_id.id,
+            'product_id': self.env.ref('hr_expense.product_product_no_cost').id,
+            'payment_mode': 'own_account',
+            'analytic_distribution': {str(self.project.id): 100.0},
+            'description': _('Solicitud de gasto del portal: %s', self.computed_name),
+        })
+        attachments = self.env['ir.attachment'].sudo().search(
+            [('res_model', '=', self._name), ('res_id', '=', self.id)])
+        attachments.write({'res_model': 'hr.expense', 'res_id': expense.id})
+        if attachments:
+            expense.message_main_attachment_id = attachments[:1]
+        expense.message_post(body=_(
+            'Liquidación de gastos aprobada en el portal por %s.', self.env.user.name))
+        self.expense_id = expense
+
+    def action_view_expense(self):
+        self.ensure_one()
+        return {
+            'type': 'ir.actions.act_window',
+            'name': _('Gasto'),
+            'res_model': 'hr.expense',
+            'view_mode': 'form',
+            'res_id': self.expense_id.id,
+        }
+
+    def _get_accounting_amount(self):
+        """Importe y moneda del documento contable generado al aprobar
+        (factura de proveedor o gasto del empleado)."""
+        self.ensure_one()
+        if self.invoice_created:
+            invoice = self.invoice_created.sudo()
+            return invoice.amount_total, invoice.currency_id
+        if self.expense_id:
+            expense = self.expense_id.sudo()
+            return expense.total_amount_currency, expense.currency_id
+        return None, self.env['res.currency']
 
     def _reject_with_reason(self, reason):
         """Rechazo con motivo, común al asistente del backend y al botón

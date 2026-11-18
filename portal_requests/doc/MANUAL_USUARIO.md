@@ -237,8 +237,23 @@ Un único formulario cubre cuatro tipologías:
    - Si el importe **supera 10.000 €** → se escala al **Director Gerente** y se le
      notifica.
    - Si **no** lo supera → la solicitud queda **aprobada** directamente (se genera
-     la factura borrador) sin intervención del DG.
+     el documento contable correspondiente, ver tabla inferior) sin intervención
+     del DG.
 4. Si el DG interviene, su aprobación cierra la solicitud.
+
+**Qué se genera al aprobar cada tipo:**
+
+| Tipo | Documento generado |
+|---|---|
+| Compra de bienes o servicios, material inventariable | Factura de proveedor en borrador con los PDF adjuntos |
+| **Liquidación de gastos** | **Gasto** (app Gastos) a nombre del **empleado solicitante**, pagado por el empleado (a reembolsar), en borrador y con todos los justificantes adjuntos |
+| Solicitud de gratificación | Ningún documento: queda pendiente de marcar como pagada |
+
+En la liquidación de gastos, Contabilidad abre el gasto (botón **Gasto** de la
+solicitud, o la app *Gastos*), indica el importe, lo **aprueba**, lo
+**contabiliza** y **registra el pago**: el reembolso se hace al empleado, no al
+proveedor de los tickets. Para poder aprobarla, el solicitante debe tener
+**ficha de empleado**; si no la tiene, la aprobación final se bloquea con un aviso.
 
 > Si el propio **Jefe de Equipo** es quien solicita el gasto, su solicitud pasa
 > directamente al segundo aprobador (no se auto-aprueba).

@@ -1,7 +1,7 @@
 {
     "name": "Aicia portal requests",
     "summary": """Aicia portal requests""",
-    "version": "19.0.1.0.2",
+    "version": "19.0.1.0.3",
     "description": """Aicia portal requests""",
     "company": "Xtendoo",
     "website": "http://www.xtendoo.es",
