@@ -1,4 +1,5 @@
-from odoo import models, fields, api
+from odoo import api, fields, models
+
 
 class WorkGroup(models.Model):
     _name = 'portal.work.group'
@@ -65,7 +66,7 @@ class WorkGroup(models.Model):
         if not self:
             return False
         self.ensure_one()
-        if user.has_group('portal_requests.group_aicia_admin'):
+        if self._sees_all_work_groups(user):
             return True
         return self.equip_boss == user or self.administrative_id == user
 
@@ -101,9 +102,26 @@ class WorkGroup(models.Model):
         )
 
     @api.model
+    def _sees_all_work_groups(self, user):
+        """True si `user` ve los proyectos y solicitudes de todos los grupos
+        de trabajo: el perfil Admin y la Secretaria. Solo da visibilidad; la
+        aprobación se decide aparte en _is_equip_boss_step_approver()."""
+        return user.has_group('portal_requests.group_aicia_admin') or user.has_group(
+            'portal_requests.group_secretary'
+        )
+
+    @api.model
     def _boss_or_administrative_domain(self, user):
         """Dominio ir.rule-friendly: grupos de trabajo donde `user` es Jefe
-        de Equipo o Administrativo (el perfil Admin los ve todos)."""
-        if user.has_group('portal_requests.group_aicia_admin'):
+        de Equipo o Administrativo (Admin y Secretaria los ven todos)."""
+        if self._sees_all_work_groups(user):
             return [(1, '=', 1)]
         return ['|', ('equip_boss', '=', user.id), ('administrative_id', '=', user.id)]
+
+    @api.model
+    def _requestable_domain(self, user):
+        """Grupos de trabajo para los que `user` puede crear solicitudes:
+        aquellos de los que es miembro, o todos si los ve todos."""
+        if self._sees_all_work_groups(user):
+            return []
+        return [('user_ids', 'in', user.id)]

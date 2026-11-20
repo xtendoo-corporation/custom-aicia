@@ -4,6 +4,36 @@ import base64
 from .portal_pdf_utils import ensure_pdf
 
 class PortalHrExpensiveRequestController(Controller):
+    # Por encima de este importe el gasto requiere al Director Gerente.
+    DIRECTOR_THRESHOLD = 10000.0
+
+    @staticmethod
+    def _parse_amount(value):
+        """Importe del formulario: admite coma o punto decimal. Un valor no
+        numérico se trata como cero (el formulario lo rechaza)."""
+        try:
+            return float((value or '').strip().replace(',', '.'))
+        except ValueError:
+            return 0.0
+
+    @staticmethod
+    def _uploaded_files(field_name):
+        return [
+            file_storage for file_storage in request.httprequest.files.getlist(field_name)
+            if file_storage and file_storage.filename
+        ]
+
+    @staticmethod
+    def _create_attachment(expensive, file_storage, name=None):
+        return request.env['ir.attachment'].sudo().create({
+            'name': name or file_storage.filename,
+            'res_model': 'portal.hr.expensive.request',
+            'res_id': expensive.id,
+            'datas': base64.b64encode(file_storage.read()),
+            'type': 'binary',
+            'mimetype': file_storage.content_type or 'application/pdf',
+        })
+
     @route('/portal/hr_expensive_request', auth='user', website=True)
     def hr_expensive_request_form(self, **kwargs):
         # Obtener el usuario actual
@@ -36,6 +66,17 @@ class PortalHrExpensiveRequestController(Controller):
         user_name = request.env['res.users'].sudo().browse(int(user_id)).name
         company_name = request.env['account.analytic.account'].sudo().browse(project).name
         is_more = post.get('is_more')
+        liquidation_amount = 0.0
+        ticket_files = invoice_files = []
+        if expensive_type == 'liquidacion_gastos':
+            liquidation_amount = self._parse_amount(post.get('liquidation_amount'))
+            ticket_files = self._uploaded_files('ticket_files')
+            invoice_files = self._uploaded_files('invoice_files')
+            if liquidation_amount <= 0 or not (ticket_files or invoice_files):
+                return request.redirect('/portal/hr_expensive_request?error=liquidation')
+            ensure_pdf(*ticket_files, *invoice_files)
+            # En la liquidación el umbral se decide con el total declarado.
+            is_more = liquidation_amount > self.DIRECTOR_THRESHOLD
         requester = request.env['res.users'].sudo().browse(int(user_id))
         # A petición del cliente, el Administrativo vuelve a pasar por la
         # aprobación del Jefe de Equipo: solo el propio Jefe de Equipo
@@ -57,36 +98,27 @@ class PortalHrExpensiveRequestController(Controller):
             'status': status,
             'project': project,
             'is_more': is_more,
+            'liquidation_amount': liquidation_amount,
         })
-        attachments = request.httprequest.files.getlist('file')
-        # La gratificación solo admite un documento (el formulario).
-        if expensive_type == 'gratificacion':
-            attachments = attachments[:1]
-        inventory_attachment = request.httprequest.files.get('inventory_file')
-        ensure_pdf(*attachments, inventory_attachment)
-
-        for attachment in attachments:
-            attachment_data = {
-                'name': attachment.filename,
-                'res_model': 'portal.hr.expensive.request',
-                'res_id': expensive.id,
-                'datas': base64.b64encode(attachment.read()),
-                'type': 'binary',
-                'mimetype': attachment.content_type or 'application/pdf',
-            }
-            request.env['ir.attachment'].sudo().create(attachment_data)
-        if inventory_attachment:
-            name=inventory_attachment.filename
-            name="inventario_" + name
-            inventory_attachment_data = {
-                'name': name,
-                'res_model': 'portal.hr.expensive.request',
-                'res_id': expensive.id,
-                'datas': base64.b64encode(inventory_attachment.read()),
-                'type': 'binary',
-                'mimetype': inventory_attachment.content_type or 'application/pdf',
-            }
-            request.env['ir.attachment'].sudo().create(inventory_attachment_data)
+        if expensive_type == 'liquidacion_gastos':
+            for ticket_file in ticket_files:
+                self._create_attachment(expensive, ticket_file)
+            invoice_attachments = request.env['ir.attachment'].sudo()
+            for invoice_file in invoice_files:
+                invoice_attachments |= self._create_attachment(expensive, invoice_file)
+            expensive.employee_invoice_attachment_ids = invoice_attachments
+        else:
+            attachments = self._uploaded_files('file')
+            # La gratificación solo admite un documento (el formulario).
+            if expensive_type == 'gratificacion':
+                attachments = attachments[:1]
+            inventory_attachment = next(iter(self._uploaded_files('inventory_file')), None)
+            ensure_pdf(*attachments, inventory_attachment)
+            for attachment in attachments:
+                self._create_attachment(expensive, attachment)
+            if inventory_attachment:
+                self._create_attachment(
+                    expensive, inventory_attachment, name="inventario_" + inventory_attachment.filename)
         self.send_request_email(user_to_notify,user_name, company_name, expensive)
 
         return request.redirect('/my/expenses/thank-you')

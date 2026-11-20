@@ -3,8 +3,10 @@ from odoo import api, fields, models
 
 # Rol del usuario -> clave del artículo de Knowledge con su manual
 # (data/knowledge_manuals.xml: portal_requests.manual_article_<clave>).
-# El orden importa: el Administrativo implica el grupo de Jefe de Equipo.
+# El orden importa: la Secretaria implica Administrativo, y este, el grupo
+# de Jefe de Equipo.
 MANUAL_ROLES = [
+    ('portal_requests.group_secretary', 'secretaria'),
     ('portal_requests.group_administrative', 'administrativo'),
     ('portal_requests.group_equip_boss', 'jefe_de_equipo'),
     ('portal_requests.group_project_boss', 'jefe_de_proyecto'),

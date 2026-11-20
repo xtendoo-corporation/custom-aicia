@@ -42,12 +42,91 @@ class PortalHrExpensiveRequest(models.Model):
     is_paid = fields.Boolean(string='Pagada', default=False, copy=False, tracking=True)
     paid_date = fields.Date(string='Fecha de pago', copy=False)
     paid_by_id = fields.Many2one('res.users', string='Pagada por', copy=False)
+    # Liquidación de gastos: el empleado declara el total adelantado y sube por
+    # separado los tickets (se reembolsan como gasto de hr_expense) y las
+    # facturas a nombre de AICIA (se registran como facturas de proveedor
+    # cuya deuda se traslada al empleado). Ver _create_liquidation_documents.
+    currency_id = fields.Many2one('res.currency', compute='_compute_currency_id')
+    liquidation_amount = fields.Monetary(
+        string='Importe total adelantado', currency_field='currency_id', tracking=True,
+        help='Importe que el empleado ha adelantado: facturas a nombre de AICIA más tickets.')
+    employee_invoice_attachment_ids = fields.Many2many(
+        'ir.attachment', 'portal_expense_employee_invoice_attachment_rel',
+        'request_id', 'attachment_id', string='Facturas a nombre de AICIA', copy=False)
+    employee_invoice_ids = fields.One2many(
+        'account.move', 'employee_liquidation_id', string='Facturas pagadas por el empleado')
+    employee_invoice_count = fields.Integer(compute='_compute_liquidation_amounts')
+    liquidation_invoices_amount = fields.Monetary(
+        string='Importe de las facturas', currency_field='currency_id',
+        compute='_compute_liquidation_amounts')
+    liquidation_tickets_amount = fields.Monetary(
+        string='Importe de los tickets', currency_field='currency_id',
+        compute='_compute_liquidation_amounts')
+    liquidation_difference = fields.Monetary(
+        string='Diferencia sin justificar', currency_field='currency_id',
+        compute='_compute_liquidation_amounts',
+        help='Total declarado menos facturas y tickets registrados en contabilidad.')
+    is_reimbursed = fields.Boolean(
+        string='Reembolsada al empleado', compute='_compute_is_reimbursed')
     inmovilizado_account_id = fields.Many2one('account.account', string='Cuenta de Inmovilizado')
     # inmovilizado_type = fields.Selection([
     #     ('computer_equipment', 'Equipo informático'),
     #     ('furniture', 'Mobiliario'),
     #     ('other', 'Otro'),], string='Tipo de Inmovilizado')
     bank_account = fields.Char(string='Cuenta Bancaria')
+
+    @api.depends('project.company_id')
+    def _compute_currency_id(self):
+        for record in self:
+            record.currency_id = (record.project.company_id or self.env.company).currency_id
+
+    @api.depends(
+        'liquidation_amount', 'employee_invoice_ids.amount_total', 'employee_invoice_ids.state',
+        'expense_id.total_amount_currency')
+    def _compute_liquidation_amounts(self):
+        for record in self:
+            invoices = record.sudo().employee_invoice_ids.filtered(
+                lambda move: move.state != 'cancel')
+            invoices_amount = sum(invoices.mapped('amount_total'))
+            tickets_amount = record.sudo().expense_id.total_amount_currency
+            record.employee_invoice_count = len(invoices)
+            record.liquidation_invoices_amount = invoices_amount
+            record.liquidation_tickets_amount = tickets_amount
+            record.liquidation_difference = record.liquidation_amount - invoices_amount - tickets_amount
+
+    def _employee_payable_lines(self):
+        """Apuntes a pagar al empleado: el traslado de cada factura y el
+        asiento del gasto de los tickets, en la cuenta a pagar de su contacto."""
+        self.ensure_one()
+        record = self.sudo()
+        moves = record.employee_invoice_ids.employee_transfer_move_id | record.expense_id.account_move_id
+        employees = record.expense_id.employee_id | record.employee_invoice_ids.paid_by_employee_id
+        partner = employees.work_contact_id
+        return moves.filtered(lambda move: move.state == 'posted').line_ids.filtered(
+            lambda line: line.account_id.account_type == 'liability_payable' and line.partner_id in partner)
+
+    def _has_documents_pending_accounting(self):
+        self.ensure_one()
+        record = self.sudo()
+        draft_invoices = record.employee_invoice_ids.filtered(lambda move: move.state == 'draft')
+        expense_pending = record.expense_id and not record.expense_id.account_move_id
+        return bool(draft_invoices or expense_pending)
+
+    @api.depends(
+        'employee_invoice_ids.employee_transfer_move_id.line_ids.reconciled',
+        'expense_id.account_move_id.line_ids.reconciled')
+    def _compute_is_reimbursed(self):
+        for record in self:
+            if record.type != 'liquidacion_gastos' or not record.id:
+                record.is_reimbursed = False
+                continue
+            lines = record._employee_payable_lines()
+            record.is_reimbursed = (
+                bool(lines)
+                and all(lines.mapped('reconciled'))
+                and not record._has_documents_pending_accounting()
+            )
+
     project_credit = fields.Float(string='Saldo del Proyecto', compute='_compute_project_credit')
     @api.depends('project')
     def _compute_project_credit(self):
@@ -238,10 +317,11 @@ class PortalHrExpensiveRequest(models.Model):
         de gastos se reembolsan al empleado mediante un gasto de hr_expense."""
         self.status = 'approve'
         if self.type == 'liquidacion_gastos':
-            self._create_employee_expense()
+            self._create_liquidation_documents()
             return self.show_notificacion(
                 "¡Solicitud aprobada!",
-                "Se ha creado el gasto del empleado, pendiente de indicar el importe y reembolsar.",
+                "Se han creado las facturas y el gasto del empleado, pendientes de revisar "
+                "en contabilidad y reembolsar.",
                 "success",
             )
         if self.type == 'gratificacion':
@@ -324,19 +404,72 @@ class PortalHrExpensiveRequest(models.Model):
                 'aprobar la liquidación de gastos para poder reembolsarle el importe.',
                 self.user_id.name,
             ))
+        if not employee.primary_bank_account_id:
+            raise UserError(_(
+                'El empleado %s no tiene cuenta bancaria en su ficha. Indíquela antes de '
+                'aprobar la liquidación de gastos para poder transferirle el reembolso.',
+                employee.name,
+            ))
         return employee
 
-    def _create_employee_expense(self):
-        """Gasto de hr_expense pagado por el empleado, a quien se reembolsa.
+    def _create_liquidation_documents(self):
+        """Documentos contables de una liquidación de gastos aprobada.
 
-        Queda en borrador porque la solicitud del portal no recoge el importe
-        y hr_expense no admite gastos enviados o aprobados con importe cero:
-        Contabilidad indica el importe, lo aprueba, lo contabiliza y registra
-        el reembolso. Se crea con sudo porque los aprobadores del portal no
-        tienen permisos de Gastos."""
+        - Cada factura a nombre de AICIA: factura de proveedor en borrador,
+          marcada como pagada por el empleado. Al contabilizarla, su deuda se
+          traslada del proveedor al empleado (account.move._post).
+        - Los tickets: un gasto de hr_expense pagado por el empleado.
+        Así todo lo que se debe al empleado queda en su cuenta a pagar y se
+        le reembolsa en un único pago."""
         self.ensure_one()
         employee = self._get_requester_employee()
-        expense = self.env['hr.expense'].sudo().create({
+        attachments = self.env['ir.attachment'].sudo().search(
+            [('res_model', '=', self._name), ('res_id', '=', self.id)])
+        invoice_attachments = attachments & self.sudo().employee_invoice_attachment_ids
+        ticket_attachments = attachments - invoice_attachments
+        for attachment in invoice_attachments:
+            self._create_employee_invoice(employee, attachment)
+        # Sin documentos clasificados (liquidaciones anteriores) también se
+        # crea el gasto: Contabilidad lo completa a partir de la solicitud.
+        if ticket_attachments or not invoice_attachments:
+            self._create_employee_expense(employee, ticket_attachments)
+
+    def _create_employee_invoice(self, employee, attachment):
+        """Factura de proveedor en borrador para una factura a nombre de
+        AICIA que ha pagado el empleado. Contabilidad indica el proveedor y
+        el desglose de base e IVA. Se crea con sudo porque los aprobadores del
+        portal no tienen permisos de Contabilidad."""
+        self.ensure_one()
+        invoice_vals = {
+            'move_type': 'in_invoice',
+            'company_id': employee.company_id.id,
+            'employee_liquidation_id': self.id,
+            'paid_by_employee_id': employee.id,
+        }
+        # Campo de analítica en cabecera de aicia_account_move_analytic_account
+        if 'analytic_distribution' in self.env['account.move']._fields:
+            invoice_vals['analytic_distribution'] = {str(self.project.id): 100.0}
+        invoice = self.env['account.move'].sudo().with_company(employee.company_id).create(invoice_vals)
+        attachment.write({'res_model': 'account.move', 'res_id': invoice.id})
+        invoice.message_main_attachment_id = attachment
+        invoice.message_post(body=_(
+            'Factura a nombre de AICIA pagada por el empleado %(employee)s. No se paga al '
+            'proveedor: al contabilizarla, la deuda pasa al empleado (liquidación de gastos '
+            '%(request)s, aprobada por %(user)s).',
+            employee=employee.name, request=self.computed_name, user=self.env.user.name,
+        ))
+        return invoice
+
+    def _create_employee_expense(self, employee, attachments):
+        """Gasto de hr_expense con los tickets, pagado por el empleado.
+
+        Queda en borrador para que Contabilidad lo revise, lo apruebe y lo
+        contabilice. El importe se propone a partir del total declarado: todo
+        si no hay facturas o, si las hay, el resto cuando estén contabilizadas
+        (_update_liquidation_tickets_amount). Se crea con sudo porque los
+        aprobadores del portal no tienen permisos de Gastos."""
+        self.ensure_one()
+        expense_vals = {
             'name': _('Liquidación de gastos - %s', self.project.name),
             'employee_id': employee.id,
             'company_id': employee.company_id.id,
@@ -344,15 +477,70 @@ class PortalHrExpensiveRequest(models.Model):
             'payment_mode': 'own_account',
             'analytic_distribution': {str(self.project.id): 100.0},
             'description': _('Solicitud de gasto del portal: %s', self.computed_name),
-        })
-        attachments = self.env['ir.attachment'].sudo().search(
-            [('res_model', '=', self._name), ('res_id', '=', self.id)])
+        }
+        expense = self.env['hr.expense'].sudo().create(expense_vals)
+        if self.liquidation_amount and not self.sudo().employee_invoice_attachment_ids:
+            self._set_expense_amount(expense, self.liquidation_amount)
         attachments.write({'res_model': 'hr.expense', 'res_id': expense.id})
         if attachments:
             expense.message_main_attachment_id = attachments[:1]
         expense.message_post(body=_(
             'Liquidación de gastos aprobada en el portal por %s.', self.env.user.name))
         self.expense_id = expense
+
+    def _update_liquidation_tickets_amount(self):
+        """Cuando todas las facturas de la liquidación están contabilizadas,
+        propone como importe de los tickets el total declarado menos las
+        facturas, mientras el gasto siga en borrador."""
+        for record in self.sudo():
+            expense = record.expense_id
+            invoices = record.employee_invoice_ids.filtered(lambda move: move.state != 'cancel')
+            if (not record.liquidation_amount or not expense or expense.state != 'draft'
+                    or invoices.filtered(lambda move: move.state == 'draft')):
+                continue
+            remaining = record.liquidation_amount - sum(invoices.mapped('amount_total'))
+            record._set_expense_amount(expense, max(remaining, 0.0))
+
+    @api.model
+    def _set_expense_amount(self, expense, amount):
+        """Importe de un gasto sin coste de producto. Además del total hay
+        que fijar el precio unitario, que es lo que se contabiliza: en el
+        formulario lo hace el onchange _inverse_total_amount_currency."""
+        expense.total_amount_currency = amount
+        expense._inverse_total_amount_currency()
+
+    def action_register_employee_payment(self):
+        """Abre el registro de pago con todo lo pendiente de reembolsar al
+        empleado (facturas trasladadas y tickets) para pagarlo de una vez."""
+        self.ensure_one()
+        lines = self._employee_payable_lines().filtered(lambda line: not line.reconciled)
+        if not lines:
+            raise UserError(_(
+                'No hay importes pendientes de reembolsar. Contabilice las facturas y el '
+                'gasto de la liquidación antes de pagar al empleado.'))
+        return {
+            'type': 'ir.actions.act_window',
+            'name': _('Reembolsar al empleado'),
+            'res_model': 'account.payment.register',
+            'view_mode': 'form',
+            'target': 'new',
+            'context': {
+                'active_model': 'account.move.line',
+                'active_ids': lines.ids,
+                'default_group_payment': True,
+            },
+        }
+
+    def action_view_employee_invoices(self):
+        self.ensure_one()
+        return {
+            'type': 'ir.actions.act_window',
+            'name': _('Facturas pagadas por el empleado'),
+            'res_model': 'account.move',
+            'view_mode': 'list,form',
+            'domain': [('employee_liquidation_id', '=', self.id)],
+            'context': {'default_move_type': 'in_invoice'},
+        }
 
     def action_view_expense(self):
         self.ensure_one()
@@ -366,8 +554,11 @@ class PortalHrExpensiveRequest(models.Model):
 
     def _get_accounting_amount(self):
         """Importe y moneda del documento contable generado al aprobar
-        (factura de proveedor o gasto del empleado)."""
+        (factura de proveedor o gasto del empleado). En la liquidación de
+        gastos, el total declarado por el empleado."""
         self.ensure_one()
+        if self.type == 'liquidacion_gastos' and self.liquidation_amount:
+            return self.liquidation_amount, self.currency_id
         if self.invoice_created:
             invoice = self.invoice_created.sudo()
             return invoice.amount_total, invoice.currency_id

@@ -89,6 +89,15 @@
                                 groups="portal_requests.group_intern_partner_responsible"
                                 invisible="not show_mark_paid_button"
                                 />
+                        <!-- Reembolso de la liquidación de gastos (Contabilidad) -->
+                        <field name="is_reimbursed" invisible="1"/>
+                        <button name="action_register_employee_payment"
+                                string="Reembolsar al empleado"
+                                type="object"
+                                class="btn-primary"
+                                groups="account.group_account_invoice"
+                                invisible="type != 'liquidacion_gastos' or status != 'approve' or is_reimbursed"
+                                />
                     </header>
                     <sheet>
                         <div class="oe_button_box" name="button_box">
@@ -98,7 +107,13 @@
                             <button name="action_view_expense" type="object" class="oe_stat_button"
                                     icon="fa-money" string="Gasto" invisible="not expense_id"/>
                             <field name="expense_id" invisible="1"/>
+                            <button name="action_view_employee_invoices" type="object" class="oe_stat_button"
+                                    icon="fa-file-text-o" invisible="not employee_invoice_count">
+                                <field name="employee_invoice_count" widget="statinfo" string="Facturas AICIA"/>
+                            </button>
                         </div>
+                        <widget name="web_ribbon" title="Reembolsada" bg_color="text-bg-success"
+                                invisible="not is_reimbursed"/>
                         <group>
                             <group>
                                 <field name="type"/>
@@ -119,6 +134,16 @@
                                 <field name="show_group_credit" invisible="1"/>
                                 <field name="group_credit"
                                     invisible="not show_group_credit"/>
+                            </group>
+                            <group string="Liquidación de gastos" invisible="type != 'liquidacion_gastos'">
+                                <field name="currency_id" invisible="1"/>
+                                <field name="liquidation_amount"/>
+                                <field name="liquidation_invoices_amount"/>
+                                <field name="liquidation_tickets_amount"/>
+                                <field name="liquidation_difference"
+                                       decoration-danger="liquidation_difference != 0"/>
+                                <field name="employee_invoice_attachment_ids" widget="many2many_binary"
+                                       readonly="1" invisible="not employee_invoice_attachment_ids"/>
                             </group>
                             <group string="Pago de gratificación" invisible="type != 'gratificacion'">
                                 <field name="is_paid"/>

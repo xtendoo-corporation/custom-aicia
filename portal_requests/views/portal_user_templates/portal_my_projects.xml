@@ -93,7 +93,7 @@
                                             <span t-esc="project.partner_id.name if project.partner_id else '-'"/>
                                         </td>
                                         <td t-if="not hide_financials">
-                                            <span t-esc="project.balance" t-options='{"widget": "monetary", "display_currency": project.currency_id}'/>
+                                            <span t-esc="project.balance" t-options='{"widget": "monetary", "display_currency": project.currency_id or request.env.company.currency_id}'/>
                                         </td>
                                         <td>
                                             <span t-if="project.active" class="badge bg-success">Activo</span>
@@ -164,11 +164,11 @@
                                             </div>
                                             <div class="mb-3" t-if="not hide_financials">
                                                 <strong>Saldo:</strong>
-                                                <p><span t-esc="project.balance" t-options='{"widget": "monetary", "display_currency": project.currency_id}'/></p>
+                                                <p><span t-esc="project.balance" t-options='{"widget": "monetary", "display_currency": project.currency_id or request.env.company.currency_id}'/></p>
                                             </div>
                                             <div class="mb-3" t-if="not hide_financials">
                                                 <strong>Presupuesto:</strong>
-                                                <p><span t-esc="project.presupuesto" t-options='{"widget": "monetary", "display_currency": project.currency_id}'/></p>
+                                                <p><span t-esc="project.presupuesto" t-options='{"widget": "monetary", "display_currency": project.currency_id or request.env.company.currency_id}'/></p>
                                             </div>
                                         </div>
                                         <div class="col-md-6">

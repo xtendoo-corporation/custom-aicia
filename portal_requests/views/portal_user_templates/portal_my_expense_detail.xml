@@ -149,6 +149,19 @@
                                                 <p><span class="badge bg-info">Sí</span></p>
                                             </div>
                                         </div>
+                                        <div class="row mb-3" t-if="expense.type == 'liquidacion_gastos' and expense.liquidation_amount">
+                                            <div class="col-md-6">
+                                                <strong>Importe total adelantado:</strong>
+                                                <p><span t-field="expense.liquidation_amount"/></p>
+                                            </div>
+                                            <div class="col-md-6" t-if="expense.status == 'approve'">
+                                                <strong>Reembolso:</strong>
+                                                <p>
+                                                    <span t-if="expense.is_reimbursed" class="badge bg-success">Reembolsada</span>
+                                                    <span t-else="" class="badge bg-secondary">Pendiente de reembolso</span>
+                                                </p>
+                                            </div>
+                                        </div>
                                     </div>
                                 </div>
 
@@ -173,6 +186,8 @@
                                                    class="list-group-item list-group-item-action d-flex justify-content-between align-items-center">
                                                     <div>
                                                         <i class="fa fa-file-o me-2"/>
+                                                        <span t-if="attachment in expense.employee_invoice_attachment_ids"
+                                                              class="badge bg-info me-2">Factura a nombre de AICIA</span>
                                                         <span t-esc="attachment.name"/>
                                                     </div>
                                                     <span class="badge bg-primary rounded-pill">

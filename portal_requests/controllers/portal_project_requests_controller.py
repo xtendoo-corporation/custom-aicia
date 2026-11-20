@@ -13,7 +13,8 @@ class PortalInvoiceController(Controller):
         user = request.env.user
         # Obtener las compañías permitidas para el usuario logueado
         allowed_companies = user.company_ids
-        allowed_work_groups = request.env['portal.work.group'].search([('user_ids', 'in', user.id)])
+        WorkGroup = request.env['portal.work.group']
+        allowed_work_groups = WorkGroup.search(WorkGroup._requestable_domain(user))
         allowed_clients = request.env['res.partner'].search([('company_id', '=', request.env.company.id)])
         project_allowed = request.env['account.analytic.account'].search([
             ('work_group_id', 'in', allowed_work_groups.ids),

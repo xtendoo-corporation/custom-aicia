@@ -34,3 +34,6 @@ from . import test_expense_liquidation_hr_expense
 from . import test_portal_project_request_flow
 from . import test_analytic_account_admin_access
 from . import test_analytic_line_work_group
+from . import test_secretary_access
+from . import test_expense_liquidation_employee_invoices
+from . import test_expense_liquidation_portal

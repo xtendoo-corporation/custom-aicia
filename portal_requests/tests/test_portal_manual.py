@@ -113,7 +113,7 @@ class TestPortalManual(HttpCase):
         manager = self._internal('manual_director_manager_test', 'portal_requests.group_director_manager')
         root = self.env.ref('portal_requests.manual_article_root')
         self.assertEqual(len(self._readable_manuals(manager)), len(root.child_ids))
-        self.assertEqual(len(root.child_ids), 9)
+        self.assertEqual(len(root.child_ids), 10)
 
     def test_odoo_administrator_with_role_reads_only_own_manual(self):
         user = self._internal('manual_admin_partner_test', 'portal_requests.group_intern_partner_responsible')
@@ -127,7 +127,7 @@ class TestPortalManual(HttpCase):
 
     def test_administrator_editor_reads_all_manuals(self):
         root = self.env.ref('portal_requests.manual_article_root')
-        self.assertEqual(len(self._readable_manuals(self.env.ref('base.user_admin'))), 9)
+        self.assertEqual(len(self._readable_manuals(self.env.ref('base.user_admin'))), 10)
         self.assertTrue(root.child_ids[:1].with_user(self.env.ref('base.user_admin')).user_has_write_access)
 
     def test_internal_user_without_role_reads_no_manual(self):

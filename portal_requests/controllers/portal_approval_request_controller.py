@@ -8,7 +8,8 @@ class PortalApprovalRequestController(Controller):
     @route('/portal/approval_request', auth='user', website=True)
     def approval_request_form(self, **kwargs):
         user = request.env.user
-        allowed_work_groups = request.env['portal.work.group'].search([('user_ids', 'in', user.id)])
+        WorkGroup = request.env['portal.work.group']
+        allowed_work_groups = WorkGroup.search(WorkGroup._requestable_domain(user))
         return request.render('portal_requests.portal_approval_request_template', {'work_groups': allowed_work_groups})
 
     @route('/portal/approval_request/submit', type='http', auth='user', website=True, methods=['POST'])

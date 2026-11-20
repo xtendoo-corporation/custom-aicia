@@ -1,4 +1,5 @@
-from odoo import models, fields, api
+from odoo import api, fields, models
+
 
 class AccountAnalyticAccountInherit(models.Model):
     _inherit = ['account.analytic.account', 'portal.mixin']
@@ -48,6 +49,26 @@ class AccountAnalyticAccountInherit(models.Model):
 
     user_can_edit = fields.Boolean(string='User Can Edit', compute='_compute_user_can_edit')
     presupuesto = fields.Float(string='Presupuesto AICIA', tracking=True)
+
+    @api.model
+    def _portal_payment_visible_domain(self, user):
+        """Proyectos cuyo histórico de pagos y facturas ve `user` en el portal.
+
+        - Admin y Secretaria: todos.
+        - Jefe de Equipo: los suyos y los de sus grupos de trabajo.
+        - Administrativo y resto: solo los proyectos de los que es
+          responsable (el histórico de pagos del equipo es información
+          económica que el Administrativo no ve).
+        """
+        if self.env['portal.work.group']._sees_all_work_groups(user):
+            return []
+        domain = [('responsible_id', '=', user.id)]
+        is_boss = user.has_group('portal_requests.group_equip_boss') and not user.has_group(
+            'portal_requests.group_administrative'
+        )
+        if is_boss and user.work_group_ids:
+            domain = ['|'] + domain + [('work_group_id', 'in', user.work_group_ids.ids)]
+        return domain
 
     @api.depends('work_group_id', 'responsible_id')
     def _compute_user_can_edit(self):

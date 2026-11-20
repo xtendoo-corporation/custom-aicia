@@ -44,17 +44,8 @@ class PortalPaymentController(Controller):
         return messages
 
     def _get_accessible_project_ids(self, user):
-        analytic_domain = [('responsible_id', '=', user.id)]
-        # group_administrative implica group_equip_boss (mismas funciones que
-        # Jefe de Equipo) pero no debe acceder al histórico de pagos/facturas de los
-        # proyectos del equipo, que es información económica.
-        if user.has_group('portal_requests.group_aicia_admin'):
-            analytic_domain = []
-        elif user.has_group('portal_requests.group_equip_boss') and not user.has_group('portal_requests.group_administrative'):
-            work_groups = user.work_group_ids
-            if work_groups:
-                analytic_domain = ['|', ('responsible_id', '=', user.id), ('work_group_id', 'in', work_groups.ids)]
-        return request.env['account.analytic.account'].sudo().search(analytic_domain).ids
+        Analytic = request.env['account.analytic.account'].sudo()
+        return Analytic.search(Analytic._portal_payment_visible_domain(user)).ids
 
     def _get_visible_invoice_ids(self, user):
         project_ids = self._get_accessible_project_ids(user)

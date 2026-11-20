@@ -21,6 +21,8 @@
         "project_account",
         "send_draft_invoices",
         "knowledge",
+        # Transferencias SEPA para reembolsar las liquidaciones de gastos
+        "account_iso20022",
     ],
     "license": "AGPL-3",
     "assets": {
@@ -58,6 +60,7 @@
         'views/interface/account_analytic_line_views.xml',
         'views/interface/etiqueta_categoria_views.xml',
         'views/interface/portal_hr_expensive_request.xml',
+        'views/interface/account_move_employee_views.xml',
         'views/interface/ir_attachment_views.xml',
         'views/interface/res_users_views.xml',
         'views/portal_user_templates/portal_user_templates.xml',

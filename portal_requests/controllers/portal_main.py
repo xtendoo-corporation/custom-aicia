@@ -53,7 +53,7 @@ class PortalRequestsCustomerPortal(CustomerPortal):
         - Es el jefe de equipo del grupo de trabajo asociado a la solicitud.
         """
         user = request.env.user
-        if invoice_request.user_id == user or user.has_group('portal_requests.group_aicia_admin'):
+        if invoice_request.user_id == user or request.env['portal.work.group']._sees_all_work_groups(user):
             return True
         if invoice_request.equip_boss == user or invoice_request.administrative_id == user:
             return True
@@ -68,8 +68,8 @@ class PortalRequestsCustomerPortal(CustomerPortal):
           (saldos/presupuestos), que se oculta en la plantilla mediante
           _hide_project_financials().
         """
-        if user.has_group('portal_requests.group_aicia_admin'):
-            return []  # el perfil Admin ve todos los proyectos
+        if request.env['portal.work.group']._sees_all_work_groups(user):
+            return []  # Admin y Secretaria ven todos los proyectos
         domain = [('responsible_id', '=', user.id)]
         if user.has_group('portal_requests.group_equip_boss'):
             boss_group_ids = request.env['portal.work.group'].sudo().search(
@@ -98,8 +98,11 @@ class PortalRequestsCustomerPortal(CustomerPortal):
 
     def _hide_project_financials(self, user):
         """El perfil Administrativo ve los mismos proyectos que el Jefe de
-        Equipo, pero sin datos económicos (saldo/presupuesto)."""
-        return user.has_group('portal_requests.group_administrative')
+        Equipo, pero sin datos económicos (saldo/presupuesto). La Secretaria,
+        aunque implica Administrativo, sí los ve."""
+        return user.has_group('portal_requests.group_administrative') and not user.has_group(
+            'portal_requests.group_secretary'
+        )
 
     def _project_request_type_label(self, project_request):
         type_labels = {
@@ -2192,15 +2195,8 @@ class PortalRequestsCustomerPortal(CustomerPortal):
         user = request.env.user
         payment = request.env['account.payment'].sudo().browse(invoice_id)
         # Validar acceso igual que en portal_my_payment_detail
-        analytic_domain = [('responsible_id', '=', user.id)]
-        if user.has_group('portal_requests.group_aicia_admin'):
-            analytic_domain = []
-        elif user.has_group('portal_requests.group_equip_boss') and not user.has_group('portal_requests.group_administrative'):
-            work_groups = user.work_group_ids
-            if work_groups:
-                analytic_domain = ['|', ('responsible_id', '=', user.id), ('work_group_id', 'in', work_groups.ids)]
-        projects = request.env['account.analytic.account'].sudo().search(analytic_domain)
-        project_ids = projects.ids
+        Analytic = request.env['account.analytic.account'].sudo()
+        project_ids = Analytic.search(Analytic._portal_payment_visible_domain(user)).ids
         paid_invoices = request.env['account.move'].sudo().search([
             ('analytic_distribution', '!=', False),
             ('move_type', 'in', ['out_invoice', 'out_refund', 'in_invoice', 'in_refund']),

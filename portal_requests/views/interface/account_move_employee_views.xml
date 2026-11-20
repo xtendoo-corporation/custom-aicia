@@ -1,0 +1,24 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<odoo>
+    <!-- Facturas a nombre de AICIA pagadas por un empleado (liquidación de gastos) -->
+    <record id="view_move_form_paid_by_employee" model="ir.ui.view">
+        <field name="name">account.move.form.paid.by.employee</field>
+        <field name="model">account.move</field>
+        <field name="inherit_id" ref="account.view_move_form"/>
+        <field name="arch" type="xml">
+            <xpath expr="//sheet" position="before">
+                <div class="alert alert-warning mb-0" role="alert" invisible="not paid_by_employee_id">
+                    Factura pagada por el empleado <field name="paid_by_employee_id" readonly="1" class="fw-bold"/>.
+                    No se paga al proveedor: al contabilizarla, la deuda pasa al empleado y se le
+                    reembolsa con su liquidación de gastos.
+                </div>
+            </xpath>
+            <xpath expr="//group[@id='other_tab_group']" position="inside">
+                <group string="Liquidación de gastos" invisible="not employee_liquidation_id">
+                    <field name="employee_liquidation_id"/>
+                    <field name="employee_transfer_move_id"/>
+                </group>
+            </xpath>
+        </field>
+    </record>
+</odoo>

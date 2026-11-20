@@ -39,11 +39,18 @@ class TestExpenseLiquidationHrExpense(TransactionCase):
         })
 
     def _create_employee(self, user):
-        return self.env['hr.employee'].create({
+        employee = self.env['hr.employee'].create({
             'name': user.name,
             'user_id': user.id,
             'company_id': self.env.company.id,
         })
+        # El reembolso se transfiere: la aprobación exige la cuenta bancaria.
+        bank = self.env['res.partner.bank'].create({
+            'acc_number': f'ES91210004184502000{employee.id:05d}',
+            'partner_id': employee.work_contact_id.id,
+        })
+        employee.bank_account_ids = [(6, 0, bank.ids)]
+        return employee
 
     def _create_request(self, expense_type='liquidacion_gastos'):
         return self.env['portal.hr.expensive.request'].create({

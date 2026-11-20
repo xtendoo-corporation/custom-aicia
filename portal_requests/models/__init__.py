@@ -21,3 +21,4 @@ from . import account_move
 from . import sign_request_inherit
 from . import account_payment
 from . import sign_send_request_inherit
+from . import account_payment_register
