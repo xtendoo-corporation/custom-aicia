@@ -274,14 +274,9 @@ guarda el primero. El material inventariable pide además un
 &lt;strong&gt;archivo de inventario&lt;/strong&gt;.&lt;/li&gt;
 &lt;li&gt;&lt;strong&gt;¿Es mas de 10000€?&lt;/strong&gt;: márcalo si el importe supera
 esa cifra.&lt;/li&gt;
-&lt;li&gt;&lt;strong&gt;Liquidación de gastos&lt;/strong&gt; (lo que has adelantado
-tú): en lugar de &lt;strong&gt;Factura&lt;/strong&gt; y &lt;strong&gt;¿Es mas de
-10000€?&lt;/strong&gt; aparecen &lt;strong&gt;Importe total adelantado&lt;/strong&gt; (la
-suma de todo lo que has pagado), &lt;strong&gt;Gastos (tickets)&lt;/strong&gt;
-(taxis, comidas, aparcamientos…) y &lt;strong&gt;Facturas a nombre de
-AICIA&lt;/strong&gt; (facturas con el NIF de AICIA que has pagado tú, una por
-PDF). Indica el importe y adjunta al menos un documento; si el total
-supera 10.000 € pasa también por el Director Gerente.&lt;/li&gt;
+&lt;li&gt;Si eliges &lt;strong&gt;Liquidación de gastos&lt;/strong&gt; el formulario
+cambia: sigue el apartado &lt;strong&gt;Solicitar una liquidación de
+gastos&lt;/strong&gt;.&lt;/li&gt;
 &lt;/ul&gt;&lt;/li&gt;
 &lt;li&gt;Pulsa &lt;strong&gt;Enviar&lt;/strong&gt;.&lt;/li&gt;
 &lt;/ol&gt;
@@ -292,11 +287,65 @@ alt="Formulario de solicitud de gasto" /&gt;&lt;br /&gt;
 Clientes y Becarios si es gratificación) → Director Gerente solo si
 supera 10.000 € → &lt;strong&gt;Aprobada&lt;/strong&gt;. Al aprobarse se crea la
 factura de proveedor en borrador.&lt;/p&gt;
-&lt;p&gt;En una &lt;strong&gt;liquidación de gastos&lt;/strong&gt;, al aprobarse
-Contabilidad registra las facturas y los tickets y te reembolsa el total
-en &lt;strong&gt;una sola transferencia&lt;/strong&gt; a la cuenta bancaria de tu
-ficha de empleado. En el detalle verás &lt;strong&gt;Reembolsada&lt;/strong&gt;
-cuando esté pagada.&lt;/p&gt;
+&lt;h3 id="solicitar-una-liquidacion-de-gastos"&gt;Solicitar una liquidación
+de gastos&lt;/h3&gt;
+&lt;p&gt;Úsala para que te devuelvan lo que has pagado tú (un viaje, una compra,
+una inscripción…). Los tickets y las facturas a nombre de AICIA van en la
+&lt;strong&gt;misma solicitud&lt;/strong&gt;, cada uno en su apartado.&lt;/p&gt;
+&lt;ol type="1"&gt;
+&lt;li&gt;Entra en &lt;code&gt;/my&lt;/code&gt; → &lt;strong&gt;Solicitudes de Gastos&lt;/strong&gt; y pulsa
+&lt;strong&gt;Nueva Solicitud&lt;/strong&gt;.&lt;/li&gt;
+&lt;li&gt;En &lt;strong&gt;Tipo&lt;/strong&gt; elige &lt;strong&gt;Liquidación de gastos&lt;/strong&gt; y en
+&lt;strong&gt;Compañía&lt;/strong&gt; el proyecto. El formulario cambia y muestra tres
+campos nuevos.&lt;/li&gt;
+&lt;li&gt;&lt;strong&gt;Importe total adelantado&lt;/strong&gt;: la suma de todo lo que has
+pagado, facturas y tickets juntos (admite decimales con coma).&lt;/li&gt;
+&lt;li&gt;&lt;strong&gt;Gastos (tickets)&lt;/strong&gt;: sube aquí los tickets y justificantes que
+no son factura a nombre de AICIA: taxis, comidas, aparcamientos…&lt;/li&gt;
+&lt;li&gt;&lt;strong&gt;Facturas a nombre de AICIA&lt;/strong&gt;: sube aquí las facturas con el
+NIF de AICIA que has pagado tú: hotel, material, inscripciones… Una
+factura por PDF.&lt;/li&gt;
+&lt;li&gt;Pulsa &lt;strong&gt;Enviar&lt;/strong&gt;.&lt;/li&gt;
+&lt;/ol&gt;
+&lt;p&gt;&lt;img class="img-fluid" src="/web/image/portal_requests.manual_img_solicitante_10_liquidacion_nueva"
+alt="Liquidación de gastos: importe total y dos apartados, tickets y facturas" /&gt;&lt;br /&gt;
+&lt;em&gt;Liquidación de gastos: importe total y dos apartados, tickets y
+facturas&lt;/em&gt;&lt;/p&gt;
+&lt;table&gt;
+&lt;thead&gt;
+&lt;tr&gt;
+&lt;th&gt;Documento&lt;/th&gt;
+&lt;th&gt;Apartado&lt;/th&gt;
+&lt;/tr&gt;
+&lt;/thead&gt;
+&lt;tbody&gt;
+&lt;tr&gt;
+&lt;td&gt;Ticket de taxi, comida, aparcamiento, transporte…&lt;/td&gt;
+&lt;td&gt;&lt;strong&gt;Gastos (tickets)&lt;/strong&gt;&lt;/td&gt;
+&lt;/tr&gt;
+&lt;tr&gt;
+&lt;td&gt;Factura sin los datos de AICIA&lt;/td&gt;
+&lt;td&gt;&lt;strong&gt;Gastos (tickets)&lt;/strong&gt;&lt;/td&gt;
+&lt;/tr&gt;
+&lt;tr&gt;
+&lt;td&gt;Factura con el nombre y el NIF de AICIA (hotel, material,
+inscripción…)&lt;/td&gt;
+&lt;td&gt;&lt;strong&gt;Facturas a nombre de AICIA&lt;/strong&gt;&lt;/td&gt;
+&lt;/tr&gt;
+&lt;/tbody&gt;
+&lt;/table&gt;
+&lt;ul&gt;
+&lt;li&gt;En cada apartado puedes seleccionar varios archivos a la vez. Todos deben
+ser PDF y hace falta al menos uno entre los dos apartados.&lt;/li&gt;
+&lt;li&gt;Si el importe total supera 10.000 €, la solicitud pasa también por el
+Director Gerente; no hay que marcar nada.&lt;/li&gt;
+&lt;li&gt;Necesitas ficha de empleado con &lt;strong&gt;cuenta bancaria&lt;/strong&gt;: si no la
+tienes, avisa a Personal antes de enviarla.&lt;/li&gt;
+&lt;/ul&gt;
+&lt;p&gt;Sigue el mismo circuito que un gasto. Al aprobarse, Contabilidad registra
+las facturas y los tickets y te reembolsa el total en &lt;strong&gt;una sola
+transferencia&lt;/strong&gt; a tu cuenta bancaria. En el detalle verás
+&lt;strong&gt;Reembolsada&lt;/strong&gt; cuando esté pagada.&lt;/p&gt;
 &lt;h3 id="solicitar-la-apertura-o-el-cierre-de-un-proyecto"&gt;Solicitar la
 apertura o el cierre de un proyecto&lt;/h3&gt;
 &lt;ol type="1"&gt;
@@ -761,14 +810,9 @@ guarda el primero. El material inventariable pide además un
 &lt;strong&gt;archivo de inventario&lt;/strong&gt;.&lt;/li&gt;
 &lt;li&gt;&lt;strong&gt;¿Es mas de 10000€?&lt;/strong&gt;: márcalo si el importe supera
 esa cifra.&lt;/li&gt;
-&lt;li&gt;&lt;strong&gt;Liquidación de gastos&lt;/strong&gt; (lo que has adelantado
-tú): en lugar de &lt;strong&gt;Factura&lt;/strong&gt; y &lt;strong&gt;¿Es mas de
-10000€?&lt;/strong&gt; aparecen &lt;strong&gt;Importe total adelantado&lt;/strong&gt; (la
-suma de todo lo que has pagado), &lt;strong&gt;Gastos (tickets)&lt;/strong&gt;
-(taxis, comidas, aparcamientos…) y &lt;strong&gt;Facturas a nombre de
-AICIA&lt;/strong&gt; (facturas con el NIF de AICIA que has pagado tú, una por
-PDF). Indica el importe y adjunta al menos un documento; si el total
-supera 10.000 € pasa también por el Director Gerente.&lt;/li&gt;
+&lt;li&gt;Si eliges &lt;strong&gt;Liquidación de gastos&lt;/strong&gt; el formulario
+cambia: sigue el apartado &lt;strong&gt;Solicitar una liquidación de
+gastos&lt;/strong&gt;.&lt;/li&gt;
 &lt;/ul&gt;&lt;/li&gt;
 &lt;li&gt;Pulsa &lt;strong&gt;Enviar&lt;/strong&gt;.&lt;/li&gt;
 &lt;/ol&gt;
@@ -779,11 +823,65 @@ alt="Formulario de solicitud de gasto" /&gt;&lt;br /&gt;
 Clientes y Becarios si es gratificación) → Director Gerente solo si
 supera 10.000 € → &lt;strong&gt;Aprobada&lt;/strong&gt;. Al aprobarse se crea la
 factura de proveedor en borrador.&lt;/p&gt;
-&lt;p&gt;En una &lt;strong&gt;liquidación de gastos&lt;/strong&gt;, al aprobarse
-Contabilidad registra las facturas y los tickets y te reembolsa el total
-en &lt;strong&gt;una sola transferencia&lt;/strong&gt; a la cuenta bancaria de tu
-ficha de empleado. En el detalle verás &lt;strong&gt;Reembolsada&lt;/strong&gt;
-cuando esté pagada.&lt;/p&gt;
+&lt;h3 id="solicitar-una-liquidacion-de-gastos"&gt;Solicitar una liquidación
+de gastos&lt;/h3&gt;
+&lt;p&gt;Úsala para que te devuelvan lo que has pagado tú (un viaje, una compra,
+una inscripción…). Los tickets y las facturas a nombre de AICIA van en la
+&lt;strong&gt;misma solicitud&lt;/strong&gt;, cada uno en su apartado.&lt;/p&gt;
+&lt;ol type="1"&gt;
+&lt;li&gt;Entra en &lt;code&gt;/my&lt;/code&gt; → &lt;strong&gt;Solicitudes de Gastos&lt;/strong&gt; y pulsa
+&lt;strong&gt;Nueva Solicitud&lt;/strong&gt;.&lt;/li&gt;
+&lt;li&gt;En &lt;strong&gt;Tipo&lt;/strong&gt; elige &lt;strong&gt;Liquidación de gastos&lt;/strong&gt; y en
+&lt;strong&gt;Compañía&lt;/strong&gt; el proyecto. El formulario cambia y muestra tres
+campos nuevos.&lt;/li&gt;
+&lt;li&gt;&lt;strong&gt;Importe total adelantado&lt;/strong&gt;: la suma de todo lo que has
+pagado, facturas y tickets juntos (admite decimales con coma).&lt;/li&gt;
+&lt;li&gt;&lt;strong&gt;Gastos (tickets)&lt;/strong&gt;: sube aquí los tickets y justificantes que
+no son factura a nombre de AICIA: taxis, comidas, aparcamientos…&lt;/li&gt;
+&lt;li&gt;&lt;strong&gt;Facturas a nombre de AICIA&lt;/strong&gt;: sube aquí las facturas con el
+NIF de AICIA que has pagado tú: hotel, material, inscripciones… Una
+factura por PDF.&lt;/li&gt;
+&lt;li&gt;Pulsa &lt;strong&gt;Enviar&lt;/strong&gt;.&lt;/li&gt;
+&lt;/ol&gt;
+&lt;p&gt;&lt;img class="img-fluid" src="/web/image/portal_requests.manual_img_solicitante_10_liquidacion_nueva"
+alt="Liquidación de gastos: importe total y dos apartados, tickets y facturas" /&gt;&lt;br /&gt;
+&lt;em&gt;Liquidación de gastos: importe total y dos apartados, tickets y
+facturas&lt;/em&gt;&lt;/p&gt;
+&lt;table&gt;
+&lt;thead&gt;
+&lt;tr&gt;
+&lt;th&gt;Documento&lt;/th&gt;
+&lt;th&gt;Apartado&lt;/th&gt;
+&lt;/tr&gt;
+&lt;/thead&gt;
+&lt;tbody&gt;
+&lt;tr&gt;
+&lt;td&gt;Ticket de taxi, comida, aparcamiento, transporte…&lt;/td&gt;
+&lt;td&gt;&lt;strong&gt;Gastos (tickets)&lt;/strong&gt;&lt;/td&gt;
+&lt;/tr&gt;
+&lt;tr&gt;
+&lt;td&gt;Factura sin los datos de AICIA&lt;/td&gt;
+&lt;td&gt;&lt;strong&gt;Gastos (tickets)&lt;/strong&gt;&lt;/td&gt;
+&lt;/tr&gt;
+&lt;tr&gt;
+&lt;td&gt;Factura con el nombre y el NIF de AICIA (hotel, material,
+inscripción…)&lt;/td&gt;
+&lt;td&gt;&lt;strong&gt;Facturas a nombre de AICIA&lt;/strong&gt;&lt;/td&gt;
+&lt;/tr&gt;
+&lt;/tbody&gt;
+&lt;/table&gt;
+&lt;ul&gt;
+&lt;li&gt;En cada apartado puedes seleccionar varios archivos a la vez. Todos deben
+ser PDF y hace falta al menos uno entre los dos apartados.&lt;/li&gt;
+&lt;li&gt;Si el importe total supera 10.000 €, la solicitud pasa también por el
+Director Gerente; no hay que marcar nada.&lt;/li&gt;
+&lt;li&gt;Necesitas ficha de empleado con &lt;strong&gt;cuenta bancaria&lt;/strong&gt;: si no la
+tienes, avisa a Personal antes de enviarla.&lt;/li&gt;
+&lt;/ul&gt;
+&lt;p&gt;Sigue el mismo circuito que un gasto. Al aprobarse, Contabilidad registra
+las facturas y los tickets y te reembolsa el total en &lt;strong&gt;una sola
+transferencia&lt;/strong&gt; a tu cuenta bancaria. En el detalle verás
+&lt;strong&gt;Reembolsada&lt;/strong&gt; cuando esté pagada.&lt;/p&gt;
 &lt;h3 id="solicitar-la-apertura-o-el-cierre-de-un-proyecto"&gt;Solicitar la
 apertura o el cierre de un proyecto&lt;/h3&gt;
 &lt;ol type="1"&gt;
@@ -3085,6 +3183,13 @@ uno activo, comprueba que tu usuario tiene el perfil
         <record id="manual_img_solicitante_09_gasto_nuevo" model="ir.attachment">
             <field name="name">09_gasto_nuevo.png</field>
             <field name="datas" type="base64" file="portal_requests/data/manuals/img/solicitante/09_gasto_nuevo.png" />
+            <field name="mimetype">image/png</field>
+            <field name="res_model">knowledge.article</field>
+            <field name="res_id" ref="manual_article_solicitante" />
+        </record>
+        <record id="manual_img_solicitante_10_liquidacion_nueva" model="ir.attachment">
+            <field name="name">10_liquidacion_nueva.png</field>
+            <field name="datas" type="base64" file="portal_requests/data/manuals/img/solicitante/10_liquidacion_nueva.png" />
             <field name="mimetype">image/png</field>
             <field name="res_model">knowledge.article</field>
             <field name="res_id" ref="manual_article_solicitante" />

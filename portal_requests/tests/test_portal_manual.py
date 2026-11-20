@@ -67,6 +67,19 @@ class TestPortalManual(HttpCase):
         self.assertEqual(response.status_code, 200)
         self.assertTrue(response.headers.get('Content-Type', '').startswith('image/'))
 
+    def test_liquidation_section_with_form_image(self):
+        """Solicitante y Jefe de Proyecto explican la liquidación de gastos
+        en un apartado propio con la captura del formulario nuevo."""
+        image = '/my/manual/image/manual_img_solicitante_10_liquidacion_nueva'
+        for user in (self.requester, self.project_boss):
+            body = self._get(user, '/my/manual').text
+            self.assertIn('Solicitar una liquidación', body)
+            self.assertIn('Facturas a nombre de AICIA', body)
+            self.assertIn(image, body)
+            response = self.url_open(image)
+            self.assertEqual(response.status_code, 200, user.login)
+            self.assertTrue(response.headers.get('Content-Type', '').startswith('image/'))
+
     def test_image_of_other_role_is_not_served(self):
         # Imagen exclusiva del manual del Jefe de Equipo pedida por un solicitante
         self.assertTrue(self.env.ref('portal_requests.manual_img_jefe_de_equipo_04_documento_rechazar_motivo',
