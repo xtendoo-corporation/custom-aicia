@@ -2147,9 +2147,9 @@ con enlace cada vez que cambia el estado de su solicitud.&lt;/li&gt;
 &lt;p&gt;&lt;strong&gt;Roles del módulo&lt;/strong&gt;&lt;/p&gt;
 &lt;table&gt;
 &lt;colgroup&gt;
-&lt;col style="width: 33%" /&gt;
-&lt;col style="width: 33%" /&gt;
-&lt;col style="width: 33%" /&gt;
+&lt;col style="width: 33%"&gt;
+&lt;col style="width: 33%"&gt;
+&lt;col style="width: 33%"&gt;
 &lt;/colgroup&gt;
 &lt;thead&gt;
 &lt;tr&gt;
@@ -2206,7 +2206,7 @@ con enlace cada vez que cambia el estado de su solicitud.&lt;/li&gt;
 &lt;/tr&gt;
 &lt;/tbody&gt;
 &lt;/table&gt;
-&lt;blockquote&gt;
+&lt;blockquote data-o-mail-quote-node="1" data-o-mail-quote="1"&gt;
 &lt;p&gt;Las capturas de este manual se han tomado con usuarios y datos
 ficticios.&lt;/p&gt;
 &lt;/blockquote&gt;
@@ -2220,8 +2220,8 @@ de Equipo, y gestionas las &lt;strong&gt;solicitudes de empleados&lt;/strong&gt;
 &lt;strong&gt;Responsable de Personal y compras&lt;/strong&gt;.&lt;/p&gt;
 &lt;table&gt;
 &lt;colgroup&gt;
-&lt;col style="width: 50%" /&gt;
-&lt;col style="width: 50%" /&gt;
+&lt;col style="width: 50%"&gt;
+&lt;col style="width: 50%"&gt;
 &lt;/colgroup&gt;
 &lt;thead&gt;
 &lt;tr&gt;
@@ -2257,8 +2257,7 @@ de Equipo, y gestionas las &lt;strong&gt;solicitudes de empleados&lt;/strong&gt;
 &lt;p&gt;Abre la app &lt;strong&gt;Solicitudes del Portal&lt;/strong&gt;. Tienes las
 tarjetas &lt;strong&gt;Empleados&lt;/strong&gt; y &lt;strong&gt;Gastos&lt;/strong&gt;;
 &lt;strong&gt;Para revisar&lt;/strong&gt; te lleva a lo pendiente.&lt;/p&gt;
-&lt;p&gt;&lt;img class="img-fluid" src="/web/image/portal_requests.manual_img_responsable_personal_y_compras_01_resumen"
-alt="Panel Resumen del Responsable de Personal y Compras" /&gt;&lt;br /&gt;
+&lt;p&gt;&lt;img class="img-fluid" src="/web/image/portal_requests.manual_img_responsable_personal_y_compras_01_resumen" alt="Panel Resumen del Responsable de Personal y Compras"&gt;&lt;br&gt;
 &lt;em&gt;Panel Resumen del Responsable de Personal y Compras&lt;/em&gt;&lt;/p&gt;
 &lt;h3 id="aprobar-o-rechazar-un-gasto"&gt;Aprobar o rechazar un gasto&lt;/h3&gt;
 &lt;ol type="1"&gt;
@@ -2286,8 +2285,7 @@ necesita ficha de empleado con cuenta bancaria.&lt;/li&gt;
 a &lt;strong&gt;Volver a revisar&lt;/strong&gt; y el solicitante recibe el motivo
 por correo.&lt;/li&gt;
 &lt;/ol&gt;
-&lt;p&gt;&lt;img class="img-fluid" src="/web/image/portal_requests.manual_img_responsable_personal_y_compras_02_gasto_aprobar"
-alt="Gasto pendiente del segundo aprobador" /&gt;&lt;br /&gt;
+&lt;p&gt;&lt;img class="img-fluid" src="/web/image/portal_requests.manual_img_responsable_personal_y_compras_02_gasto_aprobar" alt="Gasto pendiente del segundo aprobador"&gt;&lt;br&gt;
 &lt;em&gt;Gasto pendiente del segundo aprobador&lt;/em&gt;&lt;/p&gt;
 &lt;h3 id="reembolsar-una-liquidacion-de-gastos"&gt;Reembolsar una
 liquidación de gastos&lt;/h3&gt;
@@ -2324,10 +2322,9 @@ empleado; &lt;strong&gt;Baja&lt;/strong&gt; lo archiva.&lt;/li&gt;
 Revisar&lt;/strong&gt; una solicitud rechazada. El solicitante recibe un
 correo en cada caso.&lt;/li&gt;
 &lt;/ol&gt;
-&lt;p&gt;&lt;img class="img-fluid" src="/web/image/portal_requests.manual_img_responsable_personal_y_compras_03_empleado"
-alt="Solicitud de empleado nuevo" /&gt;&lt;br /&gt;
+&lt;p&gt;&lt;img class="img-fluid" src="/web/image/portal_requests.manual_img_responsable_personal_y_compras_03_empleado" alt="Solicitud de empleado nuevo"&gt;&lt;br&gt;
 &lt;em&gt;Solicitud de empleado nuevo&lt;/em&gt;&lt;/p&gt;
-&lt;h2 id="avisos-y-preguntas-frecuentes"&gt;Avisos y preguntas
+&lt;h3&gt;Qué hacer una vez aprobado el gasto&lt;/h3&gt;&lt;ol&gt;&lt;li&gt;Al aprobar, se crea la factura de proveedor en borrador con el PDF adjunto. Ábrela desde Facturación → Proveedores → Facturas (filtro Borrador).&lt;/li&gt;&lt;li&gt;Comprueba proveedor, fecha, importe, impuestos y la distribución analítica al 100 % del proyecto. En material inventariable, verifica la Cuenta de Inmovilizado.&lt;/li&gt;&lt;li&gt;Pulsa Confirmar.&lt;/li&gt;&lt;li&gt;Cuando toque pagar, pulsa Pagar (registrar pago), elige diario y fecha. Si el pago llega por el banco, concílialo desde el extracto.&lt;/li&gt;&lt;li&gt;Comprueba que la factura pasa a Pagado y que el saldo del proyecto se actualiza.&lt;/li&gt;&lt;/ol&gt;&lt;p&gt;Empleados: tras aprobar un empleado nuevo, completa en su ficha lo que no viene de la solicitud (contrato, departamento, etc.); tras una Baja, confirma que queda archivado.&lt;/p&gt;&lt;h2 id="avisos-y-preguntas-frecuentes"&gt;Avisos y preguntas
 frecuentes&lt;/h2&gt;
 &lt;p&gt;&lt;strong&gt;Correos que recibes&lt;/strong&gt;: gasto aprobado por el Jefe de
 Equipo y gasto solicitado directamente por un Jefe de Equipo.&lt;/p&gt;
@@ -2338,8 +2335,7 @@ Clientes y Becarios.&lt;/p&gt;
 ese correo se envía al Responsable de Clientes y Becarios. Revisa
 &lt;strong&gt;Empleados&lt;/strong&gt; en el Resumen con regularidad.&lt;/p&gt;
 &lt;p&gt;&lt;strong&gt;¿Dónde se crean las solicitudes de empleado?&lt;/strong&gt; En el
-portal, en la dirección &lt;code&gt;/portal/hr_employee_request&lt;/code&gt;.&lt;/p&gt;
-</field>
+portal, en la dirección &lt;code&gt;/portal/hr_employee_request&lt;/code&gt;.&lt;/p&gt;</field>
         </record>
         <record id="manual_article_responsable_clientes_y_becarios" model="knowledge.article">
             <field name="name">Manual — Responsable de Clientes y Becarios</field>
