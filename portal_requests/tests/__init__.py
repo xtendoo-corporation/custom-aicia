@@ -37,3 +37,4 @@ from . import test_analytic_line_work_group
 from . import test_secretary_access
 from . import test_expense_liquidation_employee_invoices
 from . import test_expense_liquidation_portal
+from . import test_account_payment_analytic
