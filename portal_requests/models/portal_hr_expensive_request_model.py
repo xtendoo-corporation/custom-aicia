@@ -362,11 +362,14 @@ class PortalHrExpensiveRequest(models.Model):
         """Adjuntos de la liquidación que son tickets: todos menos las facturas
         a nombre de AICIA y la orden de pago."""
         self.ensure_one()
-        attachments = self.env['ir.attachment'].sudo().search(
-            [('res_model', '=', self._name), ('res_id', '=', self.id)], order='id')
+        domain = ['&', ('res_model', '=', self._name), ('res_id', '=', self.id)]
+        if self.expense_id:
+            # Al aprobar, los tickets pasan al gasto de hr_expense.
+            domain = ['|', *domain, '&', ('res_model', '=', 'hr.expense'), ('res_id', '=', self.expense_id.id)]
+        attachments = self.env['ir.attachment'].sudo().search(domain, order='id')
         return attachments - self.sudo().employee_invoice_attachment_ids - self.sudo().payment_order_attachment_ids
 
-    @api.depends('type', 'employee_invoice_attachment_ids', 'payment_order_attachment_ids')
+    @api.depends('type', 'expense_id', 'employee_invoice_attachment_ids', 'payment_order_attachment_ids')
     def _compute_ticket_attachment_ids(self):
         for record in self:
             record.ticket_attachment_ids = (
