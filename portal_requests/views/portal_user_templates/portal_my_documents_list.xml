@@ -1,0 +1,152 @@
+<?xml version="1.0" encoding="utf-8"?>
+<odoo>
+    <data>
+        <!-- Breadcrumb para navegación -->
+        <template id="portal_my_home_menu_documents" name="Portal layout: menu documents"
+                  inherit_id="portal.portal_breadcrumbs" priority="48">
+            <xpath expr="//ol[hasclass('o_portal_submenu')]" position="inside">
+                <li t-if="page_name == 'document_approval' and not document" class="breadcrumb-item active">
+                    Solicitudes de Documentos
+                </li>
+            </xpath>
+        </template>
+
+        <!-- Vista del listado de solicitudes de documentos -->
+        <template id="portal_my_documents" name="Mis Solicitudes de Documentos">
+            <t t-call="portal.portal_layout">
+                <t t-set="no_breadcrumbs" t-value="True"/>
+
+                <div class="portal-project-breadcrumbs mb-3">
+                    <ol class="breadcrumb">
+                        <li class="breadcrumb-item"><a href="/my"><i class="fa fa-home"/></a></li>
+                        <li class="breadcrumb-item active" aria-current="page">Solicitudes de Documentos</li>
+                    </ol>
+                </div>
+
+                <div class="d-flex justify-content-end align-items-center gap-2 mb-3">
+                    <a t-att-href="'/my/documents/export?' + keep_query('*')" class="btn btn-outline-secondary">
+                        <i class="fa fa-download me-2"/>Exportar
+                    </a>
+                    <a href="/portal/approval_request" class="btn btn-primary">
+                        <i class="fa fa-plus me-2"/>Nueva Solicitud
+                    </a>
+                </div>
+
+                <div class="portal-project-searchbar-wrapper mb-4">
+                    <div class="portal-project-searchbar d-flex flex-column flex-lg-row justify-content-center align-items-stretch align-items-lg-center gap-2">
+                        <div class="btn-group portal-project-groupby">
+                            <button id="portal_document_filter" data-bs-toggle="dropdown" class="btn btn-light dropdown-toggle" type="button">
+                                Filtrar por: <t t-esc="searchbar_filters[filterby].get('label', 'Todos')"/>
+                            </button>
+                            <div class="dropdown-menu" aria-labelledby="portal_document_filter">
+                                <t t-foreach="searchbar_filters" t-as="option">
+                                    <a t-att-href="default_url + '?' + keep_query('*', filterby=option)"
+                                       t-attf-class="dropdown-item#{filterby == option and ' active' or ''}">
+                                        <span t-esc="searchbar_filters[option].get('label')"/>
+                                    </a>
+                                </t>
+                            </div>
+                        </div>
+
+                        <div class="btn-group portal-project-groupby">
+                            <button id="portal_document_groupby" data-bs-toggle="dropdown" class="btn btn-light dropdown-toggle" type="button">
+                                Agrupar por: <t t-esc="searchbar_groupby[groupby].get('label', 'Sin agrupar')"/>
+                            </button>
+                            <div class="dropdown-menu" aria-labelledby="portal_document_groupby">
+                                <t t-foreach="searchbar_groupby" t-as="option">
+                                    <a t-att-href="default_url + '?' + keep_query('*', groupby=option)"
+                                       t-attf-class="dropdown-item#{groupby == option and ' active' or ''}">
+                                        <span t-esc="searchbar_groupby[option].get('label')"/>
+                                    </a>
+                                </t>
+                            </div>
+                        </div>
+
+                        <form class="o_portal_search_panel portal-project-search-form">
+                            <input type="hidden" name="filterby" t-att-value="filterby"/>
+                            <input type="hidden" name="groupby" t-att-value="groupby"/>
+                            <input type="hidden" name="search_in" t-att-value="search_in"/>
+                            <div class="input-group w-100">
+                                <button type="button" class="btn btn-light border-end dropdown-toggle" data-bs-toggle="dropdown"/>
+                                <div class="dropdown-menu" role="menu">
+                                    <t t-foreach="searchbar_inputs" t-as="input">
+                                        <a t-att-href="default_url + '?' + keep_query('*', search_in=searchbar_inputs[input]['input'])"
+                                           t-attf-class="dropdown-item#{search_in == searchbar_inputs[input]['input'] and ' active' or ''}">
+                                            <span t-esc="searchbar_inputs[input]['label']"/>
+                                        </a>
+                                    </t>
+                                </div>
+                                <input type="search" class="form-control border-0 bg-light" t-att-value="search" name="search" t-att-placeholder="searchbar_inputs[search_in].get('label', 'Buscar...')"/>
+                                <button class="btn btn-light" type="submit">
+                                    <span class="oi oi-search"/>
+                                </button>
+                            </div>
+                        </form>
+                    </div>
+                </div>
+
+                <t t-if="not documents">
+                    <div class="alert alert-info mt-3" role="alert">
+                        No hay solicitudes de documentos.
+                    </div>
+                </t>
+
+                <t t-if="documents" t-call="portal.portal_table">
+                    <thead>
+                        <tr class="active">
+                            <th>Tipo</th>
+                            <th>Descripción</th>
+                            <th>Grupo de Trabajo</th>
+                            <th>Estado</th>
+                            <th class="text-end">Fecha de Creación</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        <t t-foreach="document_groups" t-as="document_group">
+                            <tr t-if="groupby != 'none'" class="table-secondary">
+                                <td colspan="5">
+                                    <strong t-esc="document_group['label']"/>
+                                </td>
+                            </tr>
+                            <t t-foreach="document_group['documents']" t-as="document">
+                                <tr style="cursor: pointer;">
+                                    <td>
+                                        <a t-attf-href="/my/documents/#{document.id}">
+                                            <span t-field="document.type_id"/>
+                                        </a>
+                                    </td>
+                                    <td>
+                                        <a t-attf-href="/my/documents/#{document.id}">
+                                            <span t-field="document.description"/>
+                                        </a>
+                                    </td>
+                                    <td>
+                                        <a t-attf-href="/my/documents/#{document.id}">
+                                            <span t-field="document.work_group_id"/>
+                                        </a>
+                                    </td>
+                                    <td>
+                                        <a t-attf-href="/my/documents/#{document.id}">
+                                            <span t-attf-class="badge #{'bg-success' if document.status == 'approve' else 'bg-danger' if document.status == 'rejected' else 'bg-info'}" t-field="document.status"/>
+                                        </a>
+                                        <div t-if="document.sign_request_id" class="mt-1">
+                                            <span t-if="document.sign_request_state == 'signed'" class="badge bg-success">Firmado</span>
+                                            <span t-elif="document.sign_request_state == 'sent'" class="badge bg-warning">Pendiente de firma</span>
+                                            <span t-elif="document.sign_request_state == 'canceled'" class="badge bg-danger">Firma cancelada</span>
+                                        </div>
+                                    </td>
+                                    <td class="text-end">
+                                        <a t-attf-href="/my/documents/#{document.id}">
+                                            <span t-field="document.create_date" t-options='{"widget": "date"}'/>
+                                        </a>
+                                    </td>
+                                </tr>
+                            </t>
+                        </t>
+                    </tbody>
+                </t>
+            </t>
+        </template>
+    </data>
+</odoo>
+

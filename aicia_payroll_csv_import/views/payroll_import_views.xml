@@ -1,0 +1,146 @@
+<?xml version="1.0" encoding="utf-8"?>
+<odoo>
+    <record id="view_aicia_payroll_import_list" model="ir.ui.view">
+        <field name="name">aicia.payroll.import.list</field>
+        <field name="model">aicia.payroll.import</field>
+        <field name="arch" type="xml">
+            <list>
+                <field name="name"/>
+                <field name="company_id"/>
+                <field name="payment_date"/>
+                <field name="employee_count"/>
+                <field name="total_liquid" sum="Total"/>
+                <field name="total_salary_gross" sum="Total"/>
+                <field name="state"/>
+                <field name="move_count" string="Asientos"/>
+            </list>
+        </field>
+    </record>
+
+    <record id="view_aicia_payroll_import_form" model="ir.ui.view">
+        <field name="name">aicia.payroll.import.form</field>
+        <field name="model">aicia.payroll.import</field>
+        <field name="arch" type="xml">
+            <form string="Importación de nóminas AICIA">
+                <header>
+                    <button name="action_parse_csv" type="object" string="Parsear CSV" class="btn-primary" invisible="state == 'move_created' or state == 'cancelled' or not csv_file"/>
+                    <button name="action_create_account_move" type="object" string="Crear asiento contable" class="btn-primary" invisible="state != 'parsed' or move_count"/>
+                    <button name="action_open_move" type="object" string="Ver asiento" invisible="not move_count"/>
+                    <button name="action_reset_to_draft" type="object" string="Volver a borrador" invisible="move_count or state == 'draft'"/>
+                    <button name="action_cancel" type="object" string="Cancelar" invisible="state == 'cancelled'"/>
+                    <field name="state" widget="statusbar" statusbar_visible="draft,parsed,move_created,cancelled"/>
+                </header>
+                <sheet>
+                    <div class="oe_button_box" name="button_box">
+                        <button name="action_open_move" type="object" class="oe_stat_button" icon="fa-book" invisible="not move_count">
+                            <field name="move_count" string="Asientos" widget="statinfo"/>
+                        </button>
+                    </div>
+                    <group>
+                        <group string="Archivo CSV">
+                            <field name="name"/>
+                            <field name="csv_file" filename="filename"/>
+                            <field name="filename"/>
+                            <field name="file_checksum" readonly="1"/>
+                            <field name="csv_encoding"/>
+                        </group>
+                        <group string="Fechas y configuración">
+                            <field name="company_id"/>
+                            <field name="config_id"/>
+                            <field name="journal_id" readonly="1"/>
+                            <field name="date"/>
+                            <field name="payment_date" readonly="1"/>
+                            <field name="period_label" readonly="1"/>
+                            <field name="source_company_name" readonly="1"/>
+                            <field name="source_vat" readonly="1"/>
+                            <field name="move_count" readonly="1"/>
+                        </group>
+                    </group>
+                    <group string="Totales">
+                        <group>
+                            <field name="employee_count" readonly="1"/>
+                            <field name="total_liquid" readonly="1"/>
+                            <field name="total_irpf" readonly="1"/>
+                            <field name="total_ss_employee" readonly="1"/>
+                            <field name="total_ss_company" readonly="1"/>
+                            <field name="total_salary_gross" readonly="1"/>
+                        </group>
+                        <group>
+                            <field name="total_diet" readonly="1"/>
+                            <field name="total_km" readonly="1"/>
+                            <field name="total_bonus" readonly="1"/>
+                            <field name="total_deduction" readonly="1"/>
+                            <field name="total_management_cost" readonly="1"/>
+                            <field name="total_ct_cost" readonly="1"/>
+                            <field name="total_travel_cost" readonly="1"/>
+                            <field name="total_advances" readonly="1"/>
+                        </group>
+                    </group>
+                    <notebook>
+                        <page string="Líneas importadas">
+                            <field name="line_ids" readonly="1" nolabel="1">
+                                <list create="0" delete="0">
+                                    <field name="sequence"/>
+                                    <field name="payment_date"/>
+                                    <field name="employee_name"/>
+                                    <field name="nif"/>
+                                    <field name="liquid"/>
+                                    <field name="irpf"/>
+                                    <field name="ss_employee"/>
+                                    <field name="ss_company"/>
+                                    <field name="deduction"/>
+                                    <field name="advances"/>
+                                    <field name="gross_salary"/>
+                                    <field name="ct_cost"/>
+                                </list>
+                                <form>
+                                    <group>
+                                        <group>
+                                            <field name="sequence"/>
+                                            <field name="payment_date"/>
+                                            <field name="employee_name"/>
+                                            <field name="nif"/>
+                                            <field name="cont"/>
+                                        </group>
+                                        <group>
+                                            <field name="liquid"/>
+                                            <field name="irpf"/>
+                                            <field name="ss_employee"/>
+                                            <field name="ss_company"/>
+                                            <field name="gross_salary"/>
+                                        </group>
+                                    </group>
+                                    <group>
+                                        <group>
+                                            <field name="diet"/>
+                                            <field name="km"/>
+                                            <field name="bonus"/>
+                                            <field name="deduction"/>
+                                        </group>
+                                        <group>
+                                            <field name="management_cost"/>
+                                            <field name="ct_cost"/>
+                                            <field name="travel_cost"/>
+                                            <field name="advances"/>
+                                        </group>
+                                    </group>
+                                    <field name="raw_data" readonly="1"/>
+                                </form>
+                            </field>
+                        </page>
+                        <page string="Notas y advertencias">
+                            <field name="notes" nolabel="1" readonly="1" placeholder="Las advertencias detectadas al parsear el CSV aparecerán aquí."/>
+                        </page>
+                    </notebook>
+                </sheet>
+                <chatter reload_on_post="True"/>
+            </form>
+        </field>
+    </record>
+
+    <record id="action_aicia_payroll_import" model="ir.actions.act_window">
+        <field name="name">Importación nóminas</field>
+        <field name="res_model">aicia.payroll.import</field>
+        <field name="view_mode">list,form</field>
+    </record>
+</odoo>

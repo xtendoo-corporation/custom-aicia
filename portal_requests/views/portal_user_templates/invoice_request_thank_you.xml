@@ -1,0 +1,38 @@
+<?xml version="1.0" encoding="utf-8"?>
+<odoo>
+    <data>
+        <!-- Página de confirmación para solicitudes de facturas -->
+        <template id="invoice_request_thank_you" name="Solicitud de Factura Enviada">
+            <t t-call="portal.portal_layout">
+                <div class="container mt-5">
+                    <div class="row justify-content-center">
+                        <div class="col-md-8 text-center">
+                            <div class="alert alert-success" role="alert">
+                                <h1 class="mb-4">
+                                    <i class="fa fa-check-circle fa-3x text-success mb-3"/>
+                                </h1>
+                                <h2>¡Solicitud Enviada con Éxito!</h2>
+                                <p class="lead mt-3">
+                                    Tu solicitud de factura ha sido enviada correctamente y está siendo revisada.
+                                </p>
+                                <p>
+                                    Recibirás una notificación cuando el estado de tu solicitud cambie.
+                                </p>
+                            </div>
+
+                            <div class="mt-4">
+                                <a href="/my/invoices" class="btn btn-primary btn-lg me-2">
+                                    <i class="fa fa-list"/> Ver Mis Solicitudes
+                                </a>
+                                <a href="/my/home" class="btn btn-secondary btn-lg">
+                                    <i class="fa fa-home"/> Volver al Portal
+                                </a>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </t>
+        </template>
+    </data>
+</odoo>
+

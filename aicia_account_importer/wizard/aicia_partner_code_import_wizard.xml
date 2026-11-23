@@ -1,0 +1,93 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!-- Copyright 2026 Xtendoo - https://www.xtendoo.es/
+     License AGPL-3.0 or later (http://www.gnu.org/licenses/agpl). -->
+<odoo>
+    <record id="view_aicia_partner_code_import_wizard_form" model="ir.ui.view">
+        <field name="name">aicia.partner.code.import.wizard.form</field>
+        <field name="model">aicia.partner.code.import.wizard</field>
+        <field name="arch" type="xml">
+            <form string="Cargar códigos AICIA (Personal)">
+                <field name="state" invisible="1"/>
+                <field name="simulated" invisible="1"/>
+                <div class="alert alert-info" role="alert">
+                    Sube la hoja <strong>Personal</strong> (<code>Personal.xlsx</code>). Cada
+                    <code>ID_Personal</code> se convierte en un código AICIA de tipo
+                    <em>Personal</em> del contacto que corresponda: primero por el código de
+                    empleado, luego por NIF y por último por nombre único. Las filas sin
+                    coincidencia clara (G y H) no se asignan y se listan para revisarlas.
+                    Usa <strong>Simular</strong> antes de <strong>Cargar</strong>.
+                </div>
+                <group>
+                    <field name="file_personal" widget="binary" filename="filename_personal"/>
+                    <field name="filename_personal" invisible="1"/>
+                </group>
+                <group invisible="state == 'draft'">
+                    <group>
+                        <field name="total_rows"/>
+                        <field name="total_created"/>
+                        <field name="total_existing"/>
+                    </group>
+                    <group>
+                        <field name="total_conflicts"/>
+                        <field name="total_unassigned"/>
+                    </group>
+                </group>
+                <field name="result_log" nolabel="1" readonly="1" invisible="state == 'draft'"/>
+                <footer>
+                    <button name="action_simulate" string="Simular" type="object"
+                            class="btn-secondary"/>
+                    <button name="action_load" string="Cargar códigos" type="object"
+                            class="btn-primary"
+                            confirm="¿Crear los códigos AICIA de las filas asignables?"/>
+                    <button string="Cerrar" special="cancel"/>
+                </footer>
+            </form>
+        </field>
+    </record>
+    <record id="action_aicia_partner_code_import_wizard" model="ir.actions.act_window">
+        <field name="name">Cargar códigos AICIA (Personal)</field>
+        <field name="res_model">aicia.partner.code.import.wizard</field>
+        <field name="view_mode">form</field>
+        <field name="target">new</field>
+    </record>
+    <record id="action_aicia_partner_code" model="ir.actions.act_window">
+        <field name="name">Códigos AICIA</field>
+        <field name="res_model">aicia.partner.code</field>
+        <field name="view_mode">list</field>
+    </record>
+    <record id="view_aicia_partner_code_list" model="ir.ui.view">
+        <field name="name">aicia.partner.code.list</field>
+        <field name="model">aicia.partner.code</field>
+        <field name="arch" type="xml">
+            <list editable="bottom">
+                <header>
+                    <button name="action_load_supplier_customer_codes"
+                            string="Cargar códigos de proveedor y cliente"
+                            type="object"
+                            class="btn-secondary"
+                            display="always"
+                            confirm="Copia codigo_proveedor y codigo_cliente de los contactos a los códigos AICIA. ¿Continuar?"/>
+                </header>
+                <field name="partner_id"/>
+                <field name="partner_type"/>
+                <field name="code"/>
+            </list>
+        </field>
+    </record>
+    <record id="view_aicia_partner_code_search" model="ir.ui.view">
+        <field name="name">aicia.partner.code.search</field>
+        <field name="model">aicia.partner.code</field>
+        <field name="arch" type="xml">
+            <search string="Buscar códigos AICIA">
+                <field name="code"/>
+                <field name="partner_id"/>
+                <filter name="employee" string="Personal" domain="[('partner_type', '=', 'employee')]"/>
+                <filter name="supplier" string="Proveedor" domain="[('partner_type', '=', 'supplier')]"/>
+                <filter name="customer" string="Cliente" domain="[('partner_type', '=', 'customer')]"/>
+                <group>
+                    <filter name="group_type" string="Tipo" context="{'group_by': 'partner_type'}"/>
+                </group>
+            </search>
+        </field>
+    </record>
+</odoo>

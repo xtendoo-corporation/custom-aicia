@@ -1,0 +1,77 @@
+# Translation of Odoo Server.
+# This file contains the translation of the following modules:
+# 	* aicia_account_pgc_recode
+#
+msgid ""
+msgstr ""
+"Project-Id-Version: Odoo Server 19.0\n"
+"Report-Msgid-Bugs-To: \n"
+"POT-Creation-Date: 2026-06-13 12:00+0000\n"
+"PO-Revision-Date: 2026-06-13 12:00+0000\n"
+"Last-Translator: \n"
+"Language-Team: Spanish\n"
+"Language: es\n"
+"MIME-Version: 1.0\n"
+"Content-Type: text/plain; charset=UTF-8\n"
+"Content-Transfer-Encoding: \n"
+"Plural-Forms: nplurals=2; plural=(n != 1);\n"
+
+#. module: aicia_account_pgc_recode
+#: model:ir.model,name:aicia_account_pgc_recode.model_aicia_account_pgc_recode_rule
+msgid "PGC Recode Rule"
+msgstr "Regla Recodificación PGC"
+
+#. module: aicia_account_pgc_recode
+#: model:ir.model,name:aicia_account_pgc_recode.model_aicia_account_pgc_recode_batch
+msgid "PGC Recode Batch"
+msgstr "Lote Recodificación PGC"
+
+#. module: aicia_account_pgc_recode
+#: model:ir.model,name:aicia_account_pgc_recode.model_aicia_account_pgc_recode_line
+msgid "PGC Recode Line Proposal"
+msgstr "Línea Propuesta Recodificación PGC"
+
+#. module: aicia_account_pgc_recode
+#: model:ir.model.fields,field_description:aicia_account_pgc_recode.field_aicia_account_pgc_recode_rule__old_code
+msgid "Old Code"
+msgstr "Código Antiguo"
+
+#. module: aicia_account_pgc_recode
+#: model:ir.model.fields,field_description:aicia_account_pgc_recode.field_aicia_account_pgc_recode_rule__target_prefix
+msgid "Target Prefix"
+msgstr "Prefijo Destino"
+
+#. module: aicia_account_pgc_recode
+#: model:ir.model.fields,field_description:aicia_account_pgc_recode.field_aicia_account_pgc_recode_rule__proposed_code
+msgid "Proposed Code"
+msgstr "Código Propuesto"
+
+#. module: aicia_account_pgc_recode
+#: model:ir.model.fields.selection,name:aicia_account_pgc_recode.selection__aicia_account_pgc_recode_rule__status__automatic
+msgid "Automatic"
+msgstr "Automático"
+
+#. module: aicia_account_pgc_recode
+#: model:ir.model.fields.selection,name:aicia_account_pgc_recode.selection__aicia_account_pgc_recode_rule__status__review
+msgid "Review"
+msgstr "Revisar"
+
+#. module: aicia_account_pgc_recode
+#: model:ir.model.fields.selection,name:aicia_account_pgc_recode.selection__aicia_account_pgc_recode_rule__status__manual
+msgid "Manual"
+msgstr "Manual"
+
+#. module: aicia_account_pgc_recode
+#: model:ir.model.fields.selection,name:aicia_account_pgc_recode.selection__aicia_account_pgc_recode_rule__status__discarded
+msgid "Discarded"
+msgstr "Descartado"
+
+#. module: aicia_account_pgc_recode
+#: model:ir.model.fields.selection,name:aicia_account_pgc_recode.selection__aicia_account_pgc_recode_rule__status__applied
+msgid "Applied"
+msgstr "Aplicado"
+
+#. module: aicia_account_pgc_recode
+#: model:ir.model.fields,field_description:aicia_account_pgc_recode.field_aicia_account_pgc_recode_rule__collision
+msgid "Collision"
+msgstr "Colisión"

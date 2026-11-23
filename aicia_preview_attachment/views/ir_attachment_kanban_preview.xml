@@ -1,0 +1,18 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<odoo>
+    <data>
+        <!-- Enlace de previsualización PDF dentro del título del adjunto en la tarjeta kanban, solo para PDFs -->
+        <!-- Se usa <a> en vez de <button> para máxima compatibilidad con Odoo -->
+        <template id="kanban_attachment_preview_button" inherit_id="mail.view_document_file_kanban" priority="20">
+            <xpath expr="//time[contains(@class, 'oe_kanban_bottom_left')]" position="replace">
+                <t t-if="record.mimetype.raw_value == 'application/pdf'">
+                    <div class="oe_kanban_bottom_left">
+                    <a type="object" name="preview_attachment" class="btn btn-link o_kanban_attachment_preview" title="Previsualizar PDF" style="float:right; cursor:pointer;">
+                        <i class="fa fa-eye"/>
+                    </a>
+                    </div>
+                </t>
+            </xpath>
+        </template>
+    </data>
+</odoo>

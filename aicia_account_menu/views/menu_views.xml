@@ -1,0 +1,10 @@
+<?xml version="1.0" encoding="utf-8"?>
+<odoo>
+    <menuitem
+        id="menu_aicia_root"
+        name="AICIA"
+        parent="accountant.menu_accounting"
+        sequence="40"
+        groups="account.group_account_readonly"
+    />
+</odoo>

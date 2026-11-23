@@ -1,0 +1,49 @@
+<?xml version="1.0" encoding="utf-8"?>
+<odoo>
+    <record id="view_aicia_account_pgc_recode_move_wizard_form" model="ir.ui.view">
+        <field name="name">aicia.account.pgc.recode.move.wizard.form</field>
+        <field name="model">aicia.account.pgc.recode.move.wizard</field>
+        <field name="arch" type="xml">
+            <form string="Mover cuenta a cuenta">
+                <sheet>
+                    <div class="oe_title">
+                        <h2>Mover apuntes de una cuenta a otra</h2>
+                    </div>
+                    <group>
+                        <group string="Cuentas">
+                            <field name="source_account_id"
+                                   domain="[('company_ids', '=', company_id)]"
+                                   options="{'no_create': True, 'no_create_edit': True}"/>
+                            <field name="target_account_id"
+                                   domain="[('company_ids', '=', company_id)]"
+                                   options="{'no_create': True, 'no_create_edit': True}"/>
+                            <field name="company_id" groups="base.group_multi_company"/>
+                        </group>
+                        <group string="Filtros (opcionales)">
+                            <field name="date_from"/>
+                            <field name="date_to"/>
+                            <field name="journal_ids" widget="many2many_tags"/>
+                            <field name="posted_only"/>
+                        </group>
+                    </group>
+                    <div class="alert alert-info" role="alert" invisible="not source_account_id">
+                        Se moverán <field name="move_line_count" class="oe_inline"/> apuntes con los criterios indicados.
+                        Esta acción modifica directamente los apuntes contables y no genera un lote reversible.
+                    </div>
+                </sheet>
+                <footer>
+                    <button name="action_apply_move" string="Mover apuntes" type="object" class="btn-primary"
+                            confirm="Esta acción moverá los apuntes seleccionados a la cuenta destino. ¿Deseas continuar?"/>
+                    <button string="Cancelar" class="btn-secondary" special="cancel"/>
+                </footer>
+            </form>
+        </field>
+    </record>
+
+    <record id="action_aicia_account_pgc_recode_move_wizard" model="ir.actions.act_window">
+        <field name="name">Mover cuenta a cuenta</field>
+        <field name="res_model">aicia.account.pgc.recode.move.wizard</field>
+        <field name="view_mode">form</field>
+        <field name="target">new</field>
+    </record>
+</odoo>

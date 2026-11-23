@@ -1,0 +1,3 @@
+id,name,model_id:id,group_id:id,perm_read,perm_write,perm_create,perm_unlink
+access_aicia_employee_analytic_line_user,access_aicia_employee_analytic_line_user,aicia_employee_project_percentage.model_aicia_employee_analytic_line,base.group_user,1,1,1,1
+

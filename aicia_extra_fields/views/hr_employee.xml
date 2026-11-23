@@ -1,0 +1,23 @@
+<?xml version="1.0" encoding="utf-8"?>
+<odoo>
+    <!-- Vista de formulario de res.partner heredada -->
+    <record id="view_employee_form_inherit" model="ir.ui.view">
+        <field name="name">view.employee.form.inherit</field>
+        <field name="model">hr.employee</field>
+        <field name="inherit_id" ref="hr.view_employee_form"/>
+        <field name="arch" type="xml">
+            <!-- Añadir el campo Socio Protector después del campo 'ref' -->
+            <field name="company_id" position="before">
+                <field name="partner_id"/>
+                <field name="codigo_empleado"/>
+            </field>
+            <field name="parent_id" position="after">
+                <field name="apply_retention" widget="boolean_toggle"/>
+                <field name="permission_to_desplace" widget="boolean_toggle"/>
+                <field name="confidentiality_agreement" widget="boolean_toggle"/>
+<!--                <field name="other_field"/>-->
+            </field>
+
+        </field>
+    </record>
+</odoo>

@@ -1,0 +1,19 @@
+<?xml version="1.0" encoding="utf-8"?>
+<odoo>
+    <record id="view_account_analytic_account_form_inherit_journal_items" model="ir.ui.view">
+        <field name="name">account.analytic.account.form.inherit.journal.items</field>
+        <field name="model">account.analytic.account</field>
+        <field name="inherit_id" ref="analytic.view_account_analytic_account_form"/>
+        <field name="arch" type="xml">
+            <xpath expr="//div[@name='button_box']" position="inside">
+                <button name="action_view_journal_items"
+                        type="object"
+                        class="oe_stat_button"
+                        icon="fa-bars"
+                        invisible="journal_item_count == 0">
+                    <field name="journal_item_count" widget="statinfo" string="Apuntes Cont."/>
+                </button>
+            </xpath>
+        </field>
+    </record>
+</odoo>

@@ -1,0 +1,31 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<odoo>
+    <data>
+        <record id="view_sign_document_wizard_form" model="ir.ui.view">
+            <field name="name">sign.document.wizard.form</field>
+            <field name="model">sign.document.wizard</field>
+            <field name="arch" type="xml">
+                <form string="Firmar Documento">
+                    <group>
+                        <field name="certificate_id" options="{'no_create': True}" required="1"/>
+                        <field name="signature_location"/>
+                        <field name="signature_reason"/>
+                    </group>
+                    <footer>
+                        <button string="Firmar" name="action_sign" type="object" class="btn-primary"/>
+                        <button string="Cancelar" class="btn-secondary" special="cancel"/>
+                    </footer>
+                </form>
+            </field>
+        </record>
+
+        <record id="action_sign_document" model="ir.actions.act_window">
+            <field name="name">Firmar Documento</field>
+            <field name="res_model">sign.document.wizard</field>
+            <field name="view_mode">form</field>
+            <field name="target">new</field>
+            <field name="binding_model_id" ref="base.model_ir_attachment"/>
+            <field name="binding_view_types">list</field>
+        </record>
+    </data>
+</odoo>

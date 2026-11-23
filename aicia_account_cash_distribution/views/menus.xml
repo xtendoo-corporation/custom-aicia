@@ -1,0 +1,32 @@
+<?xml version="1.0" encoding="utf-8"?>
+<odoo>
+    <data>
+
+        <!-- ============================================================ -->
+        <!-- MENÚS                                                        -->
+        <!-- ============================================================ -->
+
+        <!-- Menú principal bajo Contabilidad -->
+        <menuitem id="menu_aicia_cash_dist_root"
+            name="Distribución de Cobros"
+            parent="aicia_account_menu.menu_aicia_root"
+            sequence="90"
+            groups="account.group_account_manager"/>
+
+        <menuitem id="menu_aicia_distribution_plan"
+            name="Planes de Distribución"
+            parent="menu_aicia_cash_dist_root"
+            action="action_aicia_distribution_plan"
+            sequence="10"
+            groups="account.group_account_manager"/>
+
+        <menuitem id="menu_aicia_distribution_move"
+            name="Asientos de Distribución"
+            parent="menu_aicia_cash_dist_root"
+            action="action_aicia_distribution_move"
+            sequence="20"
+            groups="account.group_account_user"/>
+
+
+    </data>
+</odoo>

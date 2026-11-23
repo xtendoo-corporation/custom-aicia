@@ -1,0 +1,213 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!-- Copyright 2026 Xtendoo - https://www.xtendoo.es/
+     License AGPL-3.0 or later (http://www.gnu.org/licenses/agpl). -->
+<odoo>
+    <record id="action_aicia_account_importer_wizard" model="ir.actions.act_window">
+        <field name="name">Importar Apuntes Contables</field>
+        <field name="res_model">aicia.account.importer.wizard</field>
+        <field name="view_mode">form</field>
+        <field name="target">new</field>
+    </record>
+    <!-- Vista de lista para el modelo de mapeo de cuentas -->
+    <record id="view_aicia_account_importer_account_mapping_list" model="ir.ui.view">
+        <field name="name">aicia.account.importer.account.mapping.list</field>
+        <field name="model">aicia.account.importer.account.mapping</field>
+        <field name="arch" type="xml">
+            <list editable="bottom">
+                <field name="source_code" placeholder="Ej: 478000 ó 478000000"/>
+                <field name="source_code_normalized" optional="hide" readonly="1"/>
+                <field name="target_account_id" required="1"/>
+            </list>
+        </field>
+    </record>
+    <record id="view_aicia_account_importer_account_mapping_form" model="ir.ui.view">
+        <field name="name">aicia.account.importer.account.mapping.form</field>
+        <field name="model">aicia.account.importer.account.mapping</field>
+        <field name="arch" type="xml">
+            <form string="Mapeo de cuenta AICIA">
+                <sheet>
+                    <group>
+                        <field name="source_code" placeholder="Ej: 478000 ó 478000000"/>
+                        <field name="target_account_id" required="1"/>
+                        <field name="source_code_normalized" readonly="1"/>
+                    </group>
+                </sheet>
+            </form>
+        </field>
+    </record>
+    <record id="view_aicia_account_importer_account_mapping_search" model="ir.ui.view">
+        <field name="name">aicia.account.importer.account.mapping.search</field>
+        <field name="model">aicia.account.importer.account.mapping</field>
+        <field name="arch" type="xml">
+            <search string="Buscar mapeos AICIA">
+                <field name="source_code"/>
+                <field name="source_code_normalized"/>
+                <field name="target_account_id"/>
+            </search>
+        </field>
+    </record>
+    <record id="action_aicia_account_importer_account_mapping" model="ir.actions.act_window">
+        <field name="name">Mapeo de cuentas</field>
+        <field name="res_model">aicia.account.importer.account.mapping</field>
+        <field name="view_mode">list,form</field>
+        <field name="search_view_id" ref="view_aicia_account_importer_account_mapping_search"/>
+        <field name="help" type="html">
+            <p class="o_view_nocontent_smiling_face">
+                Sin mapeos, la cuenta destino son los 5 primeros dígitos de la cuenta legada más un 0.
+            </p>
+            <p>
+                Crea un mapeo solo si quieres forzar una redirección puntual.
+                Los mapeos son globales y se reutilizan en próximas importaciones.
+            </p>
+        </field>
+    </record>
+    <record id="view_aicia_account_importer_wizard_form" model="ir.ui.view">
+        <field name="name">aicia.account.importer.wizard.form</field>
+        <field name="model">aicia.account.importer.wizard</field>
+        <field name="arch" type="xml">
+            <form string="Importador de Apuntes Contables">
+                <field name="state" invisible="1"/>
+                <!-- Formulario de entrada -->
+                <group>
+                    <group string="Archivos Excel">
+                        <field name="file_apuntes" widget="binary" filename="filename_apuntes"/>
+                        <field name="filename_apuntes" invisible="1"/>
+                        <field name="file_lineas" widget="binary" filename="filename_lineas"/>
+                        <field name="filename_lineas" invisible="1"/>
+                    </group>
+                    <group string="Configuración de importación">
+                        <field name="move_state"/>
+                        <field name="skip_anulados"/>
+                        <field name="missing_account_mode"/>
+                        <field name="fallback_account_id"
+                               invisible="missing_account_mode != 'fallback'"
+                               required="missing_account_mode == 'fallback'"/>
+                    </group>
+                </group>
+                <notebook>
+                    <!-- Pestaña Resumen: solo visible tras importar -->
+                    <page string="Resumen" name="import_summary" invisible="not import_log">
+                        <group string="Contadores">
+                            <field name="total_created" readonly="1"/>
+                            <field name="total_skipped" readonly="1"/>
+                            <field name="total_warnings" readonly="1"/>
+                            <field name="total_errors" readonly="1"/>
+                            <field name="total_accounts_created" readonly="1"/>
+                            <field name="total_mismatches" readonly="1"/>
+                            <field name="total_debe" readonly="1"/>
+                            <field name="total_haber" readonly="1"/>
+                        </group>
+                        <field name="import_log" nolabel="1" colspan="2" readonly="1"/>
+                    </page>
+                    <!-- Pestaña Cuentas: mapeo legado → Odoo -->
+                    <page string="Cuentas" name="account_mapping">
+                        <div style="padding: 4px 0 8px 0;">
+                            <p style="color: #555; margin: 0 0 8px 0;">
+                                La cuenta de cada línea son los <strong>5 primeros dígitos más un 0</strong>
+                                de la cuenta legada de 9 dígitos, y el contacto se busca por los
+                                <strong>4 últimos</strong> (campo <em>Códigos AICIA</em> del contacto,
+                                único por tipo: personal, proveedor, cliente).<br/>
+                                Si una cuenta no existe en Odoo, la opción <strong>Si la cuenta no
+                                existe en Odoo</strong> decide qué pasa: se crea (por defecto), va a una
+                                cuenta de reserva o el asiento da error. <strong>No hace falta mapear.</strong><br/>
+                                Esta lista es <strong>opcional</strong>: úsala solo para forzar que un
+                                código legado vaya a otra cuenta de Odoo.<br/>
+                                <strong>Ejemplo:</strong> código origen <code>478000</code>
+                                → cuenta destino <code>477000 - H.P. IVA repercutido</code>.<br/>
+                                El código origen puede ser un prefijo (ej: <code>478000</code>)
+                                o el código completo de 9 dígitos (ej: <code>478000000</code>).<br/>
+                                Si no subes archivos Excel, el botón <strong>Importar</strong>
+                                revisa los apuntes existentes y aplica estas reglas.<br/>
+                                <em>Con la opción "No importar el asiento (error)", las cuentas no
+                                encontradas se añaden a esta lista (sin destino) para que las mapees.</em>
+                            </p>
+                                <button name="action_reload_account_mappings"
+                                   string="Refrescar lista"
+                                   type="object"
+                                   class="btn-secondary"/>
+                                <button name="action_clear_account_mappings"
+                                    string="Borrar todos los mapeos"
+                                    type="object"
+                                    class="btn-danger"
+                                    confirm="¿Seguro que quieres borrar todos los mapeos globales de cuentas AICIA?"/>
+                        </div>
+                        <field name="account_mapping_ids" nolabel="1"
+                               context="{'aicia_account_importer_wizard_id': id}">
+                            <list editable="bottom">
+                                <field name="source_code" placeholder="Ej: 478000 ó 478000000"/>
+                                <field name="source_code_normalized" optional="hide" readonly="1"/>
+                                <field name="target_account_id"/>
+                            </list>
+                            <form string="Mapeo de cuenta AICIA">
+                                <sheet>
+                                    <group>
+                                        <field name="source_code" placeholder="Ej: 478000 ó 478000000"/>
+                                        <field name="target_account_id"/>
+                                        <field name="source_code_normalized" readonly="1"/>
+                                    </group>
+                                </sheet>
+                            </form>
+                        </field>
+                    </page>
+                    <!-- Pestaña Formato del Excel -->
+                    <page string="Formato del Excel" name="help">
+                        <div style="padding: 8px;">
+                            <p><strong>Archivo 1 — Apuntes2025.xlsx</strong> (cabecera de los asientos):</p>
+                            <table style="border-collapse: collapse; width: 100%; margin-bottom: 12px;">
+                                <tr style="background: #f0f0f0;">
+                                    <th style="border: 1px solid #ccc; padding: 4px 8px;">Columna</th>
+                                    <th style="border: 1px solid #ccc; padding: 4px 8px;">Descripción</th>
+                                    <th style="border: 1px solid #ccc; padding: 4px 8px;">Ejemplo</th>
+                                </tr>
+                                <tr><td style="border:1px solid #ccc;padding:4px 8px;"><code>ID_Apunte</code></td><td style="border:1px solid #ccc;padding:4px 8px;">Clave de unión con las líneas</td><td style="border:1px solid #ccc;padding:4px 8px;">297</td></tr>
+                                <tr><td style="border:1px solid #ccc;padding:4px 8px;"><code>Numero_Apunte</code></td><td style="border:1px solid #ccc;padding:4px 8px;">Referencia del asiento en Odoo</td><td style="border:1px solid #ccc;padding:4px 8px;">281</td></tr>
+                                <tr><td style="border:1px solid #ccc;padding:4px 8px;"><code>Fecha_Contable</code></td><td style="border:1px solid #ccc;padding:4px 8px;">Entero YYYYMMDD</td><td style="border:1px solid #ccc;padding:4px 8px;">20250103</td></tr>
+                                <tr><td style="border:1px solid #ccc;padding:4px 8px;"><code>Descripcion</code></td><td style="border:1px solid #ccc;padding:4px 8px;">Descripción del asiento</td><td style="border:1px solid #ccc;padding:4px 8px;">CULLIGAM/ CUOTA</td></tr>
+                                <tr><td style="border:1px solid #ccc;padding:4px 8px;"><code>Importe_Total</code></td><td style="border:1px solid #ccc;padding:4px 8px;">Céntimos. No se usa como total: se compara con la suma de las líneas y se avisa si difiere</td><td style="border:1px solid #ccc;padding:4px 8px;">121000</td></tr>
+                                <tr><td style="border:1px solid #ccc;padding:4px 8px;"><code>Validado</code></td><td style="border:1px solid #ccc;padding:4px 8px;">True/False — solo se importan True</td><td style="border:1px solid #ccc;padding:4px 8px;">True</td></tr>
+                                <tr><td style="border:1px solid #ccc;padding:4px 8px;"><code>Anulado</code></td><td style="border:1px solid #ccc;padding:4px 8px;">True/False — se omiten si "Omitir anulados"</td><td style="border:1px solid #ccc;padding:4px 8px;">False</td></tr>
+                            </table>
+                            <p><strong>Archivo 2 — Lineas_Apunte2025.xlsx</strong> (líneas contables):</p>
+                            <table style="border-collapse: collapse; width: 100%; margin-bottom: 12px;">
+                                <tr style="background: #f0f0f0;">
+                                    <th style="border: 1px solid #ccc; padding: 4px 8px;">Columna</th>
+                                    <th style="border: 1px solid #ccc; padding: 4px 8px;">Descripción</th>
+                                    <th style="border: 1px solid #ccc; padding: 4px 8px;">Ejemplo</th>
+                                </tr>
+                                <tr><td style="border:1px solid #ccc;padding:4px 8px;"><code>ID_Apunte</code></td><td style="border:1px solid #ccc;padding:4px 8px;">Clave de unión con cabecera</td><td style="border:1px solid #ccc;padding:4px 8px;">297</td></tr>
+                                <tr><td style="border:1px solid #ccc;padding:4px 8px;"><code>Cuenta_Contable</code></td><td style="border:1px solid #ccc;padding:4px 8px;">9 dígitos — 5 primeros + 0 = cuenta Odoo, 4 últimos = código AICIA del contacto</td><td style="border:1px solid #ccc;padding:4px 8px;">610003495 → cuenta 610000, contacto 3495</td></tr>
+                                <tr><td style="border:1px solid #ccc;padding:4px 8px;"><code>Descripcion</code></td><td style="border:1px solid #ccc;padding:4px 8px;">Descripción de la línea / nombre tercero</td><td style="border:1px solid #ccc;padding:4px 8px;">SPHERAG TECK LOT</td></tr>
+                                <tr><td style="border:1px solid #ccc;padding:4px 8px;"><code>Importe</code></td><td style="border:1px solid #ccc;padding:4px 8px;">Entero en CÉNTIMOS (÷100 = euros)</td><td style="border:1px solid #ccc;padding:4px 8px;">21982 → 219,82€</td></tr>
+                                <tr><td style="border:1px solid #ccc;padding:4px 8px;"><code>Tipo_Contable</code></td><td style="border:1px solid #ccc;padding:4px 8px;">D = Debe / H = Haber</td><td style="border:1px solid #ccc;padding:4px 8px;">D</td></tr>
+                            </table>
+                            <p style="color: #666;">
+                                <strong>Cuenta y contacto:</strong>
+                                los 5 primeros dígitos de <code>Cuenta_Contable</code> más un 0 son la
+                                cuenta de Odoo y los 4 últimos el código AICIA del contacto (ej.
+                                <code>610003495</code> → cuenta <code>610000</code>, contacto con el
+                                código <code>3495</code>). Solo llevan contacto las cuentas de personal
+                                (460, 465, 610, 611, 616, 618), proveedores (400, 401, 410) y clientes
+                                (430, 431, 436); el código es único por tipo. Si no existe el contacto,
+                                el asiento queda en borrador. El total de cada asiento es la suma de
+                                sus líneas.
+                                </p>
+                        </div>
+                    </page>
+                </notebook>
+                <footer>
+                    <button name="action_import"
+                            string="Importar"
+                            type="object"
+                            class="btn-primary"/>
+                    <button name="action_delete_imported_moves"
+                            string="Borrar asientos importados"
+                            type="object"
+                            class="btn-danger"
+                            confirm="¿Eliminar TODOS los asientos importados por el importador AICIA (los que tienen Nº de asiento AICIA), también los confirmados? No afecta a otros asientos ni facturas."/>
+                    <button string="Cerrar"
+                            special="cancel"/>
+                </footer>
+            </form>
+        </field>
+    </record>
+</odoo>
