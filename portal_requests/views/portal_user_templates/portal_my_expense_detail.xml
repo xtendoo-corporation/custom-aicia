@@ -188,6 +188,8 @@
                                                         <i class="fa fa-file-o me-2"/>
                                                         <span t-if="attachment in expense.employee_invoice_attachment_ids"
                                                               class="badge bg-info me-2">Factura a nombre de AICIA</span>
+                                                        <span t-if="attachment in expense.payment_order_attachment_ids"
+                                                              class="badge bg-secondary me-2">Orden de pago</span>
                                                         <span t-esc="attachment.name"/>
                                                     </div>
                                                     <span class="badge bg-primary rounded-pill">

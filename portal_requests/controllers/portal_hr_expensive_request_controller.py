@@ -68,11 +68,15 @@ class PortalHrExpensiveRequestController(Controller):
         is_more = post.get('is_more')
         liquidation_amount = 0.0
         ticket_files = invoice_files = []
+        payment_order_file = None
         if expensive_type == 'liquidacion_gastos':
             liquidation_amount = self._parse_amount(post.get('liquidation_amount'))
             ticket_files = self._uploaded_files('ticket_files')
             invoice_files = self._uploaded_files('invoice_files')
             if liquidation_amount <= 0 or not (ticket_files or invoice_files):
+                return request.redirect('/portal/hr_expensive_request?error=liquidation')
+            payment_order_file = next(iter(self._uploaded_files('payment_order_file')), None)
+            if payment_order_file and not payment_order_file.filename.lower().endswith(('.xlsx', '.xls', '.xlsm', '.ods')):
                 return request.redirect('/portal/hr_expensive_request?error=liquidation')
             ensure_pdf(*ticket_files, *invoice_files)
             # En la liquidación el umbral se decide con el total declarado.
@@ -107,6 +111,9 @@ class PortalHrExpensiveRequestController(Controller):
             for invoice_file in invoice_files:
                 invoice_attachments |= self._create_attachment(expensive, invoice_file)
             expensive.employee_invoice_attachment_ids = invoice_attachments
+            if payment_order_file:
+                expensive.payment_order_attachment_ids = self._create_attachment(
+                    expensive, payment_order_file, name="orden_pago_" + payment_order_file.filename)
         else:
             attachments = self._uploaded_files('file')
             # La gratificación solo admite un documento (el formulario).

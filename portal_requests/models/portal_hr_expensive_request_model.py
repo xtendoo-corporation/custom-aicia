@@ -53,6 +53,13 @@ class PortalHrExpensiveRequest(models.Model):
     employee_invoice_attachment_ids = fields.Many2many(
         'ir.attachment', 'portal_expense_employee_invoice_attachment_rel',
         'request_id', 'attachment_id', string='Facturas a nombre de AICIA', copy=False)
+    payment_order_attachment_ids = fields.Many2many(
+        'ir.attachment', 'portal_expense_payment_order_attachment_rel',
+        'request_id', 'attachment_id', string='Orden de pago', copy=False,
+        help='Excel con la orden de pago de la liquidación.')
+    ticket_attachment_ids = fields.Many2many(
+        'ir.attachment', string='Gastos (tickets)', compute='_compute_ticket_attachment_ids',
+        help='Tickets adjuntos a la liquidación (todo menos facturas a nombre de AICIA y orden de pago).')
     employee_invoice_ids = fields.One2many(
         'account.move', 'employee_liquidation_id', string='Facturas pagadas por el empleado')
     employee_invoice_count = fields.Integer(compute='_compute_liquidation_amounts')
@@ -351,6 +358,21 @@ class PortalHrExpensiveRequest(models.Model):
         })
         self.message_post(body=_('Gratificación marcada como pagada por %s.', self.env.user.name))
 
+    def _get_ticket_attachments(self):
+        """Adjuntos de la liquidación que son tickets: todos menos las facturas
+        a nombre de AICIA y la orden de pago."""
+        self.ensure_one()
+        attachments = self.env['ir.attachment'].sudo().search(
+            [('res_model', '=', self._name), ('res_id', '=', self.id)], order='id')
+        return attachments - self.sudo().employee_invoice_attachment_ids - self.sudo().payment_order_attachment_ids
+
+    @api.depends('type', 'employee_invoice_attachment_ids', 'payment_order_attachment_ids')
+    def _compute_ticket_attachment_ids(self):
+        for record in self:
+            record.ticket_attachment_ids = (
+                record._get_ticket_attachments()
+                if record.id and record.type == 'liquidacion_gastos' else False)
+
     def _create_purchase_invoice(self):
         self.ensure_one()
         # Lógica para crear la factura de compra en blanco con el adjunto y la distribución contable
@@ -426,7 +448,8 @@ class PortalHrExpensiveRequest(models.Model):
         attachments = self.env['ir.attachment'].sudo().search(
             [('res_model', '=', self._name), ('res_id', '=', self.id)])
         invoice_attachments = attachments & self.sudo().employee_invoice_attachment_ids
-        ticket_attachments = attachments - invoice_attachments
+        # La orden de pago (Excel) no es un ticket ni una factura.
+        ticket_attachments = attachments - invoice_attachments - self.sudo().payment_order_attachment_ids
         for attachment in invoice_attachments:
             self._create_employee_invoice(employee, attachment)
         # Sin documentos clasificados (liquidaciones anteriores) también se

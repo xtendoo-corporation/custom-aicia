@@ -140,7 +140,7 @@
                                                         <small class="form-text text-muted">Tickets y justificantes que no son factura a nombre de AICIA (taxi, comidas, aparcamiento…).</small>
                                                     </div>
                                                 </div>
-                                                <div class="row s_col_no_resize s_col_no_bgcolor">
+                                                <div class="row s_col_no_resize s_col_no_bgcolor mb-3">
                                                     <label class="col-form-label col-sm-auto s_website_form_label"
                                                            style="width: 200px" for="invoice_files">
                                                         <span class="s_website_form_label_content">Facturas a nombre de AICIA</span>
@@ -149,6 +149,17 @@
                                                         <input type="file" class="form-control" name="invoice_files" id="invoice_files"
                                                                accept="application/pdf" multiple="multiple"/>
                                                         <small class="form-text text-muted">Facturas con el NIF de AICIA que ha pagado usted (hotel, material, inscripciones…). Una factura por PDF.</small>
+                                                    </div>
+                                                </div>
+                                                <div class="row s_col_no_resize s_col_no_bgcolor">
+                                                    <label class="col-form-label col-sm-auto s_website_form_label"
+                                                           style="width: 200px" for="payment_order_file">
+                                                        <span class="s_website_form_label_content">Orden de pago</span>
+                                                    </label>
+                                                    <div class="col-sm">
+                                                        <input type="file" class="form-control" name="payment_order_file" id="payment_order_file"
+                                                               accept=".xlsx,.xls,.xlsm,.ods,application/vnd.openxmlformats-officedocument.spreadsheetml.sheet,application/vnd.ms-excel"/>
+                                                        <small class="form-text text-muted">Excel con la orden de pago.</small>
                                                     </div>
                                                 </div>
                                             </div>
