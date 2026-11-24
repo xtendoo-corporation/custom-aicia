@@ -49,12 +49,10 @@ class AccountMove(models.Model):
     @api.onchange("analytic_distribution")
     def _onchange_analytic_distribution(self):
         """Actualiza analytic_distribution en todas las líneas del movimiento cuando cambia en la cabecera"""
-        if self.analytic_distribution:
-            for line in self.line_ids:
-                line.analytic_distribution = self.analytic_distribution
-        else:
-            for line in self.line_ids:
-                line.analytic_distribution = False
+        # Solo las líneas de producto: ver AccountMoveLine.create.
+        product_lines = self.line_ids.filtered(lambda line: line.display_type == 'product')
+        for line in product_lines:
+            line.analytic_distribution = self.analytic_distribution or False
 
     def write(self, vals):
         """Override write para propagar cambios de analytic_distribution a las líneas"""
@@ -65,7 +63,7 @@ class AccountMove(models.Model):
             for record in self:
                 if record.line_ids:
                     record.line_ids.filtered(
-                        lambda l: l.display_type not in ('line_section', 'line_note')
+                        lambda l: l.display_type == 'product'
                     ).write({
                         'analytic_distribution': vals['analytic_distribution']
                     })

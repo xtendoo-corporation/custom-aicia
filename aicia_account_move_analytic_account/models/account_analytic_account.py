@@ -9,47 +9,38 @@ _logger = logging.getLogger(__name__)
 class AccountAnalyticAccount(models.Model):
     _inherit = 'account.analytic.account'
 
+    def _journal_item_ids_by_account(self):
+        """{id de cuenta analítica: ids de apuntes contables que la usan} para las cuentas de self.
+
+        Una sola consulta para todas las cuentas (antes se cargaban todos los apuntes con
+        analítica una vez por cuenta). Las claves de la distribución son "42" o "42,43"."""
+        wanted = set(self.ids)
+        result = {account_id: set() for account_id in wanted}
+        line_ids = self.env['account.move.line'].search([('analytic_distribution', '!=', False)]).ids
+        if not line_ids or not wanted:
+            return result
+        self.env.cr.execute(
+            """SELECT l.id, k FROM account_move_line l,
+                    LATERAL jsonb_object_keys(l.analytic_distribution::jsonb) AS k
+                WHERE l.id = ANY(%s)""", [line_ids])
+        for line_id, key in self.env.cr.fetchall():
+            for id_str in key.split(','):
+                if id_str.isdigit() and int(id_str) in wanted:
+                    result[int(id_str)].add(line_id)
+        return result
+
     def _compute_journal_item_count(self):
-        """Cuenta los apuntes contables (account.move.line) asociados a esta cuenta analítica"""
+        """Cuenta los apuntes contables (account.move.line) asociados a cada cuenta analítica"""
+        lines_by_account = self._journal_item_ids_by_account()
         for record in self:
-            # Buscar apuntes que tengan distribución analítica asignada
-            move_lines = self.env['account.move.line'].search([
-                ('analytic_distribution', '!=', False),
-            ])
-
-            # Filtrar las que contienen este analytic account en su distribución
-            # analytic_distribution es un JSON como: {"42": 100.0} o {"42,43": 50.0}
-            count = 0
-            for line in move_lines:
-                if line.analytic_distribution:
-                    for key in line.analytic_distribution.keys():
-                        # Las claves pueden ser "42" o "42,43" (múltiples IDs separados por coma)
-                        analytic_ids = [int(id_str) for id_str in key.split(',')]
-                        if record.id in analytic_ids:
-                            count += 1
-                            break
-
-            record.journal_item_count = count
+            record.journal_item_count = len(lines_by_account.get(record.id, ()))
 
     journal_item_count = fields.Integer(string='Apuntes Contables', compute='_compute_journal_item_count')
 
     def action_view_journal_items(self):
         """Abre los apuntes contables asociados a esta cuenta analítica"""
-        # Buscar apuntes que tengan distribución analítica
-        move_lines = self.env['account.move.line'].search([
-            ('analytic_distribution', '!=', False),
-        ])
-
-        # Filtrar las que contienen este analytic account en su distribución
-        line_ids = []
-        for line in move_lines:
-            if line.analytic_distribution:
-                for key in line.analytic_distribution.keys():
-                    analytic_ids = [int(id_str) for id_str in key.split(',')]
-                    if self.id in analytic_ids:
-                        line_ids.append(line.id)
-                        break
-
+        self.ensure_one()
+        line_ids = sorted(self._journal_item_ids_by_account()[self.id])
         return {
             'name': 'Apuntes Contables',
             'type': 'ir.actions.act_window',

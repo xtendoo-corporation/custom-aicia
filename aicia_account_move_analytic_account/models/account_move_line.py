@@ -15,7 +15,9 @@ class AccountMoveLine(models.Model):
             if 'move_id' in vals and 'analytic_distribution' not in vals:
                 move = self.env['account.move'].browse(vals['move_id'])
                 if move.exists() and move.analytic_distribution:
-                    if vals.get('display_type') not in ('line_section', 'line_note'):
+                    # Solo las líneas de producto llevan la analítica: la línea de cuenta a pagar/cobrar y
+                    # la de impuestos la anularían (su importe es el contrario al del gasto/ingreso).
+                    if vals.get('display_type', 'product') == 'product':
                         vals['analytic_distribution'] = move.analytic_distribution
                         _logger.info(f"Copiando distribución analítica {move.analytic_distribution} a nueva línea")
 
@@ -25,7 +27,7 @@ class AccountMoveLine(models.Model):
             if (not line.analytic_distribution and
                 line.move_id and
                 line.move_id.analytic_distribution and
-                line.display_type not in ('line_section', 'line_note')):
+                line.display_type == 'product'):
                 line.analytic_distribution = line.move_id.analytic_distribution
                 _logger.info(f"Copiando distribución analítica post-create: {line.move_id.analytic_distribution}")
 
@@ -34,7 +36,7 @@ class AccountMoveLine(models.Model):
     @api.onchange('product_id')
     def _onchange_product_id_analytic(self):
         if self.move_id and self.move_id.analytic_distribution and not self.analytic_distribution:
-            if self.display_type not in ('line_section', 'line_note'):
+            if self.display_type == 'product':
                 self.analytic_distribution = self.move_id.analytic_distribution
                 _logger.info(f"Copiando distribución analítica en onchange product_id: {self.move_id.analytic_distribution}")
 
