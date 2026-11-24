@@ -67,6 +67,25 @@ class TestLiquidationEmployeeInvoices(AccountTestInvoicingCommon):
             'res_id': request.id,
         })
 
+    def _attach_payment_order(self, request, name='orden_pago_gastos.xlsx'):
+        attachment = self.env['ir.attachment'].create({
+            'name': name,
+            'datas': base64.b64encode(b'PK test'),
+            'mimetype': 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet',
+            'res_model': 'portal.hr.expensive.request',
+            'res_id': request.id,
+        })
+        request.payment_order_attachment_ids = attachment
+        return attachment
+
+    def _post_expense(self, request):
+        expense = request.expense_id.sudo()
+        expense.action_submit()
+        expense.action_approve()
+        post_action = expense.action_post()
+        self.env[post_action['res_model']].sudo().with_context(**post_action['context']).create(
+            {}).action_post_entry()
+
     def _create_liquidation(self, amount, tickets=(), invoices=()):
         request = self.env['portal.hr.expensive.request'].create({
             'user_id': self.requester.id,
@@ -282,3 +301,88 @@ class TestLiquidationEmployeeInvoices(AccountTestInvoicingCommon):
         amount, currency = request._get_accounting_amount()
         self.assertEqual(amount, 350.0)
         self.assertEqual(currency, request.currency_id)
+
+    # Orden de pago (Excel) y tickets visibles --------------------------------
+
+    def test_payment_order_is_not_treated_as_a_ticket(self):
+        request = self._create_liquidation(100.0, tickets=['taxi.pdf'])
+        order = self._attach_payment_order(request)
+        self._approve(request)
+
+        tickets = self.env['ir.attachment'].search(
+            [('res_model', '=', 'hr.expense'), ('res_id', '=', request.expense_id.id)])
+        self.assertEqual(tickets.mapped('name'), ['taxi.pdf'])
+        # La orden de pago se queda en la solicitud.
+        self.assertEqual((order.res_model, order.res_id), (request._name, request.id))
+        self.assertEqual(request.payment_order_attachment_ids, order)
+
+    def test_only_payment_order_and_invoices_creates_no_ticket_expense(self):
+        request = self._create_liquidation(100.0, invoices=['hotel.pdf'])
+        self._attach_payment_order(request)
+        self._approve(request)
+        self.assertFalse(request.expense_id)
+        self.assertEqual(len(request.employee_invoice_ids), 1)
+
+    def test_ticket_attachments_exclude_invoices_and_payment_order(self):
+        request = self._create_liquidation(
+            350.0, tickets=['taxi_1.pdf', 'taxi_2.pdf'], invoices=['hotel.pdf'])
+        self._attach_payment_order(request)
+        self.assertEqual(
+            set(request.ticket_attachment_ids.mapped('name')), {'taxi_1.pdf', 'taxi_2.pdf'})
+
+    def test_ticket_attachments_still_visible_after_approval(self):
+        request = self._create_liquidation(
+            350.0, tickets=['taxi_1.pdf', 'taxi_2.pdf'], invoices=['hotel.pdf'])
+        self._attach_payment_order(request)
+        self._approve(request)
+        # Los tickets han pasado al gasto de hr_expense pero se siguen viendo.
+        self.assertEqual(
+            set(request.ticket_attachment_ids.mapped('name')), {'taxi_1.pdf', 'taxi_2.pdf'})
+
+    def test_ticket_attachments_empty_for_other_types(self):
+        request = self.env['portal.hr.expensive.request'].create({
+            'user_id': self.requester.id, 'type': 'bienes_servicios', 'project': self.project.id,
+            'status': 'approved_purchase_responsible'})
+        self._attach(request, 'presupuesto.pdf')
+        self.assertFalse(request.ticket_attachment_ids)
+
+    # Importes de reembolso ---------------------------------------------------
+
+    def test_reimbursement_amounts_follow_accounting_and_payments(self):
+        request = self._create_liquidation(350.0, tickets=['taxi.pdf'], invoices=['hotel.pdf'])
+        self._approve(request)
+        # Aún nada contabilizado: no hay nada que reembolsar.
+        self.assertEqual(
+            (request.liquidation_owed_amount, request.liquidation_paid_amount,
+             request.liquidation_pending_amount), (0.0, 0.0, 0.0))
+
+        self._complete_and_post(request.employee_invoice_ids, 200.0)
+        # Solo la factura trasladada: 200 por reembolsar.
+        self.assertEqual(request.liquidation_owed_amount, 200.0)
+        self.assertEqual(request.liquidation_pending_amount, 200.0)
+
+        self._post_expense(request)
+        self.assertEqual(request.liquidation_owed_amount, 350.0)
+        self.assertEqual(request.liquidation_paid_amount, 0.0)
+        self.assertEqual(request.liquidation_pending_amount, 350.0)
+
+        action = request.action_register_employee_payment()
+        wizard = self.env['account.payment.register'].with_context(**action['context']).create({
+            'journal_id': self.bank_journal.id, 'amount': 100.0})
+        wizard._create_payments()
+        self.assertEqual(request.liquidation_owed_amount, 350.0)
+        self.assertEqual(request.liquidation_paid_amount, 100.0)
+        self.assertEqual(request.liquidation_pending_amount, 250.0)
+        self.assertFalse(request.is_reimbursed)
+
+        self._pay_employee(request)
+        self.assertEqual(request.liquidation_paid_amount, 350.0)
+        self.assertEqual(request.liquidation_pending_amount, 0.0)
+        self.assertTrue(request.is_reimbursed)
+
+    def test_reimbursement_amounts_are_zero_for_other_types(self):
+        request = self.env['portal.hr.expensive.request'].create({
+            'user_id': self.requester.id, 'type': 'bienes_servicios', 'project': self.project.id,
+            'status': 'approved_purchase_responsible'})
+        self.assertEqual(
+            (request.liquidation_owed_amount, request.liquidation_pending_amount), (0.0, 0.0))

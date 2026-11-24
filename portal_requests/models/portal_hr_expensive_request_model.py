@@ -112,6 +112,34 @@ class PortalHrExpensiveRequest(models.Model):
         return moves.filtered(lambda move: move.state == 'posted').line_ids.filtered(
             lambda line: line.account_id.account_type == 'liability_payable' and line.partner_id in partner)
 
+    liquidation_owed_amount = fields.Monetary(
+        string='A reembolsar al empleado', currency_field='currency_id',
+        compute='_compute_reimbursement_amounts',
+        help='Facturas a nombre de AICIA trasladadas al empleado más tickets, ya contabilizados.')
+    liquidation_paid_amount = fields.Monetary(
+        string='Reembolsado', currency_field='currency_id',
+        compute='_compute_reimbursement_amounts',
+        help='Importe ya pagado al empleado.')
+    liquidation_pending_amount = fields.Monetary(
+        string='Pendiente de reembolsar', currency_field='currency_id',
+        compute='_compute_reimbursement_amounts',
+        help='Importe contabilizado que todavía no se ha pagado al empleado.')
+
+    @api.depends(
+        'employee_invoice_ids.employee_transfer_move_id.line_ids.amount_residual',
+        'expense_id.account_move_id.line_ids.amount_residual')
+    def _compute_reimbursement_amounts(self):
+        for record in self:
+            owed = paid = pending = 0.0
+            if record.type == 'liquidacion_gastos' and record.id:
+                lines = record._employee_payable_lines()
+                owed = -sum(lines.mapped('balance'))
+                pending = -sum(lines.mapped('amount_residual'))
+                paid = owed - pending
+            record.liquidation_owed_amount = owed
+            record.liquidation_paid_amount = paid
+            record.liquidation_pending_amount = pending
+
     def _has_documents_pending_accounting(self):
         self.ensure_one()
         record = self.sudo()

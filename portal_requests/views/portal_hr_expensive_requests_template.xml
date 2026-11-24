@@ -26,6 +26,10 @@
                                     En una liquidación de gastos indique el importe total adelantado y adjunte al
                                     menos un ticket o una factura.
                                 </div>
+                                <div t-if="request.params.get('error') == 'payment_order'" class="alert alert-danger" role="alert">
+                                    La orden de pago debe ser un archivo Excel (.xlsx, .xls, .xlsm) o una hoja de
+                                    cálculo (.ods).
+                                </div>
                                 <div class="container">
                                     <form action="/portal/hr_expensive_request/submit" method="POST" enctype="multipart/form-data">
                                         <input type="hidden" name="csrf_token" t-att-value="request.csrf_token()"/>
