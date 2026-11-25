@@ -134,8 +134,6 @@
                                 <field name="show_group_credit" invisible="1"/>
                                 <field name="group_credit"
                                     invisible="not show_group_credit"/>
-                                <field name="ticket_attachment_ids" widget="many2many_binary"
-                                       readonly="1" invisible="type != 'liquidacion_gastos' or not ticket_attachment_ids"/>
                             </group>
                             <group string="Liquidación de gastos" invisible="type != 'liquidacion_gastos'">
                                 <field name="currency_id" invisible="1"/>
@@ -148,15 +146,23 @@
                                 <field name="liquidation_pending_amount"
                                        decoration-danger="liquidation_pending_amount != 0"
                                        decoration-success="liquidation_pending_amount == 0 and liquidation_paid_amount != 0"/>
-                                <field name="employee_invoice_attachment_ids" widget="many2many_binary"
-                                       readonly="1" invisible="not employee_invoice_attachment_ids"/>
-                                <field name="payment_order_attachment_ids" widget="many2many_binary"
-                                       readonly="1" invisible="not payment_order_attachment_ids"/>
                             </group>
                             <group string="Pago de gratificación" invisible="type != 'gratificacion'">
                                 <field name="is_paid"/>
                                 <field name="paid_date" invisible="not is_paid"/>
                                 <field name="paid_by_id" invisible="not is_paid"/>
+                            </group>
+                        </group>
+                        <group string="Documentos" invisible="type != 'liquidacion_gastos'">
+                            <group>
+                                <field name="ticket_attachment_ids" widget="many2many_binary" readonly="1"
+                                       invisible="not ticket_attachment_ids"/>
+                            </group>
+                            <group>
+                                <field name="employee_invoice_attachment_ids" widget="many2many_binary" readonly="1"
+                                       invisible="not employee_invoice_attachment_ids"/>
+                                <field name="payment_order_attachment_ids" widget="many2many_binary" readonly="1"
+                                       invisible="not payment_order_attachment_ids"/>
                             </group>
                         </group>
                     </sheet>
