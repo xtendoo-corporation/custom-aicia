@@ -353,16 +353,13 @@ class TestLiquidationEmployeeInvoices(AccountTestInvoicingCommon):
         self._approve(request)
         # Aún nada contabilizado: no hay nada que reembolsar.
         self.assertEqual(
-            (request.liquidation_owed_amount, request.liquidation_paid_amount,
-             request.liquidation_pending_amount), (0.0, 0.0, 0.0))
+            (request.liquidation_paid_amount, request.liquidation_pending_amount), (0.0, 0.0))
 
         self._complete_and_post(request.employee_invoice_ids, 200.0)
         # Solo la factura trasladada: 200 por reembolsar.
-        self.assertEqual(request.liquidation_owed_amount, 200.0)
         self.assertEqual(request.liquidation_pending_amount, 200.0)
 
         self._post_expense(request)
-        self.assertEqual(request.liquidation_owed_amount, 350.0)
         self.assertEqual(request.liquidation_paid_amount, 0.0)
         self.assertEqual(request.liquidation_pending_amount, 350.0)
 
@@ -370,7 +367,6 @@ class TestLiquidationEmployeeInvoices(AccountTestInvoicingCommon):
         wizard = self.env['account.payment.register'].with_context(**action['context']).create({
             'journal_id': self.bank_journal.id, 'amount': 100.0})
         wizard._create_payments()
-        self.assertEqual(request.liquidation_owed_amount, 350.0)
         self.assertEqual(request.liquidation_paid_amount, 100.0)
         self.assertEqual(request.liquidation_pending_amount, 250.0)
         self.assertFalse(request.is_reimbursed)
@@ -385,4 +381,4 @@ class TestLiquidationEmployeeInvoices(AccountTestInvoicingCommon):
             'user_id': self.requester.id, 'type': 'bienes_servicios', 'project': self.project.id,
             'status': 'approved_purchase_responsible'})
         self.assertEqual(
-            (request.liquidation_owed_amount, request.liquidation_pending_amount), (0.0, 0.0))
+            (request.liquidation_paid_amount, request.liquidation_pending_amount), (0.0, 0.0))

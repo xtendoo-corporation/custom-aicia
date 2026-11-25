@@ -144,11 +144,10 @@
                                 <field name="liquidation_tickets_amount"/>
                                 <field name="liquidation_difference"
                                        decoration-danger="liquidation_difference != 0"/>
-                                <field name="liquidation_owed_amount"/>
                                 <field name="liquidation_paid_amount"/>
                                 <field name="liquidation_pending_amount"
                                        decoration-danger="liquidation_pending_amount != 0"
-                                       decoration-success="liquidation_pending_amount == 0 and liquidation_owed_amount != 0"/>
+                                       decoration-success="liquidation_pending_amount == 0 and liquidation_paid_amount != 0"/>
                                 <field name="employee_invoice_attachment_ids" widget="many2many_binary"
                                        readonly="1" invisible="not employee_invoice_attachment_ids"/>
                                 <field name="payment_order_attachment_ids" widget="many2many_binary"

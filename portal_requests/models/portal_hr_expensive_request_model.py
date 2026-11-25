@@ -112,10 +112,6 @@ class PortalHrExpensiveRequest(models.Model):
         return moves.filtered(lambda move: move.state == 'posted').line_ids.filtered(
             lambda line: line.account_id.account_type == 'liability_payable' and line.partner_id in partner)
 
-    liquidation_owed_amount = fields.Monetary(
-        string='A reembolsar al empleado', currency_field='currency_id',
-        compute='_compute_reimbursement_amounts',
-        help='Facturas a nombre de AICIA trasladadas al empleado más tickets, ya contabilizados.')
     liquidation_paid_amount = fields.Monetary(
         string='Reembolsado', currency_field='currency_id',
         compute='_compute_reimbursement_amounts',
@@ -136,7 +132,6 @@ class PortalHrExpensiveRequest(models.Model):
                 owed = -sum(lines.mapped('balance'))
                 pending = -sum(lines.mapped('amount_residual'))
                 paid = owed - pending
-            record.liquidation_owed_amount = owed
             record.liquidation_paid_amount = paid
             record.liquidation_pending_amount = pending
 
