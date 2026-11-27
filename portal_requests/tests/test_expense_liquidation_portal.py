@@ -99,13 +99,9 @@ class TestExpenseLiquidationPortal(HttpCase, ExpenseRoutingSetupMixin):
         self._submit('80', tickets=['taxi.pdf'])
         self.assertFalse(self._last_request().payment_order_attachment_ids)
 
-    def test_payment_order_must_be_a_spreadsheet(self):
-        response = self._submit('80', tickets=['taxi.pdf'], payment_orders=['orden.pdf'])
-        self.assertIn('error=payment_order', response.headers['Location'])
-        self.assertFalse(self._last_request())
-        page = self.url_open(response.headers['Location'])
-        self.assertIn('La orden de pago debe ser un archivo Excel', page.text)
-        self.assertNotIn('adjunte al\n', page.text)
+    def test_payment_order_accepts_any_file_type(self):
+        self._submit('80', tickets=['taxi.pdf'], payment_orders=['orden.pdf'])
+        self.assertEqual(self._last_request().payment_order_attachment_ids.mapped('name'), ['orden_pago_orden.pdf'])
 
     def test_detail_shows_payment_order_badge(self):
         self._submit('120', tickets=['taxi.pdf'], payment_orders=['gastos.xlsx'])

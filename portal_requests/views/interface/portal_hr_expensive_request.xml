@@ -12,6 +12,16 @@
                     <field name="status"/>
                     <field name="is_more"/>
                     <field name="create_date" string="Fecha de creación"/>
+                    <field name="currency_id" column_invisible="True"/>
+                    <field name="liquidation_amount" optional="show"/>
+                    <field name="liquidation_invoices_amount" optional="show"/>
+                    <field name="liquidation_tickets_amount" optional="show"/>
+                    <field name="liquidation_difference" optional="show"
+                           decoration-danger="liquidation_difference != 0"/>
+                    <field name="liquidation_paid_amount" optional="show"/>
+                    <field name="liquidation_pending_amount" optional="show"
+                           decoration-danger="liquidation_pending_amount != 0"
+                           decoration-success="liquidation_pending_amount == 0 and liquidation_paid_amount != 0"/>
                 </list>
             </field>
         </record>

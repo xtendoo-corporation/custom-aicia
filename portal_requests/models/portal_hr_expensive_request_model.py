@@ -56,7 +56,7 @@ class PortalHrExpensiveRequest(models.Model):
     payment_order_attachment_ids = fields.Many2many(
         'ir.attachment', 'portal_expense_payment_order_attachment_rel',
         'request_id', 'attachment_id', string='Orden de pago', copy=False,
-        help='Excel con la orden de pago de la liquidación.')
+        help='Archivo con la orden de pago de la liquidación (cualquier formato).')
     ticket_attachment_ids = fields.Many2many(
         'ir.attachment', string='Gastos (tickets)', compute='_compute_ticket_attachment_ids',
         help='Tickets adjuntos a la liquidación (todo menos facturas a nombre de AICIA y orden de pago).')
@@ -474,7 +474,7 @@ class PortalHrExpensiveRequest(models.Model):
         attachments = self.env['ir.attachment'].sudo().search(
             [('res_model', '=', self._name), ('res_id', '=', self.id)])
         invoice_attachments = attachments & self.sudo().employee_invoice_attachment_ids
-        # La orden de pago (Excel) no es un ticket ni una factura.
+        # La orden de pago no es un ticket ni una factura.
         ticket_attachments = attachments - invoice_attachments - self.sudo().payment_order_attachment_ids
         for attachment in invoice_attachments:
             self._create_employee_invoice(employee, attachment)

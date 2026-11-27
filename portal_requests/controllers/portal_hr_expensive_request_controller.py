@@ -76,8 +76,6 @@ class PortalHrExpensiveRequestController(Controller):
             if liquidation_amount <= 0 or not (ticket_files or invoice_files):
                 return request.redirect('/portal/hr_expensive_request?error=liquidation')
             payment_order_file = next(iter(self._uploaded_files('payment_order_file')), None)
-            if payment_order_file and not payment_order_file.filename.lower().endswith(('.xlsx', '.xls', '.xlsm', '.ods')):
-                return request.redirect('/portal/hr_expensive_request?error=payment_order')
             ensure_pdf(*ticket_files, *invoice_files)
             # En la liquidación el umbral se decide con el total declarado.
             is_more = liquidation_amount > self.DIRECTOR_THRESHOLD
